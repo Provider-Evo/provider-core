@@ -1,0 +1,2 @@
+# Ollama platform adapter
+

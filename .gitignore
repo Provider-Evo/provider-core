@@ -1,0 +1,74 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.pyo
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.zed/
+.cursor/
+.agents/
+
+# Version control
+.git/
+
+# Other VCS / project metadata
+.svn/
+.pytest_cache/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node.js
+node_modules/
+
+# Project specific
+persist/
+data/
+.scripts/
+.codebuddy/
+
+# Specific files
+AGENTS.md
+CLAUDE.md
+CODEBUDDY.md
+IFLOW.md
+SOUL.md
+JIAN.md
+OPENCLAW.md
+accounts.py
+test.py
+test.log
+
+# Distribution / packaging (additional)
+*.zip
+
+# Config / data files
+*.json
+*.toml
+*.wasm
+*.db
+*.srt

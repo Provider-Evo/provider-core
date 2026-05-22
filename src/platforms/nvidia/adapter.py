@@ -1,0 +1,1 @@
+# nvidia adapter stub
