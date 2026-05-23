@@ -1,33 +1,43 @@
-"""Qwen 工具函数。"""
-
 from __future__ import annotations
-import logging
-from typing import Any, Dict, List
 
-logger = logging.getLogger(__name__)
-QWEN_MODELS = ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", "qwen-vl-plus"]
+"""Qwen 对外工具门面。
+
+该模块只负责对外导出稳定接口：
+- 共享常量/函数来自 ``src.platforms.qwen.core.shared``
+- ``QwenAdapter`` 通过 ``__getattr__`` 延迟加载，避免循环导入
+"""
+
+from typing import Any
+
+from src.platforms.qwen.core.shared import (
+    CAPS,
+    MODELS,
+    MODELS_PERSIST_PATH,
+    build_headers,
+    build_payload,
+    parse_sse_event,
+    parse_sse_line,
+)
 
 
-def validate_model(model: str) -> bool:
-    return model in QWEN_MODELS
+def __getattr__(name: str) -> Any:
+    """模块级懒属性，按需导入 QwenAdapter。"""
+    if name == "QwenAdapter":
+        from src.platforms.qwen.core.adapter_impl import (  # noqa: PLC0415
+            QwenAdapter as _QwenAdapter,
+        )
+
+        return _QwenAdapter
+    raise AttributeError("module 'src.platforms.qwen.util' has no attribute '{}'".format(name))
 
 
-def format_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    formatted = []
-    for msg in messages:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-        if role not in ("system", "user", "assistant", "tool"):
-            role = "user"
-        formatted.append({"role": role, "content": content})
-    return formatted
-
-
-def extract_content(response: Dict[str, Any]) -> str:
-    try:
-        choices = response.get("choices", [])
-        if not choices:
-            return ""
-        return choices[0].get("message", {}).get("content", "")
-    except (KeyError, IndexError):
-        return ""
+__all__ = [
+    "QwenAdapter",
+    "MODELS",
+    "CAPS",
+    "MODELS_PERSIST_PATH",
+    "parse_sse_line",
+    "parse_sse_event",
+    "build_headers",
+    "build_payload",
+]

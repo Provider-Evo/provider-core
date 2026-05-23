@@ -1,17 +1,27 @@
-"""Ollama HTTP 客户端。"""
-
 from __future__ import annotations
 
-import aiohttp
+"""Ollama 客户端兼容层。
+
+该模块为历史兼容保留，新功能请直接使用 ``src.platforms.ollama.core.client``。
+所有实现已迁移至 core/client.py，本模块仅做转发。
+"""
+
+from typing import Any
+
+from src.platforms.ollama.core.client import OllamaClient  # noqa: F401
 
 
-class OllamaClient:
-    def __init__(self, session: aiohttp.ClientSession, base_url: str = "http://localhost:11434") -> None:
-        self._session = session
-        self._base_url = base_url
+def __getattr__(name: str) -> Any:
+    """模块级懒属性，按需导入。"""
+    if name == "OllamaClient":
+        from src.platforms.ollama.core.client import (  # noqa: PLC0415
+            OllamaClient as _OllamaClient,
+        )
 
-    async def list_models(self) -> list:
-        async with self._session.get(f"{self._base_url}/api/tags") as resp:
-            resp.raise_for_status()
-            data = await resp.json()
-            return data.get("models", [])
+        return _OllamaClient
+    raise AttributeError(
+        "module 'src.platforms.ollama.client' has no attribute '{}'".format(name)
+    )
+
+
+__all__ = ["OllamaClient"]

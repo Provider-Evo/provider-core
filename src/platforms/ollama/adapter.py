@@ -1,44 +1,25 @@
-"""Ollama 平台适配器。"""
-
 from __future__ import annotations
 
-import json
-import logging
-from typing import Any, AsyncIterator, Dict, List, Optional
+"""Ollama 平台适配器入口。
 
-import aiohttp
+仅从 util 模块导入，符合平台适配器依赖方向规范：
+adapter.py -> util.py -> core/*
+"""
 
-logger = logging.getLogger(__name__)
-_OLLAMA_API_BASE = "http://localhost:11434"
+from typing import Any
 
 
-class OllamaAdapter:
-    def __init__(self, session: aiohttp.ClientSession, base_url: str = _OLLAMA_API_BASE) -> None:
-        self._session = session
-        self._api_base = base_url
+def __getattr__(name: str) -> Any:
+    """模块级懒属性，按需导入 OllamaAdapter。"""
+    if name == "OllamaAdapter":
+        from src.platforms.ollama.util import (  # noqa: PLC0415
+            OllamaAdapter as _OllamaAdapter,
+        )
 
-    async def chat(
-        self, messages: List[Dict[str, Any]], model: str = "llama3",
-        extra: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        url = f"{self._api_base}/api/chat"
-        payload = {"model": model, "messages": messages, "stream": False}
-        async with self._session.post(url, json=payload) as resp:
-            resp.raise_for_status()
-            return await resp.json()
+        return _OllamaAdapter
+    raise AttributeError(
+        "module 'src.platforms.ollama.adapter' has no attribute '{}'".format(name)
+    )
 
-    async def chat_stream(
-        self, messages: List[Dict[str, Any]], model: str = "llama3",
-        extra: Optional[Dict[str, Any]] = None,
-    ) -> AsyncIterator[Dict[str, Any]]:
-        url = f"{self._api_base}/api/chat"
-        payload = {"model": model, "messages": messages, "stream": True}
-        async with self._session.post(url, json=payload) as resp:
-            resp.raise_for_status()
-            async for line in resp.content:
-                line = line.decode("utf-8").strip()
-                if line:
-                    try:
-                        yield json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
+
+__all__ = ["OllamaAdapter"]

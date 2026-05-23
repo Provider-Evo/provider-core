@@ -1,43 +1,74 @@
-"""共享 HTTP 工具函数。"""
-
 from __future__ import annotations
 
-import json
-import logging
-from typing import Any, Optional
+"""Shared HTTP utilities for route handlers."""
+
+import re
+from typing import Any, Tuple
 
 import aiohttp.web
 
-logger = logging.getLogger(__name__)
+# Pre-compiled regex for cleaning fncall tags from response text
+_FNCALL_CLEAN_NEW_RE = re.compile(
+    r"<function_calls>\s*<invoke[^>]*>.*?</invoke>\s*</function_calls>",
+    re.DOTALL,
+)
+_FNCALL_CLEAN_OLD_RE = re.compile(
+    r"<function=[^>]*>.*?</function>",
+    re.DOTALL,
+)
+
+# fncall detection tag (for _safe_flush)
+_FNCALL_OPEN_TAG = "<function_calls>"
+_FNCALL_TAG_LEN = len(_FNCALL_OPEN_TAG)
 
 
-def clean_fncall(text: str) -> str:
-    """清理函数调用标签。"""
-    text = text.replace("<function_calls>", "").replace("</function_calls>", "")
-    text = text.replace("<tools>", "").replace("</tools>", "")
-    return text.strip()
+def clean_fncall(content: str) -> str:
+    """Remove all fncall tag remnants from response text.
+
+    Supports both new format (<function_calls>...</function_calls>)
+    and old format (<function=name>...</function>).
+
+    Args:
+        content: Raw text.
+
+    Returns:
+        Cleaned text (stripped).
+    """
+    content = _FNCALL_CLEAN_NEW_RE.sub("", content)
+    content = _FNCALL_CLEAN_OLD_RE.sub("", content)
+    return content.strip()
 
 
-async def safe_flush(writer: Any) -> None:
-    """安全刷新写入流。"""
-    try:
-        await writer.drain()
-    except (ConnectionError, BrokenPipeError) as e:
-        logger.warning("连接已关闭: %s", e)
+def safe_flush(buffer: str) -> Tuple[str, str]:
+    """Extract safe-to-output prefix from buffer, preserving potential fncall tag suffix.
+
+    Args:
+        buffer: Current text buffer.
+
+    Returns:
+        (safe, remain): safe is the outputtable prefix, remain is the pending suffix.
+    """
+    buf_len = len(buffer)
+    safe_end = buf_len
+    check_len = min(_FNCALL_TAG_LEN, buf_len)
+    for length in range(check_len, 0, -1):
+        start = buf_len - length
+        if _FNCALL_OPEN_TAG.startswith(buffer[start:]):
+            safe_end = start
+            break
+    return buffer[:safe_end], buffer[safe_end:]
 
 
-async def get_json(request: aiohttp.web.Request) -> Optional[dict]:
-    """安全解析 JSON 请求体。"""
+async def get_json(request: aiohttp.web.Request) -> Any:
+    """Safely parse request JSON body.
+
+    Args:
+        request: aiohttp request object.
+
+    Returns:
+        Parsed dict, or None on failure.
+    """
     try:
         return await request.json()
-    except json.JSONDecodeError:
+    except Exception:
         return None
-
-
-def json_response(data: Any, status: int = 200, headers: Optional[dict] = None) -> aiohttp.web.Response:
-    """构建 JSON 响应。"""
-    body = json.dumps(data, ensure_ascii=False)
-    resp_headers = {"Content-Type": "application/json"}
-    if headers:
-        resp_headers.update(headers)
-    return aiohttp.web.Response(body=body.encode("utf-8"), status=status, headers=resp_headers)
