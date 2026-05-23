@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 # src/platforms/deepseek/core/hif.py
 """DeepSeek HIF 服务令牌管理"""
 
-from __future__ import annotations
-
-import logging
+import asyncio
 import time
 from typing import Any, Optional, Tuple
+
+from src.logger import get_logger
+
+import aiohttp
 
 from src.platforms.deepseek.core.constants import (
     HIF_DLIQ_URL,
@@ -14,7 +18,7 @@ from src.platforms.deepseek.core.constants import (
 )
 from src.platforms.deepseek.core.headers import build_basic_headers
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def fetch_hif_tokens(
@@ -29,8 +33,6 @@ async def fetch_hif_tokens(
         (x_hif_leim, x_hif_dliq, expire_at) 三元组。
         失败时对应字段返回空字符串，expire_at 返回当前时间。
     """
-    import asyncio
-
     headers = build_basic_headers()
 
     async def _get(url: str) -> str:
@@ -38,7 +40,7 @@ async def fetch_hif_tokens(
             async with session.get(
                 url,
                 headers=headers,
-                timeout=__import__("aiohttp").ClientTimeout(total=10),
+                timeout=aiohttp.ClientTimeout(total=10),
                 ssl=False,
             ) as resp:
                 if resp.status != 200:

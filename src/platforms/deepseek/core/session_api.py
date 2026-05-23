@@ -1,17 +1,18 @@
+from __future__ import annotations
+
 # src/platforms/deepseek/core/session_api.py
 """DeepSeek 会话管理 API 封装（create / history / stop / feedback 等）"""
 
-from __future__ import annotations
-
-import logging
 from typing import Any, Dict, List, Optional
+
+from src.logger import get_logger
 
 import aiohttp
 
 from src.platforms.deepseek.core.constants import DEFAULT_HOST
 from src.platforms.deepseek.core.headers import build_headers
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def create_session(

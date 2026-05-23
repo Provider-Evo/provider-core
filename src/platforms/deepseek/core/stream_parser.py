@@ -1,6 +1,6 @@
-"""DeepSeek 流式响应解析器"""
-
 from __future__ import annotations
+
+"""DeepSeek 流式响应解析器"""
 
 import json
 import re
@@ -29,7 +29,7 @@ class StreamParser:
         """初始化解析器。
 
         Args:
-            include_thinking: 是否在输出中包含思考过程（<think>...</think> 包裹）。
+            include_thinking: 是否在输出中包含思考过程增量文本。
         """
         self._inc: bool = include_thinking
         self._content: str = ""
@@ -42,7 +42,13 @@ class StreamParser:
         self._search: Dict[int, SearchResult] = {}
         self._cite_buf: str = ""
         self._first_frag: bool = False
+        self._skip_first_response_frag: bool = False
         self._tok_usage: int = 0
+        self._cur_event: Optional[str] = None
+        self._stream_closed: bool = False
+        self._close_click_behavior: Optional[str] = None
+        self._close_auto_resume: Optional[bool] = None
+        self._should_continue: bool = False
 
     @property
     def status(self) -> str:
@@ -63,6 +69,38 @@ class StreamParser:
     def accumulated_thinking(self) -> str:
         """已累积的思考内容。"""
         return self._think
+
+    @property
+    def should_continue(self) -> bool:
+        """当前流结束后是否应继续调用 /continue。"""
+        if self._should_continue:
+            return True
+        if self._status in ("INCOMPLETE", "TIMEOUT"):
+            return True
+        if self._close_click_behavior == "retry":
+            return True
+        if self._close_auto_resume is not None and self._status != "FINISHED":
+            return True
+        if self._status == "WIP" and not self._stream_closed:
+            return True
+        return False
+
+    def begin_stream(self, is_continuation: bool = False) -> None:
+        """标记开始解析一段新的 SSE 流。
+
+        Args:
+            is_continuation: 是否为 /continue 续写流。
+        """
+        self._cur_event = None
+        self._stream_closed = False
+        self._close_click_behavior = None
+        self._close_auto_resume = None
+        self._should_continue = False
+        # 每次新流开始重置首片段相关状态
+        self._first_frag = False
+        self._is_think = False
+        self._think_started = False
+        self._skip_first_response_frag = is_continuation
 
     def _replace_citations(self, text: str) -> str:
         """将引用标记替换为 [URL]N 格式。
@@ -137,21 +175,19 @@ class StreamParser:
 
         if line.startswith("event:"):
             ev = line[6:].strip()
+            self._cur_event = ev
             if ev in ("finish", "close"):
+                self._stream_closed = True
                 # 刷新引用缓冲区
                 if self._cite_buf:
                     rem = self._cite_buf
                     self._cite_buf = ""
                     if self._is_think and self._inc:
                         self._is_think = False
-                        return {
-                            "type": "thinking",
-                            "content": rem + "</think>\n",
-                        }
+                        return {"type": "thinking", "content": rem}
                     return {"type": "content", "content": rem}
-                if self._is_think and self._inc:
+                if self._is_think:
                     self._is_think = False
-                    return {"type": "thinking", "content": "</think>\n"}
                 return {"type": "event", "event": ev}
             return None
 
@@ -181,6 +217,31 @@ class StreamParser:
         Returns:
             处理结果字典或 None。
         """
+        if self._cur_event == "close":
+            click_behavior = data.get("click_behavior")
+            auto_resume = data.get("auto_resume")
+            if isinstance(click_behavior, str):
+                self._close_click_behavior = click_behavior
+            if isinstance(auto_resume, bool):
+                self._close_auto_resume = auto_resume
+            if self._close_click_behavior == "retry":
+                self._should_continue = True
+                self._cur_event = None
+                return {
+                    "type": "status",
+                    "status": self._status,
+                    "needs_continue": True,
+                }
+            if self._close_auto_resume is not None and self._status != "FINISHED":
+                self._should_continue = True
+                self._cur_event = None
+                return {
+                    "type": "status",
+                    "status": self._status,
+                    "needs_continue": True,
+                }
+            self._cur_event = None
+
         # 提取消息 ID
         if "response_message_id" in data:
             self._msg_id = data["response_message_id"]
@@ -195,6 +256,8 @@ class StreamParser:
                 self._msg_id = rd["message_id"]
             if "status" in rd:
                 self._status = rd["status"]
+                if self._status in ("INCOMPLETE", "TIMEOUT"):
+                    self._should_continue = True
             if "accumulated_token_usage" in rd:
                 self._tok_usage = rd["accumulated_token_usage"]
             for frag in rd.get("fragments", []):
@@ -214,14 +277,15 @@ class StreamParser:
         if p == "response/status" and v:
             self._status = str(v)
             if v == "FINISHED":
-                if self._is_think and self._inc:
+                self._should_continue = False
+                if self._is_think:
                     self._is_think = False
-                    return {"type": "thinking", "content": "</think>\n"}
                 return {"type": "status", "status": "FINISHED"}
-            if v == "INCOMPLETE":
+            if v in ("INCOMPLETE", "TIMEOUT"):
+                self._should_continue = True
                 return {
                     "type": "status",
-                    "status": "INCOMPLETE",
+                    "status": str(v),
                     "needs_continue": True,
                 }
 
@@ -234,10 +298,12 @@ class StreamParser:
                 op_v = op.get("v")
                 if op_p == "accumulated_token_usage":
                     self._tok_usage = op_v or 0
-                elif op_p == "quasi_status" and op_v == "INCOMPLETE":
+                elif op_p == "quasi_status" and op_v in ("INCOMPLETE", "TIMEOUT"):
+                    self._status = str(op_v)
+                    self._should_continue = True
                     return {
                         "type": "status",
-                        "status": "INCOMPLETE",
+                        "status": str(op_v),
                         "needs_continue": True,
                     }
                 elif op_p == "fragments" and op.get("o") == "APPEND":
@@ -270,9 +336,8 @@ class StreamParser:
 
         # 思考结束标记
         if p == "response/fragments/-1/elapsed_secs":
-            if self._is_think and self._inc:
+            if self._is_think:
                 self._is_think = False
-                return {"type": "thinking", "content": "</think>\n"}
 
         # 兜底：裸值推送
         if (
@@ -319,9 +384,9 @@ class StreamParser:
             # 通过 id 查找之前打开的搜索结果
             # 在 BATCH 中，TOOL_OPEN 的 id 对应搜索结果中的 cite_index
             if ref_id is not None:
-                # 如果 _search 中已有该 cite_index 的记录，说明已通过搜索结果填充
-                # 如果没有，尝试通过打开的页面信息填充
-                pass  # _search 已在 _extract_search 中填充
+                # _search 已在 _extract_search 中通过 cite_index 填充；
+                # TOOL_OPEN 类型的 reference 仅作标注，无需额外处理。
+                _ = ref_type  # 显式消费变量，避免静态检查警告
 
     def _handle_frag(self, frag: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """处理 fragment 数据对象。
@@ -335,19 +400,19 @@ class StreamParser:
         ft = frag.get("type", "RESPONSE")
         content = frag.get("content")
 
-        if not self._first_frag:
+        is_first_frag = not self._first_frag
+        if is_first_frag:
             self._first_frag = True
-            if ft == "THINK":
-                self._is_think = True
-                self._think_started = True
+            if self._skip_first_response_frag and ft == "RESPONSE":
+                self._skip_first_response_frag = False
                 if content:
-                    self._think += content
-                    if self._inc:
-                        pc, _ = self._proc_cite(content)
-                        return {"type": "thinking", "content": "<think>" + pc}
-                elif self._inc:
-                    return {"type": "thinking", "content": "<think>"}
+                    # continue 首个 RESPONSE 通常是快照：同步累计正文，但不重复输出
+                    if self._content and str(content).startswith(self._content):
+                        self._content = str(content)
+                    elif not self._content:
+                        self._content = str(content)
                 return None
+            self._skip_first_response_frag = False
 
         if ft == "THINK":
             self._is_think = True
@@ -357,17 +422,9 @@ class StreamParser:
                 if self._inc:
                     pc, _ = self._proc_cite(content)
                     return {"type": "thinking", "content": pc}
-            elif self._inc and not self._think_started:
-                return {"type": "thinking", "content": "<think>"}
         elif ft == "RESPONSE":
-            if self._is_think and self._inc:
+            if self._is_think:
                 self._is_think = False
-                close = "</think>\n"
-                if content:
-                    self._content += content
-                    pc, _ = self._proc_cite(content)
-                    return {"type": "content", "content": close + pc}
-                return {"type": "thinking", "content": close}
             if content:
                 self._content += content
                 pc, _ = self._proc_cite(content)

@@ -1,17 +1,18 @@
+from __future__ import annotations
+
 # src/platforms/deepseek/core/pow.py
 """DeepSeek PoW（工作量证明）求解器"""
-
-from __future__ import annotations
 
 import base64
 import ctypes
 import json
-import logging
 import os
 import struct
 import time
 from pathlib import Path
 from typing import Any, Optional, Tuple
+
+from src.logger import get_logger
 
 from src.platforms.deepseek.core.constants import (
     WASM_META,
@@ -20,7 +21,7 @@ from src.platforms.deepseek.core.constants import (
 )
 from src.platforms.deepseek.core.headers import build_basic_headers
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class WasmPow:

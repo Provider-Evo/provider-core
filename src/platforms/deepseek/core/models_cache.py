@@ -1,16 +1,17 @@
+from __future__ import annotations
+
 # src/platforms/deepseek/core/models_cache.py
 """DeepSeek 平台模型列表缓存（独立于 src.core，仅供 deepseek 内部使用）"""
 
-from __future__ import annotations
-
 import asyncio
 import json
-import logging
 import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional
 
-logger = logging.getLogger(__name__)
+from src.logger import get_logger
+
+logger = get_logger(__name__)
 
 _PERSIST_ROOT = Path(__file__).parent.parent.parent.parent.parent / "persist"
 

@@ -1,19 +1,20 @@
+from __future__ import annotations
+
 # src/platforms/deepseek/core/user_api.py
 """DeepSeek 用户相关 API 封装（登录/注册/验证码/设置等）"""
 
-from __future__ import annotations
-
-import logging
 import secrets
 import uuid
 from typing import Any, Dict, Optional, Tuple
+
+from src.logger import get_logger
 
 import aiohttp
 
 from src.platforms.deepseek.core.constants import DEFAULT_HOST
 from src.platforms.deepseek.core.headers import build_basic_headers, build_headers
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _make_device_id() -> str:

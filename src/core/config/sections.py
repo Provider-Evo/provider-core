@@ -1,0 +1,189 @@
+from __future__ import annotations
+
+"""所有配置段数据类。"""
+
+import re
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
+
+from src.core.config.base import ConfigBase
+
+__all__ = [
+    "ServerCfg",
+    "AnthCfg",
+    "AuthCfg",
+    "GatewayCfg",
+    "ProxyCfg",
+    "FncallCfg",
+    "DebugCfg",
+    "PlatformsCfg",
+    "PlatformsProxyCfg",
+    "ModelMappingCfg",
+    "AppConfig",
+]
+
+
+@dataclass
+class ServerCfg(ConfigBase):
+    host: str = "0.0.0.0"
+    port: int = 1337
+    debug: bool = False
+
+
+@dataclass
+class AnthCfg(ConfigBase):
+    api_version: str = "2023-06-01"
+    model_mapping: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class AuthCfg(ConfigBase):
+    enabled: bool = False
+    keys: List[str] = field(default_factory=list)
+    group_list_type: str = "blacklist"
+    group_list: List[str] = field(default_factory=list)
+    group_list_set: set = field(default_factory=set, repr=False, init=False)
+
+    def __post_init__(self) -> None:
+        self.group_list_set = set(self.group_list)
+
+
+@dataclass
+class GatewayCfg(ConfigBase):
+    concurrent_enabled: bool = True
+    concurrent_count: int = 3
+    min_tokens: int = 10
+
+
+@dataclass
+class ProxyCfg(ConfigBase):
+    proxy_server: str = ""
+    proxy_enabled: bool = False
+    proxy_urls: List[str] = field(default_factory=list)
+    proxy_url_patterns: List[re.Pattern] = field(default_factory=list, repr=False, init=False)
+
+    def __post_init__(self) -> None:
+        self.proxy_url_patterns = [re.compile(p) for p in self.proxy_urls]
+
+
+@dataclass
+class FncallCfg(ConfigBase):
+    call_start_tag: str = "<function_calls>"
+    call_end_tag: str = "</function_calls>"
+    tools_start_tag: str = "<tools>"
+    tools_end_tag: str = "</tools>"
+    templates: Dict[str, str] = field(default_factory=dict)
+    record_prompt: bool = False
+
+
+@dataclass
+class DebugCfg(ConfigBase):
+    level: str = "INFO"
+
+
+@dataclass
+class PlatformsCfg(ConfigBase):
+    platform_list_type: str = "blacklist"
+    platform_list: List[str] = field(default_factory=list)
+    platform_list_set: set = field(default_factory=set, repr=False, init=False)
+
+    def __post_init__(self) -> None:
+        self.platform_list_set = set(self.platform_list)
+
+
+@dataclass
+class PlatformsProxyCfg(ConfigBase):
+    """允许使用代理切换的平台列表。"""
+    enabled_platforms: List[str] = field(default_factory=list)
+    enabled_platforms_set: set = field(default_factory=set, repr=False, init=False)
+
+    def __post_init__(self) -> None:
+        self.enabled_platforms_set = set(self.enabled_platforms)
+
+
+@dataclass
+class ModelMappingCfg(ConfigBase):
+    """根级模型映射配置，支持按协议分类。"""
+    anthropic: Dict[str, str] = field(default_factory=dict)
+    openai: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class AppConfig(ConfigBase):
+    server: ServerCfg = field(default_factory=ServerCfg)
+    anthropic: AnthCfg = field(default_factory=AnthCfg)
+    auth: AuthCfg = field(default_factory=AuthCfg)
+    gateway: GatewayCfg = field(default_factory=GatewayCfg)
+    proxy: ProxyCfg = field(default_factory=ProxyCfg)
+    platforms_proxy: PlatformsProxyCfg = field(default_factory=PlatformsProxyCfg)
+    fncall: FncallCfg = field(default_factory=FncallCfg)
+    platforms: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    platforms_cfg: PlatformsCfg = field(default_factory=PlatformsCfg)
+    debug: DebugCfg = field(default_factory=DebugCfg)
+    model_mapping: ModelMappingCfg = field(default_factory=ModelMappingCfg)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "AppConfig":
+        """重写 from_dict，特殊处理 [platforms] 段和模型映射合并。
+
+        [platforms] 在 TOML 中同时包含：
+        - platform_list_type / platform_list -> PlatformsCfg
+        - 其他键（qwen, deepseek 等） -> platforms raw dict
+
+        模型映射支持三种来源（优先级从高到低）：
+        1. 协议级：[anthropic.model_mapping] / [openai.model_mapping]
+        2. 根级协议：[model_mapping.anthropic] / [model_mapping.openai]
+        3. 根级全局：[model_mapping]（非 anthropic/openai 的键作为全局 fallback）
+        """
+        # 分离 platforms 段
+        platforms_raw = {}
+        platforms_cfg_data = {}
+        raw_platforms = data.get("platforms", {})
+        if isinstance(raw_platforms, dict):
+            for k, v in raw_platforms.items():
+                if k in ("platform_list_type", "platform_list"):
+                    platforms_cfg_data[k] = v
+                else:
+                    platforms_raw[k] = v if isinstance(v, dict) else {}
+
+        # 用分离后的数据构造 platforms_cfg
+        data = dict(data)
+        data["platforms_cfg"] = platforms_cfg_data
+        data["platforms"] = platforms_raw
+
+        # 提取 openai.model_mapping（无 OpenAICfg 段，需手动提取）
+        openai_section_mm = {}
+        raw_openai = data.get("openai", {})
+        if isinstance(raw_openai, dict):
+            openai_section_mm = dict(raw_openai.get("model_mapping", {}))
+
+        # 构造实例
+        instance = super().from_dict(data)
+
+        # 合并模型映射
+        global_mm = data.get("model_mapping", {})
+        if isinstance(global_mm, dict):
+            root_anth_mm = dict(global_mm.get("anthropic", {}))
+            root_openai_mm = dict(global_mm.get("openai", {}))
+            global_fallback = {k: v for k, v in global_mm.items() if k not in ("anthropic", "openai")}
+        else:
+            root_anth_mm = {}
+            root_openai_mm = {}
+            global_fallback = {}
+
+        # Anthropic 合并：协议级 > 根级协议 > 全局 fallback
+        anth_section_mm = instance.anthropic.model_mapping
+        merged_anth = dict(global_fallback)
+        merged_anth.update(root_anth_mm)
+        merged_anth.update(anth_section_mm)
+
+        # OpenAI 合并：协议级 > 根级协议 > 全局 fallback
+        merged_openai = dict(global_fallback)
+        merged_openai.update(root_openai_mm)
+        merged_openai.update(openai_section_mm)
+
+        # 写入合并结果
+        instance.model_mapping.anthropic = merged_anth
+        instance.model_mapping.openai = merged_openai
+
+        return instance

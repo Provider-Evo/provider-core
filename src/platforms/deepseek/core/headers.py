@@ -1,7 +1,7 @@
+from __future__ import annotations
+
 # src/platforms/deepseek/core/headers.py
 """DeepSeek 请求头构建工具"""
-
-from __future__ import annotations
 
 from typing import Dict, Optional
 
