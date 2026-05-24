@@ -16,9 +16,9 @@
 > - PR 目标必须为 `dev`，由作者审核后合并
 > - `main` 和 `classical` 仅用于稳定版本发布和存档
 
-![Version](https://img.shields.io/badge/version-2.1.3-blue)
+![Version](https://img.shields.io/badge/version-2.2.1-blue)
 ![Python](https://img.shields.io/badge/python-3.9+-green)
-![Platforms](https://img.shields.io/badge/platforms-17+-orange)
+![Platforms](https://img.shields.io/badge/platforms-20+-orange)
 ![License](https://img.shields.io/badge/license-MIT-gray)
 
 ## 📋 目录
@@ -121,10 +121,21 @@ curl -X POST http://localhost:1337/v1/chat/completions \
 | 依赖 | 版本 | 用途 |
 |------|------|------|
 | aiohttp | >= 3.9.0 | 异步 HTTP 服务器/客户端 |
+| aiohttp-socks | >= 0.8.0 | SOCKS 代理支持 |
 | pydantic | >= 2.0.0 | 数据校验 |
 | loguru | >= 0.7.0 | 日志管理 |
 | wasmtime | >= 0.40.0 | WASM 运行时 (DeepSeek PoW) |
+| beautifulsoup4 | >= 4.12.0 | HTML 解析 (DeepSeek Web) |
+| pycryptodome | >= 3.20.0 | 加密工具 |
+| tomlkit | >= 0.12.0 | TOML 解析与写入 |
+| watchdog | >= 4.0.0 | 文件监控 (配置热重载) |
+| uvloop | >= 0.19.0 | 高性能事件循环 (Unix) |
 | tomli | >= 2.0.0 | TOML 解析 (Python < 3.11) |
+| cerebras-cloud-sdk | >= 1.0.0 | Cerebras SDK |
+| requests | >= 2.31.0 | HTTP 客户端 |
+| tqdm | >= 4.60.0 | 进度条 |
+| brotli | >= 1.0.0 | Brotli 压缩 |
+| typing-extensions | >= 4.7.0 | 类型提示扩展 |
 
 完整依赖列表见 `requirements.txt`。
 
@@ -142,10 +153,11 @@ curl -X POST http://localhost:1337/v1/chat/completions \
 
 ```toml
 [server]
-version = "2.1.3"
+version = "2.2.1"
 host = "0.0.0.0"
 port = 1337
 debug = false
+STARTUP_FORCE_KILL_PORT = true
 
 [auth]
 enabled = false                    # 是否启用 API Key 认证
@@ -339,7 +351,7 @@ provider-v2/
 │   │   ├── function_call.py # 函数调用端点
 │   │   └── health.py        # 健康检查端点
 │   │
-│   ├── platforms/           # 平台适配器 (17+)
+│   ├── platforms/           # 平台适配器 (20+)
 │   │   ├── qwen/            # Qwen (DashScope) 平台
 │   │   ├── deepseek/        # DeepSeek 平台 (Web 抓取)
 │   │   ├── ollama/          # Ollama 本地服务
@@ -355,17 +367,22 @@ provider-v2/
 │   │   ├── n1n/             # N1N 平台
 │   │   ├── perplexity/      # Perplexity 平台
 │   │   ├── openai_fm/       # OpenAI-FM 平台
+│   │   ├── openaifm/        # OpenAI-FM (备用) 平台
 │   │   ├── edge_tts/        # Edge TTS 语音合成
-│   │   ├── gtts/            # Google TTS 语音合成
-│   │   └── aitianhu2/       # AItianhu2 平台 (开发中)
+│   │   ├── edgetts/         # Edge TTS (备用) 平台
+│   │   └── gtts/            # Google TTS 语音合成
 │   │
 │   └── logger.py            # 日志模块
 │
 ├── docs-src/                # 文档源文件
+│   ├── INDEX.md             # 文档索引
+│   ├── docs-src-guide.md    # 文档编写指南
 │   ├── core/                # 核心模块文档
-│   │   ├── ARCHITECTURE.md  # 整体架构图
-│   │   └── proxy.md         # 代理系统文档
-│   └── platforms/           # 平台开发规范
+│   │   └── INDEX.md         # 核心模块索引
+│   └── src/                 # 源代码文档 (镜像)
+│       ├── INDEX.md
+│       ├── core/            # 核心架构文档
+│       └── platforms/       # 平台开发规范
 │
 ├── .scripts/                # 工具脚本 (被 .gitignore 排除)
 │   ├── gen_platforms.py     # 平台配置生成
@@ -541,17 +558,18 @@ enabled_platforms = ["qwen"]
 ### ✅ 已完成
 
 - [x] 模块化配置系统 (`src/core/config/` — base/sections/manager/resolver)
-- [x] 17+ 平台适配器 (Qwen, DeepSeek, Ollama, Cerebras, NVIDIA, OpenRouter, ChatMoe, Cursor, CodeBuddy, Chutes, CaiYueSBK, APiAirForce, N1N, Perplexity, OpenAI-FM, Edge TTS, Gtts, AItianhu2)
+- [x] 20+ 平台适配器 (Qwen, DeepSeek, Ollama, Cerebras, NVIDIA, OpenRouter, ChatMoe, Cursor, CodeBuddy, Chutes, CaiYueSBK, APiAirForce, N1N, Perplexity, OpenAI-FM, Edge TTS, Gtts 等)
 - [x] Watchdog 配置热重载 (2 秒轮询检测 mtime)
 - [x] Runner-Worker 双进程架构与自动重启 (exit code 42)
 - [x] 平台代理切换系统 (Qwen WAF 自动触发 24 小时)
 - [x] XML 格式函数调用 (`<function_calls>` 自定义格式)
 - [x] 日志颜色自动回退 (支持 Git Bash / Windows Terminal / 管道)
 - [x] SSL 全局禁用 (TCPConnector CERT_NONE)
+- [x] Stop hook 自动审查与文档更新机制
 
 ### 🚧 进行中
 
-- [ ] AItianhu2 平台适配器完善
+- [ ] AItianhu2 平台适配器完善 (实验性，已 gitignore)
 - [ ] 平台级 accounts 配置统一
 - [ ] 集成测试框架
 
