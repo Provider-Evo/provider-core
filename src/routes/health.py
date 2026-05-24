@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import aiohttp.web
 
+from src.core.config import get_config
+
 __all__ = ["setup_routes"]
 
 
 async def _health_check(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    return aiohttp.web.json_response({"status": "ok", "version": "2.0.4"})
+    cfg = get_config()
+    return aiohttp.web.json_response({"status": "ok", "version": cfg.server.version})
 
 
 def setup_routes(app: aiohttp.web.Application) -> None:

@@ -10,6 +10,7 @@ from typing import Any, Dict
 
 import aiohttp.web
 from aiohttp.web_app import AppKey
+from src.core.config import get_config
 from src.core.server import json_response
 
 __all__ = ["setup_routes"]
@@ -28,10 +29,11 @@ async def root(request: aiohttp.web.Request) -> aiohttp.web.Response:
     Returns:
         响应对象。
     """
+    cfg = get_config()
     return _json(
         {
             "service": "Provider-V2",
-            "version": "2.0.0",
+            "version": cfg.server.version,
             "docs": "/docs",
         }
     )
