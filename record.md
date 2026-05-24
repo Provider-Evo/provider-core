@@ -1,3 +1,23 @@
+2026-05-24 | 修复 WebUI 日志实时推送 — 在 _on_startup 中捕获事件循环
+
+### 变更文件
+
+- src/webui/logs_ws.py
+- src/core/server.py
+
+### 变更说明
+
+**Bug 修复：**
+- `src/core/server.py` — 将 `setup_loguru_sink()` 和 `log_broker.set_loop()` 移到 `_on_startup` 回调中执行，确保在事件循环已运行后捕获正确的 loop 引用
+- `src/webui/logs_ws.py` — 简化回直接 `run_coroutine_threadsafe`，移除不可靠的 queue+worker 方案
+- 修复前 sink 在 `create_app()` 中初始化时事件循环尚未启动，导致 loop 为 None，日志无法推送
+
+### 验证结果
+
+- `py_compile` 通过
+
+---
+
 2026-05-24 | 修复 WebUI 日志实时推送 — 使用队列+worker 替代 run_coroutine_threadsafe
 
 ### 变更文件

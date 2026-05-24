@@ -242,15 +242,17 @@ async def create_app(registry: Any, session: Any) -> aiohttp.web.Application:
     setup_anth(app)
     setup_webui(app)
 
-    # 将 loguru 日志连接到 WebUI WebSocket
-    try:
-        from src.webui.logs_ws import setup_loguru_sink
-        setup_loguru_sink()
-    except Exception:
-        pass
-
     async def _on_startup(application: aiohttp.web.Application) -> None:
         logger.info("aiohttp.web 应用已启动")
+        # 将 loguru 日志连接到 WebUI WebSocket（在事件循环启动后）
+        try:
+            from src.webui.logs_ws import log_broker, setup_loguru_sink
+            import asyncio
+            loop = asyncio.get_running_loop()
+            log_broker.set_loop(loop)
+            setup_loguru_sink()
+        except Exception:
+            pass
 
     async def _on_cleanup(application: aiohttp.web.Application) -> None:
         logger.info("aiohttp.web 应用正在清理")

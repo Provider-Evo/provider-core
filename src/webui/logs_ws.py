@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import queue
-import threading
 import time
 from collections import deque
 from typing import Any, Deque, Dict, Optional, Set
@@ -36,35 +34,11 @@ class WebUILogBroker:
         self._sockets: Set[aiohttp.web.WebSocketResponse] = set()
         self._lock = asyncio.Lock()
         self._buffer: Deque[Dict[str, Any]] = deque(maxlen=LOG_BUFFER_SIZE)
-        self._queue: queue.Queue = queue.Queue(maxsize=500)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._worker_started = False
 
     def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         """保存主事件循环引用。"""
         self._loop = loop
-
-    def _start_worker(self) -> None:
-        """启动后台推送任务（只启动一次）。"""
-        if self._worker_started or self._loop is None:
-            return
-        self._worker_started = True
-        try:
-            self._loop.call_soon_threadsafe(self._loop.create_task, self._queue_worker())
-        except Exception:
-            pass
-
-    async def _queue_worker(self) -> None:
-        """从队列中取出日志并广播。"""
-        while True:
-            try:
-                payload = await asyncio.get_event_loop().run_in_executor(None, self._queue.get)
-                if payload is None:
-                    break
-                await self.broadcast(payload)
-                self._queue.task_done()
-            except Exception:
-                pass
 
     async def register(self, socket: aiohttp.web.WebSocketResponse) -> None:
         async with self._lock:
@@ -102,8 +76,8 @@ class WebUILogBroker:
                 self._sockets.discard(socket)
 
     def _loguru_sink(self, message: Any) -> None:
-        """loguru sink：同步函数，将日志推入队列。"""
-        if message is None:
+        """loguru sink：同步函数，通过 run_coroutine_threadsafe 推入事件循环。"""
+        if message is None or self._loop is None:
             return
         try:
             record = message.record
@@ -114,9 +88,8 @@ class WebUILogBroker:
                 "module": record["extra"].get("module_name", ""),
                 "message": str(record["message"]),
             }
-            self._queue.put_nowait(payload)
-        except queue.Full:
-            pass
+            if self._loop.is_running():
+                asyncio.run_coroutine_threadsafe(self.broadcast(payload), self._loop)
         except Exception:
             pass
 
@@ -129,18 +102,15 @@ def setup_loguru_sink() -> None:
     try:
         from loguru import logger
         logger.add(log_broker._loguru_sink, level="DEBUG", format="{time:HH:mm:ss} | {level} | {extra[module_name]} | {message}")
-        # 保存当前事件循环供队列 worker 使用
+        # 保存当前事件循环
         try:
             loop = asyncio.get_running_loop()
             log_broker.set_loop(loop)
-            log_broker._start_worker()
         except RuntimeError:
-            # 没有在运行的循环中，尝试 get_event_loop
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     log_broker.set_loop(loop)
-                    log_broker._start_worker()
             except Exception:
                 pass
     except Exception:
