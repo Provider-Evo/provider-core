@@ -67,7 +67,6 @@ WEBUI_SCRIPTS_ACTIONS = """
 
     async function refreshAll() {
       try {
-        log('开始刷新状态。');
         const [summaryResult, healthResult] = await Promise.allSettled([
           fetchJson('/v1/webui/summary'),
           fetchJson('/health')
@@ -83,11 +82,8 @@ WEBUI_SCRIPTS_ACTIONS = """
           document.getElementById('healthValue').textContent = healthResult.value && healthResult.value.status ? healthResult.value.status : 'degraded';
         }
         document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString();
-        toast('状态刷新完成', 'ok');
-        log('状态刷新完成。');
       } catch (error) {
         toast('状态刷新失败：' + String(error), 'error');
-        log('刷新失败：' + String(error));
       }
     }
 
@@ -96,7 +92,6 @@ WEBUI_SCRIPTS_ACTIONS = """
         log('开始刷新模型缓存。');
         const result = await fetchJson('/v1/admin/refresh_models', { method: 'POST' });
         toast('模型刷新完成', 'ok');
-        log('模型刷新完成：' + JSON.stringify(result.refreshed || {}));
         await refreshAll();
       } catch (error) {
         toast('模型刷新失败：' + String(error), 'error');

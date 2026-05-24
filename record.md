@@ -1,3 +1,22 @@
+2026-05-24 | 修复 WebUI 日志面板 — 移除前端动作日志淹没服务器日志
+
+### 变更文件
+
+- src/webui/templates/scripts_actions.py
+
+### 变更说明
+
+**体验优化：**
+- `src/webui/templates/scripts_actions.py` — `refreshAll()` 删除 `log('开始刷新状态。')` 和 `log('状态刷新完成。')` 调用，避免每次自动刷新时在日志面板产生冗余消息
+- `src/webui/templates/scripts_actions.py` — `refreshModels()` 删除成功时的 `log('模型刷新完成：...')` 调用（失败时仍保留日志）
+- 日志面板现在只显示真实的服务器端日志（通过 WebSocket 推送），不再被前端 UI 动作日志淹没
+
+### 验证结果
+
+- `py_compile` 通过
+
+---
+
 2026-05-24 | 修复 WebUI 重载按钮 — reload_service 回退到配置重载
 
 ### 变更文件
