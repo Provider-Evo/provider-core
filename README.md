@@ -405,8 +405,7 @@ provider-v2/
 │   │   ├── openaifm/        # OpenAI-FM (备用) 平台
 │   │   ├── edge_tts/        # Edge TTS 语音合成
 │   │   ├── edgetts/         # Edge TTS (备用) 平台
-│   │   ├── gtts/            # Google TTS 语音合成
-│   │   └── aitianhu2/       # AItianhu2 平台 (实验性，已 gitignore)
+│   │   └── gtts/            # Google TTS 语音合成
 │   │
 │   └── logger.py            # 日志模块
 │
@@ -436,10 +435,6 @@ provider-v2/
 │   ├── cursor/              # Cursor 缓存
 │   ├── nvidia/              # NVIDIA 缓存
 │   └── openrouter/          # OpenRouter 缓存
-│
-└── .qoder/                  # Qoder CLI 配置
-    ├── hooks/               # 自动化钩脚本
-    └── settings.local.json  # 本地配置
 ```
 
 ## 🏛️ 架构概览
@@ -476,8 +471,7 @@ main.py
 |--------|------|------|
 | `_cors_middleware` | 1 | CORS 跨域支持 |
 | `_auth_middleware` | 2 | API Key 鉴权 (可选) |
-| `_custom_middleware` | 3 | 自定义钩子 (用户可扩展) |
-| `_error_middleware` | 4 | 统一错误处理 |
+| `_error_middleware` | 3 | 统一错误处理 |
 
 ### 平台适配器接口
 
@@ -624,11 +618,9 @@ enabled_platforms = ["qwen"]
 - [x] SSL 全局禁用 (TCPConnector CERT_NONE)
 - [x] Anthropic 格式 API 支持 (`/v1/messages`)
 - [x] WebUI 管理界面
-- [x] Stop hook 自动审查与文档更新机制
 
 ### 🚧 进行中
 
-- [ ] AItianhu2 平台适配器完善 (实验性，已 gitignore)
 - [ ] 平台级 accounts 配置统一
 - [ ] 集成测试框架
 
