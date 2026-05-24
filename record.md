@@ -1,3 +1,35 @@
+2026-05-24 | ServerCfg 补全 STARTUP_FORCE_KILL_PORT + Hook 版本管理规则重写
+
+### 变更文件
+
+- src/core/config/sections.py
+- src/core/config.py
+- .qoder/hooks/session-cleanup.py
+- .qoder/settings.local.json
+- template/template_config.toml
+- config.toml
+- README.md
+- .agents/provider-guide/SKILL.md
+
+### 变更说明
+
+**配置修复：**
+- `src/core/config/sections.py` — `ServerCfg` 补全缺失的 `STARTUP_FORCE_KILL_PORT: bool = True` 字段（模板中已有但 dataclass 未定义）
+- `src/core/config.py` — 同步更新 legacy `ServerCfg` 版本默认值及 `_from_dict` 回退值
+
+**Hook 基础设施：**
+- `.qoder/hooks/session-cleanup.py` — 重写版本管理规则：明确 `template_config.toml` 为版本唯一基准，config.toml/SKILL.md/README 等跟随模板；+0.0.1 递增；排除 record.md/config.toml 防止死循环
+- `.qoder/settings.local.json` — 新增 SessionStart hook，自动注入 provider-guide skill（防重复注入）
+
+**版本递增（2.2.2 → 2.2.3）：**
+- 所有版本引用同步更新：template、config、sections.py、config.py、README 徽章/路线图、SKILL.md frontmatter
+
+### 验证结果
+
+- 待 py_compile 验证
+
+---
+
 2026-05-24 | CODE_GUIDE 合规修复 + 版本统一
 
 ### 变更文件

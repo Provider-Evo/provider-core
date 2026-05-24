@@ -21,7 +21,7 @@ except ImportError:
 
 @dataclass
 class ServerCfg:
-    version: str = "2.2.2"
+    version: str = "2.2.3"
     host: str = "0.0.0.0"
     port: int = 1337
     debug: bool = False
@@ -138,7 +138,7 @@ def _parse(path: Path) -> AppConfig:
 
     return AppConfig(
         server=ServerCfg(
-            version=str(s.get("version", "2.2.2")),
+            version=str(s.get("version", "2.2.3")),
             host=s.get("host", "0.0.0.0"),
             port=int(s.get("port", 1337)),
             debug=bool(s.get("debug", False)),
