@@ -28,10 +28,9 @@ venv
 *.pyo
 *.so
 *.srt
-*.toml
+config.toml
 *.wasm
 *.zip
-!template/config.toml
 
 # File names
 .DS_Store

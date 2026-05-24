@@ -1,3 +1,25 @@
+2026-05-24 | 配置管理改进
+
+### 变更文件
+
+- .gitignore
+- template/template_config.toml
+- docs-src/template/INDEX.md
+
+### 变更说明
+
+**配置管理改进：精确 .gitignore 规则 + 新增配置模板文件**
+
+- `.gitignore`：从 blanket `*.toml` + `!template/config.toml` 改为精确 `config.toml`，只忽略根目录配置文件，不再误伤所有 `.toml` 文件
+- `template/template_config.toml`：新增 Provider-V2 配置模板文件，作为用户分发基准，包含 server、auth、gateway、proxy、platforms、fncall、debug 等全部配置段
+- `docs-src/template/INDEX.md`：同步更新模板文档
+
+### 验证结果
+
+- 无 Python 源码变更，无需 pytest/py_compile
+
+---
+
 2026-05-24 | v2.2.2
 
 ### 变更文件
