@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from typing import Dict, List
+"""openaifm 平台常量定义。"""
 
-VOICES: List[str] = [
+from typing import Dict, Final, List
+
+MODELS: Final[List[str]] = [
+    "tts-1",
+    "tts-1-hd",
     "alloy",
     "ash",
     "ballad",
@@ -15,7 +19,18 @@ VOICES: List[str] = [
     "shimmer",
     "verse",
 ]
-STYLES: List[str] = [
+
+CAPS: Final[Dict[str, bool]] = {
+    "audio_gen": True,
+}
+
+DEFAULT_MODEL: Final[str] = "tts-1"
+DEFAULT_VOICE: Final[str] = "coral"
+DEFAULT_STYLE: Final[str] = "calm"
+
+VOICES: Final[List[str]] = list(MODELS)
+
+STYLES: Final[List[str]] = [
     "friendly",
     "patient_teacher",
     "noir_detective",
@@ -23,11 +38,8 @@ STYLES: List[str] = [
     "calm",
     "scientific_style",
 ]
-DEFAULT_VOICE: str = "coral"
-DEFAULT_STYLE: str = "calm"
-DEFAULT_MODEL: str = "tts-1"
 
-STYLE_PROMPTS: Dict[str, str] = {
+STYLE_PROMPTS: Final[Dict[str, str]] = {
     "friendly": (
         "Affect/personality: A cheerful guide\n\n"
         "Tone: Friendly, clear, and reassuring, creating a calm atmosphere and making "
@@ -78,28 +90,3 @@ STYLE_PROMPTS: Dict[str, str] = {
         "Emotion: Restrained enthusiasm for discoveries and findings."
     ),
 }
-
-
-def build_tts_form_data(
-    input_text: str,
-    prompt: str,
-    voice: str,
-    vibe: str = "",
-) -> Dict[str, str]:
-    """Build TTS multipart/form-data fields.
-
-    Args:
-        input_text: Text to synthesize.
-        prompt: Style prompt string.
-        voice: Voice name.
-        vibe: Optional vibe string.
-
-    Returns:
-        Form data dictionary.
-    """
-    return {
-        "input": input_text,
-        "prompt": prompt,
-        "voice": voice,
-        "vibe": vibe,
-    }

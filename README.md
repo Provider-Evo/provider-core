@@ -390,21 +390,19 @@ provider-v2/
 │   │   ├── qwen/            # Qwen (DashScope) 平台
 │   │   ├── deepseek/        # DeepSeek 平台 (Web 抓取)
 │   │   ├── ollama/          # Ollama 本地服务
-│   │   ├── cerebras/        # Cerebras 平台
-│   │   ├── nvidia/          # NVIDIA NIM 平台
-│   │   ├── openrouter/      # OpenRouter 平台
-│   │   ├── chatmoe/         # ChatMoe 平台
-│   │   ├── cursor/          # Cursor 平台
-│   │   ├── codebuddy/       # CodeBuddy 平台
-│   │   ├── chutes/          # Chutes 平台
-│   │   ├── caiyuesbk/       # 彩月 SBK 平台
-│   │   ├── apiairforce/     # APiAirForce 平台
-│   │   ├── n1n/             # N1N 平台
-│   │   ├── perplexity/      # Perplexity 平台
-│   │   ├── openai_fm/       # OpenAI-FM 平台
-│   │   ├── openaifm/        # OpenAI-FM (备用) 平台
-│   │   ├── edge_tts/        # Edge TTS 语音合成
-│   │   ├── edgetts/         # Edge TTS (备用) 平台
+│   │   ├── cerebras/        # Cerebras
+│   │   ├── nvidia/          # NVIDIA NIM
+│   │   ├── openrouter/      # OpenRouter
+│   │   ├── chatmoe/         # ChatMoe
+│   │   ├── cursor/          # Cursor
+│   │   ├── codebuddy/       # CodeBuddy
+│   │   ├── chutes/          # Chutes
+│   │   ├── caiyuesbk/       # 彩月 SBK
+│   │   ├── apiairforce/     # APiAirForce
+│   │   ├── n1n/             # N1N
+│   │   ├── perplexity/      # Perplexity
+│   │   ├── openaifm/        # OpenAI-FM
+│   │   ├── edgetts/         # Edge TTS 语音合成
 │   │   └── gtts/            # Google TTS 语音合成
 │   │
 │   └── logger.py            # 日志模块

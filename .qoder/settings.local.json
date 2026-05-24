@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .qoder/hooks/session-cleanup.py",
+            "name": "session-end-review",
+            "description": "Agent end-of-session: auto-review and update docs-src, tests, record.md, README.md, template, config.toml, requirements.txt",
+            "timeout": 300,
+            "statusMessage": "Reviewing session changes and updating project artifacts..."
+          }
+        ]
+      }
+    ]
+  }
+}
