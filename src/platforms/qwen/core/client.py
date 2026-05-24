@@ -427,7 +427,6 @@ class QwenClient:
                     return
                 # is_login=False 的账号尝试重新登录
                 if not acc.is_login:
-                    logger.info("账号 [%s] 已登出，尝试重新登录", acc.username[:6])
                     acc.token = ""  # 清除旧 token
                 elif acc.token and await self._validate_token(acc):
                     return
