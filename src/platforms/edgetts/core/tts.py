@@ -3,7 +3,7 @@ from __future__ import annotations
 """edgetts TTS 服务。"""
 
 import ssl
-from typing import Any, Tuple, Dict, bytes
+from typing import Any, Tuple, Dict
 
 import certifi
 
