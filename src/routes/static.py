@@ -48,7 +48,9 @@ async def health(request: aiohttp.web.Request) -> aiohttp.web.Response:
     Returns:
         响应对象。
     """
-    return _json({"status": "healthy", "timestamp": int(time.time())})
+    from src.core.config import get_config  # noqa: PLC0415
+    cfg = get_config()
+    return _json({"status": "healthy", "version": cfg.server.version, "timestamp": int(time.time())})
 
 
 async def docs(request: aiohttp.web.Request) -> aiohttp.web.Response:

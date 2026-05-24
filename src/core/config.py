@@ -21,6 +21,7 @@ except ImportError:
 
 @dataclass
 class ServerCfg:
+    version: str = "2.2.2"
     host: str = "0.0.0.0"
     port: int = 1337
     debug: bool = False
@@ -136,7 +137,12 @@ def _parse(path: Path) -> AppConfig:
     pp = PlatformsProxyCfg(enabled_platforms=list(pp_raw.get("enabled_platforms", [])))
 
     return AppConfig(
-        server=ServerCfg(s.get("host", "0.0.0.0"), int(s.get("port", 1337)), bool(s.get("debug", False))),
+        server=ServerCfg(
+            version=str(s.get("version", "2.2.2")),
+            host=s.get("host", "0.0.0.0"),
+            port=int(s.get("port", 1337)),
+            debug=bool(s.get("debug", False)),
+        ),
         auth=AuthCfg(
             bool(auth_raw.get("enabled", False)),
             list(auth_raw.get("keys", [])),
