@@ -1,3 +1,22 @@
+2026-05-24 | 修复 WebUI 日志实时推送 — 使用队列+worker 替代 run_coroutine_threadsafe
+
+### 变更文件
+
+- src/webui/logs_ws.py
+
+### 变更说明
+
+**Bug 修复：**
+- `src/webui/logs_ws.py` — 重写 `_loguru_sink`：改用 `queue.Queue` 缓冲 + `_queue_worker()` 协程消费，替代不可靠的 `asyncio.run_coroutine_threadsafe`
+- 新增 `set_loop()` / `_start_worker()` / `_queue_worker()` 方法，确保日志在主事件循环中正确广播
+- 修复前日志面板"卡着不动"，修复后实时推送服务器日志到 WebUI
+
+### 验证结果
+
+- `py_compile` 通过
+
+---
+
 2026-05-24 | 修复 WebUI 日志同步 — 注册 loguru sink 到 WebSocket broker
 
 ### 变更文件
