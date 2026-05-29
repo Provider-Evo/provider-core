@@ -12,6 +12,13 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.core.fncall.shared.coercion import _build_param_schema_index, _coerce_param_value
+from src.core.fncall.shared.xml_helpers import (
+    _CDATA_RE,
+    _PROVIDER_BLOCK_RE,
+    _PROVIDER_INVOKE_RE,
+    _PROVIDER_PARAM_RE,
+    extract_cdata,
+)
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -253,5 +260,62 @@ def parse_fncall_xml(
             )
     except Exception as exc:
         logger.warning("parse_fncall_xml 解析失败: %s", exc)
+
+    return tool_calls
+
+
+def parse_fncall_provider(
+    xml: str,
+    tools: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
+    """解析 <|PROVIDER|tool_calls> 格式的 XML。
+
+    支持 CDATA 包裹的参数值。
+
+    Args:
+        xml: 包含 <|PROVIDER|invoke> 块的 XML 字符串。
+        tools: 工具定义列表，用于类型转换（可为 None）。
+
+    Returns:
+        tool_calls 列表；解析失败时返回 []。
+    """
+    tool_calls: List[Dict[str, Any]] = []
+    schema_index = _build_param_schema_index(tools) if tools else None
+
+    try:
+        for block_m in _PROVIDER_BLOCK_RE.finditer(xml):
+            block_body = block_m.group(1)
+            for inv_m in _PROVIDER_INVOKE_RE.finditer(block_body):
+                func_name = inv_m.group(1).strip()
+                params_xml = inv_m.group(2)
+                param_schemas: Dict[str, Dict[str, Any]] = {}
+                if schema_index:
+                    param_schemas = schema_index.get(func_name) or {}
+
+                arguments: Dict[str, Any] = {}
+                for pm in _PROVIDER_PARAM_RE.finditer(params_xml):
+                    key = pm.group(1).strip()
+                    val = extract_cdata(pm.group(2))
+                    pschema = param_schemas.get(key) or {}
+                    if pschema:
+                        arguments[key] = _coerce_param_value(val, pschema)
+                    else:
+                        try:
+                            arguments[key] = json.loads(val)
+                        except (json.JSONDecodeError, ValueError):
+                            arguments[key] = val
+
+                tool_calls.append(
+                    {
+                        "id": f"call_{uuid.uuid4().hex[:24]}",
+                        "type": "function",
+                        "function": {
+                            "name": func_name,
+                            "arguments": json.dumps(arguments, ensure_ascii=False),
+                        },
+                    }
+                )
+    except Exception as exc:
+        logger.warning("parse_fncall_provider 解析失败: %s", exc)
 
     return tool_calls
