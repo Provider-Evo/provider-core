@@ -34,6 +34,7 @@ config.toml
 
 # File names
 .DS_Store
+agents.md
 AGENTS.md
 CLAUDE.md
 CODEBUDDY.md
