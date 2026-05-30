@@ -139,9 +139,23 @@ class TestConcreteProtocol:
 
 
 class TestProtocolRegistry:
+    _saved_registry: dict = None
+    _saved_registered: bool = None
+
     def setup_method(self):
-        # Clear registry before each test
+        # Save and clear registry before each test
+        import src.core.fncall.registry as fncall_registry
+        self._saved_registry = dict(_PROTOCOL_REGISTRY)
+        self._saved_registered = fncall_registry._registered
         _PROTOCOL_REGISTRY.clear()
+        fncall_registry._registered = False
+
+    def teardown_method(self):
+        # Restore registry after each test
+        import src.core.fncall.registry as fncall_registry
+        _PROTOCOL_REGISTRY.clear()
+        _PROTOCOL_REGISTRY.update(self._saved_registry)
+        fncall_registry._registered = self._saved_registered
 
     def test_register_and_get(self):
         class TestProto(ToolProtocol):

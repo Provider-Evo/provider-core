@@ -8,8 +8,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.13-blue)
-![Version](https://img.shields.io/badge/version-2.2.13-blue)
+![Status](https://img.shields.io/badge/status-v2.2.14-blue)
+![Version](https://img.shields.io/badge/version-2.2.14-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)

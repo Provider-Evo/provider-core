@@ -25,6 +25,8 @@ import ssl
 import warnings
 from typing import Any, Dict, List, Optional, Pattern, Tuple
 
+from aiohttp import TCPConnector
+
 from src.core.config import get_config
 from src.logger import get_logger
 
