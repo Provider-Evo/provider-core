@@ -2,6 +2,8 @@ from __future__ import annotations
 
 """WebUI 路由注册。"""
 
+from pathlib import Path
+
 import aiohttp.web
 
 from src.webui.routers import (
@@ -15,6 +17,10 @@ __all__ = ["setup_routes"]
 
 def setup_routes(app: aiohttp.web.Application) -> None:
     """注册 WebUI 路由。"""
+    # 静态文件路由
+    static_dir = Path(__file__).parent / "static"
+    app.router.add_static("/webui/static/", path=str(static_dir), name="webui_static")
+
     app.router.add_get("/webui", root_page)
     app.router.add_get("/docs", docs_page)
     app.router.add_get("/v1/webui/summary", summary_api)

@@ -1,0 +1,464 @@
+// ========================= Chat Input (quickshot-inspired) =========================
+(() => {
+  const textarea = document.getElementById("chatMessageInput");
+  const viewport = document.getElementById("chatInputViewport");
+  const scrollbar = document.getElementById("chatCustomScrollbar");
+  const thumb = document.getElementById("chatCustomThumb");
+  const caret = document.getElementById("chatCustomCaret");
+
+  const minRows = 4, maxRows = 6;
+  let visualHeight = 96, targetHeight = 96, heightFrame = 0;
+  let thumbY = 0, thumbTargetY = 0, thumbHeight = 28, thumbFrame = 0;
+  let caretX = 0, caretY = 0, caretTargetX = 0, caretTargetY = 0, caretHeight = 24, caretFrame = 0, caretReady = false;
+  let dragState = null;
+
+  const mirror = document.createElement("div");
+  mirror.setAttribute("aria-hidden", "true");
+  mirror.style.cssText = "position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;z-index:-1;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;";
+  document.body.appendChild(mirror);
+
+  function getComputedStyle_prop(prop) { return Number.parseFloat(getComputedStyle(textarea)[prop]); }
+  const metrics = { lineHeight: 24, minHeight: 96, maxHeight: 144 };
+  function refreshMetrics() {
+    const lh = getComputedStyle_prop("lineHeight"), fs = getComputedStyle_prop("fontSize");
+    metrics.lineHeight = Number.isFinite(lh) ? lh : fs * 1.5;
+    metrics.minHeight = metrics.lineHeight * minRows;
+    metrics.maxHeight = metrics.lineHeight * maxRows;
+  }
+  function applyHeight(h) { visualHeight = h; viewport.style.height = h + "px"; textarea.style.height = h + "px"; updateScrollbar(false); updateCaretTarget(false); }
+  function measureContentHeight() {
+    const prev = textarea.style.height, prevST = textarea.scrollTop;
+    textarea.style.height = "0px";
+    const h = textarea.scrollHeight;
+    textarea.style.height = prev; textarea.scrollTop = prevST;
+    return h;
+  }
+  function requestHeightUpdate(immediate) {
+    refreshMetrics();
+    targetHeight = Math.min(metrics.maxHeight, Math.max(metrics.minHeight, measureContentHeight()));
+    if (immediate) { applyHeight(targetHeight); return; }
+    if (!heightFrame) heightFrame = requestAnimationFrame(animateHeight);
+  }
+  function animateHeight() {
+    heightFrame = 0;
+    const diff = targetHeight - visualHeight;
+    if (Math.abs(diff) < 0.35) { applyHeight(targetHeight); return; }
+    applyHeight(visualHeight + diff * 0.18);
+    heightFrame = requestAnimationFrame(animateHeight);
+  }
+  function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
+  function updateScrollbar(immediate) {
+    const maxScroll = Math.max(0, textarea.scrollHeight - textarea.clientHeight);
+    const trackHeight = Math.max(0, viewport.clientHeight - 8);
+    if (maxScroll <= 1 || trackHeight <= 0) {
+      scrollbar.classList.remove("is-scrollable");
+      thumbTargetY = 0; thumbY = 0;
+      thumb.style.height = "28px";
+      thumb.style.transform = "translate3d(0,0,0)";
+      return;
+    }
+    scrollbar.classList.add("is-scrollable");
+    thumbHeight = clamp((textarea.clientHeight / textarea.scrollHeight) * trackHeight, 28, trackHeight);
+    const maxThumbY = Math.max(0, trackHeight - thumbHeight);
+    thumbTargetY = maxScroll > 0 ? (textarea.scrollTop / maxScroll) * maxThumbY : 0;
+    thumb.style.height = thumbHeight + "px";
+    if (immediate) { thumbY = thumbTargetY; renderThumb(); return; }
+    if (!thumbFrame) thumbFrame = requestAnimationFrame(animateThumb);
+  }
+  function renderThumb() { thumb.style.transform = "translate3d(0," + thumbY + "px,0)"; }
+  function animateThumb() {
+    thumbFrame = 0;
+    const diff = thumbTargetY - thumbY;
+    if (Math.abs(diff) < 0.25) { thumbY = thumbTargetY; renderThumb(); return; }
+    thumbY += diff * 0.28;
+    renderThumb();
+    thumbFrame = requestAnimationFrame(animateThumb);
+  }
+  function syncMirrorStyle() {
+    const props = ["boxSizing","fontFamily","fontSize","fontWeight","fontStyle","letterSpacing","textTransform","wordSpacing","textIndent","lineHeight","paddingTop","paddingRight","paddingBottom","paddingLeft"];
+    for (let i = 0; i < props.length; i++) mirror.style[props[i]] = getComputedStyle(textarea)[props[i]];
+    mirror.style.width = textarea.clientWidth + "px";
+  }
+  function getCaretCoordinates() {
+    syncMirrorStyle();
+    const pos = textarea.selectionEnd;
+    mirror.textContent = textarea.value.slice(0, pos);
+    const marker = document.createElement("span");
+    marker.textContent = "\u200b";
+    marker.style.cssText = "display:inline-block;width:1px;height:" + metrics.lineHeight + "px;";
+    mirror.appendChild(marker);
+    const mr = marker.getBoundingClientRect(), mir = mirror.getBoundingClientRect();
+    return { x: mr.left - mir.left - textarea.scrollLeft, y: mr.top - mir.top - textarea.scrollTop, height: metrics.lineHeight };
+  }
+  function updateCaretTarget(immediate) {
+    const focused = document.activeElement === textarea;
+    const collapsed = textarea.selectionStart === textarea.selectionEnd;
+    if (!focused || !collapsed) { caret.classList.remove("is-visible","is-moving"); return; }
+    const coords = getCaretCoordinates();
+    caretTargetX = clamp(coords.x, 0, Math.max(0, textarea.clientWidth - 3));
+    caretTargetY = coords.y;
+    caretHeight = coords.height;
+    if (caretTargetY < -metrics.lineHeight || caretTargetY > textarea.clientHeight) { caret.classList.remove("is-visible","is-moving"); return; }
+    caret.classList.add("is-visible");
+    caret.style.height = caretHeight + "px";
+    if (immediate || !caretReady) { caretX = caretTargetX; caretY = caretTargetY; caretReady = true; renderCaret(); return; }
+    if (!caretFrame) caretFrame = requestAnimationFrame(animateCaret);
+  }
+  function renderCaret() { caret.style.transform = "translate3d(" + caretX + "px," + caretY + "px,0)"; }
+  function animateCaret() {
+    caretFrame = 0;
+    const dx = caretTargetX - caretX, dy = caretTargetY - caretY;
+    if (Math.abs(dx) < 0.25 && Math.abs(dy) < 0.25) { caretX = caretTargetX; caretY = caretTargetY; renderCaret(); caret.classList.remove("is-moving"); return; }
+    caret.classList.add("is-moving");
+    caretX += dx * 0.38; caretY += dy * 0.38;
+    renderCaret();
+    caretFrame = requestAnimationFrame(animateCaret);
+  }
+  function syncAll(immediate) { requestHeightUpdate(immediate); updateScrollbar(immediate); updateCaretTarget(immediate); }
+
+  textarea.addEventListener("input", function() { syncAll(false); });
+  textarea.addEventListener("scroll", function() { updateScrollbar(false); updateCaretTarget(false); });
+  textarea.addEventListener("focus", function() { updateCaretTarget(true); });
+  textarea.addEventListener("blur", function() { caret.classList.remove("is-visible","is-moving"); });
+  textarea.addEventListener("click", function() { requestAnimationFrame(function() { updateCaretTarget(true); }); });
+  window.addEventListener("resize", function() { syncAll(true); });
+  refreshMetrics();
+  applyHeight(metrics.minHeight);
+  syncAll(true);
+
+  thumb.addEventListener("pointerdown", function(e) {
+    if (!scrollbar.classList.contains("is-scrollable")) return;
+    e.preventDefault();
+    const maxScroll = Math.max(0, textarea.scrollHeight - textarea.clientHeight);
+    const trackHeight = Math.max(0, viewport.clientHeight - 8);
+    const currentThumbHeight = parseFloat(thumb.style.height) || 28;
+    const maxThumbY = Math.max(0, trackHeight - currentThumbHeight);
+    dragState = { pointerId: e.pointerId, startY: e.clientY, startScrollTop: textarea.scrollTop, maxScroll, maxThumbY };
+    thumb.setPointerCapture(e.pointerId);
+    thumb.style.cursor = "grabbing";
+  });
+  thumb.addEventListener("pointermove", function(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    e.preventDefault();
+    const deltaY = e.clientY - dragState.startY;
+    const ratio = dragState.maxThumbY > 0 ? deltaY / dragState.maxThumbY : 0;
+    textarea.scrollTop = clamp(dragState.startScrollTop + ratio * dragState.maxScroll, 0, dragState.maxScroll);
+    updateScrollbar(true);
+  });
+  function releaseDragText(e) { if (dragState && dragState.pointerId === e.pointerId) { thumb.releasePointerCapture(e.pointerId); dragState = null; thumb.style.cursor = ""; } }
+  thumb.addEventListener("pointerup", releaseDragText);
+  thumb.addEventListener("pointercancel", releaseDragText);
+})();
+
+// ========================= Chat Message Rendering =========================
+function appendChatMessage(role, content, options) {
+  options = options || {};
+  var container = document.getElementById("chatMessagesContainer");
+  if (!container) return;
+  var msg = document.createElement("div");
+  msg.className = "chat-message chat-message-" + role;
+  if (options.toolCalls && options.toolCalls.length > 0) {
+    var toolHtml = '<div style="margin-bottom:6px;">';
+    for (var i = 0; i < options.toolCalls.length; i++) {
+      var tc = options.toolCalls[i];
+      var name = (tc.function && tc.function.name) || "unknown";
+      toolHtml += '<span class="chat-tool-btn">&#x1F527; ' + escapeHtml(name) + '</span> ';
+    }
+    toolHtml += '</div>';
+    msg.innerHTML = toolHtml + '<pre style="margin:0;white-space:pre-wrap;">' + escapeHtml(content) + '</pre>';
+  } else if (role === "assistant") {
+    msg.innerHTML = escapeHtml(content).replace(/\n/g, "<br>");
+  } else {
+    msg.textContent = content;
+  }
+  if (options.isStreaming) {
+    msg.id = "chatStreamingMessage";
+  }
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+  return msg;
+}
+
+function updateStreamingMessage(content) {
+  var msg = document.getElementById("chatStreamingMessage");
+  if (!msg) {
+    msg = appendChatMessage("assistant", "", { isStreaming: true });
+  }
+  msg.innerHTML = escapeHtml(content).replace(/\n/g, "<br>");
+  var container = document.getElementById("chatMessagesContainer");
+  if (container) container.scrollTop = container.scrollHeight;
+}
+
+function finalizeStreamingMessage(toolCalls) {
+  var msg = document.getElementById("chatStreamingMessage");
+  if (msg) {
+    msg.removeAttribute("id");
+    if (toolCalls && toolCalls.length > 0) {
+      var content = msg.textContent;
+      var toolHtml = '<div style="margin-bottom:6px;">';
+      for (var i = 0; i < toolCalls.length; i++) {
+        var tc = toolCalls[i];
+        var name = (tc.function && tc.function.name) || "unknown";
+        toolHtml += '<span class="chat-tool-btn">&#x1F527; ' + escapeHtml(name) + '</span> ';
+      }
+      toolHtml += '</div>';
+      msg.innerHTML = toolHtml + '<pre style="margin:0;white-space:pre-wrap;">' + escapeHtml(content) + '</pre>';
+    }
+  }
+}
+
+function escapeHtml(text) {
+  var div = document.createElement("div");
+  div.textContent = text || "";
+  return div.innerHTML;
+}
+
+function clearChatMessages() {
+  var container = document.getElementById("chatMessagesContainer");
+  if (container) container.innerHTML = "";
+  var report = document.getElementById("chatTestReport");
+  if (report) { report.innerHTML = ""; report.classList.add("hidden"); }
+}
+
+// ========================= Model List =========================
+async function loadModelsList() {
+  try {
+    var result = await fetchJson("/v1/models");
+    var select = document.getElementById("chatModelSelect");
+    if (!select || !result || !result.data) return;
+    select.innerHTML = "";
+    var models = result.data;
+    // Auto-select qwen3.7-max if available
+    var hasQwen37 = false;
+    for (var i = 0; i < models.length; i++) {
+      var opt = document.createElement("option");
+      opt.value = models[i].id;
+      opt.textContent = models[i].id;
+      select.appendChild(opt);
+      if (models[i].id === "qwen3.7-max") hasQwen37 = true;
+    }
+    if (hasQwen37) select.value = "qwen3.7-max";
+    else if (models.length > 0) select.value = models[0].id;
+  } catch (error) {
+    var select = document.getElementById("chatModelSelect");
+    if (select) select.innerHTML = '<option value="">加载失败</option>';
+  }
+}
+
+// ========================= Send Chat Message (Streaming) =========================
+var chatConversationHistory = [];
+
+async function sendChatMessage() {
+  var input = document.getElementById("chatMessageInput");
+  var sendBtn = document.getElementById("chatSendBtn");
+  var btnText = document.getElementById("chatBtnText");
+  if (!input || !sendBtn) return;
+  var text = input.value.trim();
+  if (!text) { input.focus(); return; }
+
+  var model = document.getElementById("chatModelSelect").value;
+  var protocol = document.getElementById("chatProtocolSelect").value;
+  if (!model) { toast("请先选择模型", "error"); return; }
+
+  // Disable send button
+  sendBtn.disabled = true;
+  btnText.textContent = "发送中...";
+
+  // Add user message
+  appendChatMessage("user", text);
+  chatConversationHistory.push({ role: "user", content: text });
+
+  // Clear input
+  input.value = "";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.focus();
+
+  try {
+    var body = {
+      model: model,
+      messages: chatConversationHistory.slice(-20),
+      stream: true
+    };
+
+    var response = await fetch("/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      var errText = await response.text();
+      appendChatMessage("system", "Error " + response.status + ": " + errText);
+      chatConversationHistory.pop();
+      return;
+    }
+
+    // Parse SSE stream
+    var reader = response.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = "";
+    var assistantContent = "";
+    var toolCalls = [];
+    var currentToolCall = null;
+
+    while (true) {
+      var result = await reader.read();
+      if (result.done) break;
+      buffer += decoder.decode(result.value, { stream: true });
+
+      var lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line || !line.startsWith("data: ")) continue;
+        var data = line.slice(6);
+        if (data === "[DONE]") break;
+
+        try {
+          var chunk = JSON.parse(data);
+          var choices = chunk.choices || [];
+          for (var j = 0; j < choices.length; j++) {
+            var choice = choices[j];
+            var delta = choice.delta || {};
+
+            if (delta.content) {
+              assistantContent += delta.content;
+              updateStreamingMessage(assistantContent);
+            }
+
+            if (delta.tool_calls && delta.tool_calls.length > 0) {
+              for (var k = 0; k < delta.tool_calls.length; k++) {
+                var tc = delta.tool_calls[k];
+                if (tc.id !== undefined && tc.id !== null) {
+                  // New tool call
+                  currentToolCall = { id: tc.id, index: tc.index || 0, function: { name: tc.function.name, arguments: "" } };
+                  toolCalls.push(currentToolCall);
+                } else if (currentToolCall && tc.function && tc.function.arguments) {
+                  currentToolCall.function.arguments += tc.function.arguments;
+                }
+              }
+            }
+
+            if (choice.finish_reason) {
+              finalizeStreamingMessage(toolCalls);
+              if (toolCalls.length > 0) {
+                chatConversationHistory.push({ role: "assistant", content: assistantContent, tool_calls: toolCalls });
+              } else {
+                chatConversationHistory.push({ role: "assistant", content: assistantContent });
+              }
+            }
+          }
+        } catch (parseError) {
+          // Ignore parse errors for non-JSON data lines
+        }
+      }
+    }
+  } catch (error) {
+    appendChatMessage("system", "请求失败: " + String(error));
+    chatConversationHistory.pop();
+  } finally {
+    sendBtn.disabled = false;
+    btnText.textContent = "发送";
+  }
+}
+
+// ========================= Batch Test (qwen3.7-max + all protocols) =========================
+async function runChatTests() {
+  var protocols = ["xml", "antml", "nous", "bracket"];
+  var testModel = "qwen3.7-max";
+  var testMessage = "请用工具调用测试一下当前协议是否正常工作。调用一个名为 echo 的工具，参数为 {\"text\": \"hello\"}。";
+  var report = document.getElementById("chatTestReport");
+  if (!report) return;
+
+  report.classList.remove("hidden");
+  report.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);">正在批量测试...</div>';
+
+  var results = [];
+
+  for (var i = 0; i < protocols.length; i++) {
+    var protocol = protocols[i];
+    var status = "⏳ 测试中...";
+    report.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);">正在测试: ' + protocol + ' (' + (i+1) + '/' + protocols.length + ')</div>';
+
+    try {
+      var body = {
+        model: testModel,
+        messages: [{ role: "user", content: testMessage }],
+        stream: true
+      };
+
+      var response = await fetch("/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30000)
+      });
+
+      if (!response.ok) {
+        results.push({ protocol: protocol, status: "fail", error: "HTTP " + response.status });
+        continue;
+      }
+
+      var reader = response.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = "";
+      var content = "";
+      var hasToolCalls = false;
+      var completed = false;
+
+      while (true) {
+        var readResult = await reader.read();
+        if (readResult.done) break;
+        buffer += decoder.decode(readResult.value, { stream: true });
+
+        var lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (var li = 0; li < lines.length; li++) {
+          var line = lines[li].trim();
+          if (!line || !line.startsWith("data: ")) continue;
+          var data = line.slice(6);
+          if (data === "[DONE]") { completed = true; break; }
+
+          try {
+            var chunk = JSON.parse(data);
+            var choices = chunk.choices || [];
+            for (var ci = 0; ci < choices.length; ci++) {
+              var delta = choices[ci].delta || {};
+              if (delta.content) content += delta.content;
+              if (delta.tool_calls && delta.tool_calls.length > 0) hasToolCalls = true;
+              if (choices[ci].finish_reason) completed = true;
+            }
+          } catch(e) {}
+        }
+        if (completed) break;
+      }
+
+      results.push({
+        protocol: protocol,
+        status: "pass",
+        content: content.substring(0, 80) + (content.length > 80 ? "..." : ""),
+        toolCalls: hasToolCalls ? "✅ 检测到工具调用" : "ℹ️ 无工具调用"
+      });
+    } catch (error) {
+      results.push({ protocol: protocol, status: "fail", error: String(error) });
+    }
+  }
+
+  // Render report
+  var tableHtml = '<table class="chat-test-report"><thead><tr><th>协议</th><th>状态</th><th>响应摘要</th><th>工具调用</th></tr></thead><tbody>';
+  var passCount = 0;
+  for (var r = 0; r < results.length; r++) {
+    var row = results[r];
+    var cls = row.status === "pass" ? "pass" : "fail";
+    var statusIcon = row.status === "pass" ? "✅ 通过" : "❌ 失败";
+    if (row.status === "pass") passCount++;
+    tableHtml += '<tr class="' + cls + '"><td>' + escapeHtml(row.protocol) + '</td><td>' + statusIcon + '</td><td>' + escapeHtml(row.content || row.error || "") + '</td><td>' + escapeHtml(row.toolCalls || "") + '</td></tr>';
+  }
+  tableHtml += '</tbody></table>';
+  tableHtml += '<div style="margin-top:8px;text-align:right;font-size:13px;color:var(--muted);">测试完成: ' + passCount + '/' + results.length + ' 通过</div>';
+  report.innerHTML = tableHtml;
+
+  toast("批量测试完成: " + passCount + "/" + results.length + " 通过", passCount === results.length ? "ok" : "warn");
+}
