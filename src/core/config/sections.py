@@ -30,7 +30,7 @@ class ServerCfg(ConfigBase):
     host: str = "0.0.0.0"
     port: int = 1337
     debug: bool = False
-    STARTUP_FORCE_KILL_PORT: bool = True
+    startup_force_kill_port: bool = True
 
 
 @dataclass
@@ -89,6 +89,7 @@ class FncallCfg(ConfigBase):
 class DebugCfg(ConfigBase):
     """调试日志级别配置。"""
     level: str = "INFO"
+    color: bool = True
 
 
 @dataclass

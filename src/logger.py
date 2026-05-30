@@ -21,6 +21,9 @@ _initialized: bool = False
 
 _LOG_DIR = Path(__file__).parent.parent / "logs"
 
+# 全局颜色覆盖：None 表示自动检测，True/False 强制开启/关闭
+_color_override: bool | None = None
+
 # 日志等级映射（用于显示单字母）
 LEVEL_ABBR = {
     "TRACE": "T",
@@ -71,6 +74,16 @@ def get_level_abbr(record: dict) -> str:
         单字母缩写字符串。
     """
     return LEVEL_ABBR.get(record["level"].name, record["level"].name[0])
+
+
+def set_color(enabled: bool | None) -> None:
+    """设置日志颜色开关。
+
+    Args:
+        enabled: True 强制开启颜色，False 强制关闭，None 恢复自动检测。
+    """
+    global _color_override
+    _color_override = enabled
 
 
 def clean_old_logs(days: int = 30) -> None:
@@ -209,13 +222,18 @@ def _supports_color() -> bool:
     """检测终端是否支持 ANSI 颜色输出。
 
     检测顺序：
-    1. NO_COLOR → 禁用
-    2. FORCE_COLOR / CLICOLOR_FORCE → 启用
-    3. TERM 环境变量（xterm, msys, cygwin 等）→ 启用
-    4. Windows Terminal (WT_SESSION) / ANSICON → 启用
-    5. sys.stdout.isatty() → 启用
+    1. 全局覆盖（set_color）→ 直接返回
+    2. NO_COLOR → 禁用
+    3. FORCE_COLOR / CLICOLOR_FORCE → 启用
+    4. TERM 环境变量（xterm, msys, cygwin 等）→ 启用
+    5. Windows Terminal (WT_SESSION) / ANSICON → 启用
+    6. sys.stdout.isatty() → 启用
     """
     import os
+
+    # 全局覆盖优先
+    if _color_override is not None:
+        return _color_override
 
     # 用户显式禁用
     if os.environ.get("NO_COLOR"):

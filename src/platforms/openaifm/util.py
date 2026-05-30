@@ -9,18 +9,16 @@ loads :class:`OpenaiFmAdapter` lazily via ``__getattr__``.
 
 from typing import Any
 
-from .core.headers import build_headers
-from .core.payloads import build_payload
-from .core.sse import parse_sse_line
-from .core.tts import (
+from .core.consts import (
     DEFAULT_MODEL,
     DEFAULT_STYLE,
     DEFAULT_VOICE,
     STYLES,
     STYLE_PROMPTS,
     VOICES,
-    build_tts_form_data,
 )
+from .core.headers import build_headers
+from .core.tts import build_tts_form_data
 
 __all__ = [
     "OpenaiFmAdapter",
@@ -31,8 +29,6 @@ __all__ = [
     "DEFAULT_MODEL",
     "STYLE_PROMPTS",
     "build_headers",
-    "build_payload",
-    "parse_sse_line",
     "build_tts_form_data",
 ]
 

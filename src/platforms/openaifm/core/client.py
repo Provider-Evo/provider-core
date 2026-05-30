@@ -10,7 +10,6 @@ from src.core.candidate import Candidate, make_id
 from src.core.errors import NotSupportedError
 from ..accounts import API_KEYS
 from .headers import build_headers
-from .payloads import build_payload
 from .tts import (
     DEFAULT_STYLE,
     DEFAULT_VOICE,

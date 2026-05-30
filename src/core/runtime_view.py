@@ -62,7 +62,7 @@ def build_config_summary() -> Dict[str, Any]:
             "host": config.server.host,
             "port": config.server.port,
             "debug": config.server.debug,
-            "startup_force_kill_port": config.server.STARTUP_FORCE_KILL_PORT,
+            "startup_force_kill_port": config.server.startup_force_kill_port,
         },
         "auth": {
             "enabled": config.auth.enabled,

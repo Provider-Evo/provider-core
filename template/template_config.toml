@@ -6,7 +6,7 @@ version = "2.2.8"
 host = "0.0.0.0"
 port = 1337
 debug = false
-STARTUP_FORCE_KILL_PORT = true
+startup_force_kill_port = true
 
 [anthropic]
 api_version = "2023-06-01"
@@ -74,3 +74,4 @@ record_prompt = false
 
 [debug]
 level = "INFO"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+color = true    # 日志颜色输出：true 开启，false 关闭

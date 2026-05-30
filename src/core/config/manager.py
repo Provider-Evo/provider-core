@@ -26,7 +26,7 @@ except ImportError:
         tomllib = None  # type: ignore
 
 from src.core.config.sections import AppConfig
-from src.logger import get_logger
+from src.logger import get_logger, set_color
 
 logger = get_logger(__name__)
 
@@ -111,6 +111,10 @@ class ConfigManager:
         raw = self._read_raw()
         self._merge_and_check(raw)
         self._config = AppConfig.from_dict(raw)
+
+        # 应用日志颜色配置
+        set_color(self._config.debug.color)
+
         logger.info("配置已加载: %s", self._config_path)
         return self._config
 
@@ -129,6 +133,8 @@ class ConfigManager:
                     await self._notify_changes(old_config, new_config)
 
                 self._config = new_config
+                # 应用日志颜色配置（热重载时也可能变更）
+                set_color(new_config.debug.color)
                 logger.info("配置重载成功: %s", self._config_path)
                 return True
             except Exception as e:

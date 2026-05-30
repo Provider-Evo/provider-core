@@ -11,20 +11,18 @@ from __future__ import annotations
 
 from typing import Any
 
-from .core.constants import CAPS, MODELS
-from .core.headers import build_headers
-from .core.payloads import build_payload
-from .core.sse import parse_sse_line
-from .core.ssml import build_ssml
+from .core.consts import CAPS, MODELS
+from .core.drm import build_wss_headers as build_headers
+from .core.drm import build_ssml as build_ssml
+from .core.drm import parse_tts_text_frame as parse_sse_line
 
 __all__ = [
     "EdgeTtsAdapter",
     "MODELS",
     "CAPS",
     "build_headers",
-    "build_payload",
-    "parse_sse_line",
     "build_ssml",
+    "parse_sse_line",
 ]
 
 

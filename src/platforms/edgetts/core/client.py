@@ -24,7 +24,7 @@ import certifi
 from src.core.candidate import Candidate, make_id
 from src.core.errors import NotSupportedError
 from ..accounts import ACCOUNTS
-from .constants import (
+from .consts import (
     CAPS,
     DEFAULT_VOICE,
     MAX_RETRIES,
@@ -35,8 +35,7 @@ from .constants import (
     WIN_EPOCH,
     S_TO_NS,
 )
-from .headers import build_wss_headers
-from .ssml import mkssml, _remove_incompatible_characters
+from .drm import build_wss_headers, remove_incompatible_characters, build_ssml
 
 logger = logging.getLogger(__name__)
 
@@ -450,7 +449,7 @@ class Client:
             合成的音频字节。
         """
         voice = voice or DEFAULT_VOICE
-        escaped_text = _remove_incompatible_characters(text)
+        escaped_text = remove_incompatible_characters(text)
 
         connection_id = _connect_id()
         sec_ms_gec = _drm_generate_sec_ms_gec()
@@ -484,7 +483,7 @@ class Client:
             ).format(ts=ts, rid=_connect_id())
             ws.send_text(config_payload)
 
-            ssml = mkssml(voice, "+0%", "+0%", "+0Hz", escaped_text)
+            ssml = build_ssml(voice, "+0%", "+0%", "+0Hz", escaped_text)
             ssml_payload = (
                 "X-RequestId:{rid}\r\n"
                 "Content-Type:application/ssml+xml\r\n"

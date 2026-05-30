@@ -12,7 +12,7 @@ from src.core.candidate import Candidate
 from src.core.errors import NotSupportedError
 from src.platforms.base import PlatformAdapter
 from .client import Client
-from .constants import CAPS, MODELS
+from .consts import CAPS, MODELS
 
 logger = logging.getLogger(__name__)
 
