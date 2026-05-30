@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 # 协议 ID 类型
 # ---------------------------------------------------------------------------
 
-VALID_PROTOCOL_IDS = ("xml", "original", "antml", "bracket", "custom")
+VALID_PROTOCOL_IDS = ("xml", "original", "antml", "bracket", "custom", "nous")
 
 
 # ---------------------------------------------------------------------------

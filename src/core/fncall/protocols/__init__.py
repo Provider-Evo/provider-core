@@ -13,11 +13,13 @@ def _register_all() -> None:
     from src.core.fncall.protocols.antml import AntmlProtocol
     from src.core.fncall.protocols.original import OriginalProtocol
     from src.core.fncall.protocols.bracket import BracketProtocol
+    from src.core.fncall.protocols.nous import NousProtocol
 
     register_protocol(XmlProtocol())
     register_protocol(AntmlProtocol())
     register_protocol(OriginalProtocol())
     register_protocol(BracketProtocol())
+    register_protocol(NousProtocol())
     # custom 协议按需创建，不在此注册
 
 
