@@ -313,6 +313,7 @@ async def _stream_chat(
     fncall_buffer = ""
     in_fncall = False
     tool_calls_data: List[Dict[str, Any]] = []
+    platform_id: str = ""
 
     init_chunk_sent = False
 
@@ -434,7 +435,16 @@ async def _stream_chat(
 
                 buffer += ch
 
-                tag_idx = buffer.find(_FNCALL_OPEN_TAG)
+                # Use protocol-aware tag detection
+                from src.core.fncall.registry import get_protocol
+                proto = get_protocol(platform_id=platform_id)
+                trigger_tags = proto.get_trigger_tags()
+                
+                tag_idx = -1
+                for tag in trigger_tags:
+                    idx = buffer.find(tag)
+                    if idx != -1 and (tag_idx == -1 or idx < tag_idx):
+                        tag_idx = idx
                 if tag_idx != -1:
                     safe_part = buffer[:tag_idx]
                     if safe_part:
@@ -462,7 +472,7 @@ async def _stream_chat(
                     in_fncall = True
                     continue
 
-                safe_part, buffer = _safe_flush(buffer)
+                safe_part, buffer = _safe_flush(buffer, platform_id=platform_id)
                 if safe_part:
                     await _send_init()
                     chunk_data = {
@@ -485,7 +495,9 @@ async def _stream_chat(
                     )
 
             elif isinstance(ch, dict):
-                if "thinking" in ch:
+                if "_meta" in ch:
+                    platform_id = ch["_meta"].get("platform", "")
+                elif "thinking" in ch:
                     await _send_init()
                     chunk_data = {
                         "id": cid,
@@ -548,7 +560,9 @@ async def _stream_chat(
         )
 
     if in_fncall and fncall_buffer and not tool_calls_data:
-        tool_calls_data = parse_fncall_xml(fncall_buffer, tools_raw)
+        from src.core.fncall.registry import get_protocol
+        proto = get_protocol(platform_id=platform_id)
+        _, tool_calls_data = proto.parse(fncall_buffer, tools_raw)
         if tool_calls_data:
             has_tc = True
 
@@ -648,6 +662,7 @@ async def chat_completions(
     tcs: List[Dict] = []
     usage_d: Optional[Dict] = None
     upload_files = _extract_upload_files(messages)
+    platform_id: str = ""
 
     try:
         async for ch in gateway.dispatch(
@@ -667,7 +682,9 @@ async def chat_completions(
             if isinstance(ch, str):
                 cp.append(ch)
             elif isinstance(ch, dict):
-                if "thinking" in ch:
+                if "_meta" in ch:
+                    platform_id = ch["_meta"].get("platform", "")
+                elif "thinking" in ch:
                     tp.append(ch["thinking"])
                 elif "tool_calls" in ch:
                     tcs = ch["tool_calls"]
@@ -682,7 +699,7 @@ async def chat_completions(
         return _err(500, str(e), "internal_error", "server_error")
 
     content = "".join(cp)
-    content = _clean_fncall(content)
+    content = _clean_fncall(content, platform_id=platform_id)
 
     u = usage_d or {
         "prompt_tokens": 0,

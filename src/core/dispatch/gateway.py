@@ -245,6 +245,9 @@ async def _single(
     p_usage: Optional[Dict] = None
     acc_parts: List[str] = []
 
+    # Yield platform info so route can use correct protocol for cleaning
+    yield {"_meta": {"platform": cand.platform}}
+
     try:
         async for chunk in adapter.complete(
             cand, worker_msgs, model, stream, thinking=thinking, search=search, **kw
@@ -449,6 +452,9 @@ async def _race(
         # 获取 winner 的平台协议
         winner_protocol = get_protocol(platform_id=winner["cand"].platform) if tools else None
         fp = FncallStreamParser(tools=tools, protocol=winner_protocol) if tools else None
+
+        # Yield platform info so route can use correct protocol for cleaning
+        yield {"_meta": {"platform": winner["cand"].platform}}
 
         # 输出缓冲区
         for ch in winner["buf"]:

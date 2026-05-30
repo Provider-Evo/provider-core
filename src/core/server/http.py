@@ -18,29 +18,33 @@ def _get_protocol():
     return get_protocol()
 
 
-def clean_fncall(content: str) -> str:
-    """使用当前协议清理响应中的 fncall 标签。
+def clean_fncall(content: str, platform_id: str = "") -> str:
+    """使用当前协议或指定平台的协议清理响应中的 fncall 标签。
 
     Args:
         content: 原始文本。
+        platform_id: 可选的平台 ID，用于确定正确的协议。
 
     Returns:
         清理后的文本。
     """
-    protocol = _get_protocol()
+    from src.core.fncall.registry import get_protocol
+    protocol = get_protocol(platform_id=platform_id)
     return protocol.clean_tags(content)
 
 
-def safe_flush(buffer: str) -> Tuple[str, str]:
+def safe_flush(buffer: str, platform_id: str = "") -> Tuple[str, str]:
     """提取 buffer 中可安全输出的前缀，保留潜在的协议触发标记尾部。
 
     Args:
         buffer: 当前文本缓冲区。
+        platform_id: 可选的平台 ID，用于确定正确的协议。
 
     Returns:
         (safe, remain): safe 是可输出前缀，remain 是待保留尾部。
     """
-    protocol = _get_protocol()
+    from src.core.fncall.registry import get_protocol
+    protocol = get_protocol(platform_id=platform_id)
     tags = protocol.get_trigger_tags()
     if not tags:
         return buffer, ""
