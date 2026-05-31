@@ -276,11 +276,15 @@ async function sendChatMessage() {
   input.focus();
 
   try {
+    var tools = getToolsDefinition();
     var body = {
       model: model,
       messages: chatConversationHistory.slice(-20),
       stream: true
     };
+    if (tools.length > 0) {
+      body.tools = tools;
+    }
 
     // 创建超时控制器（默认 120 秒）
     var timeoutMs = 120000;
@@ -507,3 +511,78 @@ async function runChatTests() {
 
   toast("批量测试完成: " + passCount + "/" + results.length + " 通过", passCount === results.length ? "ok" : "warn");
 }
+
+// ========================= Tool Definition Section =========================
+(function() {
+  var toolsList = document.getElementById("chatToolsList");
+  var template = document.getElementById("chatToolTemplate");
+  var addBtn = document.getElementById("chatAddToolBtn");
+  var clearBtn = document.getElementById("chatClearToolsBtn");
+
+  if (!toolsList || !template || !addBtn) return;
+
+  addBtn.addEventListener("click", function() {
+    var clone = template.content.cloneNode(true);
+    var item = clone.querySelector(".tool-item");
+    var removeBtn = item.querySelector(".tool-remove-btn");
+
+    removeBtn.addEventListener("click", function() {
+      item.remove();
+    });
+
+    toolsList.appendChild(clone);
+  });
+
+  clearBtn.addEventListener("click", function() {
+    if (toolsList.children.length === 0) return;
+    if (confirm("确定要清空所有工具定义吗？")) {
+      toolsList.innerHTML = "";
+    }
+  });
+})();
+
+/**
+ * 获取当前定义的工具列表，格式化为 OpenAI tools 格式。
+ * @returns {Array} OpenAI tools 数组
+ */
+function getToolsDefinition() {
+  var toolsList = document.getElementById("chatToolsList");
+  if (!toolsList) return [];
+
+  var items = toolsList.querySelectorAll(".tool-item");
+  var tools = [];
+
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var name = item.querySelector(".tool-name-input").value.trim();
+    var desc = item.querySelector(".tool-desc-input").value.trim();
+    var paramsRaw = item.querySelector(".tool-params-input").value.trim();
+
+    if (!name) continue;
+
+    var properties = {};
+    try {
+      if (paramsRaw) {
+        properties = JSON.parse(paramsRaw);
+      }
+    } catch (e) {
+      // Ignore parse errors, use empty properties
+    }
+
+    tools.push({
+      type: "function",
+      function: {
+        name: name,
+        description: desc || "",
+        parameters: {
+          type: "object",
+          properties: properties,
+          required: Object.keys(properties).length > 0 ? Object.keys(properties) : []
+        }
+      }
+    });
+  }
+
+  return tools;
+}
+

@@ -501,6 +501,14 @@ class QwenClient:
         headers = build_login_headers()
         payload = {"email": acc.username, "password": pwd_hash}
 
+        # Ensure cookies are set on the session before login
+        if self._session and self._cookies:
+            from yarl import URL
+            self._session.cookie_jar.update_cookies(
+                self._cookies,
+                response_url=URL(BASE_URL),
+            )
+
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES):
             if attempt > 0:
@@ -516,9 +524,16 @@ class QwenClient:
                 ) as resp:
                     if resp.status != 200:
                         err = await resp.text()
-                        last_exc = Exception(
-                            "HTTP {}: {}".format(resp.status, err[:200])
-                        )
+                        # WAF detection: if response is HTML, the endpoint is blocked
+                        content_type = resp.headers.get("Content-Type", "")
+                        if "text/html" in content_type or err.strip().startswith("<!"):
+                            last_exc = Exception(
+                                "登录接口被 WAF 拦截 (HTTP {})。请检查 IP 是否可用或启用代理。".format(resp.status)
+                            )
+                        else:
+                            last_exc = Exception(
+                                "HTTP {}: {}".format(resp.status, err[:200])
+                            )
                         continue
 
                     data = await resp.json()

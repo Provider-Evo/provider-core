@@ -224,6 +224,33 @@
             </select>
           </label>
         </div>
+        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift" id="chatToolDefSection">
+          <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+            <div class="text-[13px] text-muted m-0">工具定义 (Tools)</div>
+            <div class="flex gap-2">
+              <button class="text-[12px] text-accent hover:underline cursor-pointer" id="chatAddToolBtn" type="button">+ 添加工具</button>
+              <button class="text-[12px] text-muted hover:underline cursor-pointer" id="chatClearToolsBtn" type="button">清空</button>
+            </div>
+          </div>
+          <div class="text-[12px] text-muted mb-2">定义工具函数，测试模型工具调用能力。工具将自动注入到对话上下文中。</div>
+          <div id="chatToolsList" class="space-y-2"></div>
+          <template id="chatToolTemplate">
+            <div class="tool-item border border-border rounded-lg p-2.5 bg-panel">
+              <div class="flex justify-between items-center mb-2">
+                <input type="text" class="tool-name-input w-full text-[13px] font-mono bg-transparent border-none outline-none" placeholder="工具名称 (如: get_weather)" spellcheck="false">
+                <button type="button" class="tool-remove-btn text-[12px] text-error hover:underline ml-2">删除</button>
+              </div>
+              <input type="text" class="tool-desc-input w-full text-[12px] font-mono bg-transparent border-none outline-none mb-2" placeholder="工具描述 (如: 获取指定城市的当前天气)" spellcheck="false">
+              <div class="text-[11px] text-muted mb-1">参数定义 (JSON Schema properties):</div>
+              <textarea class="tool-params-input w-full text-[12px] font-mono bg-panel-alt border border-border rounded px-2 py-1.5 outline-none resize-none" rows="4" placeholder='{
+  "city": {
+    "type": "string",
+    "description": "城市名称"
+  }
+}' spellcheck="false"></textarea>
+            </div>
+          </template>
+        </div>
         <div class="border border-border rounded-xl p-3.5 bg-panel-alt min-h-[300px] max-h-[500px] overflow-auto card-hover-lift" id="chatMessagesContainer"></div>
         <div id="chatTestReport" class="hidden"></div>
         <section class="w-full bg-panel border border-border rounded-2xl p-4 flex flex-col gap-3" id="chatInputSection">

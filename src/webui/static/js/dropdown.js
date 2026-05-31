@@ -235,6 +235,9 @@
     var trigger = this.el.querySelector('.custom-dropdown-trigger');
     if (!list || !trigger) return;
 
+    // Position the dropdown list using fixed positioning to escape ancestor clipping
+    this._positionList(list, trigger);
+
     list.classList.add('is-open');
     list.setAttribute('aria-hidden', 'false');
     trigger.setAttribute('aria-expanded', 'true');
@@ -249,6 +252,18 @@
         options[i].setAttribute('data-highlighted', 'true');
       }
     }
+
+    // Bind scroll/resize listeners to reposition
+    this._repositionOnScroll = this._repositionOnScroll || this._positionList.bind(this, list, trigger);
+    window.addEventListener('scroll', this._repositionOnScroll, true);
+    window.addEventListener('resize', this._repositionOnScroll);
+  };
+
+  CustomDropdown.prototype._positionList = function(list, trigger) {
+    var rect = trigger.getBoundingClientRect();
+    list.style.top = (rect.bottom + 4) + 'px';
+    list.style.left = rect.left + 'px';
+    list.style.width = rect.width + 'px';
   };
 
   CustomDropdown.prototype.close = function() {
@@ -260,6 +275,12 @@
     list.setAttribute('aria-hidden', 'true');
     trigger.setAttribute('aria-expanded', 'false');
     this.el.classList.remove('is-open');
+
+    // Remove scroll/resize listeners
+    if (this._repositionOnScroll) {
+      window.removeEventListener('scroll', this._repositionOnScroll, true);
+      window.removeEventListener('resize', this._repositionOnScroll);
+    }
 
     var options = list.querySelectorAll('.custom-dropdown-option');
     for (var i = 0; i < options.length; i++) {
