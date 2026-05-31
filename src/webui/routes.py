@@ -17,9 +17,15 @@ __all__ = ["setup_routes"]
 
 def setup_routes(app: aiohttp.web.Application) -> None:
     """注册 WebUI 路由。"""
-    # 静态文件路由
+    # 静态文件路由（开发模式禁用缓存，启用版本追加）
     static_dir = Path(__file__).parent / "static"
-    app.router.add_static("/webui/static/", path=str(static_dir), name="webui_static")
+    app.router.add_static(
+        "/webui/static/",
+        path=str(static_dir),
+        name="webui_static",
+        show_index=False,
+        append_version=True,
+    )
 
     app.router.add_get("/webui", root_page)
     app.router.add_get("/docs", docs_page)
