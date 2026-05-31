@@ -1,7 +1,7 @@
 const defaultSettings = {
   theme: 'auto',
   refreshInterval: 0,
-  timeoutMs: 6000,
+  timeoutMs: 30000,
   compact: '0'
 };
 const initialTab = localStorage.getItem('provider.webui.activeTab') || document.body.dataset.initialTab || 'overview';
