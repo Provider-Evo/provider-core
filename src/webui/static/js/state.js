@@ -39,11 +39,21 @@ function log(message) {
 
 function toast(message, type) {
   const node = document.createElement('div');
-  node.className = 'min-w-[220px] max-w-[340px] rounded-xl border border-border bg-panel shadow-panel px-3 py-2.5 text-[13px] leading-relaxed';
+  node.className = 'min-w-[220px] max-w-[340px] rounded-xl border border-border bg-panel shadow-panel px-3 py-2.5 text-[13px] leading-relaxed toast-enter';
   node.textContent = '[' + (type || 'info') + '] ' + message;
   toastWrap.appendChild(node);
+  // Animate toast entrance if MotionKit is available
+  if (typeof animateToastIn === 'function') {
+    animateToastIn(node);
+  }
   setTimeout(function() {
-    node.remove();
+    // Animate toast exit
+    if (typeof MotionKit !== 'undefined') {
+      MotionKit.opacityTo(node, 0, 5);
+      setTimeout(function() { node.remove(); }, 200);
+    } else {
+      node.remove();
+    }
   }, 3200);
 }
 

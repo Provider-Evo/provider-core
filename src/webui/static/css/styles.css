@@ -144,6 +144,126 @@ body { margin: 0; font-family: Arial, sans-serif;
 .status-dirty { color: var(--warn); font-size: 12px; font-weight: 600; }
 #reloadServerButton { border-color: var(--warn); color: var(--warn); }
 #reloadServerButton:hover { background: var(--warn); color: #fff; }
+
+/* ========================= Unified Design System ========================= */
+
+/* Section containers - consistent with chat input */
+section.bg-panel,
+section.tab-panel {
+  will-change: transform, opacity;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Card hover lift effect */
+.card-hover-lift {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(21, 33, 56, 0.1);
+}
+
+/* Button transitions */
+button,
+.tab-button,
+.sidebar-nav-item {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+/* Input focus effect */
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Sidebar item transitions */
+.sidebar-nav-item {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.sidebar-nav-item:hover {
+  transform: translateX(2px);
+}
+
+/* Badge pulse animation */
+@keyframes badgePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.badge-loading {
+  animation: badgePulse 1.5s ease-in-out infinite;
+}
+
+/* Smooth scrollbar for all scrollable areas */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-active);
+}
+
+/* Loading shimmer effect */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.loading-shimmer {
+  background: linear-gradient(90deg, var(--panel) 25%, var(--panel-alt) 50%, var(--panel) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Toast slide-in animation */
+@keyframes toastSlideIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.toast-enter {
+  animation: toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Section stagger children */
+section.tab-panel > * {
+  opacity: 0;
+  animation: fadeInUp 0.4s ease forwards;
+}
+section.tab-panel > *:nth-child(1) { animation-delay: 0.05s; }
+section.tab-panel > *:nth-child(2) { animation-delay: 0.1s; }
+section.tab-panel > *:nth-child(3) { animation-delay: 0.15s; }
+section.tab-panel > *:nth-child(4) { animation-delay: 0.2s; }
+section.tab-panel > *:nth-child(5) { animation-delay: 0.25s; }
+section.tab-panel > *:nth-child(6) { animation-delay: 0.3s; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 768px) {
   .webui-layout { grid-template-columns: 1fr; }
   .webui-sidebar { display: none; position: fixed; top: 0; left: 0;

@@ -116,3 +116,23 @@ switchTab(initialTab);
 connectLogsSocket();
 refreshAll();
 loadAutoupdateSettings();
+
+// ========================= MotionKit Integration =========================
+// Initialize motion effects after DOM is ready
+if (typeof initAllMotionEffects === 'function') {
+  // Small delay to ensure all dynamic content is rendered
+  setTimeout(initAllMotionEffects, 100);
+}
+
+// Override switchTab to add animation when switching tabs
+var originalSwitchTab = window.switchTab;
+if (typeof switchTab === 'function') {
+  window.switchTab = function(tabName) {
+    originalSwitchTab(tabName);
+    // Animate the newly shown tab panel
+    var activePanel = document.querySelector('.tab-panel.active');
+    if (activePanel && typeof animateTabIn === 'function') {
+      setTimeout(function() { animateTabIn(activePanel); }, 50);
+    }
+  };
+}

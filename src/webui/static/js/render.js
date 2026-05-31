@@ -62,7 +62,7 @@ function renderConfig(summary) {
     const rows = Object.keys(payload).map(function(key) {
       return '<div class="text-[14px] leading-[1.7]"><strong>' + key + '</strong>: ' + String(payload[key]) + '</div>';
     }).join('');
-    return '<div class="border border-border rounded-[14px] p-3.5 bg-panel-alt"><div class="text-[13px] text-muted m-0 mb-2">' + title + '</div>' + rows + '</div>';
+    return '<div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">' + title + '</div>' + rows + '</div>';
   }).join('');
   updateConfigSaveStatus();
 }
@@ -107,7 +107,7 @@ function renderModels(models) {
     return searchMatch && platformMatch && capabilityMatch;
   });
   if (!filtered.length) {
-    modelGrid.innerHTML = '<div class="text-muted p-[18px] border border-dashed border-border rounded-[14px] text-center">没有匹配的模型。</div>';
+    modelGrid.innerHTML = '<div class="text-muted p-[18px] border border-dashed border-border rounded-xl text-center">没有匹配的模型。</div>';
     return;
   }
   modelGrid.innerHTML = filtered.slice(0, 200).map(function(model) {
@@ -115,7 +115,7 @@ function renderModels(models) {
       return model.capabilities[key];
     }).join(', ') || '-';
     return [
-      '<div class="border border-border rounded-[14px] p-3.5 bg-panel-alt">',
+      '<div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">',
       '<div class="text-[14px] font-semibold mb-2">' + model.id + '</div>',
       '<div class="text-[14px] leading-[1.7]"><strong>owned_by</strong>: ' + String(model.owned_by || '-') + '</div>',
       '<div class="text-[14px] leading-[1.7]"><strong>context_length</strong>: ' + String(model.context_length ?? '-') + '</div>',
@@ -135,7 +135,7 @@ function renderPlatforms(platforms) {
     return Number((entry[1] || {}).available || 0) > 0;
   }).length);
   if (!entries.length) {
-    platformGrid.innerHTML = '<div class="text-muted p-[18px] border border-dashed border-border rounded-[14px] text-center">没有匹配的平台。</div>';
+    platformGrid.innerHTML = '<div class="text-muted p-[18px] border border-dashed border-border rounded-xl text-center">没有匹配的平台。</div>';
     return;
   }
   platformGrid.innerHTML = entries.map(function(entry) {
@@ -144,7 +144,7 @@ function renderPlatforms(platforms) {
     const statusClass = info.error ? 'err' : (Number(info.available || 0) > 0 ? 'ok' : 'warn');
     const statusText = info.error ? 'error' : (Number(info.available || 0) > 0 ? 'available' : 'idle');
     return [
-      '<div class="border border-border rounded-[14px] p-3.5 bg-panel-alt">',
+      '<div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">',
       '<div class="text-[14px] font-semibold mb-2">' + name + ' <span class="inline-flex items-center rounded-full px-2 py-1 text-xs bg-panel text-' + statusClass + '">' + statusText + '</span></div>',
       '<div class="text-[14px] leading-[1.7]"><strong>candidates</strong>: ' + String(info.candidates ?? '-') + '</div>',
       '<div class="text-[14px] leading-[1.7]"><strong>available</strong>: ' + String(info.available ?? '-') + '</div>',
@@ -157,7 +157,7 @@ function renderPlatforms(platforms) {
 }
 
 function makeCard(title, rows) {
-  return '<div class="border border-border rounded-[14px] p-3.5 bg-panel-alt"><div class="text-[13px] text-muted m-0 mb-2">' + title + '</div>' + rows.map(function(row) {
+  return '<div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">' + title + '</div>' + rows.map(function(row) {
     return '<div class="text-[14px] leading-[1.7]">' + row + '</div>';
   }).join('') + '</div>';
 }

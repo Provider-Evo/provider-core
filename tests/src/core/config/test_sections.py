@@ -11,7 +11,7 @@ from src.core.config.sections import (
 class TestServerCfg:
     def test_default_values(self):
         cfg = ServerCfg()
-        assert cfg.version == "2.2.3"
+        assert cfg.version == "2.2.21"
         assert cfg.host == "0.0.0.0"
         assert cfg.port == 1337
         assert cfg.debug is False
