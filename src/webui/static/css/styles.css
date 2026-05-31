@@ -42,6 +42,8 @@ body { margin: 0; font-family: Arial, sans-serif;
 .webui-content { padding: 14px; min-width: 0; }
 /* Chat input styles (from quickshot input-box) */
 .chat-input {
+  width: 100%;
+  padding: 12px 16px;
   caret-color: transparent; resize: none; overflow-y: auto; overflow-x: hidden; color: var(--text);
   background: transparent !important;
   border: none !important;
