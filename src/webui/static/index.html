@@ -143,7 +143,40 @@
             <p class="m-0 text-muted leading-relaxed">集中查看协议入口、管理接口和常用只读地址。</p>
           </div>
         </div>
-        <div id="docSectionsContainer"></div>
+        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]" id="docSectionsContainer">
+          <div class="border border-border rounded-xl p-4 bg-panel card-hover-lift">
+            <h3 class="text-base font-semibold mb-2">API 文档</h3>
+            <ul class="space-y-2 text-sm">
+              <li><a href="/docs" target="_blank" class="text-accent hover:underline">OpenAPI 规范 (/docs)</a></li>
+              <li><a href="/v1/models" target="_blank" class="text-accent hover:underline">模型列表 (/v1/models)</a></li>
+              <li><a href="/v1/config" target="_blank" class="text-accent hover:underline">当前配置 (/v1/config)</a></li>
+              <li><a href="/health" target="_blank" class="text-accent hover:underline">健康检查 (/health)</a></li>
+            </ul>
+          </div>
+          <div class="border border-border rounded-xl p-4 bg-panel card-hover-lift">
+            <h3 class="text-base font-semibold mb-2">管理接口</h3>
+            <ul class="space-y-2 text-sm">
+              <li><code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">POST /v1/admin/reload</code> — 重启服务</li>
+              <li><code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">POST /v1/config/reload</code> — 重载配置</li>
+              <li><code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">PUT /v1/config</code> — 保存配置</li>
+              <li><code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">POST /v1/admin/refresh_models</code> — 刷新模型缓存</li>
+            </ul>
+          </div>
+          <div class="border border-border rounded-xl p-4 bg-panel card-hover-lift">
+            <h3 class="text-base font-semibold mb-2">协议说明</h3>
+            <ul class="space-y-2 text-sm">
+              <li><strong>XML 协议</strong> — 使用 XML 标签标记工具调用</li>
+              <li><strong>AntML 协议</strong> — Anthropic 风格工具调用</li>
+              <li><strong>Nous 协议</strong> — NousResearch 风格</li>
+              <li><strong>Bracket 协议</strong> — 方括号标记工具调用</li>
+            </ul>
+          </div>
+          <div class="border border-border rounded-xl p-4 bg-panel card-hover-lift">
+            <h3 class="text-base font-semibold mb-2">WebSocket 日志</h3>
+            <p class="text-sm text-muted mb-2">实时日志推送到浏览器</p>
+            <code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">ws://host:port/v1/webui/ws/logs</code>
+          </div>
+        </div>
       </section>
 
       <section class="tab-panel hidden" id="tab-config" aria-labelledby="tab-config-button">

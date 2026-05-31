@@ -8,27 +8,22 @@ __all__ = ["reload_service", "config_get", "config_put", "config_reload"]
 
 
 async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """POST /v1/admin/reload — 热重载 WebUI 应用。"""
-    server = request.app.get("webui_server")
-    if server is not None:
-        try:
-            await server.reload_app()
-            return aiohttp.web.json_response(
-                {"status": "ok", "message": "WebUI reloaded"},
-            )
-        except Exception as exc:
-            return aiohttp.web.json_response(
-                {"error": str(exc)},
-                status=500,
-            )
+    """POST /v1/admin/reload — 触发退出码 42 完全重启服务。"""
+    import os
+    import asyncio
 
-    # 当 WebUI 挂载在主服务器中时，回退到配置重载
-    from src.core.config import reload_config
-
-    await reload_config()
-    return aiohttp.web.json_response(
-        {"status": "ok", "message": "Config reloaded (WebUI routes are static)"},
+    # 先返回成功响应，再触发重启（避免响应未完成就退出）
+    response = aiohttp.web.json_response(
+        {"status": "ok", "message": "服务正在重启 (exit code 42)"},
     )
+
+    # 异步触发退出码 42（Runner 进程会自动重启 Worker）
+    async def _trigger_restart():
+        await asyncio.sleep(0.5)  # 等待响应发送完成
+        os._exit(42)
+
+    asyncio.ensure_future(_trigger_restart())
+    return response
 
 
 async def config_get(request: aiohttp.web.Request) -> aiohttp.web.Response:

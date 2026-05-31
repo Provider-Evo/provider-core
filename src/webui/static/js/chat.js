@@ -232,25 +232,40 @@ function finalizeStreamingMessage(toolCalls) {
       } catch(e) {
         formattedArgs = args || "{}";
       }
-      toolHtml += '<div class="chat-tool-item">';
+      // 使用下拉框样式
+      toolHtml += '<div class="chat-tool-dropdown">';
+      toolHtml += '<div class="chat-tool-dropdown-trigger" data-target="' + toolId + '">';
       toolHtml += '<span class="chat-tool-btn">' + escapeHtml(name) + '</span> ';
-      toolHtml += '<button class="chat-tool-toggle" data-target="' + toolId + '">展开参数</button>';
+      toolHtml += '<span class="chat-tool-dropdown-label">查看参数</span>';
+      toolHtml += '<svg class="chat-tool-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+      toolHtml += '</div>';
       toolHtml += '<pre class="chat-tool-args" id="' + toolId + '" hidden>' + escapeHtml(formattedArgs) + '</pre>';
       toolHtml += '</div>';
     }
     toolHtml += '</div>';
     msg.innerHTML = toolHtml + '<div class="chat-assistant-text">' + renderWithCodeBlocks(content) + '</div>';
 
-    // 绑定展开按钮事件
-    var toggles = msg.querySelectorAll('.chat-tool-toggle');
-    for (var j = 0; j < toggles.length; j++) {
-      toggles[j].addEventListener('click', function() {
+    // 绑定下拉框事件
+    var triggers = msg.querySelectorAll('.chat-tool-dropdown-trigger');
+    for (var j = 0; j < triggers.length; j++) {
+      triggers[j].addEventListener('click', function() {
         var targetId = this.getAttribute('data-target');
         var argsEl = document.getElementById(targetId);
+        var chevron = this.querySelector('.chat-tool-chevron');
+        var label = this.querySelector('.chat-tool-dropdown-label');
         if (argsEl) {
           var isHidden = argsEl.hasAttribute('hidden');
-          argsEl.removeAttribute('hidden');
-          this.textContent = isHidden ? '收起参数' : '展开参数';
+          if (isHidden) {
+            argsEl.removeAttribute('hidden');
+            this.setAttribute('aria-expanded', 'true');
+            label.textContent = '收起参数';
+            chevron.style.transform = 'rotate(180deg)';
+          } else {
+            argsEl.setAttribute('hidden', '');
+            this.setAttribute('aria-expanded', 'false');
+            label.textContent = '查看参数';
+            chevron.style.transform = 'rotate(0deg)';
+          }
         }
       });
     }
