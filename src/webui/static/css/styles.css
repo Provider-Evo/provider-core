@@ -77,6 +77,29 @@ body { margin: 0; font-family: Arial, sans-serif;
   font-size: 14px;
 }
 .chat-input::selection { background: var(--selection-bg); color: var(--text); }
+
+/* Tool buttons (from quickshot input-box) */
+.tool-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 10px;
+  background: transparent; color: var(--muted);
+  cursor: pointer; border: none; padding: 0;
+  transition: color 150ms ease, background-color 150ms ease;
+  flex-shrink: 0;
+}
+.tool-btn:hover { color: var(--accent); background-color: var(--accent-soft); }
+.tool-btn svg { width: 19px; height: 19px; display: block; }
+
+/* Voice GIF animation */
+.voice-gif {
+  display: block; width: 19px; height: 19px;
+  filter: brightness(0) saturate(100%) invert(70%) sepia(8%) saturate(890%) hue-rotate(195deg) brightness(92%) contrast(88%);
+  transition: filter 0.15s ease;
+  pointer-events: none;
+}
+.tool-btn:hover .voice-gif {
+  filter: brightness(0) saturate(100%) invert(37%) sepia(67%) saturate(1268%) hue-rotate(200deg) brightness(94%) contrast(92%);
+}
 .custom-caret {
   position: absolute; left: 0; top: 0; width: 2px; height: 24px; border-radius: 999px;
   background: var(--accent); pointer-events: none; opacity: 0;
