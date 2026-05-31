@@ -69,7 +69,7 @@
     // Build the custom dropdown HTML
     wrapper.innerHTML = this._triggerHTML();
 
-    // Create the list element separately and append to body for unrestricted positioning
+    // Create the list element
     var list = document.createElement('div');
     list.className = 'custom-dropdown-list';
     list.setAttribute('role', 'listbox');
@@ -81,8 +81,33 @@
       list.innerHTML += '<div class="custom-dropdown-option" role="option" data-value="' + escapeHtml(opt.value) + '"' + selected + '>' +
         escapeHtml(opt.text) + '</div>';
     }
-    document.body.appendChild(list);
     this._listEl = list;
+
+    // Append to body if available, otherwise defer until DOM ready
+    if (document.body) {
+      document.body.appendChild(list);
+    } else {
+      // Defer: wait for DOMContentLoaded or body to appear
+      var self = this;
+      var tryAppend = function() {
+        if (document.body && !self._listEl.parentNode) {
+          document.body.appendChild(self._listEl);
+          return true;
+        }
+        return false;
+      };
+      if (!tryAppend()) {
+        document.addEventListener('DOMContentLoaded', tryAppend);
+        // Fallback: retry for 3 seconds
+        var retries = 0;
+        var interval = setInterval(function() {
+          if (tryAppend() || retries > 30) {
+            clearInterval(interval);
+          }
+          retries++;
+        }, 100);
+      }
+    }
 
     // Replace the <select> in the DOM
     selectEl.parentNode.replaceChild(wrapper, selectEl);

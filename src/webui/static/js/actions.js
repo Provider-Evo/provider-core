@@ -94,13 +94,27 @@ async function refreshAll() {
       renderConfig(summaryResult.value);
       renderModels(summaryResult.value.models || []);
       renderPlatforms(summaryResult.value.platforms || {});
+    } else {
+      // API failed, show error state
+      log('刷新状态失败: ' + (summaryResult.reason ? summaryResult.reason.message : '未知错误'));
+      if (document.getElementById('versionValue')) {
+        document.getElementById('versionValue').textContent = '加载失败';
+      }
+      if (document.getElementById('modelsValue')) {
+        document.getElementById('modelsValue').textContent = '加载失败';
+      }
     }
     if (healthResult.status === 'fulfilled') {
       document.getElementById('healthValue').textContent = healthResult.value && healthResult.value.status ? healthResult.value.status : 'degraded';
+    } else {
+      if (document.getElementById('healthValue')) {
+        document.getElementById('healthValue').textContent = '未知';
+      }
     }
     document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString();
   } catch (error) {
     toast('状态刷新失败：' + String(error), 'error');
+    log('状态刷新失败：' + String(error));
   }
 }
 
@@ -151,6 +165,10 @@ async function reloadServer() {
   try {
     log('正在请求服务重启...');
     const response = await fetch('/v1/admin/reload', { method: 'POST' });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText.slice(0, 200)}`);
+    }
     const result = await response.json();
     if (result.status === 'ok') {
       toast('服务正在重启，页面将自动刷新', 'ok');
