@@ -78,6 +78,15 @@ body { margin: 0; font-family: Arial, sans-serif;
 }
 .chat-input::selection { background: var(--selection-bg); color: var(--text); }
 
+/* Hide native browser scrollbars */
+.native-scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+.native-scroll-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Tool buttons (from quickshot input-box) */
 .tool-btn {
   display: flex; align-items: center; justify-content: center;
