@@ -280,17 +280,41 @@ async function sendChatMessage() {
       stream: true
     };
 
+    // 创建超时控制器（默认 120 秒）
+    var timeoutMs = 120000;
+    var abortController = new AbortController();
+    var timeoutId = setTimeout(function() {
+      abortController.abort();
+    }, timeoutMs);
+
     var response = await fetch("/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: abortController.signal
     });
+
+    clearTimeout(timeoutId); // 响应已开始，取消超时
 
     if (!response.ok) {
       var errText = await response.text();
       appendChatMessage("system", "Error " + response.status + ": " + errText);
       chatConversationHistory.pop();
       return;
+    }
+
+    // 设置流式读取超时（60 秒无数据）
+    var streamTimeoutId = setTimeout(function() {
+      abortController.abort();
+      appendChatMessage("system", "流式响应超时（60 秒无数据）");
+    }, 60000);
+
+    function resetStreamTimeout() {
+      clearTimeout(streamTimeoutId);
+      streamTimeoutId = setTimeout(function() {
+        abortController.abort();
+        appendChatMessage("system", "流式响应超时（60 秒无数据）");
+      }, 60000);
     }
 
     // Parse SSE stream
@@ -304,6 +328,7 @@ async function sendChatMessage() {
     while (true) {
       var result = await reader.read();
       if (result.done) break;
+      resetStreamTimeout(); // 收到数据，重置超时
       buffer += decoder.decode(result.value, { stream: true });
 
       var lines = buffer.split("\n");
@@ -355,9 +380,15 @@ async function sendChatMessage() {
       }
     }
   } catch (error) {
-    appendChatMessage("system", "请求失败: " + String(error));
+    if (error.name === 'AbortError') {
+      appendChatMessage("system", "请求已取消或超时");
+    } else {
+      appendChatMessage("system", "请求失败: " + String(error));
+    }
     chatConversationHistory.pop();
   } finally {
+    clearTimeout(timeoutId);
+    clearTimeout(streamTimeoutId);
     sendBtn.disabled = false;
     btnText.textContent = "发送";
   }

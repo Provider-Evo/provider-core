@@ -1,11 +1,11 @@
 from __future__ import annotations
 import asyncio
-from typing import Optional
+from typing import Dict, Optional
 
 from src.core.config.sections import AppConfig
 from src.core.config.manager import ConfigManager
 
-__all__ = ["AppConfig", "ConfigManager", "get_config", "reload_config", "start_config_watcher"]
+__all__ = ["AppConfig", "ConfigManager", "get_config", "reload_config", "start_config_watcher", "write_config"]
 
 _cfg_manager: Optional[ConfigManager] = None
 
@@ -36,6 +36,52 @@ async def reload_config() -> AppConfig:
     mgr = _get_manager()
     await mgr.reload()
     return mgr.config
+
+
+async def write_config(data: Dict) -> bool:
+    """写入配置数据到文件并重新加载。
+
+    Args:
+        data: 完整的配置字典（TOML 兼容格式）。
+
+    Returns:
+        bool: 写入是否成功。
+    """
+    import tomlkit
+
+    mgr = _get_manager()
+    if mgr._config_path is None:
+        return False
+
+    try:
+        # 使用 tomlkit 保留注释
+        doc = tomlkit.document()
+        for key, value in data.items():
+            if isinstance(value, dict):
+                table = tomlkit.table()
+                for k, v in value.items():
+                    try:
+                        table[k] = tomlkit.item(v)
+                    except (TypeError, ValueError):
+                        table[k] = v
+                doc[key] = table
+            else:
+                try:
+                    doc[key] = tomlkit.item(value)
+                except (TypeError, ValueError):
+                    doc[key] = value
+
+        with open(str(mgr._config_path), "w", encoding="utf-8") as f:
+            f.write(tomlkit.dumps(doc))
+
+        # 重新加载
+        await mgr.reload()
+        return True
+    except Exception as exc:
+        from src.logger import get_logger
+        logger = get_logger(__name__)
+        logger.error("配置写入失败: %s", exc, exc_info=True)
+        return False
 
 
 async def start_config_watcher(interval: float = 2.0) -> None:

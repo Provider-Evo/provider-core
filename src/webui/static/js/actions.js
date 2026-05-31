@@ -23,16 +23,39 @@ function connectLogsSocket() {
     socketNotice.textContent = '日志 WebSocket: 当前浏览器不支持';
     return;
   }
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = protocol + '//' + window.location.host + '/v1/webui/ws/logs';
+  if (logsSocket && (logsSocket.readyState === WebSocket.CONNECTING || logsSocket.readyState === WebSocket.OPEN)) {
+    return; // 已有活跃连接
+  }
+
+  var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  var url = protocol + '//' + window.location.host + '/v1/webui/ws/logs';
   logsSocket = new WebSocket(url);
+
+  var reconnectAttempts = 0;
+  var maxReconnectDelay = 30000; // 30秒最大重连延迟
+  var baseReconnectDelay = 1000; // 1秒基础重连延迟
+
+  function scheduleReconnect() {
+    if (reconnectAttempts >= 10) {
+      socketNotice.textContent = '日志 WebSocket: 重连次数过多，请刷新页面';
+      return;
+    }
+    var delay = Math.min(baseReconnectDelay * Math.pow(2, reconnectAttempts), maxReconnectDelay);
+    reconnectAttempts++;
+    socketNotice.textContent = '日志 WebSocket: 将在 ' + (delay / 1000).toFixed(1) + ' 秒后重连 (' + reconnectAttempts + '/10)';
+    setTimeout(function() {
+      connectLogsSocket();
+    }, delay);
+  }
+
   logsSocket.onopen = function() {
+    reconnectAttempts = 0; // 重置重连计数
     socketNotice.textContent = '日志 WebSocket: 已连接';
     log('日志 WebSocket 已连接，正在加载历史日志...');
   };
   logsSocket.onmessage = function(event) {
     try {
-      const payload = JSON.parse(event.data);
+      var payload = JSON.parse(event.data);
       if (payload.type === 'hello') {
         // hello 不显示，历史日志会紧随其后
       }
@@ -40,7 +63,7 @@ function connectLogsSocket() {
         log('已加载 ' + payload.count + ' 条历史日志。');
       }
       if (payload.type === 'log' && payload.message) {
-        const line = '[' + (payload.timestamp || '--:--:--') + '] [' + (payload.level || 'INFO') + '] ' + payload.message;
+        var line = '[' + (payload.timestamp || '--:--:--') + '] [' + (payload.level || 'INFO') + '] ' + payload.message;
         logBox.textContent = line + '\n' + logBox.textContent;
       }
       if (payload.type === 'pong') {
@@ -55,6 +78,7 @@ function connectLogsSocket() {
   };
   logsSocket.onclose = function() {
     socketNotice.textContent = '日志 WebSocket: 已关闭';
+    scheduleReconnect();
   };
 }
 

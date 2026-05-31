@@ -5,6 +5,12 @@
   --accent: #4263eb; --accent-soft: rgba(66, 99, 235, 0.12);
   --ok: #1f9d61; --warn: #d17b17; --err: #d94848;
   --border: #d7deec; --shadow: 0 12px 32px rgba(21, 33, 56, 0.08);
+  --scrollbar-track: #eef2f8; --scrollbar-thumb: #b9c4da; --scrollbar-thumb-active: #8f9fc7;
+  --selection-bg: #dbe3ff;
+  --msg-system-bg: #fff3e0;
+  --msg-tool-bg: #f0f4ff; --msg-tool-border: #6366f1;
+  --chat-tool-bg: #e0e7ff; --chat-tool-text: #4338ca; --chat-tool-border: #c7d2fe;
+  --test-pass-bg: #f0fdf4; --test-fail-bg: #fef2f2;
 }
 [data-theme="dark"] {
   --bg: #0d1420; --panel: #172131; --panel-alt: #1d2a3d;
@@ -12,6 +18,12 @@
   --accent: #8aa4ff; --accent-soft: rgba(138, 164, 255, 0.16);
   --ok: #37ca7e; --warn: #ffb454; --err: #ff7b7b;
   --border: #2b3a52; --shadow: none;
+  --scrollbar-track: #1d2a3d; --scrollbar-thumb: #3a4f73; --scrollbar-thumb-active: #5a7aa8;
+  --selection-bg: #2a3a5c;
+  --msg-system-bg: #2a2015;
+  --msg-tool-bg: #1a2235; --msg-tool-border: #818cf8;
+  --chat-tool-bg: #1e2a45; --chat-tool-text: #a5b4fc; --chat-tool-border: #374368;
+  --test-pass-bg: #0f291e; --test-fail-bg: #2d1515;
 }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Arial, sans-serif;
@@ -32,7 +44,7 @@ body { margin: 0; font-family: Arial, sans-serif;
 .chat-input {
   caret-color: transparent; resize: none; overflow-y: auto; overflow-x: hidden; color: var(--text);
 }
-.chat-input::selection { background: #dbe3ff; color: var(--text); }
+.chat-input::selection { background: var(--selection-bg); color: var(--text); }
 .custom-caret {
   position: absolute; left: 0; top: 0; width: 2px; height: 24px; border-radius: 999px;
   background: var(--accent); pointer-events: none; opacity: 0;
@@ -43,30 +55,30 @@ body { margin: 0; font-family: Arial, sans-serif;
 @keyframes caretBlink { 0%, 48% { opacity: 1; } 50%, 100% { opacity: 0.22; } }
 .custom-scrollbar-root { opacity: 0; pointer-events: none; transition: opacity 120ms linear; }
 .custom-scrollbar-root.is-scrollable { opacity: 1; pointer-events: auto; }
-.custom-scrollbar-track { background: #eef2f8; border-radius: 999px; }
+.custom-scrollbar-track { background: var(--scrollbar-track); border-radius: 999px; }
 .custom-scrollbar-thumb {
-  background: #b9c4da; border-radius: 999px; min-height: 24px;
+  background: var(--scrollbar-thumb); border-radius: 999px; min-height: 24px;
   transform: translate3d(0, 0, 0); will-change: transform, height; cursor: grab;
   transition: background 0.1s ease;
 }
-.custom-scrollbar-thumb:active { cursor: grabbing; background: #8f9fc7; }
+.custom-scrollbar-thumb:active { cursor: grabbing; background: var(--scrollbar-thumb-active); }
 /* Chat message styles */
 .chat-message { padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; line-height: 1.6; font-size: 14px; }
 .chat-message-user { background: var(--accent-soft); border-left: 3px solid var(--accent); }
 .chat-message-assistant { background: var(--panel-alt); border-left: 3px solid var(--ok); }
-.chat-message-system { background: #fff3e0; border-left: 3px solid var(--warn); }
-.chat-message-tool { background: #f0f4ff; border-left: 3px solid #6366f1; font-family: monospace; font-size: 12px; }
+.chat-message-system { background: var(--msg-system-bg); border-left: 3px solid var(--warn); }
+.chat-message-tool { background: var(--msg-tool-bg); border-left: 3px solid var(--msg-tool-border); font-family: monospace; font-size: 12px; }
 .chat-tool-btn {
   display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
-  border-radius: 6px; background: #e0e7ff; color: #4338ca; font-size: 12px;
-  border: 1px solid #c7d2fe; cursor: default;
+  border-radius: 6px; background: var(--chat-tool-bg); color: var(--chat-tool-text); font-size: 12px;
+  border: 1px solid var(--chat-tool-border); cursor: default;
 }
 /* Chat test report table */
 .chat-test-report { width: 100%; border-collapse: collapse; font-size: 13px; }
 .chat-test-report th, .chat-test-report td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; }
 .chat-test-report th { background: var(--panel-soft); font-weight: 600; }
-.chat-test-report tr.pass td { background: #f0fdf4; }
-.chat-test-report tr.fail td { background: #fef2f2; }
+.chat-test-report tr.pass td { background: var(--test-pass-bg); }
+.chat-test-report tr.fail td { background: var(--test-fail-bg); }
 .config-edit-area { min-height: 200px; max-height: 500px; overflow: auto;
   font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6;
   border: 1px solid var(--border); border-radius: 12px; padding: 12px;
