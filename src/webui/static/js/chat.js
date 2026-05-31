@@ -214,18 +214,45 @@ function updateStreamingMessage(content) {
 
 function finalizeStreamingMessage(toolCalls) {
   var msg = document.getElementById("chatStreamingMessage");
-  if (msg) {
-    msg.removeAttribute("id");
-    if (toolCalls && toolCalls.length > 0) {
-      var content = msg.textContent;
-      var toolHtml = '<div style="margin-bottom:6px;">';
-      for (var i = 0; i < toolCalls.length; i++) {
-        var tc = toolCalls[i];
-        var name = (tc.function && tc.function.name) || "unknown";
-        toolHtml += '<span class="chat-tool-btn">' + escapeHtml(name) + '</span> ';
+  if (!msg) return;
+  msg.removeAttribute("id");
+
+  if (toolCalls && toolCalls.length > 0) {
+    var content = msg.textContent || msg.innerText || "";
+    var toolHtml = '<div class="chat-tools-container">';
+    for (var i = 0; i < toolCalls.length; i++) {
+      var tc = toolCalls[i];
+      var name = (tc.function && tc.function.name) || "unknown";
+      var args = (tc.function && tc.function.arguments) || "";
+      var toolId = "tool-" + msg.id + "-" + i;
+      // 尝试解析参数为格式化 JSON
+      var formattedArgs = "";
+      try {
+        formattedArgs = JSON.stringify(JSON.parse(args), null, 2);
+      } catch(e) {
+        formattedArgs = args || "{}";
       }
+      toolHtml += '<div class="chat-tool-item">';
+      toolHtml += '<span class="chat-tool-btn">' + escapeHtml(name) + '</span> ';
+      toolHtml += '<button class="chat-tool-toggle" data-target="' + toolId + '">展开参数</button>';
+      toolHtml += '<pre class="chat-tool-args" id="' + toolId + '" hidden>' + escapeHtml(formattedArgs) + '</pre>';
       toolHtml += '</div>';
-      msg.innerHTML = toolHtml + '<pre style="margin:0;white-space:pre-wrap;">' + escapeHtml(content) + '</pre>';
+    }
+    toolHtml += '</div>';
+    msg.innerHTML = toolHtml + '<div class="chat-assistant-text">' + renderWithCodeBlocks(content) + '</div>';
+
+    // 绑定展开按钮事件
+    var toggles = msg.querySelectorAll('.chat-tool-toggle');
+    for (var j = 0; j < toggles.length; j++) {
+      toggles[j].addEventListener('click', function() {
+        var targetId = this.getAttribute('data-target');
+        var argsEl = document.getElementById(targetId);
+        if (argsEl) {
+          var isHidden = argsEl.hasAttribute('hidden');
+          argsEl.removeAttribute('hidden');
+          this.textContent = isHidden ? '收起参数' : '展开参数';
+        }
+      });
     }
   }
 }
