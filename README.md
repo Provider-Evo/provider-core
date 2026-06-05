@@ -6,15 +6,15 @@
 
 | 分支 | 定位 | 说明 |
 |------|------|------|
-| **main** | 稳定版本 | 平台白名单 — cerebras, chatmoe, codebuddy, cursor, deepseek, nvidia, qwen, openrouter, chutes |
-| **dev** | 活跃开发 | 包含当前 `src/platforms/` 下的全部平台（含实验/新增平台） |
-| **classical** | 经典架构 | 保留重构前的经典版本，用于对比和回退参考 |
+| **main** | 稳定发布 | 经过验证的稳定版本，适合生产部署与日常使用 |
+| **dev** | 活跃开发 | 相比 main 包含更多最新更改与功能，但可能不够稳定，建议仅在需要新特性时使用 |
+| **classical** | 历史快照 | 重构前的冻结版本，仅供对比与回退参考，不再接受更新 |
 
 > **⚠️ 贡献者重要提示**：
 > - **禁止直接提交到 `main` 和 `classical` 分支**
 > - 所有新功能开发和 Bug 修复请基于 `dev` 分支创建功能分支
 > - PR 目标必须为 `dev`，由作者审核后合并
-> - `main` 和 `classical` 仅用于稳定版本发布和存档
+> - `main` 仅用于稳定发布；`classical` 为只读存档
 
 ![Version](https://img.shields.io/badge/version-2.2.1-blue)
 ![Python](https://img.shields.io/badge/python-3.9+-green)
