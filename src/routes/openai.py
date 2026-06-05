@@ -294,6 +294,7 @@ async def _stream_chat(
     tools_raw = body.get("tools")
     extra = body.get("extra_body") or body.get("extra") or {}
     upload_files = _extract_upload_files(messages)
+    proto_override = body.get("protocol", "")
 
     resp = aiohttp.web.StreamResponse(
         status=200,
@@ -425,6 +426,7 @@ async def _stream_chat(
             max_tokens=body.get("max_tokens"),
             stop=_sl(body.get("stop")),
             upload_files=upload_files if upload_files else None,
+            protocol_id=proto_override,
         ):
             if isinstance(ch, str):
                 ctok += 1
@@ -437,7 +439,7 @@ async def _stream_chat(
 
                 # Use protocol-aware tag detection
                 from src.core.fncall.registry import get_protocol
-                proto = get_protocol(platform_id=platform_id)
+                proto = get_protocol(protocol_id=proto_override, platform_id=platform_id)
                 trigger_tags = proto.get_trigger_tags()
                 
                 tag_idx = -1
@@ -472,7 +474,7 @@ async def _stream_chat(
                     in_fncall = True
                     continue
 
-                safe_part, buffer = _safe_flush(buffer, platform_id=platform_id)
+                safe_part, buffer = _safe_flush(buffer, platform_id=platform_id, protocol_id=proto_override)
                 if safe_part:
                     await _send_init()
                     chunk_data = {
@@ -561,7 +563,7 @@ async def _stream_chat(
 
     if in_fncall and fncall_buffer and not tool_calls_data:
         from src.core.fncall.registry import get_protocol
-        proto = get_protocol(platform_id=platform_id)
+        proto = get_protocol(protocol_id=proto_override, platform_id=platform_id)
         _, tool_calls_data = proto.parse(fncall_buffer, tools_raw)
         if tool_calls_data:
             has_tc = True

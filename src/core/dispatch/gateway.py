@@ -147,6 +147,7 @@ async def dispatch(
 
     extra_kw: Dict[str, Any] = dict(kw)
     extra_kw.pop("fncall_lang", None)
+    extra_kw.pop("protocol_id", None)
     if upload_files:
         extra_kw["upload_files"] = upload_files
     if temperature is not None:
@@ -172,6 +173,7 @@ async def dispatch(
             tools,
             prompt_len,
             fncall_lang=fncall_lang,
+            protocol_id=kw.get("protocol_id", ""),
             **extra_kw,
         ):
 ##            print(chunk)
@@ -190,6 +192,7 @@ async def dispatch(
         prompt_len,
         cfg.gateway.min_tokens,
         fncall_lang=fncall_lang,
+        protocol_id=kw.get("protocol_id", ""),
         **extra_kw,
     ):
         yield chunk
@@ -206,6 +209,7 @@ async def _single(
     tools: Optional[List[Dict]],
     prompt_len: int,
     fncall_lang: str = "en",
+    protocol_id: str = "",
     **kw: Any,
 ) -> AsyncGenerator[Union[str, Dict], None]:
     """单候选项执行。
@@ -232,7 +236,10 @@ async def _single(
     # 按平台解析协议并注入工具定义
     protocol = None
     if tools:
-        protocol = get_protocol(platform_id=cand.platform)
+        if protocol_id:
+            protocol = get_protocol(protocol_id=protocol_id)
+        else:
+            protocol = get_protocol(platform_id=cand.platform)
         worker_msgs = inject_fncall(msgs, tools, protocol, lang=fncall_lang)
     else:
         worker_msgs = msgs
@@ -299,6 +306,7 @@ async def _race(
     prompt_len: int,
     min_tok: int,
     fncall_lang: str = "en",
+    protocol_id: str = "",
     **kw: Any,
 ) -> AsyncGenerator[Union[str, Dict], None]:
     """多候选项竞速执行。
@@ -342,7 +350,10 @@ async def _race(
         # 按平台解析协议并注入工具定义
         worker_msgs = msgs
         if tools:
-            protocol = get_protocol(platform_id=c.platform)
+            if protocol_id:
+                protocol = get_protocol(protocol_id=protocol_id)
+            else:
+                protocol = get_protocol(platform_id=c.platform)
             worker_msgs = inject_fncall(msgs, tools, protocol, lang=fncall_lang)
         try:
             async for ch in a.complete(
@@ -450,7 +461,14 @@ async def _race(
                 await _rec(reg, i, i["tok"] > 0, prompt_len)
 
         # 获取 winner 的平台协议
-        winner_protocol = get_protocol(platform_id=winner["cand"].platform) if tools else None
+        if tools:
+            winner_protocol = (
+                get_protocol(protocol_id=protocol_id)
+                if protocol_id
+                else get_protocol(platform_id=winner["cand"].platform)
+            )
+        else:
+            winner_protocol = None
         fp = FncallStreamParser(tools=tools, protocol=winner_protocol) if tools else None
 
         # Yield platform info so route can use correct protocol for cleaning

@@ -536,7 +536,8 @@ async function sendChatMessage(textOverride) {
     var body = {
       model: model,
       messages: chatConversationHistory.slice(-20),
-      stream: true
+      stream: true,
+      protocol: protocol
     };
     if (tools.length > 0) {
       body.tools = tools;

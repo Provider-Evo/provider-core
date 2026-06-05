@@ -33,18 +33,19 @@ def clean_fncall(content: str, platform_id: str = "") -> str:
     return protocol.clean_tags(content)
 
 
-def safe_flush(buffer: str, platform_id: str = "") -> Tuple[str, str]:
+def safe_flush(buffer: str, platform_id: str = "", protocol_id: str = "") -> Tuple[str, str]:
     """提取 buffer 中可安全输出的前缀，保留潜在的协议触发标记尾部。
 
     Args:
         buffer: 当前文本缓冲区。
         platform_id: 可选的平台 ID，用于确定正确的协议。
+        protocol_id: 可选的协议 ID，优先于 platform_id。
 
     Returns:
         (safe, remain): safe 是可输出前缀，remain 是待保留尾部。
     """
     from src.core.fncall.registry import get_protocol
-    protocol = get_protocol(platform_id=platform_id)
+    protocol = get_protocol(protocol_id=protocol_id, platform_id=platform_id)
     tags = protocol.get_trigger_tags()
     if not tags:
         return buffer, ""
