@@ -56,6 +56,43 @@
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-warn text-warn bg-panel hover:bg-warn hover:text-white transition" id="reloadServerButton" type="button">重启服务</button>
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-border bg-panel text-text hover:bg-panel-alt transition" id="reloadConfigButton" type="button">重载配置</button>
       </div>
+      <section class="bg-panel border border-border rounded-2xl shadow-panel p-5 grid gap-4 hidden" id="portablePanel">
+        <div class="flex flex-wrap justify-between items-end gap-3">
+          <div>
+            <h2>便携设置</h2>
+            <p class="m-0 text-muted leading-relaxed">这些设置保存在浏览器本地，适合便携环境与临时运行环境。</p>
+          </div>
+          <div class="flex flex-wrap gap-2 items-center">
+            <button class="cursor-pointer font-bold rounded-xl w-10 h-10 border border-border bg-panel text-text hover:bg-panel-alt transition flex items-center justify-center" id="fabThemeButton" type="button" aria-label="切换主题"><span id="fabThemeIcon">&#9790;</span></button>
+          </div>
+        </div>
+        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]">
+          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="text-[13px] text-muted m-0 mb-2">主题模式</div>
+            <select id="themeSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+              <option value="auto">auto</option>
+              <option value="light">light</option>
+              <option value="dark">dark</option>
+            </select>
+          </label>
+          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="text-[13px] text-muted m-0 mb-2">自动刷新间隔（秒）</div>
+            <input id="refreshIntervalInput" type="number" min="0" max="300" step="5" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+          </label>
+          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="text-[13px] text-muted m-0 mb-2">请求超时（毫秒）</div>
+            <input id="timeoutInput" type="number" min="500" max="30000" step="500" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+          </label>
+          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="text-[13px] text-muted m-0 mb-2">显示紧凑模式</div>
+            <select id="compactSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+              <option value="0">关闭</option>
+              <option value="1">开启</option>
+            </select>
+          </label>
+        </div>
+        <p class="m-0 text-muted leading-relaxed">设置不写回服务端配置文件，避免对线上进程产生意外副作用。</p>
+      </section>
       <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
         <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">平台数量</div><div class="text-2xl font-bold" id="platformCount">-</div></div>
         <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">模型数量</div><div class="text-2xl font-bold" id="modelCount">-</div></div>
@@ -285,44 +322,6 @@
 
         </main>
       </div>
-    </section>
-
-    <section class="bg-panel border border-border rounded-2xl shadow-panel p-5 grid gap-4 hidden" id="portablePanel">
-      <div class="flex flex-wrap justify-between items-end gap-3">
-        <div>
-          <h2>便携设置</h2>
-          <p class="m-0 text-muted leading-relaxed">这些设置保存在浏览器本地，适合便携环境与临时运行环境。</p>
-        </div>
-        <div class="flex flex-wrap gap-2 items-center">
-          <button class="cursor-pointer font-bold rounded-xl w-10 h-10 border border-border bg-panel text-text hover:bg-panel-alt transition flex items-center justify-center" id="fabThemeButton" type="button" aria-label="切换主题"><span id="fabThemeIcon">&#9790;</span></button>
-        </div>
-      </div>
-      <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]">
-        <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-          <div class="text-[13px] text-muted m-0 mb-2">主题模式</div>
-          <select id="themeSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-            <option value="auto">auto</option>
-            <option value="light">light</option>
-            <option value="dark">dark</option>
-          </select>
-        </label>
-        <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-          <div class="text-[13px] text-muted m-0 mb-2">自动刷新间隔（秒）</div>
-          <input id="refreshIntervalInput" type="number" min="0" max="300" step="5" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-        </label>
-        <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-          <div class="text-[13px] text-muted m-0 mb-2">请求超时（毫秒）</div>
-          <input id="timeoutInput" type="number" min="500" max="30000" step="500" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-        </label>
-        <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-          <div class="text-[13px] text-muted m-0 mb-2">显示紧凑模式</div>
-          <select id="compactSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-            <option value="0">关闭</option>
-            <option value="1">开启</option>
-          </select>
-        </label>
-      </div>
-      <p class="m-0 text-muted leading-relaxed">设置不写回服务端配置文件，避免对线上进程产生意外副作用。</p>
     </section>
 
     <div class="fixed bottom-4 right-4 grid gap-2 z-[9999]" id="toastWrap"></div>
