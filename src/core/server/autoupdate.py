@@ -9,7 +9,7 @@ from typing import Optional, Tuple
 
 from src.logger import get_logger
 
-__all__ = ["AutoUpdater"]
+__all__ = ["AutoUpdater", "get_updater", "set_updater"]
 
 logger = get_logger(__name__)
 
