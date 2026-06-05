@@ -373,9 +373,14 @@ document.addEventListener("click", function(e) {
 
   if (action === "copy") {
     var text = bubble.getAttribute("data-raw") || bubble.textContent || "";
+    var origSvg = btn.innerHTML;
     navigator.clipboard.writeText(text).then(function() {
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
       btn.classList.add("is-active");
-      setTimeout(function() { btn.classList.remove("is-active"); }, 1500);
+      setTimeout(function() {
+        btn.innerHTML = origSvg;
+        btn.classList.remove("is-active");
+      }, 1500);
     });
     return;
   }
