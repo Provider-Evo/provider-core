@@ -6,7 +6,7 @@
   const thumb = document.getElementById("chatCustomThumb");
   const caret = document.getElementById("chatCustomCaret");
 
-  // Exit early if chat input elements don't exist (e.g., docs page)
+  // Exit early if chat input elements don't exist.
   if (!textarea || !viewport || !scrollbar || !thumb || !caret) {
     return;
   }

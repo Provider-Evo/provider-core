@@ -20,25 +20,6 @@ def _json(data: Any, status: int = 200) -> aiohttp.web.Response:
     return json_response(data, status=status)
 
 
-async def root(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """服务根路由 /。
-
-    Args:
-        request: 请求对象。
-
-    Returns:
-        响应对象。
-    """
-    cfg = get_config()
-    return _json(
-        {
-            "service": "Provider-V2",
-            "version": cfg.server.version,
-            "docs": "/webui",
-        }
-    )
-
-
 async def health(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """健康检查端点 /health。
 
@@ -198,7 +179,6 @@ def setup_routes(app: aiohttp.web.Application) -> None:
     Args:
         app: aiohttp.web.Application 实例。
     """
-    app.router.add_get("/", root)
     app.router.add_get("/health", health)
     app.router.add_get("/v1/models", list_models)
     app.router.add_get("/v1/models/{model_id}", get_model)

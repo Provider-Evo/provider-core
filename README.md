@@ -8,8 +8,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.23-blue)
-![Version](https://img.shields.io/badge/version-2.2.23-blue)
+![Status](https://img.shields.io/badge/status-v2.2.24-blue)
+![Version](https://img.shields.io/badge/version-2.2.24-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -199,13 +199,9 @@ curl -X POST http://localhost:1337/v1/chat/completions \
 }
 ```
 
-### Swagger UI 文档
-
-启动服务后访问 `http://localhost:1337/docs` 即可看到完整的 API 文档界面。
-
 ### 内置 WebUI
 
-启动服务后访问 `http://localhost:1337/webui` 即可打开内置管理界面，支持主题切换、状态刷新和便携设置。
+启动服务后直接访问 `http://localhost:1337/` 即可打开内置管理界面，支持主题切换、状态刷新、模型清单、配置管理与便携设置。
 
 ---
 
@@ -243,7 +239,7 @@ python main.py
 | 地址 | 说明 |
 |------|------|
 | http://localhost:1337/health | 健康检查，返回 `{"status": "healthy"}` |
-| http://localhost:1337/docs | Swagger UI 文档界面 |
+| http://localhost:1337/ | 内置 WebUI 管理界面 |
 | http://localhost:1337/v1/models | 模型列表接口 |
 
 ---
@@ -872,7 +868,7 @@ keys = ["key1", "key2", "key3"]    # 允许的 API Key 列表
 **鉴权方式**：
 - 优先从 `Authorization: Bearer {key}` 头提取
 - 失败后从 `x-api-key` 头提取
-- 以下路径跳过鉴权：`/`、`/health`、`/docs`、`/redoc`、`/openapi.json`
+- 以下路径跳过鉴权：`/`、`/health`、`/v1/models`
 
 #### 网关配置
 
@@ -947,8 +943,6 @@ zh = "..."    # 中文模板
 | POST | `/v1/audio/speech` | 语音合成 |
 | POST | `/v1/audio/transcriptions` | 语音转录 |
 | POST | `/v1/moderations` | 内容审核 |
-| GET | `/docs` | Swagger UI 文档 |
-| GET | `/redoc` | ReDoc 文档 |
 
 ### 接口详情
 
@@ -1109,9 +1103,7 @@ Content-Type: application/json
 
 ### 完整 API 文档
 
-启动服务后访问以下地址：
-- 📚 **Swagger UI**: http://localhost:1337/docs
-- 📚 **ReDoc**: http://localhost:1337/redoc
+启动服务后访问 `http://localhost:1337/` 通过内置 WebUI 的「模型」与「配置」选项卡查看接口清单与能力矩阵。
 
 ---
 
@@ -1254,7 +1246,13 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.11
+### 当前版本：v2.2.24
+
+✅ 已完成（v2.2.24）：
+- 废除 `/docs` 端点与 `/webui` 页面路由，根路径 `/` 直接服务内置 WebUI
+- 静态资源前缀由 `/webui/static/` 简化为 `/static/`
+- 删除 `DocLink`/`DocSection`、`build_doc_sections`、`render_page`、`render_webui` 等未使用的兼容导出
+- 鉴权跳过集合仅保留 `/`、`/health`、`/v1/models`
 
 ✅ 已完成（v2.2.11）：
 - 新增自动更新功能（autoupdate.enabled/branch/interval，git pull + exit 42 自动重启）
@@ -1468,9 +1466,7 @@ keys = []
 **跳过鉴权的路径**：
 - `/`
 - `/health`
-- `/docs`
-- `/redoc`
-- `/openapi.json`
+- `/v1/models`
 </details>
 
 ### 更多问题

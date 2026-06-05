@@ -13,10 +13,6 @@ def test_index_html_exists() -> None:
     assert (STATIC_DIR / "index.html").exists()
 
 
-def test_docs_html_exists() -> None:
-    assert (STATIC_DIR / "docs.html").exists()
-
-
 def test_index_html_contains_core_sections() -> None:
     config = get_config()
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
@@ -24,15 +20,8 @@ def test_index_html_contains_core_sections() -> None:
     assert '/v1/webui/summary' in html or 'summary_api' not in html  # API calls are in JS
     assert '/v1/webui/ws/logs' in html or 'socketNotice' in html
     assert 'theme' in html  # theme control
-    assert '在线文档' in html or 'tab-docs' in html
     assert '模型搜索' in html or 'modelSearchInput' in html
     assert '概览' in html or 'overview' in html
-
-
-def test_docs_html_has_docs_tab() -> None:
-    html = (STATIC_DIR / "docs.html").read_text(encoding="utf-8")
-    assert 'data-initial-tab="docs"' in html
-    assert 'tab-docs' in html
 
 
 def test_index_html_has_overview_tab() -> None:
@@ -56,9 +45,9 @@ def test_static_js_exists() -> None:
 
 def test_index_html_references_static_assets() -> None:
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    assert '/webui/static/css/styles.css' in html
-    assert '/webui/static/js/state.js' in html
-    assert '/webui/static/js/render.js' in html
-    assert '/webui/static/js/actions.js' in html
-    assert '/webui/static/js/chat.js' in html
-    assert '/webui/static/js/bootstrap.js' in html
+    assert '/static/css/styles.css' in html
+    assert '/static/js/state.js' in html
+    assert '/static/js/render.js' in html
+    assert '/static/js/actions.js' in html
+    assert '/static/js/chat.js' in html
+    assert '/static/js/bootstrap.js' in html

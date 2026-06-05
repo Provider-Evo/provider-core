@@ -32,8 +32,7 @@ class WebUIServerConfig:
 
     host: str
     port: int
-    docs_path: str = "/docs"
-    webui_path: str = "/webui"
+    webui_path: str = "/"
     summary_path: str = "/v1/webui/summary"
     logs_ws_path: str = "/v1/webui/ws/logs"
 

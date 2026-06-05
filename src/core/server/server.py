@@ -87,7 +87,7 @@ async def _auth_middleware(
     request: aiohttp.web.Request,
     handler: _Handler,
 ) -> aiohttp.web.StreamResponse:
-    skip = {"/", "/health", "/docs", "/redoc", "/openapi.json", "/v1/models"}
+    skip = {"/", "/health", "/v1/models"}
     if request.path in skip or request.method == "OPTIONS":
         return await handler(request)
 

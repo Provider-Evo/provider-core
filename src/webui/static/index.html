@@ -32,7 +32,7 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="/webui/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body data-initial-tab="overview">
   <div class="max-w-[1440px] mx-auto p-3 md:p-4 grid gap-4">
@@ -40,7 +40,7 @@
       <div class="grid gap-3 md:grid-cols-[1fr_auto] items-start">
         <div>
           <h1 class="text-[30px] font-bold m-0">Provider-V2 WebUI</h1>
-          <p class="m-0 text-muted leading-relaxed">生产化内置管理台，覆盖概览、平台状态、模型清单、在线文档、配置管理与日志反馈。</p>
+          <p class="m-0 text-muted leading-relaxed">生产化内置管理台，覆盖概览、平台状态、模型清单、配置管理与日志反馈。</p>
         </div>
         <div class="flex flex-wrap gap-2 justify-end">
           <span class="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs bg-accent-soft text-text badge-loading" id="versionBadge">版本 loading</span>
@@ -75,7 +75,6 @@
           <button class="sidebar-nav-item tab-button" data-tab="overview" type="button">概览</button>
           <button class="sidebar-nav-item tab-button" data-tab="platforms" type="button">平台</button>
           <button class="sidebar-nav-item tab-button" data-tab="models" type="button">模型</button>
-          <button class="sidebar-nav-item tab-button" data-tab="docs" type="button">文档</button>
           <button class="sidebar-nav-item tab-button" data-tab="config" type="button">配置</button>
           <button class="sidebar-nav-item tab-button" data-tab="autoupdate" type="button">自动更新</button>
           <button class="sidebar-nav-item tab-button" data-tab="chat" type="button">聊天测试</button>
@@ -134,49 +133,6 @@
           </div>
         </div>
         <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]" id="modelGrid"></div>
-      </section>
-
-      <section class="tab-panel hidden" id="tab-docs" aria-labelledby="tab-docs-button">
-        <div class="flex flex-wrap justify-between items-end gap-3">
-          <div>
-            <h2>在线文档</h2>
-            <p class="m-0 text-muted leading-relaxed">集中查看协议入口、管理接口和常用只读地址。</p>
-          </div>
-        </div>
-        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]" id="docSectionsContainer">
-          <div class="border border-border rounded-xl p-4 bg-panel card-hover-lift">
-            <h3 class="text-base font-semibold mb-2">API 文档</h3>
-            <ul class="space-y-2 text-sm">
-              <li><a href="/docs" target="_blank" class="text-accent hover:underline">OpenAPI 规范 (/docs)</a></li>
-              <li><a href="/v1/models" target="_blank" class="text-accent hover:underline">模型列表 (/v1/models)</a></li>
-              <li><a href="/v1/config" target="_blank" class="text-accent hover:underline">当前配置 (/v1/config)</a></li>
-              <li><a href="/health" target="_blank" class="text-accent hover:underline">健康检查 (/health)</a></li>
-            </ul>
-          </div>
-          <div class="border border-border rounded-xl p-4 bg-panel card-hover-lift">
-            <h3 class="text-base font-semibold mb-2">管理接口</h3>
-            <ul class="space-y-2 text-sm">
-              <li><code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">POST /v1/admin/reload</code> — 重启服务</li>
-              <li><code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">POST /v1/config/reload</code> — 重载配置</li>
-              <li><code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">PUT /v1/config</code> — 保存配置</li>
-              <li><code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">POST /v1/admin/refresh_models</code> — 刷新模型缓存</li>
-            </ul>
-          </div>
-          <div class="border border-border rounded-xl p-4 bg-panel card-hover-lift">
-            <h3 class="text-base font-semibold mb-2">协议说明</h3>
-            <ul class="space-y-2 text-sm">
-              <li><strong>XML 协议</strong> — 使用 XML 标签标记工具调用</li>
-              <li><strong>AntML 协议</strong> — Anthropic 风格工具调用</li>
-              <li><strong>Nous 协议</strong> — NousResearch 风格</li>
-              <li><strong>Bracket 协议</strong> — 方括号标记工具调用</li>
-            </ul>
-          </div>
-          <div class="border border-border rounded-xl p-4 bg-panel card-hover-lift">
-            <h3 class="text-base font-semibold mb-2">WebSocket 日志</h3>
-            <p class="text-sm text-muted mb-2">实时日志推送到浏览器</p>
-            <code class="text-xs bg-panel-alt px-1.5 py-0.5 rounded">ws://host:port/v1/webui/ws/logs</code>
-          </div>
-        </div>
       </section>
 
       <section class="tab-panel hidden" id="tab-config" aria-labelledby="tab-config-button">
@@ -372,12 +328,12 @@
     <div class="fixed bottom-4 right-4 grid gap-2 z-[9999]" id="toastWrap"></div>
   </div>
 
-  <script src="/webui/static/js/motion.js"></script>
-  <script src="/webui/static/js/state.js"></script>
-  <script src="/webui/static/js/render.js"></script>
-  <script src="/webui/static/js/actions.js"></script>
-  <script src="/webui/static/js/chat.js"></script>
-  <script src="/webui/static/js/dropdown.js"></script>
-  <script src="/webui/static/js/bootstrap.js"></script>
+  <script src="/static/js/motion.js"></script>
+  <script src="/static/js/state.js"></script>
+  <script src="/static/js/render.js"></script>
+  <script src="/static/js/actions.js"></script>
+  <script src="/static/js/chat.js"></script>
+  <script src="/static/js/dropdown.js"></script>
+  <script src="/static/js/bootstrap.js"></script>
 </body>
 </html>

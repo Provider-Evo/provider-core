@@ -18,7 +18,7 @@
 - `src/core/INDEX.md`：核心模块说明。
 - `src/core/runtime_view.md`：WebUI 摘要聚合逻辑。
 - `src/routes/INDEX.md`：路由层说明。
-- `src/webui/INDEX.md`：内置 WebUI 与在线文档说明。
+- `src/webui/INDEX.md`：内置 WebUI 说明。
 - `src/platforms/INDEX.md`：平台目录总览。
 - `src/platforms/guide.md`：平台开发规范。
 - `src/platforms/compliance.md`：平台合规检查结果。

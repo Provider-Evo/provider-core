@@ -1,5 +1,5 @@
 [server]
-version = "2.2.23"
+version = "2.2.24"
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -21,7 +21,7 @@ min_tokens = 10
 
 [proxy]
 proxy_server = "http://103.242.2.242:40000"
-proxy_enabled = true
+proxy_enabled = false
 proxy_urls = []
 
 [platforms_proxy]
