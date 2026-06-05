@@ -3,8 +3,18 @@
 > 统一 AI 模型网关，聚合多个 AI 平台，提供 OpenAI 和 Anthropic 兼容 API
 
 ## 分支说明
-- **main**：平台白名单 — cerebras, chatmoe, codebuddy, cursor, deepseek, nvidia, qwen, openrouter, chutes
-- **dev**：包含当前 `src/platforms/` 下的全部平台（含实验/新增）
+
+| 分支 | 定位 | 说明 |
+|------|------|------|
+| **main** | 稳定版本 | 平台白名单 — cerebras, chatmoe, codebuddy, cursor, deepseek, nvidia, qwen, openrouter, chutes |
+| **dev** | 活跃开发 | 包含当前 `src/platforms/` 下的全部平台（含实验/新增平台） |
+| **classical** | 经典架构 | 保留重构前的经典版本，用于对比和回退参考 |
+
+> ⚠️ **重要**
+> - **禁止直接提交到 `main` 和 `classical` 分支**
+> - 所有新功能开发和 Bug 修复请基于 `dev` 分支创建功能分支
+> - PR 目标必须为 `dev`，由作者审核后合并
+> - `main` 和 `classical` 仅用于稳定版本发布和存档
 
 <div align="center">
 
