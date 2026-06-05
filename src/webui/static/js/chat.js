@@ -163,14 +163,18 @@
  */
 function renderWithCodeBlocks(text) {
   var escaped = escapeHtml(text);
-  // Match ```language\ncode\n``` patterns
   var codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
   var result = escaped.replace(codeBlockRegex, function(match, lang, code) {
     var langClass = lang ? ' class="language-' + lang.toLowerCase() + '"' : '';
     return '<pre class="chat-codeblock"><code' + langClass + '>' + code + '</code></pre>';
   });
-  // Replace remaining newlines with <br> outside code blocks
-  return result;
+  var parts = result.split(/(<pre[\s\S]*?<\/pre>)/);
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i] && parts[i].indexOf('<pre') !== 0) {
+      parts[i] = parts[i].replace(/\n/g, '<br>');
+    }
+  }
+  return parts.join('');
 }
 
 // ========================= Chat Message Rendering =========================
