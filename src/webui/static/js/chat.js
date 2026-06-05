@@ -381,13 +381,40 @@ document.addEventListener("click", function(e) {
   }
 
   if (action === "edit") {
-    var userMsg = bubble;
     if (role === "assistant") {
-      userMsg = bubble.previousElementSibling;
-      while (userMsg && !userMsg.classList.contains("chat-message-user")) {
-        userMsg = userMsg.previousElementSibling;
-      }
+      // Edit assistant message content directly
+      if (bubble.querySelector(".chat-msg-edit-area")) return;
+      var rawText = bubble.textContent || "";
+
+      var area = document.createElement("div");
+      area.className = "chat-msg-edit-area";
+      area.innerHTML =
+        '<textarea class="chat-msg-edit-input" rows="4" style="background:var(--panel-alt);color:var(--text);border-color:var(--border);">' + escapeHtml(rawText) + '</textarea>' +
+        '<div class="chat-msg-edit-actions">' +
+        '<button class="chat-msg-edit-send" type="button">保存</button>' +
+        '<button class="chat-msg-edit-cancel" type="button">取消</button>' +
+        '</div>';
+
+      bubble.textContent = "";
+      bubble.appendChild(area);
+
+      var textarea = area.querySelector(".chat-msg-edit-input");
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+      area.querySelector(".chat-msg-edit-cancel").addEventListener("click", function() {
+        bubble.innerHTML = renderWithCodeBlocks(rawText);
+      });
+
+      area.querySelector(".chat-msg-edit-send").addEventListener("click", function() {
+        var newText = textarea.value;
+        bubble.innerHTML = renderWithCodeBlocks(newText);
+      });
+      return;
     }
+
+    // Edit user message: find the user bubble, open editor, re-send on save
+    var userMsg = bubble;
     if (!userMsg || !userMsg.classList.contains("chat-message-user")) return;
     if (userMsg.querySelector(".chat-msg-edit-area")) return;
 
@@ -428,11 +455,6 @@ document.addEventListener("click", function(e) {
       _userMsgCount = histIdx;
       sendChatMessage(newText);
     });
-
-    if (role === "assistant") {
-      userMsg.scrollIntoView({ behavior: "smooth", block: "center" });
-      toast("已打开对应的用户消息进行编辑", "ok");
-    }
     return;
   }
 
