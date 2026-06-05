@@ -260,6 +260,25 @@ body { margin: 0; font-family: Arial, sans-serif;
 
 .chat-msg-retry-btn {
   position: absolute;
+  right: 40px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  padding: 0;
+}
+
+.chat-msg-delete-btn {
+  position: absolute;
   right: 8px;
   bottom: 8px;
   display: inline-flex;
@@ -277,7 +296,8 @@ body { margin: 0; font-family: Arial, sans-serif;
   padding: 0;
 }
 
-.chat-message-assistant:hover .chat-msg-retry-btn {
+.chat-message-assistant:hover .chat-msg-retry-btn,
+.chat-message-assistant:hover .chat-msg-delete-btn {
   opacity: 1;
 }
 
@@ -285,6 +305,12 @@ body { margin: 0; font-family: Arial, sans-serif;
   background: var(--panel-alt);
   color: var(--accent);
   border-color: var(--accent);
+}
+
+.chat-msg-delete-btn:hover {
+  background: var(--panel-alt);
+  color: var(--err, #e74c3c);
+  border-color: var(--err, #e74c3c);
 }
 
 .chat-message-system {

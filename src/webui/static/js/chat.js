@@ -318,6 +318,17 @@ function finalizeStreamingMessage(toolCalls) {
     '<path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>' +
     '</svg>';
   msg.appendChild(retryBtn);
+
+  var delBtn = document.createElement('button');
+  delBtn.className = 'chat-msg-delete-btn';
+  delBtn.type = 'button';
+  delBtn.title = '删除此回复及之后消息';
+  delBtn.innerHTML =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<polyline points="3 6 5 6 21 6"/>' +
+    '<path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>' +
+    '</svg>';
+  msg.appendChild(delBtn);
 }
 
 function escapeHtml(text) {
@@ -424,6 +435,33 @@ document.addEventListener("click", function(e) {
   chatConversationHistory = chatConversationHistory.slice(0, histIdx + 1);
 
   sendChatMessage(rawText);
+});
+
+// ========================= Assistant Message Delete =========================
+document.addEventListener("click", function(e) {
+  var delBtn = e.target.closest(".chat-msg-delete-btn");
+  if (!delBtn) return;
+  var assistantMsg = delBtn.closest(".chat-message-assistant");
+  if (!assistantMsg) return;
+
+  var userMsg = assistantMsg.previousElementSibling;
+  while (userMsg && !userMsg.classList.contains("chat-message-user")) {
+    userMsg = userMsg.previousElementSibling;
+  }
+
+  var histIdx = userMsg ? parseInt(userMsg.getAttribute("data-hist-index"), 10) : 0;
+  var removeFrom = userMsg || assistantMsg;
+
+  var container = document.getElementById("chatMessagesContainer");
+  var allMsgs = container.querySelectorAll(".chat-message");
+  var found = false;
+  for (var i = 0; i < allMsgs.length; i++) {
+    if (allMsgs[i] === removeFrom) found = true;
+    if (found) allMsgs[i].remove();
+  }
+
+  chatConversationHistory = chatConversationHistory.slice(0, userMsg ? histIdx : 0);
+  if (userMsg) _userMsgCount = histIdx;
 });
 
 function clearChatMessages() {
