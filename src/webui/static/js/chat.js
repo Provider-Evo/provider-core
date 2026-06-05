@@ -212,12 +212,7 @@ function appendChatMessage(role, content, options) {
     var histIdx = _userMsgCount++;
     msg.setAttribute("data-hist-index", histIdx);
     msg.setAttribute("data-raw", content);
-    msg.innerHTML = '<div class="chat-user-text">' + escapeHtml(content) + '</div>' +
-      '<button class="chat-msg-edit-btn" type="button" title="编辑并重发">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-      '<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>' +
-      '<path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>' +
-      '</svg></button>';
+    msg.textContent = content;
   } else {
     msg.textContent = content;
   }
@@ -225,6 +220,9 @@ function appendChatMessage(role, content, options) {
     msg.id = "chatStreamingMessage";
   }
   container.appendChild(msg);
+  if ((role === "user" || role === "assistant") && !options.isStreaming) {
+    appendMessageActions(role, msg);
+  }
   container.scrollTop = container.scrollHeight;
   return msg;
 }
@@ -308,27 +306,7 @@ function finalizeStreamingMessage(toolCalls) {
     }
   }
 
-  var retryBtn = document.createElement('button');
-  retryBtn.className = 'chat-msg-retry-btn';
-  retryBtn.type = 'button';
-  retryBtn.title = '重新生成';
-  retryBtn.innerHTML =
-    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-    '<polyline points="23 4 23 10 17 10"/>' +
-    '<path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>' +
-    '</svg>';
-  msg.appendChild(retryBtn);
-
-  var delBtn = document.createElement('button');
-  delBtn.className = 'chat-msg-delete-btn';
-  delBtn.type = 'button';
-  delBtn.title = '删除此回复及之后消息';
-  delBtn.innerHTML =
-    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-    '<polyline points="3 6 5 6 21 6"/>' +
-    '<path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>' +
-    '</svg>';
-  msg.appendChild(delBtn);
+  appendMessageActions("assistant", msg);
 }
 
 function escapeHtml(text) {
@@ -353,115 +331,141 @@ document.addEventListener("click", function(e) {
   });
 });
 
-// ========================= User Message Edit =========================
+// ========================= Message Actions Component =========================
+function appendMessageActions(role, msg) {
+  var bar = document.createElement("div");
+  bar.className = "chat-msg-actions";
+  var buttons = [
+    { action: "copy", title: "复制", icon:
+      '<rect x="9" y="9" width="13" height="13" rx="2"/>' +
+      '<path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>' },
+    { action: "edit", title: "编辑", icon:
+      '<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>' +
+      '<path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>' },
+    { action: "retry", title: role === "user" ? "重新发送" : "重新生成", icon:
+      '<polyline points="23 4 23 10 17 10"/>' +
+      '<path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>' }
+  ];
+  var html = "";
+  for (var i = 0; i < buttons.length; i++) {
+    var b = buttons[i];
+    html += '<button class="chat-msg-action" data-action="' + b.action + '" data-role="' + role + '" type="button" title="' + b.title + '">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + b.icon + '</svg>' +
+      '</button>';
+  }
+  bar.innerHTML = html;
+  msg.parentNode.insertBefore(bar, msg.nextSibling);
+}
+
+// ========================= Message Action Handlers =========================
 document.addEventListener("click", function(e) {
-  var editBtn = e.target.closest(".chat-msg-edit-btn");
-  if (!editBtn) return;
-  e.stopPropagation();
-  var msg = editBtn.closest(".chat-message-user");
-  if (!msg || msg.querySelector(".chat-msg-edit-area")) return;
+  var btn = e.target.closest(".chat-msg-action");
+  if (!btn) return;
 
-  var rawText = msg.getAttribute("data-raw") || "";
-  var histIdx = parseInt(msg.getAttribute("data-hist-index"), 10);
+  var action = btn.getAttribute("data-action");
+  var role = btn.getAttribute("data-role");
+  var msg = btn.closest(".chat-msg-actions");
+  if (!msg) return;
+  var bubble = msg.previousElementSibling;
+  if (!bubble || !bubble.classList.contains("chat-message")) return;
 
-  var area = document.createElement("div");
-  area.className = "chat-msg-edit-area";
-  area.innerHTML =
-    '<textarea class="chat-msg-edit-input" rows="2">' + escapeHtml(rawText) + '</textarea>' +
-    '<div class="chat-msg-edit-actions">' +
-    '<button class="chat-msg-edit-send" type="button">发送</button>' +
-    '<button class="chat-msg-edit-cancel" type="button">取消</button>' +
-    '</div>';
+  if (action === "copy") {
+    var text = bubble.getAttribute("data-raw") || bubble.textContent || "";
+    navigator.clipboard.writeText(text).then(function() {
+      btn.classList.add("is-active");
+      setTimeout(function() { btn.classList.remove("is-active"); }, 1500);
+    });
+    return;
+  }
 
-  var textEl = msg.querySelector(".chat-user-text");
-  if (textEl) textEl.style.display = "none";
-  editBtn.style.display = "none";
-  msg.appendChild(area);
+  if (action === "edit") {
+    var userMsg = bubble;
+    if (role === "assistant") {
+      userMsg = bubble.previousElementSibling;
+      while (userMsg && !userMsg.classList.contains("chat-message-user")) {
+        userMsg = userMsg.previousElementSibling;
+      }
+    }
+    if (!userMsg || !userMsg.classList.contains("chat-message-user")) return;
+    if (userMsg.querySelector(".chat-msg-edit-area")) return;
 
-  var textarea = area.querySelector(".chat-msg-edit-input");
-  textarea.focus();
-  textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    var rawText = userMsg.getAttribute("data-raw") || "";
+    var histIdx = parseInt(userMsg.getAttribute("data-hist-index"), 10);
 
-  area.querySelector(".chat-msg-edit-cancel").addEventListener("click", function() {
-    area.remove();
-    if (textEl) textEl.style.display = "";
-    editBtn.style.display = "";
-  });
+    var area = document.createElement("div");
+    area.className = "chat-msg-edit-area";
+    area.innerHTML =
+      '<textarea class="chat-msg-edit-input" rows="2">' + escapeHtml(rawText) + '</textarea>' +
+      '<div class="chat-msg-edit-actions">' +
+      '<button class="chat-msg-edit-send" type="button">发送</button>' +
+      '<button class="chat-msg-edit-cancel" type="button">取消</button>' +
+      '</div>';
 
-  area.querySelector(".chat-msg-edit-send").addEventListener("click", function() {
-    var newText = textarea.value.trim();
-    if (!newText) return;
+    userMsg.textContent = "";
+    userMsg.appendChild(area);
 
+    var textarea = area.querySelector(".chat-msg-edit-input");
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+    area.querySelector(".chat-msg-edit-cancel").addEventListener("click", function() {
+      userMsg.textContent = rawText;
+    });
+
+    area.querySelector(".chat-msg-edit-send").addEventListener("click", function() {
+      var newText = textarea.value.trim();
+      if (!newText) return;
+      var container = document.getElementById("chatMessagesContainer");
+      var allMsgs = container.querySelectorAll(".chat-message, .chat-msg-actions");
+      var found = false;
+      for (var i = 0; i < allMsgs.length; i++) {
+        if (allMsgs[i] === userMsg) found = true;
+        if (found) allMsgs[i].remove();
+      }
+      chatConversationHistory = chatConversationHistory.slice(0, histIdx);
+      _userMsgCount = histIdx;
+      sendChatMessage(newText);
+    });
+
+    if (role === "assistant") {
+      userMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    return;
+  }
+
+  if (action === "retry") {
+    var targetUserMsg = bubble;
+    if (role === "assistant") {
+      targetUserMsg = bubble.previousElementSibling;
+      while (targetUserMsg && !targetUserMsg.classList.contains("chat-message-user")) {
+        targetUserMsg = targetUserMsg.previousElementSibling;
+      }
+    }
+    if (!targetUserMsg) return;
+
+    var rawText = targetUserMsg.getAttribute("data-raw") || "";
+    var histIdx = parseInt(targetUserMsg.getAttribute("data-hist-index"), 10);
+    if (!rawText) return;
+
+    var removeFrom = (role === "assistant") ? bubble : targetUserMsg;
     var container = document.getElementById("chatMessagesContainer");
-    var allMsgs = container.querySelectorAll(".chat-message");
+    var allMsgs = container.querySelectorAll(".chat-message, .chat-msg-actions");
     var found = false;
     for (var i = 0; i < allMsgs.length; i++) {
-      if (allMsgs[i] === msg) found = true;
+      if (allMsgs[i] === removeFrom) found = true;
       if (found) allMsgs[i].remove();
     }
 
-    chatConversationHistory = chatConversationHistory.slice(0, histIdx);
-    _userMsgCount = histIdx;
+    if (role === "assistant") {
+      chatConversationHistory = chatConversationHistory.slice(0, histIdx + 1);
+    } else {
+      chatConversationHistory = chatConversationHistory.slice(0, histIdx);
+      _userMsgCount = histIdx;
+    }
 
-    sendChatMessage(newText);
-  });
-});
-
-// ========================= Assistant Message Retry =========================
-document.addEventListener("click", function(e) {
-  var retryBtn = e.target.closest(".chat-msg-retry-btn");
-  if (!retryBtn) return;
-  var assistantMsg = retryBtn.closest(".chat-message-assistant");
-  if (!assistantMsg) return;
-
-  var userMsg = assistantMsg.previousElementSibling;
-  while (userMsg && !userMsg.classList.contains("chat-message-user")) {
-    userMsg = userMsg.previousElementSibling;
+    sendChatMessage(rawText);
+    return;
   }
-  if (!userMsg) return;
-
-  var rawText = userMsg.getAttribute("data-raw") || "";
-  var histIdx = parseInt(userMsg.getAttribute("data-hist-index"), 10);
-  if (!rawText) return;
-
-  var container = document.getElementById("chatMessagesContainer");
-  var allMsgs = container.querySelectorAll(".chat-message");
-  var found = false;
-  for (var i = 0; i < allMsgs.length; i++) {
-    if (allMsgs[i] === assistantMsg) found = true;
-    if (found) allMsgs[i].remove();
-  }
-
-  chatConversationHistory = chatConversationHistory.slice(0, histIdx + 1);
-
-  sendChatMessage(rawText);
-});
-
-// ========================= Assistant Message Delete =========================
-document.addEventListener("click", function(e) {
-  var delBtn = e.target.closest(".chat-msg-delete-btn");
-  if (!delBtn) return;
-  var assistantMsg = delBtn.closest(".chat-message-assistant");
-  if (!assistantMsg) return;
-
-  var userMsg = assistantMsg.previousElementSibling;
-  while (userMsg && !userMsg.classList.contains("chat-message-user")) {
-    userMsg = userMsg.previousElementSibling;
-  }
-
-  var histIdx = userMsg ? parseInt(userMsg.getAttribute("data-hist-index"), 10) : 0;
-  var removeFrom = userMsg || assistantMsg;
-
-  var container = document.getElementById("chatMessagesContainer");
-  var allMsgs = container.querySelectorAll(".chat-message");
-  var found = false;
-  for (var i = 0; i < allMsgs.length; i++) {
-    if (allMsgs[i] === removeFrom) found = true;
-    if (found) allMsgs[i].remove();
-  }
-
-  chatConversationHistory = chatConversationHistory.slice(0, userMsg ? histIdx : 0);
-  if (userMsg) _userMsgCount = histIdx;
 });
 
 function clearChatMessages() {
