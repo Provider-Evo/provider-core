@@ -546,12 +546,58 @@ section.tab-panel > *:nth-child(6) { animation-delay: 0.3s; }
 }
 
 /* Chat code blocks */
-.chat-codeblock {
+.chat-codeblock-wrapper {
   margin: 8px 0;
-  padding: 12px;
   border-radius: 8px;
-  background: var(--panel-alt);
   border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.chat-codeblock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.chat-codeblock-lang {
+  color: var(--muted);
+  text-transform: lowercase;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+}
+
+.chat-codeblock-copy {
+  padding: 2px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-alt);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.chat-codeblock-copy:hover {
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.chat-codeblock-copy.is-copied {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.chat-codeblock {
+  margin: 0;
+  padding: 12px;
+  border-radius: 0;
+  border: none;
+  background: var(--panel-alt);
   overflow-x: auto;
   font-family: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
   font-size: 13px;

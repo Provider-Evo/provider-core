@@ -163,18 +163,29 @@
  */
 function renderWithCodeBlocks(text) {
   var escaped = escapeHtml(text);
+  var codeBlocks = [];
+  var sentinel = '\x00CB';
   var codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
   var result = escaped.replace(codeBlockRegex, function(match, lang, code) {
     var langClass = lang ? ' class="language-' + lang.toLowerCase() + '"' : '';
-    return '<pre class="chat-codeblock"><code' + langClass + '>' + code + '</code></pre>';
+    var langLabel = lang ? lang.toLowerCase() : 'code';
+    var idx = codeBlocks.length;
+    codeBlocks.push(
+      '<div class="chat-codeblock-wrapper">' +
+      '<div class="chat-codeblock-header">' +
+      '<span class="chat-codeblock-lang">' + langLabel + '</span>' +
+      '<button class="chat-codeblock-copy" type="button">复制</button>' +
+      '</div>' +
+      '<pre class="chat-codeblock"><code' + langClass + '>' + code + '</code></pre>' +
+      '</div>'
+    );
+    return sentinel + idx + sentinel;
   });
-  var parts = result.split(/(<pre[\s\S]*?<\/pre>)/);
-  for (var i = 0; i < parts.length; i++) {
-    if (parts[i] && parts[i].indexOf('<pre') !== 0) {
-      parts[i] = parts[i].replace(/\n/g, '<br>');
-    }
+  result = result.replace(/\n/g, '<br>');
+  for (var i = 0; i < codeBlocks.length; i++) {
+    result = result.replace(sentinel + i + sentinel, codeBlocks[i]);
   }
-  return parts.join('');
+  return result;
 }
 
 // ========================= Chat Message Rendering =========================
@@ -288,6 +299,22 @@ function escapeHtml(text) {
   div.textContent = text || "";
   return div.innerHTML;
 }
+
+document.addEventListener("click", function(e) {
+  var btn = e.target.closest(".chat-codeblock-copy");
+  if (!btn) return;
+  var codeEl = btn.parentElement.nextElementSibling;
+  if (!codeEl) return;
+  var code = (codeEl.querySelector("code") || codeEl).textContent;
+  navigator.clipboard.writeText(code).then(function() {
+    btn.textContent = "已复制";
+    btn.classList.add("is-copied");
+    setTimeout(function() {
+      btn.textContent = "复制";
+      btn.classList.remove("is-copied");
+    }, 2000);
+  });
+});
 
 function clearChatMessages() {
   var container = document.getElementById("chatMessagesContainer");
