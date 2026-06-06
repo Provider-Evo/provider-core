@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.29-blue)
-![Version](https://img.shields.io/badge/version-2.2.29-blue)
+![Status](https://img.shields.io/badge/status-v2.2.30-blue)
+![Version](https://img.shields.io/badge/version-2.2.30-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.29
+### 当前版本：v2.2.30
+
+✅ 已完成（v2.2.30）：
+- 修复聊天发送按钮不可见：Tailwind backgroundColor 缺少 accent 定义
 
 ✅ 已完成（v2.2.29）：
 - 修复 Anthropic 路由协议硬编码导致工具调用标签泄漏到客户端
