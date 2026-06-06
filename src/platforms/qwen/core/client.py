@@ -157,6 +157,10 @@ class QwenClient:
         """获取应传递给 session.request 的 proxy 值。"""
         self._check_proxy_expiry()
         if self._proxy_override is True:
+            from src.core.config import get_config
+            cfg = get_config()
+            if "qwen" not in cfg.platforms_proxy.enabled_platforms_set:
+                return None
             from src.core.proxy import get_proxy_server
             return get_proxy_server()
         return None
@@ -333,13 +337,16 @@ class QwenClient:
 
             proxy_state = data.get("proxy", {})
             if proxy_state:
-                self._proxy_override = proxy_state.get("enabled")
-                auto_at = proxy_state.get("auto_enabled_at")
-                if auto_at is not None:
-                    self._proxy_auto_enabled_at = float(auto_at)
-                    if time.time() - self._proxy_auto_enabled_at > _PROXY_AUTO_EXPIRY:
-                        self._proxy_override = None
-                        self._proxy_auto_enabled_at = None
+                from src.core.config import get_config
+                cfg = get_config()
+                if "qwen" in cfg.platforms_proxy.enabled_platforms_set:
+                    self._proxy_override = proxy_state.get("enabled")
+                    auto_at = proxy_state.get("auto_enabled_at")
+                    if auto_at is not None:
+                        self._proxy_auto_enabled_at = float(auto_at)
+                        if time.time() - self._proxy_auto_enabled_at > _PROXY_AUTO_EXPIRY:
+                            self._proxy_override = None
+                            self._proxy_auto_enabled_at = None
         except Exception as e:
             logger.warning("Qwen 持久化加载失败: %s", e)
 
