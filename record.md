@@ -708,3 +708,9 @@ pytest: 495 passed, 33 skipped
 2026-06-06 16:15:00
 
 [_write_report.py] 删除审计子代理生成的在项目根目录的临时报告脚本（206 行），非项目结构一部分
+
+2026-06-06 19:30:00
+
+[config.toml] 新增 [platforms.aitianhu2] 子段暴露 base_url 配置项（[platforms.<name>] 子段作为平台级自定义配置入口，覆盖平台内置默认端点）；版本 2.2.48 → 2.2.49
+[template/template_config.toml] 同步新增 [platforms.<name>] 注释说明 + [platforms.aitianhu2] 默认值；版本 2.2.48 → 2.2.49
+[README.md] 版本徽章和路线图更新为 2.2.49：[platforms.<name>] 子段暴露 base_url 配置

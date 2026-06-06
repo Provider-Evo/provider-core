@@ -2,7 +2,7 @@
 # 复制此文件到项目根目录并重命名为 config.toml
 
 [server]
-version = "2.2.48"
+version = "2.2.49"
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -63,6 +63,13 @@ group_list_type = "whitelist"
 [platforms]
 platform_list_type = "blacklist"  # "blacklist": 排除列表中的平台; "whitelist": 仅使用列表中的平台
 platform_list = []
+
+# 平台级自定义配置
+# [platforms.<platform_name>]
+#   base_url = "https://..."  # 覆盖平台内置的默认端点
+
+[platforms.aitianhu2]
+base_url = "https://www.aitianhu2.top"
 
 [fncall]
 # 协议模式: "xml" | "original" | "antml" | "bracket" | "custom" | "nous"

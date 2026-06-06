@@ -1,5 +1,5 @@
 [server]
-version = "2.2.48"
+version = "2.2.49"
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -33,6 +33,9 @@ group_list_type = "whitelist"
 [platforms]
 platform_list_type = "blacklist"
 platform_list = ["caiyuesbk", "cerebras", "chutes", "codebuddy", "n1n", "nvidia", "openrouter", "perplexity", "deepseek", "cursor", "deepseek"]
+
+[platforms.aitianhu2]
+base_url = "https://www.aitianhu2.top"
 
 [fncall]
 protocol = "antml"

@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.48-blue)
-![Version](https://img.shields.io/badge/version-2.2.48-blue)
+![Status](https://img.shields.io/badge/status-v2.2.49-blue)
+![Version](https://img.shields.io/badge/version-2.2.49-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.48
+### 当前版本：v2.2.49
+
+✅ 已完成（v2.2.49）：
+- `config.toml` 新增 `[platforms.aitianhu2] base_url = "https://www.aitianhu2.top"`；`[platforms.<name>]` 子段作为平台级自定义配置入口（覆盖平台内置默认端点），模板同步提供注释说明
 
 ✅ 已完成（v2.2.48）：
 - fncall 全协议健康检查：6 个协议逐一审计插值完整性、参数一致性、schema 字段完整性、prompt 结构一致性、测试覆盖；`format_tool_descs` 已支持嵌套 object/array/oneOf/anyOf/allOf/additionalProperties 递归渲染（max_depth=4），无需改动；上游 tools 透传链路（openai/anthropic/gateway）完整无裁剪
