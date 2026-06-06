@@ -132,7 +132,7 @@ class AntmlProtocol(ToolProtocol):
         # Dump prompt if configured
         try:
             cfg = get_config()
-            if cfg.fncall.print_prompt:
+            if cfg.fncall.print_prompt or cfg.fncall.record_prompt:
                 dump_dir = "logs/prompts"
                 os.makedirs(dump_dir, exist_ok=True)
                 dump_path = os.path.join(dump_dir, f"{_uuid7()}.txt")

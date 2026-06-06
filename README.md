@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.44-blue)
-![Version](https://img.shields.io/badge/version-2.2.44-blue)
+![Status](https://img.shields.io/badge/status-v2.2.45-blue)
+![Version](https://img.shields.io/badge/version-2.2.45-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.44
+### 当前版本：v2.2.45
+
+✅ 已完成（v2.2.45）：
+- fncall `record_prompt` 字段激活：原字段定义在 `FncallCfg` 但全代码未读取，现作为 `print_prompt` 别名生效，两者任一为 `true` 都会把注入后的 prompt 落盘到 `logs/prompts/<uuid7>.txt`
 
 ✅ 已完成（v2.2.44）：
 - antml fncall 解析：`_BLOCK_RE` 放宽以容忍 `<antml:function_calls >` / 带属性 / 换行等变体；`detect_start()` 同步放宽前缀匹配

@@ -36,10 +36,10 @@ logger = get_logger(__name__)
 
 
 def _maybe_dump_prompt(prompt: str) -> None:
-    """若配置开启 print_prompt，将 prompt 写入 logs/prompts/ 目录。"""
+    """若配置开启 print_prompt 或 record_prompt，将 prompt 写入 logs/prompts/ 目录。"""
     try:
         cfg = get_config()
-        if not cfg.fncall.print_prompt:
+        if not (cfg.fncall.print_prompt or cfg.fncall.record_prompt):
             return
     except Exception:
         return

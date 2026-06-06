@@ -667,3 +667,11 @@ pytest: 495 passed, 33 skipped
 [template/template_config.toml] 版本 2.2.43 → 2.2.44
 [config.toml] 同步版本 2.2.44
 [README.md] 版本徽章和路线图更新为 2.2.44：antml fncall 变体兼容 + 非流式 tool_calls 兜底 + aitianhu2 429 冷却与 fallback sentinel token（aitianhu2 平台源码被 .gitignore 过滤）
+
+2026-06-06 14:10:00
+
+[src/core/fncall/prompt/inject.py] _maybe_dump_prompt 把 record_prompt 视作 print_prompt 别名：任一为 true 即落盘 prompt 到 logs/prompts/<uuid7>.txt
+[src/core/fncall/protocols/antml.py] AntmlProtocol.render_prompt 同步接受 record_prompt/print_prompt 任一为 true 触发 dump
+[template/template_config.toml] 版本 2.2.44 → 2.2.45
+[config.toml] 同步版本 2.2.45
+[README.md] 版本徽章和路线图更新为 2.2.45：fncall record_prompt 字段激活
