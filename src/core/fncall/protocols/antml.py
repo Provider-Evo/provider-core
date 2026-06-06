@@ -56,7 +56,7 @@ If you intend to call multiple tools and there are no dependencies between the c
 # ---------------------------------------------------------------------------
 
 _BLOCK_RE = re.compile(
-    r"<antml:function_calls>([\s\S]*?)</antml:function_calls>",
+    r"<antml:function_calls\b[^>]*>([\s\S]*?)</antml:function_calls>",
     re.DOTALL,
 )
 _INVOKE_RE = re.compile(
@@ -143,12 +143,22 @@ class AntmlProtocol(ToolProtocol):
 
         return prompt
 
+    _TRIGGER_PREFIX = "<antml:function_calls"
+
     def detect_start(self, buffer: str) -> Tuple[bool, int]:
-        """检测 buffer 中是否包含 <antml:function_calls> 触发标记。"""
-        pos = buffer.find(self._TRIGGER)
-        if pos >= 0:
-            return (True, pos)
-        return (False, -1)
+        """检测 buffer 中是否包含 ``<antml:function_calls...>`` 触发标记。
+
+        容忍变体（如 ``<antml:function_calls >`` 或带属性），只要前缀
+        ``<antml:function_calls`` 后跟任意字符并以 ``>`` 闭合即视为触发。
+        """
+        pos = buffer.find(self._TRIGGER_PREFIX)
+        if pos < 0:
+            return (False, -1)
+        close = buffer.find(">", pos + len(self._TRIGGER_PREFIX))
+        if close < 0:
+            # 标签未闭合：视为待流入的增量
+            return (False, -1)
+        return (True, pos)
 
     def parse(
         self,

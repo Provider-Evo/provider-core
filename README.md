@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.43-blue)
-![Version](https://img.shields.io/badge/version-2.2.43-blue)
+![Status](https://img.shields.io/badge/status-v2.2.44-blue)
+![Version](https://img.shields.io/badge/version-2.2.44-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,13 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.43
+### 当前版本：v2.2.44
+
+✅ 已完成（v2.2.44）：
+- antml fncall 解析：`_BLOCK_RE` 放宽以容忍 `<antml:function_calls >` / 带属性 / 换行等变体；`detect_start()` 同步放宽前缀匹配
+- 非流式 chat completions：即使网关未产出 `tool_calls` 块（请求未带 `tools` 或流式解析器漏掉），也对整段 content 再跑一次协议解析提取 tool_calls
+- aitianhu2 `chat.py::stream()` 增加 429 限流感知：解析 `please wait N seconds` 并抛结构化 `RateLimitError`；`client.py::complete()` 重试循环尊重上游冷却秒数
+- aitianhu2 `/conversation` 旧端点 fallback 补齐 `openai-sentinel-chat-requirements-token` 头
 
 ✅ 已完成（v2.2.43）：
 - aitianhu2 多账号重构：每个 Account → 独立 `aiohttp.ClientSession` + cookie jar + device_id + 持久化条目；N 账号暴露 N 个 Candidate，限速失败时自动切换账号

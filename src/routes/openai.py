@@ -701,6 +701,21 @@ async def chat_completions(
         return _err(500, str(e), "internal_error", "server_error")
 
     content = "".join(cp)
+
+    # 兜底：若网关未产出 tool_calls 块（请求未带 tools，或流式解析器
+    # 漏掉变体标签），对完整内容再跑一次协议解析，把 antml / bracket /
+    # 其它协议的 tool_calls 抠出来。
+    if not tcs and content:
+        try:
+            from src.core.fncall.registry import get_protocol
+            proto = get_protocol(platform_id=platform_id)
+            cleaned, extracted = proto.parse(content, body.get("tools"))
+            if extracted:
+                tcs = extracted
+                content = cleaned
+        except Exception as exc:
+            logger.debug("非流式兜底 fncall 解析失败: %s", exc)
+
     content = _clean_fncall(content, platform_id=platform_id)
 
     u = usage_d or {

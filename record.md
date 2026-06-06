@@ -659,3 +659,11 @@ pytest: 495 passed, 33 skipped
 [template/template_config.toml] 版本 2.2.42 → 2.2.43
 [config.toml] 同步版本 2.2.43
 [README.md] 版本徽章和路线图更新为 2.2.43：aitianhu2 多账号重构 + 动态 account_id + CRITICAL bug 修复（aitianhu2 平台源码被 .gitignore 过滤，详见 src/platforms/aitianhu2/）
+
+2026-06-06 13:30:00
+
+[src/core/fncall/protocols/antml.py] _BLOCK_RE 放宽为 <antml:function_calls\b[^>]*> 以容忍带空格/属性/换行的变体；detect_start 改用前缀匹配 <antml:function_calls 并手动查找闭合 >；解决模型输出变体标签时 tool_calls 漏解析落入 content 的问题
+[src/routes/openai.py] 非流式 chat_completions 新增兜底：若网关未产出 tool_calls 块（请求未带 tools 或流式解析器漏掉），对整段 content 再跑一次 get_protocol(platform_id=).parse() 提取 tool_calls
+[template/template_config.toml] 版本 2.2.43 → 2.2.44
+[config.toml] 同步版本 2.2.44
+[README.md] 版本徽章和路线图更新为 2.2.44：antml fncall 变体兼容 + 非流式 tool_calls 兜底 + aitianhu2 429 冷却与 fallback sentinel token（aitianhu2 平台源码被 .gitignore 过滤）
