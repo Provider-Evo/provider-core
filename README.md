@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.39-blue)
-![Version](https://img.shields.io/badge/version-2.2.39-blue)
+![Status](https://img.shields.io/badge/status-v2.2.40-blue)
+![Version](https://img.shields.io/badge/version-2.2.40-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.39
+### 当前版本：v2.2.40
+
+✅ 已完成（v2.2.40）：
+- `_auth_middleware` 移除 `/health` 与 `/v1/models` 的无条件放行：必须持有 `pv2_session` Cookie 或有效 Bearer/X-API-Key 才能访问；浏览器无凭证自动 302 到 `/login`，API 客户端 JSON 401
 
 ✅ 已完成（v2.2.39）：
 - `_auth_middleware` 不再放行 `/`：未登录浏览器访问管理面板自动 302 到 `/login`，登录后 Cookie 驱动回到 `/`

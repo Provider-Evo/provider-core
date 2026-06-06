@@ -621,3 +621,10 @@ pytest: 495 passed, 33 skipped
 [template/template_config.toml] 版本 2.2.38 → 2.2.39
 [config.toml] 同步版本 2.2.39
 [README.md] 版本徽章和路线图更新为 2.2.39：管理面板强制鉴权
+
+2026-06-06 10:55:00
+
+[src/core/server/server.py] _auth_middleware 的 skip 集合进一步移除 /health 与 /v1/models：两路由现需 pv2_session Cookie 或 Bearer/X-API-Key 任一有效才放行；浏览器无凭证 302 到 /login，API 客户端 JSON 401
+[template/template_config.toml] 版本 2.2.39 → 2.2.40
+[config.toml] 同步版本 2.2.40
+[README.md] 版本徽章和路线图更新为 2.2.40：/health 与 /v1/models 强制鉴权
