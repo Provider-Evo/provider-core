@@ -591,3 +591,15 @@ pytest: 495 passed, 33 skipped
 [template/template_config.toml] 版本 2.2.34 → 2.2.35
 [config.toml] 同步版本 2.2.35
 [README.md] 版本徽章和路线图更新为 2.2.35：aitianhu2 平台对齐上游（动态 carids + 48h 刷新、system_hints 透传、Authorization 头补全、认证加固、22h 软刷新）
+
+2026-06-06 10:05:00
+
+[template/template_config.toml] 版本 2.2.35 → 2.2.36
+[config.toml] 同步版本 2.2.36
+[README.md] 版本徽章和路线图更新为 2.2.36：aitianhu2 流式对话 client_prepare_state + x-conduit-token 透传
+
+2026-06-06 10:10:00
+
+[template/template_config.toml] 版本 2.2.36 → 2.2.37
+[config.toml] 同步版本 2.2.37
+[README.md] 版本徽章和路线图更新为 2.2.37：aitianhu2 401 重认证强制刷新 carids + 落地页正则未匹配日志

@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.35-blue)
-![Version](https://img.shields.io/badge/version-2.2.35-blue)
+![Status](https://img.shields.io/badge/status-v2.2.37-blue)
+![Version](https://img.shields.io/badge/version-2.2.37-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,15 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.35
+### 当前版本：v2.2.37
+
+✅ 已完成（v2.2.37）：
+- aitianhu2 认证失败 / 401 重认证时强制刷新 carids（清空模块缓存 + 绕过 48h 阈值）
+- aitianhu2 落地页 200 但 carids 正则未匹配时记录页面片段便于排查
+
+✅ 已完成（v2.2.36）：
+- aitianhu2 流式对话：`system_hints` 非空时透传 `client_prepare_state: "success"`
+- aitianhu2 流式对话：`prepare` 响应的 `conduit_token` 注入 stream `x-conduit-token` 头
 
 ✅ 已完成（v2.2.35）：
 - aitianhu2 平台对齐上游：动态 carids 抓取 + 48h 刷新 + 持久化
