@@ -544,6 +544,7 @@ async def _stream_messages(
         )
 
     # 状态变量
+    platform_id = ""        # 从 _meta 获取的平台 ID，用于协议感知
     text_buffer = ""       # 普通文本缓冲（检测 fncall 前缀）
     fncall_buffer = ""     # fncall XML 累积缓冲
     in_fncall = False       # 是否已进入 fncall 累积模式
@@ -554,7 +555,7 @@ async def _stream_messages(
 
     async def _emit_text_delta_chunk(chunk: str) -> None:
         """处理并输出单个文本分片。"""
-        nonlocal text_buffer, fncall_buffer, in_fncall
+        nonlocal text_buffer, fncall_buffer, in_fncall, platform_id
 
         if in_fncall:
             fncall_buffer += chunk
@@ -562,8 +563,16 @@ async def _stream_messages(
 
         text_buffer += chunk
 
-        # 检查是否出现完整的 fncall 开始标签
-        tag_idx = text_buffer.find(_FNCALL_OPEN_TAG)
+        # 协议感知的标签检测
+        from src.core.fncall.registry import get_protocol
+        proto = get_protocol(platform_id=platform_id)
+        trigger_tags = proto.get_trigger_tags()
+
+        tag_idx = -1
+        for tag in trigger_tags:
+            idx = text_buffer.find(tag)
+            if idx != -1 and (tag_idx == -1 or idx < tag_idx):
+                tag_idx = idx
         if tag_idx != -1:
             safe_part = text_buffer[:tag_idx]
             if safe_part:
@@ -585,7 +594,7 @@ async def _stream_messages(
             return
 
         # 提取安全可输出部分
-        safe_part, text_buffer = _safe_flush(text_buffer)
+        safe_part, text_buffer = _safe_flush(text_buffer, platform_id=platform_id)
         if safe_part:
             await _write_event(
                 resp,
@@ -612,7 +621,9 @@ async def _stream_messages(
                     await _emit_text_delta_chunk(ch)
 
             elif isinstance(ch, dict):
-                if "thinking" in ch and effective_thinking:
+                if "_meta" in ch:
+                    platform_id = ch["_meta"].get("platform", "")
+                elif "thinking" in ch and effective_thinking:
                     thinking_text = ch["thinking"]
                     # 分块输出 thinking_delta，固定步长 20 字符
                     _THINKING_CHUNK = 20
@@ -832,6 +843,7 @@ async def _collect_messages(
     thinking_parts: List[str] = []
     tool_calls: List[Dict[str, Any]] = []
     usage_d: Optional[Dict[str, Any]] = None
+    platform_id = ""
 
     async for ch in gateway.dispatch(
         **_build_dispatch_kwargs(body, msgs, False, registry, tools)
@@ -839,7 +851,9 @@ async def _collect_messages(
         if isinstance(ch, str):
             content_parts.append(ch)
         elif isinstance(ch, dict):
-            if "thinking" in ch:
+            if "_meta" in ch:
+                platform_id = ch["_meta"].get("platform", "")
+            elif "thinking" in ch:
                 thinking_parts.append(ch["thinking"])
             elif "tool_calls" in ch:
                 tool_calls = ch["tool_calls"]
@@ -848,17 +862,22 @@ async def _collect_messages(
 
     # 清理文本中残留的 fncall 标签
     raw_content = "".join(content_parts)
-    cleaned = _clean_fncall(raw_content)
+    cleaned = _clean_fncall(raw_content, platform_id=platform_id)
 
     # 若已有结构化 tool_calls，清空文本
     if tool_calls:
         cleaned = ""
-    elif _FNCALL_OPEN_TAG in raw_content:
-        # 文本中含有 XML 格式 fncall，尝试解析
-        parsed = parse_fncall_xml(raw_content, tools)
-        if parsed:
-            tool_calls = parsed
-            cleaned = ""
+    else:
+        from src.core.fncall.registry import get_protocol
+        proto = get_protocol(platform_id=platform_id)
+        trigger_tags = proto.get_trigger_tags()
+        has_trigger = any(tag in raw_content for tag in trigger_tags)
+        if has_trigger:
+            # 文本中含有 fncall 标签，尝试解析
+            parsed = parse_fncall_xml(raw_content, tools)
+            if parsed:
+                tool_calls = parsed
+                cleaned = ""
 
     return cleaned, thinking_parts, tool_calls, usage_d
 
