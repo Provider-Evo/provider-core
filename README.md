@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.26-blue)
-![Version](https://img.shields.io/badge/version-2.2.26-blue)
+![Status](https://img.shields.io/badge/status-v2.2.27-blue)
+![Version](https://img.shields.io/badge/version-2.2.27-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.26
+### 当前版本：v2.2.27
+
+✅ 已完成（v2.2.27）：
+- 消息编辑对话框按钮统一为「确定」+「取消」
 
 ✅ 已完成（v2.2.26）：
 - 修复 qwen 平台 enabled_platforms=[] 时仍能使用代理的 bug
