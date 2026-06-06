@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.41-blue)
-![Version](https://img.shields.io/badge/version-2.2.41-blue)
+![Status](https://img.shields.io/badge/status-v2.2.42-blue)
+![Version](https://img.shields.io/badge/version-2.2.42-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,10 +1256,13 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.41
+### 当前版本：v2.2.42
+
+✅ 已完成（v2.2.42）：
+- `[gateway].group_list` 语义修正：名单决定"谁允许并发竞速"，不决定"谁能路由"；非名单内平台仍可路由但请求强制单发（n=1），竞速池需 ≥ 2 才启用并发
 
 ✅ 已完成（v2.2.41）：
-- `[gateway]` 新增 `group_list_type`（whitelist/blacklist）+ `group_list`：并发竞速平台黑白名单；`concurrent_enabled=false` 时竞速关闭但名单仍过滤候选集
+- `[gateway]` 新增 `group_list_type`（whitelist/blacklist）+ `group_list`：并发竞速平台黑白名单
 - `[platforms_proxy]` 新增 `group_list_type`：让 `enabled_platforms` 在白名单（默认，向后兼容）与黑名单之间切换
 - Qwen / DeepSeek 代理切换统一走 `platforms_proxy.is_platform_enabled()`
 - runtime 摘要导出新字段

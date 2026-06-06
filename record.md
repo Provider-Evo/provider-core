@@ -646,3 +646,10 @@ pytest: 495 passed, 33 skipped
 [template/template_config.toml] 版本 2.2.40 → 2.2.41；[gateway] 新增 group_list_type/group_list；[platforms_proxy] 新增 group_list_type
 [config.toml] 同步版本 2.2.41 与新字段
 [README.md] 版本徽章和路线图更新为 2.2.41：gateway + platforms_proxy 黑白名单
+2026-06-06 11:30:00
+
+[src/core/config/sections.py] GatewayCfg 文档 + is_platform_enabled 文档更新：group_list 语义修正为"竞速名单"，不再切断路由
+[src/core/dispatch/gateway.py] group_list 不再过滤候选集；改为构建 racing_pool，竞速池 ≥ 2 才启用 n>1，否则退化到全候选集单发
+[template/template_config.toml] 版本 2.2.41 → 2.2.42；gateway 注释同步新语义
+[config.toml] 同步版本 2.2.42
+[README.md] 版本徽章和路线图更新为 2.2.42：gateway.group_list 竞速名单语义修正

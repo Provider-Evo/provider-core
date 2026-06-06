@@ -56,13 +56,15 @@ class AuthCfg(ConfigBase):
 
 @dataclass
 class GatewayCfg(ConfigBase):
-    """网关并发配置：并发开关、并发数、最小 Token 数和平台黑白名单。"""
+    """网关并发配置：并发开关、并发数、最小 Token 数和竞速平台名单。"""
     concurrent_enabled: bool = True
     concurrent_count: int = 3
     min_tokens: int = 10
-    # 并发竞速平台黑白名单。当 concurrent_enabled=False 时整段禁用，list 无效。
-    # "whitelist"：仅 group_list 中的平台参与竞速。
-    # "blacklist"：除 group_list 外的平台均参与竞速。
+    # 竞速名单。决定哪些平台*允许并发竞速*；不在名单内的平台仍可正常
+    # 路由，只是该请求退化为单发（n=1）。
+    # "whitelist"：仅 group_list 中的平台可参与竞速。
+    # "blacklist"：除 group_list 外的平台均可参与竞速。
+    # group_list 为空时视为"未配置"，所有平台均可竞速（向后兼容）。
     group_list_type: str = "whitelist"
     group_list: List[str] = field(default_factory=list)
     group_list_set: set = field(default_factory=set, repr=False, init=False)
@@ -71,10 +73,10 @@ class GatewayCfg(ConfigBase):
         self.group_list_set = set(self.group_list)
 
     def is_platform_enabled(self, name: str) -> bool:
-        """根据 group_list_type 判断平台是否参与并发竞速。
+        """判断平台是否允许参与并发竞速。
 
-        当 ``group_list`` 为空时视为"未配置"，所有平台均参与竞速
-        （保持向后兼容，避免默认配置阻断路由）。
+        当 ``group_list`` 为空时视为"未配置"，所有平台均可竞速
+        （保持向后兼容，避免默认配置阻断竞速）。
         """
         if not self.group_list_set:
             return True

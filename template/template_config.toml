@@ -2,7 +2,7 @@
 # 复制此文件到项目根目录并重命名为 config.toml
 
 [server]
-version = "2.2.41"
+version = "2.2.42"
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -39,9 +39,11 @@ group_list = []
 concurrent_enabled = true
 concurrent_count = 3
 min_tokens = 10
-# 并发竞速平台黑白名单。concurrent_enabled = false 时竞速关闭，但名单仍过滤候选集。
-# "whitelist"：仅 group_list 中的平台参与竞速。
-# "blacklist"：除 group_list 外的平台均参与竞速。
+# 并发竞速平台名单。不在名单内的平台仍可路由，只是该请求强制单发（n=1）；
+# concurrent_enabled = false 时竞速关闭（n=1），但名单仍影响竞速池。
+# "whitelist"：仅 group_list 中的平台可参与竞速。
+# "blacklist"：除 group_list 外的平台均可参与竞速。
+# group_list 为空时视为"未配置"，所有平台均可竞速（向后兼容）。
 group_list_type = "whitelist"
 group_list = []
 

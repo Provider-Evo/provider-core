@@ -138,24 +138,26 @@ async def dispatch(
     if not cands:
         raise NoCandidateError("无候选项: {}".format(model))
 
-    # 按 [gateway].group_list_type / group_list 过滤并发候选集
-    # 仅当用户显式填写 group_list 时过滤才生效；列表为空时保持旧行为
-    # （避免默认配置阻断路由）。
+    # [gateway].group_list 决定"谁允许并发竞速"，不决定"谁能路由"：
+    # - 所有候选始终进入路由池
+    # - 只有当竞速池（racing-eligible）≥ 2 时才启用并发；否则单发
+    # - 因此非名单内平台仍可服务请求，只是该请求强制 n=1
     gw = cfg.gateway
-    if gw.group_list_set:
-        filtered = [c for c in cands if gw.is_platform_enabled(c.platform)]
-        if not filtered:
-            raise NoCandidateError(
-                "无候选项: {} (被 [gateway].group_list 过滤：type={}, list={})".format(
-                    model, gw.group_list_type, sorted(gw.group_list_set),
-                )
-            )
-        cands = filtered
+    racing_pool = (
+        [c for c in cands if gw.is_platform_enabled(c.platform)]
+        if gw.group_list_set
+        else cands
+    )
 
     n = 1
-    if cfg.gateway.concurrent_enabled and len(cands) > 1:
-        n = min(cfg.gateway.concurrent_count, len(cands))
-    sel = await registry.selector.select(cands, n)
+    if (
+        gw.concurrent_enabled
+        and len(racing_pool) > 1
+        and len(cands) > 1
+    ):
+        n = min(gw.concurrent_count, len(racing_pool))
+    sel_pool = racing_pool if n > 1 else cands
+    sel = await registry.selector.select(sel_pool, n)
     if not sel:
         raise NoCandidateError("TAS 选择失败")
 
