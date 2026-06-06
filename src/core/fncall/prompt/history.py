@@ -303,9 +303,17 @@ def _format_conversation_history(
         protocol: 可选的 ToolProtocol 实例。提供时使用
             protocol.format_assistant_tool_calls() 渲染工具调用，
             确保历史中的工具调用格式与 LLM 指令中的格式一致。
+
+    当消息中包含 role="tool" 消息时（agent CLI 如 Claude Code），
+    跳过渲染 assistant 的 tool_calls 块，因为 agent CLI 已自行
+    管理工具调用历史。仅 WebUI（无 tool 角色消息）才渲染。
     """
     if not messages:
         return ""
+
+    has_tool_role = any(
+        (m.get("role") or "") == "tool" for m in messages
+    )
 
     call_id_to_name: Dict[str, str] = {}
     seen_assistant_keys: Set[Tuple[str, Tuple[Tuple[str, str], ...]]] = set()
@@ -331,7 +339,7 @@ def _format_conversation_history(
                 if cid and fn_name:
                     call_id_to_name[cid] = fn_name
 
-            if tcs:
+            if tcs and not has_tool_role:
                 if protocol is not None:
                     blocks.append(protocol.format_assistant_tool_calls(tcs))
                 else:
