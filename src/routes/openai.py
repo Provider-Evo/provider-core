@@ -437,16 +437,27 @@ async def _stream_chat(
 
                 buffer += ch
 
-                # Use protocol-aware tag detection
+                # Use protocol-aware tag detection.
+                # detect_start() 容忍变体（如 `<antml:function_calls >` 或带属性）；
+                # 不支持该方法的协议回退到严格 trigger_tags 匹配。
                 from src.core.fncall.registry import get_protocol
                 proto = get_protocol(protocol_id=proto_override, platform_id=platform_id)
                 trigger_tags = proto.get_trigger_tags()
-                
+
                 tag_idx = -1
-                for tag in trigger_tags:
-                    idx = buffer.find(tag)
-                    if idx != -1 and (tag_idx == -1 or idx < tag_idx):
-                        tag_idx = idx
+                detect_start = getattr(proto, "detect_start", None)
+                if callable(detect_start):
+                    try:
+                        found, pos = detect_start(buffer)
+                        if found:
+                            tag_idx = pos
+                    except Exception:
+                        pass
+                if tag_idx == -1:
+                    for tag in trigger_tags:
+                        idx = buffer.find(tag)
+                        if idx != -1 and (tag_idx == -1 or idx < tag_idx):
+                            tag_idx = idx
                 if tag_idx != -1:
                     safe_part = buffer[:tag_idx]
                     if safe_part:

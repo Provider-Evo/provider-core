@@ -675,3 +675,11 @@ pytest: 495 passed, 33 skipped
 [template/template_config.toml] 版本 2.2.44 → 2.2.45
 [config.toml] 同步版本 2.2.45
 [README.md] 版本徽章和路线图更新为 2.2.45：fncall record_prompt 字段激活
+
+2026-06-06 14:25:00
+
+[src/platforms/aitianhu2/core/chat.py] SSE 解析重写：移植上游 _V1DeltaAccumulator（228 行状态机，1:1 还原 main.py:969-1197 JS chunk Yte+Qte+dj），支持短键/长键双向规范化、字段继承、多通道并行、完整 JSONPatch op 集；路由守卫放宽为 o/op/p/path/v/value/c/channel 任一存在即交状态机；根因修复 gpt-5.5 上游使用长键或省略重复字段时 antml 标签被静默丢弃导致工具调用失效
+[src/routes/openai.py] _stream_chat 标签检测改用 proto.detect_start(buffer) 兼容 <antml:function_calls > 等变体；不支持该方法的协议回退到严格 trigger_tags 匹配
+[template/template_config.toml] 版本 2.2.45 → 2.2.46
+[config.toml] 同步版本 2.2.46
+[README.md] 版本徽章和路线图更新为 2.2.46：aitianhu2 SSE v1 delta 状态机 + detect_start 兼容 + 路由守卫放宽

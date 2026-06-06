@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.45-blue)
-![Version](https://img.shields.io/badge/version-2.2.45-blue)
+![Status](https://img.shields.io/badge/status-v2.2.46-blue)
+![Version](https://img.shields.io/badge/version-2.2.46-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.45
+### 当前版本：v2.2.46
+
+✅ 已完成（v2.2.46）：
+- aitianhu2 SSE 解析重写：移植上游 `_V1DeltaAccumulator`（228 行状态机），支持短键/长键双向规范化、字段继承、多通道并行、完整 JSONPatch op 集（add/replace/append/patch/truncate/remove）。**根因修复**：gpt-5.5 上游使用长键或省略重复字段时，旧解析器静默丢弃整段 antml 标签导致工具调用失效
+- `openai.py::_stream_chat` 标签检测改用 `proto.detect_start(buffer)`，兼容 `<antml:function_calls >` / 带属性等变体；不支持该方法的协议回退到严格 `trigger_tags` 匹配
+- 路由守卫放宽：delta 事件只要含 `o`/`op`/`p`/`path`/`v`/`value`/`c`/`channel` 任一即交状态机，仅有 `v` 靠继承的 delta 不再被丢弃
 
 ✅ 已完成（v2.2.45）：
 - fncall `record_prompt` 字段激活：原字段定义在 `FncallCfg` 但全代码未读取，现作为 `print_prompt` 别名生效，两者任一为 `true` 都会把注入后的 prompt 落盘到 `logs/prompts/<uuid7>.txt`
