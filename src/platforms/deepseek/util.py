@@ -30,9 +30,9 @@ from src.platforms.deepseek.core.constants import (
 )
 from src.platforms.deepseek.core.headers import build_basic_headers, build_headers
 from src.platforms.deepseek.core.hif import HifTokenManager, fetch_hif_tokens
-from src.platforms.deepseek.core.models_cache import ModelsCache
+from src.platforms.deepseek.core.modelcache import ModelsCache
 from src.platforms.deepseek.core.pow import WasmPow, download_wasm, get_pow_response
-from src.platforms.deepseek.core.session_api import (
+from src.platforms.deepseek.core.sessionapi import (
     create_session,
     delete_all_sessions,
     delete_session,
@@ -43,8 +43,8 @@ from src.platforms.deepseek.core.session_api import (
     update_pinned,
     update_session_title,
 )
-from src.platforms.deepseek.core.stream_parser import StreamParser
-from src.platforms.deepseek.core.user_api import (
+from src.platforms.deepseek.core.streamparser import StreamParser
+from src.platforms.deepseek.core.userapi import (
     export_all_history,
     get_client_settings,
     get_current_user,
@@ -98,8 +98,8 @@ def parse_sse_line(
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
-    if name == "DeepseekAdapter":
-        from src.platforms.deepseek.core.adapter_impl import (  # noqa: PLC0415
+    if name in {"DeepseekAdapter", "Adapter"}:
+        from src.platforms.deepseek.core.adaptercore import (  # noqa: PLC0415
             DeepseekAdapter as _DeepseekAdapter,
         )
 
@@ -166,4 +166,5 @@ __all__ = [
     "parse_sse_line",
     "DeepseekClient",
     "DeepseekAdapter",
+    "Adapter",
 ]

@@ -14,7 +14,7 @@ Qwen 平台（通义千问网页版）是本项目中功能最丰富的平台，
 ## 架构
 
 ```
-QwenAdapter (adapter_impl.py)
+QwenAdapter (adaptercore.py)
   └── QwenClient (client.py)
       ├── 账号管理 (_account_states, _rebuild_candidates)
       ├── 登录系统 (_bg_login, 并发批量登录)
@@ -31,7 +31,7 @@ QwenAdapter (adapter_impl.py)
 | `client.py` | 核心客户端，包含所有 HTTP 请求逻辑 |
 | `accounts.py` | Account 数据类 + 账号列表（758KB，含大量数据） |
 | `shared.py` | God-module（1754 行），包含指纹、cookie、header、payload、上传、SSE 解析等一切逻辑 |
-| `adapter_impl.py` | 适配器实现，委托给 QwenClient |
+| `adaptercore.py` | 适配器实现，委托给 QwenClient |
 
 ## 账号系统
 

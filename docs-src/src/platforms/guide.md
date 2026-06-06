@@ -67,7 +67,7 @@ src/platforms/{platform}/
 
 | 职责 | 推荐文件名 | 反面教材 |
 |------|-----------|---------|
-| 适配器实现 | `impl.py` | `adapter_impl.py` |
+| 适配器实现 | `adaptercore.py` | `adapter_impl.py` |
 | HTTP 客户端 | `client.py` | `http_client.py` |
 | 账号数据 | `accounts.py` | `account_data.py` |
 | 常量 | `constants.py`、`endpoints.py` | `const.py`、`api_urls.py` |
@@ -107,12 +107,12 @@ src/platforms/{platform}/
 └─────────┬────────────┘                            │
           ↓                                          │
 ┌──────────────────────┐                            │
-│ {platform}/util      │  __getattr__ 懒加载 core.impl.Adapter
+│ {platform}/util      │  __getattr__ 懒加载 core.adaptercore.Adapter
 │                      │  直接 re-export: core.shared 中的常量/纯函数
 └─────────┬────────────┘                            │
           ↓ (lazy)                                  │
 ┌──────────────────────┐                            │
-│ core/impl            │  适配器实现，调用 core/client
+│ core/adaptercore     │  适配器实现，调用 core/client
 └─────────┬────────────┘                            │
           ↓                                          │
 ┌──────────────────────┐                            │
@@ -594,7 +594,7 @@ from __future__ import annotations
 | **文件命名** | 纯小写英文短词；禁用 `_`、`-`；8 字符以内为佳；dunder 文件例外 |
 | **代码体量** | 文件 800 行 / 函数 80 行硬上限（推荐函数 < 50）；超出必须拆分（算法可豁免并在 docstring 说明）|
 | **God-module** | `shared.py` 只能是薄门面（≤ 250 行），不写业务 |
-| **依赖流向** | `__init__ → adapter → util → core/impl → core/client → core/服务 → core/纯函数` |
+| **依赖流向** | `__init__ → adapter → util → core/adaptercore → core/client → core/服务 → core/纯函数` |
 | **`util.py`** | 必须 `__getattr__` 懒加载 Adapter |
 | **服务模块** | 构造函数注入依赖（session / proxy_resolver / cookies_provider 等） |
 | **初始化** | `init()` 必须立即返回；耗时操作交后台 Task |

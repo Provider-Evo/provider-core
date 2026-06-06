@@ -17,14 +17,19 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
 from src.logger import get_logger
-from src.platforms.qwen.core.constants import CAPS, MODELS
+from src.platforms.qwen.core.constants import (
+    BASE_URL,
+    CAPS,
+    MODELS,
+    MODELS_PERSIST_PATH,
+    USER_AGENT,
+)
 
 logger = get_logger(__name__)
 
 # =============================================================================
 # 常量
 # =============================================================================
-BASE_URL: Final[str] = "https://chat.qwen.ai"
 CHAT_PATH: Final[str] = "/api/v2/chat/completions"
 NEW_CHAT_PATH: Final[str] = "/api/v2/chats/new"
 STOP_CHAT_PATH: Final[str] = "/api/v2/chat/stop"
@@ -46,11 +51,6 @@ FRONTEND_VERSION: Final[str] = "0.2.34"
 BAXIA_SDK_VERSION: Final[str] = "2.5.36"
 BXUA_VERSION: Final[str] = "231"
 
-USER_AGENT: Final[str] = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/148.0.0.0 Safari/537.36"
-)
 USER_AGENT_MOBILE: Final[str] = (
     "Mozilla/5.0 (Linux; Android 10; BAH3-W09) "
     "AppleWebKit/537.36"
@@ -74,7 +74,6 @@ HASH_FIELDS: Final[Dict[int, str]] = {
 
 # 持久化与任务配置
 PERSIST_PATH: Final[str] = "persist/qwen/usage.json"
-MODELS_PERSIST_PATH: Final[str] = "persist/qwen/models.json"
 LOGIN_CONCURRENCY: Final[int] = 5
 LOGIN_BATCH: Final[int] = 10
 PERSIST_INTERVAL: Final[int] = 60

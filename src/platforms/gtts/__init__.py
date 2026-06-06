@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from src.platforms.gtts.adapter import GttsAdapter
+from src.platforms.gtts.adapter import Adapter, GttsAdapter
 
-__all__ = ["GttsAdapter"]
+__all__ = ["Adapter", "GttsAdapter"]

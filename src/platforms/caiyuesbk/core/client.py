@@ -10,6 +10,7 @@ import aiohttp
 
 from src.core.candidate import Candidate, make_id
 from ..accounts import API_KEYS
+from .constants import BASE_URL, CHAT_PATH
 from .headers import build_headers, make_ssl_ctx
 from .payloads import build_payload
 from .sse import parse_sse_line
@@ -17,8 +18,6 @@ from .sse import parse_sse_line
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES: int = 3
-BASE_URL: str = "https://caiyuesbk.top:16188"
-CHAT_PATH: str = "/v1/chat/completions"
 _SSL_CTX = make_ssl_ctx()
 
 

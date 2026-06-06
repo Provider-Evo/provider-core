@@ -291,7 +291,7 @@ import pytest
 
 from src.core.fncall.prompt.inject import inject_fncall
 from src.core.fncall.parsers.stream import FncallStreamParser
-from src.platforms.qwen.core.impl import QwenAdapter
+from src.platforms.qwen.core.adaptercore import QwenAdapter
 
 
 import pytest_asyncio

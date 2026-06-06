@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from .consts import (
+from .constants import (
     DEFAULT_STYLE,
     DEFAULT_VOICE,
     STYLES,

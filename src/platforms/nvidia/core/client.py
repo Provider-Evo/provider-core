@@ -129,7 +129,7 @@ class NvidiaClient:
 
     def _rebuild_candidates(self) -> None:
         """根据当前凭证重建候选项列表。"""
-        from .impl import CAPS
+        from .constants import CAPS
 
         self._candidates = [
             Candidate(
@@ -166,7 +166,7 @@ class NvidiaClient:
         Returns:
             可用候选项列表。
         """
-        from .impl import CAPS
+        from .constants import CAPS
 
         return [
             Candidate(

@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 # ── URL常量 ──────────────────────────────────────────────
-BASE_URL: str = "https://freeollama.oneplus1.top/"
+BASE_URL: str = "https://freeollama.oneplus1.top"
 CHAT_PATH: str = "/api/chat"
 
 # ── 发现配置 ──────────────────────────────────────────────

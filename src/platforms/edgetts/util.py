@@ -11,13 +11,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from .core.consts import CAPS, MODELS
+from .core.constants import CAPS, MODELS
 from .core.drm import build_wss_headers as build_headers
 from .core.drm import build_ssml as build_ssml
 from .core.drm import parse_tts_text_frame as parse_sse_line
 
 __all__ = [
     "EdgeTtsAdapter",
+    "Adapter",
     "MODELS",
     "CAPS",
     "build_headers",
@@ -39,12 +40,12 @@ def __getattr__(name: str) -> Any:
         AttributeError: 当属性名未注册时抛出。
     """
     if name == "EdgeTtsAdapter":
-        from .core.impl import (  # noqa: PLC0415
+        from .core.adaptercore import (  # noqa: PLC0415
             EdgeTtsAdapter as _EdgeTtsAdapter,
         )
         return _EdgeTtsAdapter
     if name == "Adapter":
-        from .core.impl import (  # noqa: PLC0415
+        from .core.adaptercore import (  # noqa: PLC0415
             EdgeTtsAdapter as _Adapter,
         )
 

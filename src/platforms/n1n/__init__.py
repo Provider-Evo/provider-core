@@ -1,5 +1,5 @@
-# src/platforms/n1n/__init__.py
 from __future__ import annotations
-from src.platforms.n1n.adapter import N1nAdapter
 
-__all__ = ["N1nAdapter"]
+from src.platforms.n1n.adapter import Adapter, N1nAdapter
+
+__all__ = ["Adapter", "N1nAdapter"]

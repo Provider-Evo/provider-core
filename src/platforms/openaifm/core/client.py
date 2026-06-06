@@ -9,6 +9,7 @@ import aiohttp
 from src.core.candidate import Candidate, make_id
 from src.core.errors import NotSupportedError
 from ..accounts import API_KEYS
+from .constants import BASE_URL, GENERATE_PATH
 from .headers import build_headers
 from .tts import (
     DEFAULT_STYLE,
@@ -44,7 +45,7 @@ class OpenaiFmClient:
         Returns:
             List of candidates.
         """
-        from .impl import CAPS, MODELS
+        from .constants import CAPS, MODELS
 
         return [
             Candidate(
@@ -157,7 +158,7 @@ class OpenaiFmClient:
         headers = build_headers(candidate.meta.get("api_key", ""))
         form_data = build_tts_form_data(text, prompt, selected_voice, "")
         async with self._session.post(
-            "https://www.openai.fm/api/generate",
+            BASE_URL + GENERATE_PATH,
             data=form_data,
             headers=headers,
             ssl=False,

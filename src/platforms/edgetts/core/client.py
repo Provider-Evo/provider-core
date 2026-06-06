@@ -24,7 +24,7 @@ import certifi
 from src.core.candidate import Candidate, make_id
 from src.core.errors import NotSupportedError
 from ..accounts import ACCOUNTS
-from .consts import (
+from .constants import (
     CAPS,
     DEFAULT_VOICE,
     MAX_RETRIES,

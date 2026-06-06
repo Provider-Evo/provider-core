@@ -11,16 +11,13 @@ import aiohttp
 from src.core.candidate import Candidate, make_id
 from ..accounts import API_KEYS
 
+from .constants import BASE_URL, CHAT_PATH, MODELS_PATH
 from .headers import build_headers
 from .payloads import build_payload
 from .sse import parse_sse_line
 
 logger = logging.getLogger(__name__)
 MAX_RETRIES: int = 3
-
-BASE_URL: str = "https://api.n1n.ai"
-CHAT_PATH: str = "/pg/chat/completions"
-MODELS_PATH: str = "/api/user/models?group=default"
 
 
 class N1nClient:

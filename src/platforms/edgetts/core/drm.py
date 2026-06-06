@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, Tuple
 
-from .consts import (
+from .constants import (
     TRUSTED_CLIENT_TOKEN,
     WIN_EPOCH,
     S_TO_NS,

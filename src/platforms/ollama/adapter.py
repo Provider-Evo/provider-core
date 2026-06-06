@@ -11,7 +11,7 @@ from typing import Any
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入 OllamaAdapter。"""
-    if name == "OllamaAdapter":
+    if name in ("OllamaAdapter", "Adapter"):
         from src.platforms.ollama.util import (  # noqa: PLC0415
             OllamaAdapter as _OllamaAdapter,
         )
@@ -22,4 +22,4 @@ def __getattr__(name: str) -> Any:
     )
 
 
-__all__ = ["OllamaAdapter"]
+__all__ = ["OllamaAdapter", "Adapter"]

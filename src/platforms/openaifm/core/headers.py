@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Dict
 
+from .constants import USER_AGENT
+
 
 def build_headers(api_key: str) -> Dict[str, str]:
     """构建 HTTP 请求头。
@@ -17,9 +19,5 @@ def build_headers(api_key: str) -> Dict[str, str]:
     return {
         "Content-Type": "application/x-www-form-urlencoded",
         "Authorization": "Bearer {}".format(api_key) if api_key else "",
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        ),
+        "User-Agent": USER_AGENT,
     }

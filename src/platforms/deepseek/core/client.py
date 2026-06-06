@@ -28,9 +28,9 @@ from src.platforms.deepseek.core.constants import (
 from src.platforms.deepseek.core.headers import build_headers
 from src.platforms.deepseek.core.hif import HifTokenManager, fetch_hif_tokens
 from src.platforms.deepseek.core.pow import WasmPow, download_wasm, get_pow_response
-from src.platforms.deepseek.core.session_api import create_session
-from src.platforms.deepseek.core.stream_parser import StreamParser
-from src.platforms.deepseek.core.user_api import login
+from src.platforms.deepseek.core.sessionapi import create_session
+from src.platforms.deepseek.core.streamparser import StreamParser
+from src.platforms.deepseek.core.userapi import login
 from src.core.candidate import Candidate, make_id
 
 logger = get_logger(__name__)

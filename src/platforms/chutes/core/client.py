@@ -12,9 +12,8 @@ import aiohttp
 from src.core.candidate import Candidate, make_id
 from ..accounts import API_KEYS
 
-from ..util import BASE_URL, CHAT_PATH
+from .constants import BASE_URL, CHAT_PATH, CAPS
 from .headers import build_headers
-from .impl import CAPS
 from .payloads import build_payload
 from .sse import parse_sse_line
 

@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from src.platforms.apiairforce.adapter import ApiairforceAdapter
+from .adapter import Adapter, ApiairforceAdapter
 
-__all__ = ["ApiairforceAdapter"]
+__all__ = ["Adapter", "ApiairforceAdapter"]

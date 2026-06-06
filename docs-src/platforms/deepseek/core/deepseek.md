@@ -10,7 +10,7 @@ DeepSeek 平台（DeepSeek 网页版）支持：
 ## 架构
 
 ```
-DeepSeekAdapter (adapter_impl.py)
+DeepSeekAdapter (adaptercore.py)
   └── DeepseekClient (client.py)
       ├── 账号管理 (_candidates, _rebuild_candidates)
       ├── HIF 令牌管理 (_hif_managers, 后台刷新)
@@ -24,12 +24,12 @@ DeepSeekAdapter (adapter_impl.py)
 | 文件 | 说明 |
 |------|------|
 | `client.py` | 核心客户端，HIF 管理、PoW、流式补全 |
-| `adapter_impl.py` | 适配器实现 |
+| `adaptercore.py` | 适配器实现 |
 | `hif.py` | HIF 令牌管理器（HTTP 身份伪造令牌） |
 | `pow.py` | WASM PoW 计算器 |
-| `models_cache.py` | DeepSeek 专用的模型缓存（与 src/core/ 中的不同） |
-| `session_api.py` | 会话管理 API |
-| `user_api.py` | 用户管理 API |
+| `modelcache.py` | DeepSeek 专用的模型缓存（与 src/core/ 中的不同） |
+| `sessionapi.py` | 会话管理 API |
+| `userapi.py` | 用户管理 API |
 
 ## HIF 系统
 
@@ -81,7 +81,7 @@ enabled_platforms = ["qwen", "deepseek"]  # 添加 deepseek 以启用
 
 ## 注意事项
 
-1. **`models_cache.py` 是独立副本** — 与 `src/core/models_cache.py` 不同
+1. **`modelcache.py` 是独立副本** — 与 `src/core/models_cache.py` 不同
 2. **无 `test.py` 文件** — 需要手动测试
 3. **黑名单默认包含 deepseek** — 需从 `platform_list` 中移除才能启用
 4. **HIF 是核心认证机制** — 与常规 token 不同

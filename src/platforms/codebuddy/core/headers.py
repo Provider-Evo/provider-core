@@ -7,9 +7,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-BASE_URL: str = "https://www.codebuddy.ai"
-CHAT_PATH: str = "/v2/chat/completions"
-IDE_VERSION: str = "1.0.7"
+from .constants import BASE_URL, CHAT_PATH, IDE_VERSION
 
 
 def build_headers(

@@ -77,7 +77,7 @@ class CerebrasClient:
 
     def _rebuild_candidates(self) -> None:
         """根据当前 API_KEYS 重建候选项列表。"""
-        from .impl import CAPS
+        from .adaptercore import CAPS
 
         self._candidates = [
             Candidate(

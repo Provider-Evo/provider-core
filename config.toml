@@ -34,9 +34,6 @@ group_list_type = "whitelist"
 platform_list_type = "blacklist"
 platform_list = ["caiyuesbk", "cerebras", "chutes", "codebuddy", "n1n", "nvidia", "openrouter", "perplexity", "deepseek", "cursor", "deepseek"]
 
-[platforms.aitianhu2]
-base_url = "https://www.aitianhu2.top"
-
 [fncall]
 protocol = "antml"
 record_prompt = true

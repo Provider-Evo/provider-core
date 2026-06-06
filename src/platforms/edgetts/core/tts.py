@@ -7,7 +7,7 @@ from typing import Any, Tuple, Dict
 
 import certifi
 
-from .consts import (
+from .constants import (
     DEFAULT_FORMAT,
     DEFAULT_PITCH,
     DEFAULT_RATE,

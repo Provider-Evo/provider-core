@@ -1259,7 +1259,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 ### 当前版本：v2.2.49
 
 ✅ 已完成（v2.2.49）：
-- `config.toml` 新增 `[platforms.aitianhu2] base_url = "https://www.aitianhu2.top"`；`[platforms.<name>]` 子段作为平台级自定义配置入口（覆盖平台内置默认端点），模板同步提供注释说明
+- 全平台合规审计与修正：18 个平台逐一对照 platform-guide 规范检查并修复偏差
+- `core/constants.py` 补齐：apiairforce、caiyuesbk、cerebras、chatmoe 四个平台提取内联常量至标准 `constants.py`（BASE_URL、MODELS、CAPS 等）
+- n1n 门面重写：`adapter.py` 从 783 行实现改为 5 行纯门面 re-export，`util.py` 引入 `__getattr__` 懒加载，常量统一从 `core/constants.py` 导入
+- qwen 常量集中化：`BASE_URL`/`USER_AGENT` 从 `shared.py` 移至 `core/constants.py`，消除重复定义
+- openaifm `util.py` 补齐 `MODELS`/`CAPS` 导出
+- ollama、perplexity 清理顶层死代码兼容 shim
 
 ✅ 已完成（v2.2.48）：
 - fncall 全协议健康检查：6 个协议逐一审计插值完整性、参数一致性、schema 字段完整性、prompt 结构一致性、测试覆盖；`format_tool_descs` 已支持嵌套 object/array/oneOf/anyOf/allOf/additionalProperties 递归渲染（max_depth=4），无需改动；上游 tools 透传链路（openai/anthropic/gateway）完整无裁剪
@@ -1676,7 +1681,7 @@ SOFTWARE.
 
 ## 📮 联系方式
 
-- **作者**：nichengfuben
+- **作者**：nightpoem
 - **邮箱**：nichengfuben@outlook.com
 - **主页**：https://github.com/nichengfuben/provider-v2
 
@@ -1692,6 +1697,6 @@ SOFTWARE.
 
 **如果这个项目对你有帮助，请给一个 ⭐️ Star！**
 
-Made with ❤️ by [nichengfuben](https://github.com/nichengfuben)
+Made with ❤️ by [nightpoem](https://github.com/nichengfuben)
 
 </div>

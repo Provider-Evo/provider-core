@@ -9,7 +9,8 @@ import aiohttp
 
 from src.core.candidate import Candidate, make_id
 from ..accounts import API_KEYS
-from .headers import BASE_URL, CHAT_PATH, MODELS_PATH, build_headers
+from .constants import BASE_URL, CAPS, CHAT_PATH, MODELS, MODELS_PATH
+from .headers import build_headers
 from .payloads import build_payload
 from .sse import parse_sse_line
 
@@ -17,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 MAX_RETRIES: int = 3
 MODEL_CACHE_TTL: int = 24 * 60 * 60  # 24 小时
-MODELS: List[str] = ["roleplay:free"]
-CAPS: Dict[str, bool] = {"chat": True}
 
 
 class Client:

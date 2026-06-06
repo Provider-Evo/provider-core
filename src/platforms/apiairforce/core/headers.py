@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Dict
 
-BASE_URL: str = "https://api.airforce"
-CHAT_PATH: str = "/v1/chat/completions"
-MODELS_PATH: str = "/v1/models"
+from .constants import BASE_URL
 
 
 def build_headers(token: str = "") -> Dict[str, str]:

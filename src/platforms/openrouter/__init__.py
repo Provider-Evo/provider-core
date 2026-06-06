@@ -1,5 +1,6 @@
-# src/platforms/openrouter/__init__.py
 from __future__ import annotations
-from src.platforms.openrouter.adapter import OpenRouterAdapter
 
-__all__ = ["OpenRouterAdapter"]
+# src/platforms/openrouter/__init__.py
+from src.platforms.openrouter.adapter import Adapter, OpenRouterAdapter
+
+__all__ = ["OpenRouterAdapter", "Adapter"]

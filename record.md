@@ -81,75 +81,92 @@ src/platforms/__init__.py
 src/platforms/apiairforce/__init__.py
 src/platforms/apiairforce/adapter.py
 src/platforms/apiairforce/client.py
+src/platforms/apiairforce/core/adaptercore.py
+src/platforms/apiairforce/core/constants.py
 src/platforms/apiairforce/util.py
 src/platforms/base.py
 src/platforms/caiyuesbk/__init__.py
 src/platforms/caiyuesbk/adapter.py
 src/platforms/caiyuesbk/client.py
+src/platforms/caiyuesbk/core/adaptercore.py
+src/platforms/caiyuesbk/core/constants.py
 src/platforms/caiyuesbk/util.py
 src/platforms/cerebras/__init__.py
 src/platforms/cerebras/adapter.py
 src/platforms/cerebras/client.py
+src/platforms/cerebras/core/adaptercore.py
+src/platforms/cerebras/core/constants.py
 src/platforms/cerebras/util.py
 src/platforms/chatmoe/__init__.py
 src/platforms/chatmoe/adapter.py
 src/platforms/chatmoe/client.py
+src/platforms/chatmoe/core/adaptercore.py
+src/platforms/chatmoe/core/constants.py
 src/platforms/chatmoe/util.py
 src/platforms/chutes/__init__.py
 src/platforms/chutes/adapter.py
 src/platforms/chutes/client.py
+src/platforms/chutes/core/adaptercore.py
+src/platforms/chutes/core/constants.py
 src/platforms/chutes/util.py
 src/platforms/codebuddy/__init__.py
 src/platforms/codebuddy/adapter.py
 src/platforms/codebuddy/client.py
+src/platforms/codebuddy/core/adaptercore.py
+src/platforms/codebuddy/core/constants.py
 src/platforms/codebuddy/util.py
 src/platforms/cursor/__init__.py
 src/platforms/cursor/adapter.py
 src/platforms/cursor/client.py
+src/platforms/cursor/core/adaptercore.py
 src/platforms/cursor/util.py
 src/platforms/deepseek/__init__.py
 src/platforms/deepseek/adapter.py
 src/platforms/deepseek/core/__init__.py
-src/platforms/deepseek/core/adapter_impl.py
+src/platforms/deepseek/core/adaptercore.py
 src/platforms/deepseek/core/client.py
 src/platforms/deepseek/core/constants.py
 src/platforms/deepseek/core/headers.py
 src/platforms/deepseek/core/hif.py
-src/platforms/deepseek/core/impl.py
-src/platforms/deepseek/core/models_cache.py
+src/platforms/deepseek/core/modelcache.py
 src/platforms/deepseek/core/pow.py
-src/platforms/deepseek/core/session_api.py
-src/platforms/deepseek/core/stream_parser.py
-src/platforms/deepseek/core/user_api.py
+src/platforms/deepseek/core/sessionapi.py
+src/platforms/deepseek/core/streamparser.py
+src/platforms/deepseek/core/userapi.py
 src/platforms/deepseek/util.py
 src/platforms/edge_tts/__init__.py
 src/platforms/edge_tts/adapter.py
 src/platforms/edge_tts/client.py
 src/platforms/edge_tts/util.py
+src/platforms/edgetts/core/adaptercore.py
 src/platforms/edgetts/core/client.py
-src/platforms/edgetts/core/consts.py
+src/platforms/edgetts/core/constants.py
 src/platforms/edgetts/core/drm.py
-src/platforms/edgetts/core/impl.py
 src/platforms/edgetts/core/tts.py
 src/platforms/edgetts/core/websocket.py
 src/platforms/edgetts/util.py
 src/platforms/gtts/__init__.py
 src/platforms/gtts/adapter.py
 src/platforms/gtts/client.py
+src/platforms/gtts/core/adaptercore.py
 src/platforms/gtts/util.py
 src/platforms/n1n/__init__.py
 src/platforms/n1n/adapter.py
 src/platforms/n1n/client.py
+src/platforms/n1n/core/adaptercore.py
+src/platforms/n1n/core/constants.py
 src/platforms/n1n/util.py
 src/platforms/nvidia/__init__.py
 src/platforms/nvidia/adapter.py
 src/platforms/nvidia/client.py
+src/platforms/nvidia/core/adaptercore.py
+src/platforms/nvidia/core/constants.py
 src/platforms/nvidia/util.py
 src/platforms/ollama/__init__.py
 src/platforms/ollama/adapter.py
 src/platforms/ollama/client.py
 src/platforms/ollama/core/__init__.py
-src/platforms/ollama/core/adapter_impl.py
+src/platforms/ollama/core/adaptercore.py
 src/platforms/ollama/core/client.py
 src/platforms/ollama/core/constants.py
 src/platforms/ollama/util.py
@@ -157,25 +174,28 @@ src/platforms/openai_fm/__init__.py
 src/platforms/openai_fm/adapter.py
 src/platforms/openai_fm/client.py
 src/platforms/openai_fm/util.py
+src/platforms/openaifm/core/adaptercore.py
 src/platforms/openaifm/core/client.py
-src/platforms/openaifm/core/consts.py
+src/platforms/openaifm/core/constants.py
 src/platforms/openaifm/core/headers.py
 src/platforms/openaifm/core/tts.py
 src/platforms/openaifm/util.py
 src/platforms/openrouter/__init__.py
 src/platforms/openrouter/adapter.py
 src/platforms/openrouter/client.py
+src/platforms/openrouter/core/adaptercore.py
 src/platforms/openrouter/util.py
 src/platforms/perplexity/__init__.py
 src/platforms/perplexity/adapter.py
 src/platforms/perplexity/client.py
+src/platforms/perplexity/core/adaptercore.py
+src/platforms/perplexity/core/constants.py
 src/platforms/perplexity/util.py
 src/platforms/qwen/__init__.py
 src/platforms/qwen/adapter.py
 src/platforms/qwen/core/__init__.py
-src/platforms/qwen/core/adapter_impl.py
+src/platforms/qwen/core/adaptercore.py
 src/platforms/qwen/core/client.py
-src/platforms/qwen/core/impl.py
 src/platforms/qwen/core/constants.py
 src/platforms/qwen/core/shared.py
 src/platforms/qwen/util.py
@@ -269,6 +289,17 @@ docs-src/src/platforms/openaifm/INDEX.md
 docs-src/src/platforms/openrouter/INDEX.md
 docs-src/src/platforms/perplexity/INDEX.md
 docs-src/src/platforms/qwen/INDEX.md
+docs-src/agents.md
+docs-src/src/agents.md
+docs-src/src/platforms/agents.md
+docs-src/src/platforms/guide.md
+docs-src/src/platforms/deepseek/core/deepseek.md
+docs-src/src/platforms/ollama/core/ollama.md
+docs-src/src/platforms/qwen/core/qwen.md
+docs-src/platforms/deepseek/core/deepseek.md
+docs-src/platforms/ollama/core/ollama.md
+docs-src/platforms/qwen/core/qwen.md
+docs-src/platforms/guide.md
 
 2026-06-05 23:30:00
 
@@ -709,8 +740,157 @@ pytest: 495 passed, 33 skipped
 
 [_write_report.py] 删除审计子代理生成的在项目根目录的临时报告脚本（206 行），非项目结构一部分
 
-2026-06-06 19:30:00
 
-[config.toml] 新增 [platforms.aitianhu2] 子段暴露 base_url 配置项（[platforms.<name>] 子段作为平台级自定义配置入口，覆盖平台内置默认端点）；版本 2.2.48 → 2.2.49
-[template/template_config.toml] 同步新增 [platforms.<name>] 注释说明 + [platforms.aitianhu2] 默认值；版本 2.2.48 → 2.2.49
-[README.md] 版本徽章和路线图更新为 2.2.49：[platforms.<name>] 子段暴露 base_url 配置
+2026-06-06 23:10:00
+
+[src/platforms/apiairforce/core/constants.py] 新建：提取内联 BASE_URL/CHAT_PATH/MODELS_PATH/MODELS/CAPS 至标准 constants.py
+[src/platforms/apiairforce/core/adaptercore.py] 新建：从 core/impl.py 重命名，PlatformAdapter 接口标准命名
+[src/platforms/apiairforce/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/apiairforce/core/client.py] 更新 import 路径引用 constants
+[src/platforms/apiairforce/core/headers.py] 更新 import 路径引用 constants
+[src/platforms/apiairforce/core/__init__.py] 更新导出引用 adaptercore
+[src/platforms/apiairforce/adapter.py] 门面 re-export 更新
+[src/platforms/apiairforce/util.py] 懒加载引用更新
+[src/platforms/apiairforce/__init__.py] 导出更新
+[src/platforms/caiyuesbk/core/constants.py] 新建：提取内联常量至标准 constants.py
+[src/platforms/caiyuesbk/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/caiyuesbk/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/caiyuesbk/core/client.py] 更新 import 路径
+[src/platforms/caiyuesbk/core/__init__.py] 更新导出
+[src/platforms/caiyuesbk/adapter.py] 门面 re-export 更新
+[src/platforms/caiyuesbk/util.py] 懒加载引用更新
+[src/platforms/caiyuesbk/__init__.py] 导出更新
+[src/platforms/cerebras/core/constants.py] 新建：提取 MODELS/CAPS/FETCH_MODELS_ENABLED/MODEL_FETCH_INTERVAL
+[src/platforms/cerebras/core/adaptercore.py] 新建：从 core/impl.py 重命名；Adapter 别名统一
+[src/platforms/cerebras/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/cerebras/core/client.py] 更新 import 路径
+[src/platforms/cerebras/core/__init__.py] 更新导出
+[src/platforms/cerebras/adapter.py] 门面 re-export 更新
+[src/platforms/cerebras/util.py] 懒加载引用更新
+[src/platforms/cerebras/__init__.py] 导出更新
+[src/platforms/chatmoe/core/constants.py] 新建：提取内联常量；client.py 硬编码 URL 改为引用 constants
+[src/platforms/chatmoe/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/chatmoe/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/chatmoe/core/client.py] 更新 import 路径
+[src/platforms/chatmoe/core/__init__.py] 更新导出
+[src/platforms/chatmoe/adapter.py] 门面 re-export 更新
+[src/platforms/chatmoe/util.py] 懒加载引用更新
+[src/platforms/chatmoe/__init__.py] 导出更新
+[src/platforms/chutes/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/chutes/core/constants.py] 新建：提取常量
+[src/platforms/chutes/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/chutes/core/client.py] 更新 import 路径
+[src/platforms/chutes/core/__init__.py] 更新导出
+[src/platforms/chutes/adapter.py] 门面 re-export 更新
+[src/platforms/chutes/util.py] 懒加载引用更新
+[src/platforms/chutes/__init__.py] 导出更新
+[src/platforms/codebuddy/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/codebuddy/core/constants.py] 新建：提取常量
+[src/platforms/codebuddy/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/codebuddy/core/headers.py] 更新 import 路径
+[src/platforms/codebuddy/adapter.py] 门面 re-export 更新
+[src/platforms/codebuddy/util.py] 懒加载引用更新
+[src/platforms/codebuddy/__init__.py] 导出更新
+[src/platforms/cursor/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/cursor/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/cursor/upload.txt] 删除：非项目文件
+[src/platforms/cursor/adapter.py] 门面 re-export 更新
+[src/platforms/cursor/util.py] 懒加载引用更新
+[src/platforms/cursor/__init__.py] 导出更新
+[src/platforms/deepseek/core/adaptercore.py] 新建：从 core/adapter_impl.py 重命名
+[src/platforms/deepseek/core/modelcache.py] 新建：从 core/models_cache.py 重命名（禁下划线规则）
+[src/platforms/deepseek/core/sessionapi.py] 新建：从 core/session_api.py 重命名
+[src/platforms/deepseek/core/streamparser.py] 新建：从 core/stream_parser.py 重命名
+[src/platforms/deepseek/core/userapi.py] 新建：从 core/user_api.py 重命名
+[src/platforms/deepseek/core/adapter_impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/deepseek/core/impl.py] 删除：合并入 adaptercore.py
+[src/platforms/deepseek/core/models_cache.py] 删除：重命名为 modelcache.py
+[src/platforms/deepseek/core/session_api.py] 删除：重命名为 sessionapi.py
+[src/platforms/deepseek/core/stream_parser.py] 删除：重命名为 streamparser.py
+[src/platforms/deepseek/core/user_api.py] 删除：重命名为 userapi.py
+[src/platforms/deepseek/core/client.py] 更新 import 路径
+[src/platforms/deepseek/adapter.py] 门面 re-export 更新
+[src/platforms/deepseek/util.py] 懒加载引用更新
+[src/platforms/deepseek/__init__.py] 导出更新
+[src/platforms/edgetts/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/edgetts/core/constants.py] 新建：从 core/consts.py 重命名（标准命名）
+[src/platforms/edgetts/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/edgetts/core/consts.py] 删除：重命名为 constants.py
+[src/platforms/edgetts/core/client.py] 更新 import 路径
+[src/platforms/edgetts/core/drm.py] 更新 import 路径
+[src/platforms/edgetts/core/tts.py] 更新 import 路径
+[src/platforms/edgetts/adapter.py] 门面 re-export 更新
+[src/platforms/edgetts/util.py] 懒加载引用更新
+[src/platforms/edgetts/__init__.py] 导出更新
+[src/platforms/gtts/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/gtts/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/gtts/adapter.py] 门面 re-export 更新
+[src/platforms/gtts/util.py] 懒加载引用更新
+[src/platforms/gtts/__init__.py] 导出更新
+[src/platforms/n1n/adapter.py] 从 783 行实现重写为 5 行纯门面 re-export
+[src/platforms/n1n/util.py] 引入 __getattr__ 懒加载，移除重复常量定义，改为从 core/constants.py 导入
+[src/platforms/n1n/core/adaptercore.py] CAPS/FETCH_MODELS_ENABLED/MODEL_FETCH_INTERVAL 改为从 .constants 导入
+[src/platforms/n1n/core/constants.py] 新建：集中平台常量
+[src/platforms/n1n/core/impl.py] 删除：合并入 adaptercore.py
+[src/platforms/n1n/core/client.py] 更新 import 路径
+[src/platforms/n1n/__init__.py] 补齐 Adapter 通用别名
+[src/platforms/nvidia/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/nvidia/core/constants.py] 新建：提取常量
+[src/platforms/nvidia/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/nvidia/core/client.py] 更新 import 路径
+[src/platforms/nvidia/adapter.py] 门面 re-export 更新
+[src/platforms/nvidia/util.py] 懒加载引用更新
+[src/platforms/nvidia/__init__.py] 导出更新
+[src/platforms/ollama/core/adaptercore.py] 新建：从 core/adapter_impl.py 重命名
+[src/platforms/ollama/core/adapter_impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/ollama/core/impl.py] 删除：合并入 adaptercore.py
+[src/platforms/ollama/core/constants.py] 更新常量引用
+[src/platforms/ollama/adapter.py] 门面 re-export 更新
+[src/platforms/ollama/util.py] 懒加载引用更新
+[src/platforms/ollama/__init__.py] 导出更新
+[src/platforms/openaifm/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/openaifm/core/constants.py] 新建：从 core/consts.py 重命名（标准命名）
+[src/platforms/openaifm/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/openaifm/core/consts.py] 删除：重命名为 constants.py
+[src/platforms/openaifm/core/client.py] 更新 import 路径
+[src/platforms/openaifm/core/headers.py] 更新 import 路径
+[src/platforms/openaifm/core/tts.py] 更新 import 路径
+[src/platforms/openaifm/adapter.py] 门面 re-export 更新
+[src/platforms/openaifm/util.py] 补齐 MODELS/CAPS 导出
+[src/platforms/openaifm/__init__.py] 导出更新
+[src/platforms/openrouter/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/openrouter/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/openrouter/adapter.py] 门面 re-export 更新
+[src/platforms/openrouter/util.py] 懒加载引用更新
+[src/platforms/openrouter/__init__.py] 导出更新
+[src/platforms/perplexity/core/adaptercore.py] 新建：从 core/impl.py 重命名
+[src/platforms/perplexity/core/constants.py] 新建：提取常量
+[src/platforms/perplexity/core/impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/perplexity/adapter.py] 门面 re-export 更新
+[src/platforms/perplexity/util.py] 懒加载引用更新
+[src/platforms/perplexity/__init__.py] 导出更新
+[src/platforms/qwen/core/adaptercore.py] 新建：从 core/adapter_impl.py 重命名
+[src/platforms/qwen/core/adapter_impl.py] 删除：重命名为 adaptercore.py
+[src/platforms/qwen/core/impl.py] 删除：合并入 adaptercore.py
+[src/platforms/qwen/core/constants.py] BASE_URL/USER_AGENT 从 shared.py 集中至此
+[src/platforms/qwen/core/shared.py] 改为从 .constants 导入并 re-export
+[src/platforms/qwen/adapter.py] 门面 re-export 更新
+[src/platforms/qwen/util.py] 懒加载引用更新
+[src/platforms/qwen/__init__.py] 导出更新
+[template/template_config.toml] 版本 2.2.48 → 2.2.49
+[README.md] 版本徽章和路线图更新为 2.2.49
+[docs-src/agents.md] 更新命名陷阱和导入链引用（adapter_impl → adaptercore, models_cache → modelcache）
+[docs-src/src/agents.md] 更新 models_cache WARNING 章节
+[docs-src/src/platforms/agents.md] 更新 CRITICAL 章节中的文件名引用
+[docs-src/src/platforms/guide.md] 更新命名表和依赖图中的 impl → adaptercore 引用
+[docs-src/src/platforms/deepseek/core/deepseek.md] 更新架构图和关键文件表中的文件名引用
+[docs-src/src/platforms/ollama/core/ollama.md] 更新架构图和关键文件表中的文件名引用
+[docs-src/src/platforms/qwen/core/qwen.md] 更新架构图和关键文件表中的文件名引用
+[docs-src/platforms/deepseek/core/deepseek.md] 同步更新（镜像副本）
+[docs-src/platforms/ollama/core/ollama.md] 同步更新（镜像副本）
+[docs-src/platforms/qwen/core/qwen.md] 同步更新（镜像副本）
+[docs-src/platforms/guide.md] 同步更新（镜像副本）
+[tests/src/platforms/qwen/test_qwen37max_protocols.py] 修复 import 路径 core.impl → core.adaptercore
+
+py_compile: all platform files compiled successfully
+pytest: 531 passed, 16 skipped, 3 warnings

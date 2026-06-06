@@ -10,6 +10,7 @@ import aiohttp
 
 from src.core.candidate import Candidate, make_id
 from ..accounts import API_KEYS
+from .constants import BASE_URL, CHAT_PATH
 from .headers import build_headers
 from .payloads import build_payload
 from .sse import parse_sse_line
@@ -55,7 +56,7 @@ class ChatmoeClient:
 
     def _rebuild_candidates(self) -> None:
         """根据当前凭证重建候选项列表。"""
-        from .impl import CAPS  # noqa: PLC0415
+        from .adaptercore import CAPS  # noqa: PLC0415
 
         self._candidates = [
             Candidate(
@@ -171,7 +172,7 @@ class ChatmoeClient:
             thinking=thinking,
             search=search,
         )
-        url = "{}{}".format("https://chatmoe.cn", "/api/chat")
+        url = "{}{}".format(BASE_URL, CHAT_PATH)
 
         async with self._session.post(
             url,

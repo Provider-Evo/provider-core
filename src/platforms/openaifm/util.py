@@ -9,10 +9,12 @@ loads :class:`OpenaiFmAdapter` lazily via ``__getattr__``.
 
 from typing import Any
 
-from .core.consts import (
+from .core.constants import (
+    CAPS,
     DEFAULT_MODEL,
     DEFAULT_STYLE,
     DEFAULT_VOICE,
+    MODELS,
     STYLES,
     STYLE_PROMPTS,
     VOICES,
@@ -22,6 +24,9 @@ from .core.tts import build_tts_form_data
 
 __all__ = [
     "OpenaiFmAdapter",
+    "Adapter",
+    "MODELS",
+    "CAPS",
     "VOICES",
     "STYLES",
     "DEFAULT_VOICE",
@@ -46,13 +51,13 @@ def __getattr__(name: str) -> Any:
         AttributeError: If the name is not recognized.
     """
     if name == "OpenaiFmAdapter":
-        from .core.impl import (  # noqa: PLC0415
+        from .core.adaptercore import (  # noqa: PLC0415
             OpenaiFmAdapter as _OpenaiFmAdapter,
         )
 
         return _OpenaiFmAdapter
     if name == "Adapter":
-        from .core.impl import (  # noqa: PLC0415
+        from .core.adaptercore import (  # noqa: PLC0415
             OpenaiFmAdapter as _Adapter,
         )
 

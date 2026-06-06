@@ -64,13 +64,6 @@ group_list_type = "whitelist"
 platform_list_type = "blacklist"  # "blacklist": 排除列表中的平台; "whitelist": 仅使用列表中的平台
 platform_list = []
 
-# 平台级自定义配置
-# [platforms.<platform_name>]
-#   base_url = "https://..."  # 覆盖平台内置的默认端点
-
-[platforms.aitianhu2]
-base_url = "https://www.aitianhu2.top"
-
 [fncall]
 # 协议模式: "xml" | "original" | "antml" | "bracket" | "custom" | "nous"
 protocol = "xml"
