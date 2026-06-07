@@ -131,6 +131,32 @@ async def dispatch(
 
     # 协议注入延迟到候选项选择后（_single/_race 中按平台解析协议）
     final_msgs = messages
+
+    # 无 tools 时，将 system 消息折叠到第一条 user 消息中，
+    # 确保所有平台都能收到系统指令（部分平台不原生支持 system role）
+    if not tools:
+        sys_parts = []
+        non_sys = []
+        for m in final_msgs:
+            if m.get("role") == "system":
+                c = m.get("content", "")
+                if c:
+                    sys_parts.append(c if isinstance(c, str) else str(c))
+            else:
+                non_sys.append(m)
+        if sys_parts:
+            sys_text = "\n\n".join(sys_parts)
+            merged = list(non_sys)
+            for i, m in enumerate(merged):
+                if m.get("role") == "user":
+                    old = m.get("content", "")
+                    old_text = old if isinstance(old, str) else str(old)
+                    merged[i] = {**m, "content": sys_text + "\n\n" + old_text}
+                    break
+            else:
+                merged.insert(0, {"role": "user", "content": sys_text})
+            final_msgs = merged
+
     if tools:
         thinking = False
 

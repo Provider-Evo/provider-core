@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.58-blue)
-![Version](https://img.shields.io/badge/version-2.2.58-blue)
+![Status](https://img.shields.io/badge/status-v2.2.59-blue)
+![Version](https://img.shields.io/badge/version-2.2.59-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.58
+### 当前版本：v2.2.59
+
+✅ 已完成（v2.2.59）：
+- 修复 `dispatch()` 无 tools 时 system 消息处理：将 `role=system` 消息折叠到第一条 user 消息，确保所有平台（包括不原生支持 system role 的平台如 Qwen）都能收到系统指令
 
 ✅ 已完成（v2.2.58）：
 - 修复 `create_embeddings()` 路由：改用 `get_candidates(model=, capability=)` 双重过滤，优先选择有请求模型的服务器，回退到仅 capability 过滤保证可用性
