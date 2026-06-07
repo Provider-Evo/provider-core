@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.54-blue)
-![Version](https://img.shields.io/badge/version-2.2.54-blue)
+![Status](https://img.shields.io/badge/status-v2.2.55-blue)
+![Version](https://img.shields.io/badge/version-2.2.55-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.54
+### 当前版本：v2.2.55
+
+✅ 已完成（v2.2.55）：
+- Ollama candidates() 运行时 embedding 检测：添加模型名关键词检测覆盖缓存中过期的 `embedding: false`
+- Ollama collect_servers() 添加 skip_network 参数跳过网络抓取
+- Ollama background_setup() DYNAMIC_DISCOVERY=False 时仍验证 ACCOUNTS 本地服务器
 
 ✅ 已完成（v2.2.54）：
 - Ollama 动态服务器发现关闭：`DYNAMIC_DISCOVERY` 设为 `False`，Ollama 平台仅使用持久化缓存中的服务器数据，不再执行网络抓取和定时刷新

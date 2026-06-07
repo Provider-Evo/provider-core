@@ -383,6 +383,7 @@ def _verify_server(ip: str) -> Optional[Dict[str, Any]]:
 
 def collect_servers(
     additional: Optional[List[str]] = None,
+    skip_network: bool = False,
 ) -> Dict[str, Any]:
     """收集所有可用的 Ollama 服务器（网络 I/O 副作用）。
 
@@ -390,27 +391,30 @@ def collect_servers(
 
     Args:
         additional: 附加服务器 IP 列表。
+        skip_network: 跳过网络抓取，仅验证 additional 列表中的服务器。
 
     Returns:
         服务器字典 {ip: server_info}。
     """
     all_ips: List[str] = []
-    html = _fetch_page(1)
-    if html:
-        pages = _parse_pages(html)
-        all_ips.extend(_parse_ips(html))
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as ex:
-            futs = {
-                ex.submit(_fetch_page, p): p
-                for p in range(2, pages + 1)
-            }
-            for f in concurrent.futures.as_completed(futs):
-                r = f.result()
-                if r:
-                    all_ips.extend(_parse_ips(r))
+    if not skip_network:
+        html = _fetch_page(1)
+        if html:
+            pages = _parse_pages(html)
+            all_ips.extend(_parse_ips(html))
 
-    all_ips = list(set(all_ips))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as ex:
+                futs = {
+                    ex.submit(_fetch_page, p): p
+                    for p in range(2, pages + 1)
+                }
+                for f in concurrent.futures.as_completed(futs):
+                    r = f.result()
+                    if r:
+                        all_ips.extend(_parse_ips(r))
+
+        all_ips = list(set(all_ips))
 
     if additional:
         for s in additional:
@@ -577,9 +581,25 @@ class OllamaClient:
     async def background_setup(self) -> None:
         """后台完善：执行服务器发现并启动定时刷新。"""
         if not DYNAMIC_DISCOVERY:
-            # 仅使用持久化缓存，不执行网络发现，不启动定时刷新
+            # 仅验证 ACCOUNTS 本地服务器，不执行网络发现，不启动定时刷新
+            additional = [acc.server_url for acc in ACCOUNTS if acc.server_url]
+            if additional:
+                try:
+                    loop = asyncio.get_running_loop()
+                    servers, registry = await loop.run_in_executor(
+                        None,
+                        lambda: _do_refresh(
+                            force=True,
+                            additional=additional,
+                            skip_network=True,
+                        ),
+                    )
+                    self._servers = servers
+                    self._registry = registry
+                except Exception as e:
+                    logger.warning("ollama本地服务器验证失败: %s", e)
             logger.info(
-                "ollama动态发现已禁用，仅使用缓存（%d服务器, %d模型）",
+                "ollama动态发现已禁用，仅验证本地账号（%d服务器, %d模型）",
                 len(self._servers),
                 len(self._registry),
             )
@@ -658,6 +678,10 @@ class OllamaClient:
                 for k, v in m_info.get("capabilities", {}).items():
                     if v:
                         caps[k] = True
+            if not caps.get("embedding"):
+                _embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
+                if any(kw in m.lower() for m in models for kw in _embed_kw):
+                    caps["embedding"] = True
             out.append(
                 Candidate(
                     id=make_id("ollama"),
@@ -894,19 +918,21 @@ def _extract_usage(data: Dict[str, Any]) -> Dict[str, int]:
 def _do_refresh(
     force: bool = False,
     additional: Optional[List[str]] = None,
+    skip_network: bool = False,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """同步刷新逻辑，供 run_in_executor 调用。
 
     Args:
         force: 是否强制刷新。
         additional: 附加服务器 URL 列表。
+        skip_network: 跳过网络抓取，仅验证 additional 列表。
 
     Returns:
         (servers, registry) 元组。
     """
     if not force and not needs_refresh():
         return load_cache()
-    servers = collect_servers(additional=additional)
+    servers = collect_servers(additional=additional, skip_network=skip_network)
     registry = build_registry(servers)
     save_cache(servers, registry)
     return servers, registry
