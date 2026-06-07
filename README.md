@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.53-blue)
-![Version](https://img.shields.io/badge/version-2.2.53-blue)
+![Status](https://img.shields.io/badge/status-v2.2.54-blue)
+![Version](https://img.shields.io/badge/version-2.2.54-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.53
+### 当前版本：v2.2.54
+
+✅ 已完成（v2.2.54）：
+- Ollama 动态服务器发现关闭：`DYNAMIC_DISCOVERY` 设为 `False`，Ollama 平台仅使用持久化缓存中的服务器数据，不再执行网络抓取和定时刷新
 
 ✅ 已完成（v2.2.53）：
 - 代理 localhost 直连修复：`_should_proxy_url()` 新增 `_LOCAL_HOSTS` 正则匹配 `localhost` 和 `*.localhost`，启用全局代理时本地地址不再被误判为需要代理，修复 Ollama 等本地服务连接失败问题

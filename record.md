@@ -254,12 +254,15 @@ tests/src/core/utils/test_ids.py
 tests/src/core/utils/test_io_utils.py
 tests/src/core/utils/test_retry.py
 tests/src/core/utils/test_scheduler.py
+tests/src/platforms/ollama/test_ollama_embedding.py
+tests/src/platforms/ollama/test_ollama_mvp.py
 tests/src/platforms/ollama/test_ollama_servers.py
 tests/src/platforms/qwen/test_qwen37max_protocols.py
 tests/src/routes/test_anthropic.py
 tests/src/routes/test_health.py
 tests/src/routes/test_models.py
 tests/src/routes/test_openai.py
+tests/src/test_logger.py
 docs-src/INDEX.md
 docs-src/src/webui/INDEX.md
 docs-src/src/webui/app.md
@@ -928,3 +931,40 @@ pytest: 148 passed (fncall tests)
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.50 → 2.2.51
 
 pytest: 531 passed, 16 skipped, 3 warnings
+
+2026-06-07 01:00:00
+
+[src/platforms/ollama/core/adaptercore.py] 新增 create_embedding() 方法，委托给 OllamaClient，附带未初始化状态守卫
+[src/platforms/ollama/core/client.py] 新增 create_embedding() 方法调用 /api/embed；修复 _verify_server() 处理完整 URL 格式的 bug（http://或https://前缀不再重复添加）；增强 detect_capabilities() embedding 模型名称关键词检测（bge/nomic/text2vec/e5-/gte-/sentence/embed）
+[src/platforms/ollama/core/constants.py] 新增 EMBED_PATH="/api/embed" 常量；CAPS 添加 "embedding": True 能力声明
+[main.py] Runner 根据 config.toml debug.color 决定 CLICOLOR_FORCE/NO_COLOR 环境变量
+[src/logger.py] set_color() 支持 handler 重建：更新 _color_override 后移除旧 console handler 并重新添加，使颜色变更立即生效
+[template/template_config.toml] 版本 2.2.51 → 2.2.52
+[config.toml] 版本跟随模板 2.2.51 → 2.2.52、proxy_enabled=true
+[README.md] 版本徽章更新为 2.2.52；路线图新增 v2.2.52 已完成条目
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.51 → 2.2.52
+[docs-src/src/platforms/ollama/core/ollama.md] 更新文档：新增 embedding 支持说明、服务器地址处理、能力检测详情、向量嵌入请求流程
+[tests/src/platforms/ollama/test_ollama_embedding.py] 新增：detect_capabilities embedding 检测、_verify_server URL 格式、常量验证、adapter embedding 方法测试
+[tests/src/test_logger.py] 新增：set_color() handler 重建测试
+
+py_compile: all changed files compiled successfully
+pytest: 554 passed, 16 skipped, 3 warnings
+
+2026-06-07 02:00:00
+
+[src/core/server/proxy.py] 新增 _LOCAL_HOSTS 正则，localhost 和 *.localhost 跳过代理直连。修复启用全局代理后本地 Ollama 服务器无法被发现的问题
+[src/logger.py] _setup_handlers() 中尽早通过 tomllib 读取 config.toml 的 debug.color，确保首行日志就尊重 color=false 设置
+[src/platforms/ollama/core/constants.py] 新增 DYNAMIC_DISCOVERY 常量，控制动态服务器发现开关
+[src/platforms/ollama/core/client.py] DYNAMIC_DISCOVERY 为 False 时跳过网络服务器发现和定时刷新，仅使用持久化缓存
+[template/template_config.toml] 版本 2.2.52 → 2.2.53
+[config.toml] 版本跟随模板 2.2.52 → 2.2.53
+[README.md] 版本徽章更新为 2.2.53；路线图新增 v2.2.53 三项改动说明
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.52 → 2.2.53
+
+2026-06-07 03:00:00
+
+[src/platforms/ollama/core/constants.py] DYNAMIC_DISCOVERY 从 True 改为 False，关闭 Ollama 动态服务器发现，仅使用持久化缓存
+[template/template_config.toml] 版本 2.2.53 → 2.2.54
+[config.toml] 版本跟随模板 2.2.53 → 2.2.54
+[README.md] 版本徽章更新为 2.2.54；路线图新增 v2.2.54 条目
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.53 → 2.2.54
