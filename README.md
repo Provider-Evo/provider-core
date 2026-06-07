@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.56-blue)
-![Version](https://img.shields.io/badge/version-2.2.56-blue)
+![Status](https://img.shields.io/badge/status-v2.2.57-blue)
+![Version](https://img.shields.io/badge/version-2.2.57-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.56
+### 当前版本：v2.2.57
+
+✅ 已完成（v2.2.57）：
+- `DYNAMIC_DISCOVERY` 设为 `False`，Ollama 使用已重建的持久化缓存（480 台服务器），不再执行网络抓取和定时刷新
 
 ✅ 已完成（v2.2.56）：
 - 修复 `background_setup()` 在 `DYNAMIC_DISCOVERY=False` 时直接 return，不再调用 `_do_refresh(force=True)` 覆盖持久化缓存（此 bug 导致 480 台服务器缓存被清空）

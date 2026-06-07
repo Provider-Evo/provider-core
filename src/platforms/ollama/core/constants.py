@@ -34,4 +34,4 @@ FETCH_MODELS_ENABLED: bool = False
 MODEL_FETCH_INTERVAL: int = 86400
 
 # ── 动态发现开关 ──────────────────────────────────────────
-DYNAMIC_DISCOVERY: bool = True  # 是否动态从网络获取服务器列表；False 时仅使用持久化缓存
+DYNAMIC_DISCOVERY: bool = False  # 是否动态从网络获取服务器列表；False 时仅使用持久化缓存

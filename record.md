@@ -989,3 +989,11 @@ pytest: (pending)
 [config.toml] 版本跟随模板 2.2.55 → 2.2.56
 [README.md] 版本徽章更新为 2.2.56；路线图新增 v2.2.56 条目
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.55 → 2.2.56
+
+2026-06-07 06:00:00
+
+[src/platforms/ollama/core/constants.py] DYNAMIC_DISCOVERY 从 True 改回 False；缓存已重建完成（480 台服务器），关闭动态发现，使用持久化缓存工作
+[template/template_config.toml] 版本 2.2.56 → 2.2.57
+[config.toml] 版本跟随模板 2.2.56 → 2.2.57
+[README.md] 版本徽章更新为 2.2.57；路线图新增 v2.2.57 条目
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.56 → 2.2.57
