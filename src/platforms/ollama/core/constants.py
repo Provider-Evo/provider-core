@@ -11,6 +11,7 @@ from typing import Dict, List
 # ── URL常量 ──────────────────────────────────────────────
 BASE_URL: str = "https://freeollama.oneplus1.top"
 CHAT_PATH: str = "/api/chat"
+EMBED_PATH: str = "/api/embed"
 
 # ── 发现配置 ──────────────────────────────────────────────
 PAGE_SIZE: int = 100
@@ -21,6 +22,7 @@ REFRESH_INTERVAL: int = 86400
 # ── 能力声明 ──────────────────────────────────────────────
 CAPS: Dict[str, bool] = {
     "chat": True,
+    "embedding": True,
 }
 
 # ── 模型列表 ──────────────────────────────────────────────

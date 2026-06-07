@@ -149,6 +149,17 @@ class OllamaAdapter(PlatformAdapter):
             return 0
         return await self._client.ensure_candidates(count)
 
+    async def create_embedding(
+        self,
+        candidate: "Candidate",
+        input_data: Union[str, List[str]],
+        model: str,
+        **kw: Any,
+    ) -> Dict[str, Any]:
+        if self._client is None:
+            raise RuntimeError("OllamaAdapter 未初始化")
+        return await self._client.create_embedding(candidate, input_data, model, **kw)
+
     async def complete(
         self,
         candidate: Candidate,

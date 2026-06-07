@@ -215,7 +215,23 @@ def _run_runner() -> None:
         env = os.environ.copy()
         env["WORKER_PROCESS"] = "1"
         env["PYTHONIOENCODING"] = "utf-8"
-        env["CLICOLOR_FORCE"] = "1"  # Worker 通过管道输出，强制保留颜色代码
+
+        # 根据 config.toml 决定是否强制 Worker 颜色输出
+        _color_on = True
+        try:
+            import tomllib
+            _cfg_path = _ROOT / "config.toml"
+            if _cfg_path.exists():
+                with open(_cfg_path, "rb") as _f:
+                    _raw = tomllib.load(_f)
+                _color_on = bool(_raw.get("debug", {}).get("color", True))
+        except Exception:
+            pass
+        if _color_on:
+            env["CLICOLOR_FORCE"] = "1"  # Worker 通过管道输出，强制保留颜色代码
+        else:
+            env.pop("CLICOLOR_FORCE", None)
+            env["NO_COLOR"] = "1"
 
         python = sys.executable
         args = [python, "-u", str(_ROOT / "main.py")]

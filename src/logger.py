@@ -24,6 +24,9 @@ _LOG_DIR = Path(__file__).parent.parent / "logs"
 # 全局颜色覆盖：None 表示自动检测，True/False 强制开启/关闭
 _color_override: bool | None = None
 
+# 控制台 handler ID（用于 set_color 时移除并重建）
+_console_handler_id: int | None = None
+
 # 日志等级映射（用于显示单字母）
 LEVEL_ABBR = {
     "TRACE": "T",
@@ -79,11 +82,42 @@ def get_level_abbr(record: dict) -> str:
 def set_color(enabled: bool | None) -> None:
     """设置日志颜色开关。
 
+    初始化后调用会重建控制台 handler 以立即生效。
+
     Args:
         enabled: True 强制开启颜色，False 强制关闭，None 恢复自动检测。
     """
-    global _color_override
+    global _color_override, _console_handler_id
     _color_override = enabled
+
+    # 初始化完成后重建 console handler，使颜色变更立即生效
+    if _initialized and _console_handler_id is not None:
+        _loguru_logger.remove(_console_handler_id)
+        use_color = _supports_color()
+        log_level = _resolve_log_level()
+
+        console_format = (
+            "{time:MM-DD HH:mm:ss} | "
+            "[ {extra[level_abbr]} ] | "
+            "{extra[module_name]} | "
+            "{message}"
+        )
+        if use_color:
+            console_format = (
+                "<blue>{time:MM-DD HH:mm:ss}</blue> | "
+                "<level>[ {extra[level_abbr]} ]</level> | "
+                "<cyan>{extra[module_name]}</cyan> | "
+                "<level>{message}</level>"
+            )
+
+        _console_handler_id = _loguru_logger.add(
+            sys.stderr,
+            level=log_level,
+            colorize=use_color,
+            format=console_format,
+            filter=_format_log,
+            enqueue=False,
+        )
 
 
 def clean_old_logs(days: int = 30) -> None:
@@ -264,7 +298,7 @@ def _setup_handlers() -> None:
     控制台处理器：简洁格式 MM-DD HH:mm:ss | [I] | ModuleName | message
     文件处理器：详细格式 YYYY-MM-DD HH:mm:ss.SSS | [LEVEL] | ModuleName | name:function:line - message
     """
-    global _initialized
+    global _initialized, _console_handler_id
     if _initialized:
         return
 
@@ -295,7 +329,7 @@ def _setup_handlers() -> None:
             "<level>{message}</level>"
         )
 
-    _loguru_logger.add(
+    _console_handler_id = _loguru_logger.add(
         sys.stderr,
         level=log_level,
         colorize=use_color,

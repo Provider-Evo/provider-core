@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.51-blue)
-![Version](https://img.shields.io/badge/version-2.2.51-blue)
+![Status](https://img.shields.io/badge/status-v2.2.52-blue)
+![Version](https://img.shields.io/badge/version-2.2.52-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,11 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.51
+### 当前版本：v2.2.52
+
+✅ 已完成（v2.2.52）：
+- Ollama embedding 支持：OllamaAdapter/OllamaClient 新增 `create_embedding()` 调用 `/api/embed`；增强 `detect_capabilities()` embedding 模型名称关键词检测；修复 `_verify_server()` URL 格式 bug；添加 `EMBED_PATH` 常量和 CAPS embedding 声明
+- 日志颜色 bug 修复：`logger.py set_color()` 重建 console handler 使颜色变更立即生效；`main.py` Runner 读取 `config.toml` 决定 `CLICOLOR_FORCE`
 
 ✅ 已完成（v2.2.51）：
 - 全平台合规审计与修正：18 个平台逐一对照 platform-guide 规范检查并修复偏差

@@ -22,6 +22,7 @@ from src.platforms.ollama.accounts import ACCOUNTS
 from src.platforms.ollama.core.constants import (
     BASE_URL,
     CHAT_PATH,
+    EMBED_PATH,
     MAX_WORKERS,
     PAGE_SIZE,
     REFRESH_INTERVAL,
@@ -317,6 +318,11 @@ def detect_capabilities(detail: Optional[Dict[str, Any]]) -> Dict[str, bool]:
 
     if "embedding" in detail.get("parameters", "").lower():
         caps["embedding"] = True
+    if not caps["embedding"]:
+        _name = detail.get("name", "").lower()
+        _embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
+        if any(kw in _name for kw in _embed_kw):
+            caps["embedding"] = True
 
     return caps
 
@@ -332,7 +338,10 @@ def _verify_server(ip: str) -> Optional[Dict[str, Any]]:
     """
     import requests
 
-    base = "http://{}".format(ip)
+    if ip.startswith(("http://", "https://")):
+        base = ip.rstrip("/")
+    else:
+        base = "http://{}".format(ip)
     try:
         r = requests.get(base, timeout=TIMEOUT)
         if "ollama" not in r.text.lower():
@@ -660,6 +669,44 @@ class OllamaClient:
             可用服务器数量。
         """
         return len(self._servers)
+
+    async def create_embedding(
+        self,
+        candidate: "Candidate",
+        input_data: Union[str, List[str]],
+        model: str,
+        **kw: Any,
+    ) -> Dict[str, Any]:
+        base_url = candidate.meta.get("base_url", "")
+        if not base_url:
+            raise ValueError("candidate 缺少 base_url")
+        url = base_url.rstrip("/") + EMBED_PATH
+
+        payload: Dict[str, Any] = {"model": model, "input": input_data}
+        try:
+            async with self._session.post(
+                url, json=payload, timeout=aiohttp.ClientTimeout(total=120)
+            ) as resp:
+                if resp.status != 200:
+                    body = await resp.text()
+                    raise RuntimeError(f"ollama HTTP {resp.status}: {body}")
+                data = await resp.json()
+        except asyncio.TimeoutError:
+            raise RuntimeError(f"ollama embed 请求超时: {url}")
+
+        embeddings = data.get("embeddings", [])
+        return {
+            "object": "list",
+            "data": [
+                {"object": "embedding", "index": i, "embedding": emb}
+                for i, emb in enumerate(embeddings)
+            ],
+            "model": model,
+            "usage": {
+                "prompt_tokens": data.get("prompt_eval_count", 0),
+                "total_tokens": data.get("prompt_eval_count", 0),
+            },
+        }
 
     async def complete(
         self,
