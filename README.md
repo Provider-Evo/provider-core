@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.59-blue)
-![Version](https://img.shields.io/badge/version-2.2.59-blue)
+![Status](https://img.shields.io/badge/status-v2.2.60-blue)
+![Version](https://img.shields.io/badge/version-2.2.60-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-11+-orange)
@@ -1256,7 +1256,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.59
+### 当前版本：v2.2.60
+
+✅ 已完成（v2.2.60）：
+- 移除 `_format_conversation_history()` 中的 `is_webui` 检测逻辑，始终渲染 assistant tool_calls 和 tool results，所有协议所有客户端统一处理；跳过无内容的空 assistant 块
 
 ✅ 已完成（v2.2.59）：
 - 修复 `dispatch()` 无 tools 时 system 消息处理：将 `role=system` 消息折叠到第一条 user 消息，确保所有平台（包括不原生支持 system role 的平台如 Qwen）都能收到系统指令

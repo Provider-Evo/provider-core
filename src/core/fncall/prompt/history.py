@@ -310,19 +310,11 @@ def _format_conversation_history(
             protocol.format_assistant_tool_calls() 渲染工具调用，
             确保历史中的工具调用格式与 LLM 指令中的格式一致。
 
-    当消息中包含 role="tool" 消息或 assistant 消息带有 tool_calls
-    时，判定为非 WebUI 客户端（agent CLI、API 客户端等），跳过
-    渲染 assistant 的 tool_calls 块。仅 WebUI（纯文本 user/assistant
-    消息，无工具调用结构）才渲染工具调用历史。
+    始终渲染所有消息角色（包括 assistant tool_calls 和 tool results），
+    不区分客户端类型。
     """
     if not messages:
         return ""
-
-    is_webui = not any(
-        (m.get("role") or "") == "tool"
-        or ((m.get("role") or "") == "assistant" and m.get("tool_calls"))
-        for m in messages
-    )
 
     call_id_to_name: Dict[str, str] = {}
     seen_assistant_keys: Set[Tuple[str, Tuple[Tuple[str, str], ...]]] = set()
@@ -348,7 +340,7 @@ def _format_conversation_history(
                 if cid and fn_name:
                     call_id_to_name[cid] = fn_name
 
-            if tcs and is_webui:
+            if tcs:
                 content_has_markers = bool(
                     content_str and _TOOL_CALL_MARKER_RE.search(content_str)
                 )
@@ -360,6 +352,8 @@ def _format_conversation_history(
                             blocks.append(_render_tool_call(tc))
 
             inner = "\n\n".join(blocks)
+            if not inner:
+                continue
             rendered = f"<assistant>\n{inner}\n</assistant>"
 
             dedup_key = _make_assistant_dedup_key(content_str, tcs)
