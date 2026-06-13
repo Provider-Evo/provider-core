@@ -367,10 +367,9 @@ body { margin: 0; font-family: Arial, sans-serif;
 
 /* ========================= Unified Design System ========================= */
 
-/* Section containers - consistent with chat input */
+/* Section containers */
 section.bg-panel,
 section.tab-panel {
-  will-change: transform, opacity;
   transition: box-shadow 0.2s ease;
 }
 
@@ -459,27 +458,9 @@ textarea:focus {
   animation: toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Section stagger children */
+/* Section stagger children - disabled to prevent tab-switch reflow */
 section.tab-panel > * {
-  opacity: 0;
-  animation: fadeInUp 0.4s ease forwards;
-}
-section.tab-panel > *:nth-child(1) { animation-delay: 0.05s; }
-section.tab-panel > *:nth-child(2) { animation-delay: 0.1s; }
-section.tab-panel > *:nth-child(3) { animation-delay: 0.15s; }
-section.tab-panel > *:nth-child(4) { animation-delay: 0.2s; }
-section.tab-panel > *:nth-child(5) { animation-delay: 0.25s; }
-section.tab-panel > *:nth-child(6) { animation-delay: 0.3s; }
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  opacity: 1;
 }
 
 /* ========================= Custom Dropdown Component ========================= */
