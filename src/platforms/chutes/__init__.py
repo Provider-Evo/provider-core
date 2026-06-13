@@ -1,3 +1,5 @@
-from src.platforms.chutes.adapter import ChutesAdapter
+from __future__ import annotations
 
-__all__ = ["ChutesAdapter"]
+from .adapter import Adapter, ChutesAdapter
+
+__all__ = ["Adapter", "ChutesAdapter"]

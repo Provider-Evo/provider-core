@@ -11,7 +11,7 @@ Ollama 平台连接本地 Ollama 服务器，支持：
 ## 架构
 
 ```
-OllamaAdapter (adapter_impl.py)
+OllamaAdapter (adaptercore.py)
   └── OllamaClient (client.py)
       ├── 服务器发现 (_bg_discover_servers, 多端口扫描)
       ├── 候选项管理 (_rebuild_candidates, 每个服务器一个 Candidate)
@@ -24,7 +24,7 @@ OllamaAdapter (adapter_impl.py)
 | 文件 | 说明 |
 |------|------|
 | `client.py` | 核心客户端，服务器发现、聊天、缓存 |
-| `adapter_impl.py` | 适配器实现 |
+| `adaptercore.py` | 适配器实现 |
 
 ## 服务器发现
 

@@ -101,6 +101,7 @@ def test_format_history_user_assistant():
     assert "run ls" in out
     assert "<assistant>" in out
     assert "ok" in out
+    # is_webui removed — tool_calls are always rendered
     assert "<function_calls>" in out
 
 
@@ -317,8 +318,9 @@ def test_fncall_stream_parser_no_call():
     assert text == "Hello world!"
 
 def test_fncall_stream_parser_with_call():
+    from src.core.fncall.base import get_protocol_by_id
     xml = _fncall_xml([("Bash", {"command": "date"})])
-    parser = FncallStreamParser()
+    parser = FncallStreamParser(protocol=get_protocol_by_id("xml"))
     for chunk in ["wait " + xml, " done"]:
         parser.feed(chunk)
     text, calls = parser.finalize()
@@ -329,9 +331,10 @@ def test_fncall_stream_parser_with_call():
     assert "wait" in text
 
 def test_fncall_stream_parser_split_across_chunks():
+    from src.core.fncall.base import get_protocol_by_id
     xml = _fncall_xml([("Bash", {"command": "whoami"})])
     mid = len(xml) // 2
-    parser = FncallStreamParser()
+    parser = FncallStreamParser(protocol=get_protocol_by_id("xml"))
     parser.feed("start " + xml[:mid])
     parser.feed(xml[mid:] + " end")
     text, calls = parser.finalize()

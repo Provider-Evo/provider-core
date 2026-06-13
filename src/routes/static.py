@@ -10,6 +10,7 @@ from typing import Any, Dict
 
 import aiohttp.web
 from aiohttp.web_app import AppKey
+from src.core.config import get_config
 from src.core.server import json_response
 
 __all__ = ["setup_routes"]
@@ -17,24 +18,6 @@ __all__ = ["setup_routes"]
 
 def _json(data: Any, status: int = 200) -> aiohttp.web.Response:
     return json_response(data, status=status)
-
-
-async def root(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """服务根路由 /。
-
-    Args:
-        request: 请求对象。
-
-    Returns:
-        响应对象。
-    """
-    return _json(
-        {
-            "service": "Provider-V2",
-            "version": "2.0.0",
-            "docs": "/docs",
-        }
-    )
 
 
 async def health(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -46,19 +29,9 @@ async def health(request: aiohttp.web.Request) -> aiohttp.web.Response:
     Returns:
         响应对象。
     """
-    return _json({"status": "healthy", "timestamp": int(time.time())})
-
-
-async def docs(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """文档占位端点 /docs。
-
-    Args:
-        request: 请求对象。
-
-    Returns:
-        响应对象。
-    """
-    return _json({"docs": "暂未提供在线文档", "openapi": "/openapi.json"})
+    from src.core.config import get_config  # noqa: PLC0415
+    cfg = get_config()
+    return _json({"status": "healthy", "version": cfg.server.version, "timestamp": int(time.time())})
 
 
 async def list_models(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -206,9 +179,7 @@ def setup_routes(app: aiohttp.web.Application) -> None:
     Args:
         app: aiohttp.web.Application 实例。
     """
-    app.router.add_get("/", root)
     app.router.add_get("/health", health)
-    app.router.add_get("/docs", docs)
     app.router.add_get("/v1/models", list_models)
     app.router.add_get("/v1/models/{model_id}", get_model)
     app.router.add_get("/v1/status", status)

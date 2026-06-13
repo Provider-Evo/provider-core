@@ -111,6 +111,19 @@ async def _run() -> None:
     if not is_idle_env:
         tasks.append(asyncio.ensure_future(_file_watcher_task()))
 
+    # Auto-update task (only when enabled and not in IDLE)
+    async def _autoupdate_task() -> None:
+        from src.core.autoupdate import AutoUpdater
+        updater = AutoUpdater(
+            root=_ROOT,
+            branch=cfg.autoupdate.branch,
+            interval=cfg.autoupdate.interval,
+        )
+        await updater.run()
+
+    if cfg.autoupdate.enabled and not is_idle_env:
+        tasks.append(asyncio.ensure_future(_autoupdate_task()))
+
     try:
         if sys.platform == "win32":
             # Windows 下轮询等待
@@ -170,7 +183,11 @@ def _run_worker() -> None:
         try:
             import uvloop  # type: ignore[import]
 
-            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+            # Python 3.14+: use uvloop.run() instead of set_event_loop_policy
+            if sys.version_info >= (3, 14):
+                uvloop.install()
+            else:
+                asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         except Exception:
             logger.debug("uvloop 不可用，继续使用默认事件循环")
 
@@ -198,7 +215,23 @@ def _run_runner() -> None:
         env = os.environ.copy()
         env["WORKER_PROCESS"] = "1"
         env["PYTHONIOENCODING"] = "utf-8"
-        env["CLICOLOR_FORCE"] = "1"  # Worker 通过管道输出，强制保留颜色代码
+
+        # 根据 config.toml 决定是否强制 Worker 颜色输出
+        _color_on = True
+        try:
+            import tomllib
+            _cfg_path = _ROOT / "config.toml"
+            if _cfg_path.exists():
+                with open(_cfg_path, "rb") as _f:
+                    _raw = tomllib.load(_f)
+                _color_on = bool(_raw.get("debug", {}).get("color", True))
+        except Exception:
+            pass
+        if _color_on:
+            env["CLICOLOR_FORCE"] = "1"  # Worker 通过管道输出，强制保留颜色代码
+        else:
+            env.pop("CLICOLOR_FORCE", None)
+            env["NO_COLOR"] = "1"
 
         python = sys.executable
         args = [python, "-u", str(_ROOT / "main.py")]

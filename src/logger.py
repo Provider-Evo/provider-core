@@ -21,6 +21,12 @@ _initialized: bool = False
 
 _LOG_DIR = Path(__file__).parent.parent / "logs"
 
+# 全局颜色覆盖：None 表示自动检测，True/False 强制开启/关闭
+_color_override: bool | None = None
+
+# 控制台 handler ID（用于 set_color 时移除并重建）
+_console_handler_id: int | None = None
+
 # 日志等级映射（用于显示单字母）
 LEVEL_ABBR = {
     "TRACE": "T",
@@ -56,8 +62,8 @@ def _resolve_log_level() -> str:
             level = str(raw.get("debug", {}).get("level", "INFO")).upper()
             if level in _VALID_LOG_LEVELS:
                 return level
-    except Exception:
-        pass
+    except Exception as exc:
+        _loguru_logger.debug("读取 config.toml 日志级别失败: %s", exc)
     return "INFO"
 
 
@@ -73,6 +79,47 @@ def get_level_abbr(record: dict) -> str:
     return LEVEL_ABBR.get(record["level"].name, record["level"].name[0])
 
 
+def set_color(enabled: bool | None) -> None:
+    """设置日志颜色开关。
+
+    初始化后调用会重建控制台 handler 以立即生效。
+
+    Args:
+        enabled: True 强制开启颜色，False 强制关闭，None 恢复自动检测。
+    """
+    global _color_override, _console_handler_id
+    _color_override = enabled
+
+    # 初始化完成后重建 console handler，使颜色变更立即生效
+    if _initialized and _console_handler_id is not None:
+        _loguru_logger.remove(_console_handler_id)
+        use_color = _supports_color()
+        log_level = _resolve_log_level()
+
+        console_format = (
+            "{time:MM-DD HH:mm:ss} | "
+            "[ {extra[level_abbr]} ] | "
+            "{extra[module_name]} | "
+            "{message}"
+        )
+        if use_color:
+            console_format = (
+                "<blue>{time:MM-DD HH:mm:ss}</blue> | "
+                "<level>[ {extra[level_abbr]} ]</level> | "
+                "<cyan>{extra[module_name]}</cyan> | "
+                "<level>{message}</level>"
+            )
+
+        _console_handler_id = _loguru_logger.add(
+            sys.stderr,
+            level=log_level,
+            colorize=use_color,
+            format=console_format,
+            filter=_format_log,
+            enqueue=False,
+        )
+
+
 def clean_old_logs(days: int = 30) -> None:
     """清理超过指定天数的日志文件。
 
@@ -86,10 +133,10 @@ def clean_old_logs(days: int = 30) -> None:
                 file_time = datetime.fromtimestamp(log_file.stat().st_mtime)
                 if file_time < cutoff_date:
                     log_file.unlink()
-            except Exception:
-                pass  # 单文件清理失败不中断整体流程
-    except Exception:
-        pass
+            except OSError as exc:
+                _loguru_logger.debug("清理过期日志文件 %s 失败: %s", log_file, exc)
+    except Exception as exc:
+        _loguru_logger.debug("清理过期日志失败: %s", exc)
 
 
 def _format_log(record: dict) -> bool:
@@ -209,13 +256,18 @@ def _supports_color() -> bool:
     """检测终端是否支持 ANSI 颜色输出。
 
     检测顺序：
-    1. NO_COLOR → 禁用
-    2. FORCE_COLOR / CLICOLOR_FORCE → 启用
-    3. TERM 环境变量（xterm, msys, cygwin 等）→ 启用
-    4. Windows Terminal (WT_SESSION) / ANSICON → 启用
-    5. sys.stdout.isatty() → 启用
+    1. 全局覆盖（set_color）→ 直接返回
+    2. NO_COLOR → 禁用
+    3. FORCE_COLOR / CLICOLOR_FORCE → 启用
+    4. TERM 环境变量（xterm, msys, cygwin 等）→ 启用
+    5. Windows Terminal (WT_SESSION) / ANSICON → 启用
+    6. sys.stdout.isatty() → 启用
     """
     import os
+
+    # 全局覆盖优先
+    if _color_override is not None:
+        return _color_override
 
     # 用户显式禁用
     if os.environ.get("NO_COLOR"):
@@ -246,7 +298,7 @@ def _setup_handlers() -> None:
     控制台处理器：简洁格式 MM-DD HH:mm:ss | [I] | ModuleName | message
     文件处理器：详细格式 YYYY-MM-DD HH:mm:ss.SSS | [LEVEL] | ModuleName | name:function:line - message
     """
-    global _initialized
+    global _initialized, _console_handler_id, _color_override
     if _initialized:
         return
 
@@ -259,6 +311,20 @@ def _setup_handlers() -> None:
 
     # 确保日志目录存在
     _LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    # 尽早读取 config 中的颜色设置（在 ConfigManager 初始化之前）
+    _early_color = None
+    try:
+        import tomllib
+        _cfg = Path(__file__).parent.parent / "config.toml"
+        if _cfg.exists():
+            with open(_cfg, "rb") as _f:
+                _raw = tomllib.load(_f)
+            _early_color = _raw.get("debug", {}).get("color", True)
+    except Exception:
+        pass
+    if _early_color is not None:
+        _color_override = _early_color
 
     # 检测颜色支持
     use_color = _supports_color()
@@ -277,7 +343,7 @@ def _setup_handlers() -> None:
             "<level>{message}</level>"
         )
 
-    _loguru_logger.add(
+    _console_handler_id = _loguru_logger.add(
         sys.stderr,
         level=log_level,
         colorize=use_color,

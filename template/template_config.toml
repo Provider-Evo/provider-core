@@ -1,0 +1,92 @@
+# Provider-V2 配置模板
+# 复制此文件到项目根目录并重命名为 config.toml
+
+[server]
+version = "2.2.61"
+host = "0.0.0.0"
+port = 1337
+debug = false
+startup_force_kill_port = true
+
+[anthropic]
+api_version = "2023-06-01"
+
+[anthropic.model_mapping]
+# 协议级模型映射（最高优先级，仅影响 Anthropic 路由）
+# "claude-haiku" = "qwen3-coder-plus"
+
+# 全局模型映射（最低优先级，所有协议的 fallback）
+# [model_mapping]
+# "my-alias" = "actual-model-name"
+
+# 根级协议模型映射（中等优先级）
+# [model_mapping.anthropic]
+# "claude-fast" = "qwen-plus"
+# [model_mapping.openai]
+# "gpt-fast" = "qwen-plus"
+
+# OpenAI 协议级模型映射（最高优先级，仅影响 OpenAI 路由）
+# [openai.model_mapping]
+# "gpt-4" = "qwen3-coder-plus"
+
+[auth]
+enabled = false
+keys = []
+group_list_type = "blacklist"  # "blacklist" 或 "whitelist"
+group_list = []
+
+[gateway]
+concurrent_enabled = true
+concurrent_count = 3
+min_tokens = 10
+# 并发竞速平台名单。不在名单内的平台仍可路由，只是该请求强制单发（n=1）；
+# concurrent_enabled = false 时竞速关闭（n=1），但名单仍影响竞速池。
+# "whitelist"：仅 group_list 中的平台可参与竞速。
+# "blacklist"：除 group_list 外的平台均可参与竞速。
+# group_list 为空时视为"未配置"，所有平台均可竞速（向后兼容）。
+group_list_type = "whitelist"
+group_list = []
+
+[proxy]
+proxy_server = ""
+proxy_enabled = false
+proxy_urls = []  # 支持正则表达式，为空时所有非 IP URL 都走代理
+
+[platforms_proxy]
+# 允许使用代理切换的平台列表（语义由 group_list_type 决定）。
+# Qwen 的 WAF 自动触发也受此控制。
+# "whitelist"（默认，向后兼容）：仅 enabled_platforms 中的平台可切换代理。
+# "blacklist"：除 enabled_platforms 外的平台均可切换代理。
+enabled_platforms = ["qwen"]
+group_list_type = "whitelist"
+
+[platforms]
+platform_list_type = "blacklist"  # "blacklist": 排除列表中的平台; "whitelist": 仅使用列表中的平台
+platform_list = []
+
+[fncall]
+# 协议模式: "xml" | "original" | "antml" | "bracket" | "custom" | "nous"
+protocol = "xml"
+# 平台到协议的映射（可选）
+# [fncall.fncall_mapping]
+# "qwen" = "nous"
+# "ollama" = "xml"
+
+# custom 协议专用（仅 protocol="custom" 时生效）
+custom_prompt_en = ""
+custom_prompt_zh = ""
+
+record_prompt = false
+# 自定义模板（可选，仅 xml 协议时使用）
+# [fncall.templates]
+# usage_en = "..."
+# usage_zh = "..."
+
+[debug]
+level = "INFO"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+color = true    # 日志颜色输出：true 开启，false 关闭
+
+[autoupdate]
+enabled = false
+branch = "main"
+interval = 300  # 检查间隔（秒）

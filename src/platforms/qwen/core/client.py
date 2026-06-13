@@ -15,7 +15,7 @@ import aiohttp
 from src.core.candidate import Candidate, make_id
 from src.core.models_cache import ModelsCache
 from src.logger import get_logger
-from src.platforms.qwen.core.accounts import ACCOUNTS, Account
+from src.platforms.qwen.accounts import ACCOUNTS, Account
 from src.platforms.qwen.core.constants import CAPS, MODELS
 from src.platforms.qwen.core.shared import (
     AUTH_CHECK_PATH,
@@ -157,6 +157,10 @@ class QwenClient:
         """获取应传递给 session.request 的 proxy 值。"""
         self._check_proxy_expiry()
         if self._proxy_override is True:
+            from src.core.config import get_config
+            cfg = get_config()
+            if not cfg.platforms_proxy.is_platform_enabled("qwen"):
+                return None
             from src.core.proxy import get_proxy_server
             return get_proxy_server()
         return None
@@ -255,7 +259,7 @@ class QwenClient:
         """根据当前账号状态重建候选项列表（无锁）。"""
         self._candidates = [
             Candidate(
-                id=make_id("qwen"),
+                id=make_id("qwen", acc.username[:12]),
                 platform="qwen",
                 resource_id=acc.username[:12],
                 models=list(self._models),
@@ -313,6 +317,9 @@ class QwenClient:
                 acc.token_expires = float(info.get("token_expires", 0))
                 acc.memory_disabled = bool(info.get("memory_disabled", False))
                 acc.context_length = info.get("context_length")
+                # 如果有有效token，标记为已登录
+                if acc.token and acc.token_expires > time.time():
+                    acc.is_login = True
 
             saved_cookies = data.get("cookies", {})
             if (
@@ -330,13 +337,16 @@ class QwenClient:
 
             proxy_state = data.get("proxy", {})
             if proxy_state:
-                self._proxy_override = proxy_state.get("enabled")
-                auto_at = proxy_state.get("auto_enabled_at")
-                if auto_at is not None:
-                    self._proxy_auto_enabled_at = float(auto_at)
-                    if time.time() - self._proxy_auto_enabled_at > _PROXY_AUTO_EXPIRY:
-                        self._proxy_override = None
-                        self._proxy_auto_enabled_at = None
+                from src.core.config import get_config
+                cfg = get_config()
+                if cfg.platforms_proxy.is_platform_enabled("qwen"):
+                    self._proxy_override = proxy_state.get("enabled")
+                    auto_at = proxy_state.get("auto_enabled_at")
+                    if auto_at is not None:
+                        self._proxy_auto_enabled_at = float(auto_at)
+                        if time.time() - self._proxy_auto_enabled_at > _PROXY_AUTO_EXPIRY:
+                            self._proxy_override = None
+                            self._proxy_auto_enabled_at = None
         except Exception as e:
             logger.warning("Qwen 持久化加载失败: %s", e)
 
@@ -427,7 +437,6 @@ class QwenClient:
                     return
                 # is_login=False 的账号尝试重新登录
                 if not acc.is_login:
-                    logger.info("账号 [%s] 已登出，尝试重新登录", acc.username[:6])
                     acc.token = ""  # 清除旧 token
                 elif acc.token and await self._validate_token(acc):
                     return
@@ -499,6 +508,14 @@ class QwenClient:
         headers = build_login_headers()
         payload = {"email": acc.username, "password": pwd_hash}
 
+        # Ensure cookies are set on the session before login
+        if self._session and self._cookies:
+            from yarl import URL
+            self._session.cookie_jar.update_cookies(
+                self._cookies,
+                response_url=URL(BASE_URL),
+            )
+
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES):
             if attempt > 0:
@@ -514,9 +531,16 @@ class QwenClient:
                 ) as resp:
                     if resp.status != 200:
                         err = await resp.text()
-                        last_exc = Exception(
-                            "HTTP {}: {}".format(resp.status, err[:200])
-                        )
+                        # WAF detection: if response is HTML, the endpoint is blocked
+                        content_type = resp.headers.get("Content-Type", "")
+                        if "text/html" in content_type or err.strip().startswith("<!"):
+                            last_exc = Exception(
+                                "登录接口被 WAF 拦截 (HTTP {})。请检查 IP 是否可用或启用代理。".format(resp.status)
+                            )
+                        else:
+                            last_exc = Exception(
+                                "HTTP {}: {}".format(resp.status, err[:200])
+                            )
                         continue
 
                     data = await resp.json()
@@ -1741,7 +1765,7 @@ class QwenClient:
                     # 检查是否被允许使用代理切换
                     from src.core.config import get_config
                     cfg = get_config()
-                    if "qwen" in cfg.platforms_proxy.enabled_platforms_set:
+                    if cfg.platforms_proxy.is_platform_enabled("qwen"):
                         logger.warning("Qwen: 检测到 WAF 拦截，自动启用代理 24 小时")
                         self.set_proxy_enabled(True, auto=True)
                         self._save_persist()

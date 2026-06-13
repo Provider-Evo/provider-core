@@ -84,8 +84,8 @@ def parse_sse_line(data_str: str) -> Any:
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入 OllamaAdapter。"""
-    if name == "OllamaAdapter":
-        from src.platforms.ollama.core.adapter_impl import (  # noqa: PLC0415
+    if name in ("OllamaAdapter", "Adapter"):
+        from src.platforms.ollama.core.adaptercore import (  # noqa: PLC0415
             OllamaAdapter as _OllamaAdapter,
         )
 
@@ -99,6 +99,7 @@ def __getattr__(name: str) -> Any:
 
 __all__ = [
     "OllamaAdapter",
+    "Adapter",
     "OllamaClient",
     "BASE_URL",
     "CHAT_PATH",

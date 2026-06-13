@@ -1,5 +1,6 @@
 from __future__ import annotations
 
-from src.platforms.perplexity.adapter import PerplexityAdapter
+# src/platforms/perplexity/__init__.py
+from src.platforms.perplexity.adapter import Adapter, PerplexityAdapter
 
-__all__ = ["PerplexityAdapter"]
+__all__ = ["PerplexityAdapter", "Adapter"]

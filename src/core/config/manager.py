@@ -26,7 +26,7 @@ except ImportError:
         tomllib = None  # type: ignore
 
 from src.core.config.sections import AppConfig
-from src.logger import get_logger
+from src.logger import get_logger, set_color
 
 logger = get_logger(__name__)
 
@@ -111,6 +111,10 @@ class ConfigManager:
         raw = self._read_raw()
         self._merge_and_check(raw)
         self._config = AppConfig.from_dict(raw)
+
+        # 应用日志颜色配置
+        set_color(self._config.debug.color)
+
         logger.info("配置已加载: %s", self._config_path)
         return self._config
 
@@ -129,6 +133,8 @@ class ConfigManager:
                     await self._notify_changes(old_config, new_config)
 
                 self._config = new_config
+                # 应用日志颜色配置（热重载时也可能变更）
+                set_color(new_config.debug.color)
                 logger.info("配置重载成功: %s", self._config_path)
                 return True
             except Exception as e:
@@ -169,7 +175,8 @@ class ConfigManager:
         try:
             with open(str(tpl_path), "r", encoding="utf-8") as f:
                 tpl_raw = tomlkit.load(f)
-        except Exception:
+        except Exception as exc:
+            logger.debug("加载配置模板失败: %s", exc)
             return
 
         old_version = raw.get("server", {}).get("version") if isinstance(raw.get("server"), dict) else None
@@ -193,7 +200,7 @@ class ConfigManager:
         logger.info("已备份旧配置到: %s", backup_path)
 
         # 合并：把模板中有但用户配置中没有的键加进去
-        self._merge_dicts(raw, dict(tpl_raw.value()))
+        self._merge_dicts(raw, dict(tpl_raw))
 
         # 写回
         self._write_merged(raw)
@@ -218,7 +225,8 @@ class ConfigManager:
         try:
             with open(str(self._config_path), "r", encoding="utf-8") as f:
                 doc = tomlkit.load(f)
-        except Exception:
+        except Exception as exc:
+            logger.debug("读取现有配置文件失败，使用空文档: %s", exc)
             doc = tomlkit.document()
 
         self._merge_toml_doc(doc, raw)

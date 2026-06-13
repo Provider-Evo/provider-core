@@ -439,7 +439,8 @@ class PlatformAdapter(ABC):
     def is_proxy_allowed(self) -> bool:
         """返回此平台是否被允许使用代理切换。
 
-        只有在配置中列入 platforms_proxy.enabled_platforms 的平台返回 True。
+        由 ``[platforms_proxy]`` 的 ``enabled_platforms`` 与 ``group_list_type``
+        共同决定（白名单：仅列表内；黑名单：仅列表外）。
 
         Returns:
             是否允许代理切换。

@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from src.platforms.caiyuesbk.adapter import CaiyuesbkAdapter
+from .adapter import Adapter, CaiyuesbkAdapter
 
-__all__ = ["CaiyuesbkAdapter"]
+__all__ = ["Adapter", "CaiyuesbkAdapter"]

@@ -18,10 +18,12 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 import aiohttp
 
 from src.core.candidate import Candidate, make_id
-from src.platforms.ollama.core.accounts import ACCOUNTS
+from src.platforms.ollama.accounts import ACCOUNTS
 from src.platforms.ollama.core.constants import (
     BASE_URL,
     CHAT_PATH,
+    DYNAMIC_DISCOVERY,
+    EMBED_PATH,
     MAX_WORKERS,
     PAGE_SIZE,
     REFRESH_INTERVAL,
@@ -317,6 +319,11 @@ def detect_capabilities(detail: Optional[Dict[str, Any]]) -> Dict[str, bool]:
 
     if "embedding" in detail.get("parameters", "").lower():
         caps["embedding"] = True
+    if not caps["embedding"]:
+        _name = detail.get("name", "").lower()
+        _embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
+        if any(kw in _name for kw in _embed_kw):
+            caps["embedding"] = True
 
     return caps
 
@@ -332,7 +339,10 @@ def _verify_server(ip: str) -> Optional[Dict[str, Any]]:
     """
     import requests
 
-    base = "http://{}".format(ip)
+    if ip.startswith(("http://", "https://")):
+        base = ip.rstrip("/")
+    else:
+        base = "http://{}".format(ip)
     try:
         r = requests.get(base, timeout=TIMEOUT)
         if "ollama" not in r.text.lower():
@@ -373,6 +383,7 @@ def _verify_server(ip: str) -> Optional[Dict[str, Any]]:
 
 def collect_servers(
     additional: Optional[List[str]] = None,
+    skip_network: bool = False,
 ) -> Dict[str, Any]:
     """收集所有可用的 Ollama 服务器（网络 I/O 副作用）。
 
@@ -380,27 +391,30 @@ def collect_servers(
 
     Args:
         additional: 附加服务器 IP 列表。
+        skip_network: 跳过网络抓取，仅验证 additional 列表中的服务器。
 
     Returns:
         服务器字典 {ip: server_info}。
     """
     all_ips: List[str] = []
-    html = _fetch_page(1)
-    if html:
-        pages = _parse_pages(html)
-        all_ips.extend(_parse_ips(html))
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as ex:
-            futs = {
-                ex.submit(_fetch_page, p): p
-                for p in range(2, pages + 1)
-            }
-            for f in concurrent.futures.as_completed(futs):
-                r = f.result()
-                if r:
-                    all_ips.extend(_parse_ips(r))
+    if not skip_network:
+        html = _fetch_page(1)
+        if html:
+            pages = _parse_pages(html)
+            all_ips.extend(_parse_ips(html))
 
-    all_ips = list(set(all_ips))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as ex:
+                futs = {
+                    ex.submit(_fetch_page, p): p
+                    for p in range(2, pages + 1)
+                }
+                for f in concurrent.futures.as_completed(futs):
+                    r = f.result()
+                    if r:
+                        all_ips.extend(_parse_ips(r))
+
+        all_ips = list(set(all_ips))
 
     if additional:
         for s in additional:
@@ -566,6 +580,14 @@ class OllamaClient:
 
     async def background_setup(self) -> None:
         """后台完善：执行服务器发现并启动定时刷新。"""
+        if not DYNAMIC_DISCOVERY:
+            logger.info(
+                "ollama动态发现已禁用，使用持久化缓存（%d服务器, %d模型）",
+                len(self._servers),
+                len(self._registry),
+            )
+            return
+
         additional = [acc.server_url for acc in ACCOUNTS if acc.server_url]
         force = needs_refresh()
         try:
@@ -588,6 +610,8 @@ class OllamaClient:
 
     async def _bg_refresh(self) -> None:
         """后台定时刷新服务器列表。"""
+        if not DYNAMIC_DISCOVERY:
+            return
         while True:
             await asyncio.sleep(BG_REFRESH_INTERVAL)
             try:
@@ -637,9 +661,13 @@ class OllamaClient:
                 for k, v in m_info.get("capabilities", {}).items():
                     if v:
                         caps[k] = True
+            if not caps.get("embedding"):
+                _embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
+                if any(kw in m.lower() for m in models for kw in _embed_kw):
+                    caps["embedding"] = True
             out.append(
                 Candidate(
-                    id=make_id("ollama"),
+                    id=make_id("ollama", ip),
                     platform="ollama",
                     resource_id=ip,
                     models=models,
@@ -660,6 +688,44 @@ class OllamaClient:
             可用服务器数量。
         """
         return len(self._servers)
+
+    async def create_embedding(
+        self,
+        candidate: "Candidate",
+        input_data: Union[str, List[str]],
+        model: str,
+        **kw: Any,
+    ) -> Dict[str, Any]:
+        base_url = candidate.meta.get("base_url", "")
+        if not base_url:
+            raise ValueError("candidate 缺少 base_url")
+        url = base_url.rstrip("/") + EMBED_PATH
+
+        payload: Dict[str, Any] = {"model": model, "input": input_data}
+        try:
+            async with self._session.post(
+                url, json=payload, timeout=aiohttp.ClientTimeout(total=120)
+            ) as resp:
+                if resp.status != 200:
+                    body = await resp.text()
+                    raise RuntimeError(f"ollama HTTP {resp.status}: {body}")
+                data = await resp.json()
+        except asyncio.TimeoutError:
+            raise RuntimeError(f"ollama embed 请求超时: {url}")
+
+        embeddings = data.get("embeddings", [])
+        return {
+            "object": "list",
+            "data": [
+                {"object": "embedding", "index": i, "embedding": emb}
+                for i, emb in enumerate(embeddings)
+            ],
+            "model": model,
+            "usage": {
+                "prompt_tokens": data.get("prompt_eval_count", 0),
+                "total_tokens": data.get("prompt_eval_count", 0),
+            },
+        }
 
     async def complete(
         self,
@@ -835,19 +901,21 @@ def _extract_usage(data: Dict[str, Any]) -> Dict[str, int]:
 def _do_refresh(
     force: bool = False,
     additional: Optional[List[str]] = None,
+    skip_network: bool = False,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """同步刷新逻辑，供 run_in_executor 调用。
 
     Args:
         force: 是否强制刷新。
         additional: 附加服务器 URL 列表。
+        skip_network: 跳过网络抓取，仅验证 additional 列表。
 
     Returns:
         (servers, registry) 元组。
     """
     if not force and not needs_refresh():
         return load_cache()
-    servers = collect_servers(additional=additional)
+    servers = collect_servers(additional=additional, skip_network=skip_network)
     registry = build_registry(servers)
     save_cache(servers, registry)
     return servers, registry

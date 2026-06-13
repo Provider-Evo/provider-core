@@ -3,12 +3,28 @@ from __future__ import annotations
 """Qwen 平台内部常量。
 
 本模块承接所有平台级别的常量定义，包含：
+- 端点根地址（BASE_URL）与浏览器标识（USER_AGENT）
 - 支持的模型列表（MODELS）
 - 平台能力字典（CAPS）
+- 持久化路径（MODELS_PERSIST_PATH）
 供 core/* 内部及 util.py 门面使用，禁止被 adapter.py 直接导入。
 """
 
 from typing import Dict, Final, List
+
+# ---------------------------------------------------------------------------
+# 端点与浏览器标识
+# ---------------------------------------------------------------------------
+
+BASE_URL: Final[str] = "https://chat.qwen.ai"
+"""Qwen 聊天服务根地址（无尾部斜杠）。"""
+
+USER_AGENT: Final[str] = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/148.0.0.0 Safari/537.36"
+)
+"""桌面浏览器 User-Agent。"""
 
 # ---------------------------------------------------------------------------
 # 支持的模型列表

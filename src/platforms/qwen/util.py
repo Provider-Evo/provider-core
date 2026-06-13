@@ -4,7 +4,7 @@ from __future__ import annotations
 
 该模块只负责对外导出稳定接口：
 - 共享常量/函数来自 ``src.platforms.qwen.core.shared``
-- ``QwenAdapter`` 通过 ``__getattr__`` 延迟加载，避免循环导入
+- ``QwenAdapter`` 与 ``Adapter`` 通过 ``__getattr__`` 延迟加载，避免循环导入
 """
 
 from typing import Any
@@ -22,8 +22,8 @@ from src.platforms.qwen.core.shared import (
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入 QwenAdapter。"""
-    if name == "QwenAdapter":
-        from src.platforms.qwen.core.adapter_impl import (  # noqa: PLC0415
+    if name in ("QwenAdapter", "Adapter"):
+        from src.platforms.qwen.core.adaptercore import (  # noqa: PLC0415
             QwenAdapter as _QwenAdapter,
         )
 
@@ -33,6 +33,7 @@ def __getattr__(name: str) -> Any:
 
 __all__ = [
     "QwenAdapter",
+    "Adapter",
     "MODELS",
     "CAPS",
     "MODELS_PERSIST_PATH",

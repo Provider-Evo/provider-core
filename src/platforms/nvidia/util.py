@@ -1,98 +1,55 @@
-# src/platforms/nvidia/util.py
-"""Nvidia工具函数"""
-
 from __future__ import annotations
 
-import json
+# src/platforms/nvidia/util.py
+"""Nvidia 对外工具门面。
+
+该模块只负责导出稳定接口：
+- 共享常量/函数来自 ``src.platforms.nvidia.core`` 子模块
+- ``NvidiaAdapter`` 与 ``Adapter`` 通过 ``__getattr__`` 延迟加载
+"""
+
 from typing import Any, Dict, List, Optional, Union
 
-BASE_URL: str = "https://integrate.api.nvidia.com/v1"
-CHAT_PATH: str = "/chat/completions"
-MAX_TOKENS: int = 229376
-RECOVERY_INTERVAL: int = 60
+from src.platforms.nvidia.core.constants import (
+    BASE_URL,
+    CAPS,
+    CHAT_PATH,
+    FETCH_MODELS_ENABLED,
+    MAX_TOKENS,
+    MODEL_FETCH_INTERVAL,
+    MODELS,
+    RECOVERY_INTERVAL,
+)
+from src.platforms.nvidia.core.headers import build_headers
+from src.platforms.nvidia.core.payloads import build_payload
+from src.platforms.nvidia.core.sse import parse_sse_line
 
 
-def build_headers(api_key: str) -> Dict[str, str]:
-    """构建请求头。
+def __getattr__(name: str) -> Any:
+    """模块级懒属性，按需导入实现类。"""
+    if name in ("NvidiaAdapter", "Adapter"):
+        from src.platforms.nvidia.core.adaptercore import (  # noqa: PLC0415
+            Adapter as _Adapter,
+        )
 
-    Args:
-        api_key: Nvidia API Key。
-
-    Returns:
-        请求头字典。
-    """
-    return {
-        "Authorization": "Bearer {}".format(api_key),
-        "Content-Type": "application/json",
-        "Accept": "application/json, text/event-stream",
-    }
+        return _Adapter
+    raise AttributeError(
+        "module 'src.platforms.nvidia.util' has no attribute '{}'".format(name)
+    )
 
 
-def build_payload(
-    messages: List[Dict[str, Any]],
-    model: str = "",
-    stream: bool = True,
-    **kw: Any,
-) -> Dict[str, Any]:
-    """构建聊天请求体。
-
-    Args:
-        messages: 消息列表。
-        model: 模型名。
-        stream: 是否流式。
-        **kw: 额外参数（max_tokens, temperature, top_p, stop）。
-
-    Returns:
-        请求体字典。
-    """
-    payload: Dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-        "stream": stream,
-        "max_tokens": kw.get("max_tokens", MAX_TOKENS),
-    }
-    if kw.get("temperature") is not None:
-        payload["temperature"] = kw["temperature"]
-    if kw.get("top_p") is not None:
-        payload["top_p"] = kw["top_p"]
-    if kw.get("stop"):
-        payload["stop"] = kw["stop"]
-    return payload
-
-
-def parse_sse_line(data_str: str) -> Optional[Union[str, Dict[str, Any]]]:
-    """解析SSE data字段内容。
-
-    Args:
-        data_str: data: 前缀之后的字符串，已去除前缀和空白。
-
-    Returns:
-        str（文本片段）、dict（thinking/usage）或None（跳过）。
-    """
-    if not data_str or data_str == "[DONE]":
-        return None
-
-    try:
-        obj = json.loads(data_str)
-    except (json.JSONDecodeError, ValueError):
-        return None
-
-    choice = (obj.get("choices") or [{}])[0]
-    delta = choice.get("delta", {})
-
-    reasoning = delta.get("reasoning_content")
-    if reasoning:
-        return {"thinking": reasoning}
-
-    content = delta.get("content", "")
-    if content:
-        return content
-
-    usage = obj.get("usage")
-    if usage and isinstance(usage, dict):
-        return {"usage": {
-            "prompt_tokens": usage.get("prompt_tokens", 0),
-            "completion_tokens": usage.get("completion_tokens", 0),
-        }}
-
-    return None
+__all__ = [
+    "BASE_URL",
+    "CHAT_PATH",
+    "MAX_TOKENS",
+    "RECOVERY_INTERVAL",
+    "MODELS",
+    "CAPS",
+    "FETCH_MODELS_ENABLED",
+    "MODEL_FETCH_INTERVAL",
+    "build_headers",
+    "build_payload",
+    "parse_sse_line",
+    "NvidiaAdapter",
+    "Adapter",
+]

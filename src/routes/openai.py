@@ -4,22 +4,28 @@ from __future__ import annotations
 """OpenAI 兼容路由——aiohttp.web 实现"""
 
 import asyncio
+import binascii
 import json
 import time
 import uuid
 from typing import Any, Dict, List, Optional, Union
 
 import aiohttp.web
-from src.core.server import REGISTRY_KEY, SESSION_KEY, json_response
+
+from src.core.config.resolver import resolve_model
 from src.core.errors import NoCandidateError, NotSupportedError, ProviderError
-from src.core.tools import normalize_content, parse_fncall_xml
 from src.core.http import (
     clean_fncall as _clean_fncall,
+)
+from src.core.http import (
     get_json as _get_json,
+)
+from src.core.http import (
     safe_flush as _safe_flush,
 )
+from src.core.server import REGISTRY_KEY, SESSION_KEY, json_response
+from src.core.tools import normalize_content, parse_fncall_xml
 from src.logger import get_logger
-from src.core.config.resolver import resolve_model
 
 __all__ = ["setup_routes"]
 logger = get_logger(__name__)
@@ -120,9 +126,7 @@ def _not_supported(feature: str) -> aiohttp.web.Response:
     )
 
 
-def _normalize_messages(
-    messages: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+def _normalize_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """规范化消息列表，处理 content 为列表的情况。
 
     Args:
@@ -178,8 +182,8 @@ def _extract_upload_files(
                         mime = header.split(":")[1].split(";")[0]
                         ext = _mime_to_ext(mime)
                         upload_files.append((file_bytes, "image.{}".format(ext)))
-                    except Exception:
-                        pass
+                    except (binascii.Error, ValueError, IndexError) as exc:
+                        logger.warning("提取 image_url 失败: %s", exc)
 
             elif part_type == "video_url":
                 url = part.get("video_url", {}).get("url", "")
@@ -190,8 +194,8 @@ def _extract_upload_files(
                         mime = header.split(":")[1].split(";")[0]
                         ext = _mime_to_ext(mime)
                         upload_files.append((file_bytes, "video.{}".format(ext)))
-                    except Exception:
-                        pass
+                    except (binascii.Error, ValueError, IndexError) as exc:
+                        logger.warning("提取 video_url 失败: %s", exc)
 
             elif part_type == "input_audio":
                 audio = part.get("input_audio", {})
@@ -203,8 +207,8 @@ def _extract_upload_files(
                         mime = header.split(":")[1].split(";")[0]
                         ext = _mime_to_ext(mime)
                         upload_files.append((file_bytes, "audio.{}".format(ext)))
-                    except Exception:
-                        pass
+                    except (binascii.Error, ValueError, IndexError) as exc:
+                        logger.warning("提取 input_audio 失败: %s", exc)
 
             elif part_type == "file":
                 file_obj = part.get("file", {})
@@ -214,7 +218,12 @@ def _extract_upload_files(
                     try:
                         header, b64_data = file_data.split(",", 1)
                         file_bytes = _b64.b64decode(b64_data)
-                        logger.debug("提取文件 [%s]: %d bytes, 内容预览: %r", filename, len(file_bytes), file_bytes[:100])
+                        logger.debug(
+                            "提取文件 [%s]: %d bytes, 内容预览: %r",
+                            filename,
+                            len(file_bytes),
+                            file_bytes[:100],
+                        )
                         upload_files.append((file_bytes, filename))
                     except Exception as e:
                         logger.warning("文件提取失败 [%s]: %s", filename, e)
@@ -285,6 +294,7 @@ async def _stream_chat(
     tools_raw = body.get("tools")
     extra = body.get("extra_body") or body.get("extra") or {}
     upload_files = _extract_upload_files(messages)
+    proto_override = body.get("protocol", "")
 
     resp = aiohttp.web.StreamResponse(
         status=200,
@@ -304,6 +314,7 @@ async def _stream_chat(
     fncall_buffer = ""
     in_fncall = False
     tool_calls_data: List[Dict[str, Any]] = []
+    platform_id: str = ""
 
     init_chunk_sent = False
 
@@ -325,9 +336,7 @@ async def _stream_chat(
             "choices": [{"index": 0, "delta": delta, "finish_reason": None}],
         }
         await resp.write(
-            "data: {}\n\n".format(
-                json.dumps(chunk, ensure_ascii=False)
-            ).encode("utf-8")
+            "data: {}\n\n".format(json.dumps(chunk, ensure_ascii=False)).encode("utf-8")
         )
 
     async def _send_tc_incremental(tc_list: List[Dict[str, Any]]) -> None:
@@ -354,7 +363,9 @@ async def _stream_chat(
                             "tool_calls": [
                                 {
                                     "index": idx,
-                                    "id": tc.get("id", "call_{}".format(uuid.uuid4().hex[:24])),
+                                    "id": tc.get(
+                                        "id", "call_{}".format(uuid.uuid4().hex[:24])
+                                    ),
                                     "type": "function",
                                     "function": {"name": name, "arguments": ""},
                                 }
@@ -372,7 +383,7 @@ async def _stream_chat(
 
             # arguments 增量块
             for start in range(0, max(len(args), 1), chunk_size):
-                frag = args[start: start + chunk_size]
+                frag = args[start : start + chunk_size]
                 if not frag and start > 0:
                     break
                 arg_chunk = {
@@ -403,7 +414,7 @@ async def _stream_chat(
 
     try:
         async for ch in gateway.dispatch(
-            registry = request.app[REGISTRY_KEY],
+            registry=request.app[REGISTRY_KEY],
             messages=messages,
             model=mdl,
             stream=True,
@@ -415,6 +426,7 @@ async def _stream_chat(
             max_tokens=body.get("max_tokens"),
             stop=_sl(body.get("stop")),
             upload_files=upload_files if upload_files else None,
+            protocol_id=proto_override,
         ):
             if isinstance(ch, str):
                 ctok += 1
@@ -425,7 +437,27 @@ async def _stream_chat(
 
                 buffer += ch
 
-                tag_idx = buffer.find(_FNCALL_OPEN_TAG)
+                # Use protocol-aware tag detection.
+                # detect_start() 容忍变体（如 `<antml:function_calls >` 或带属性）；
+                # 不支持该方法的协议回退到严格 trigger_tags 匹配。
+                from src.core.fncall.registry import get_protocol
+                proto = get_protocol(protocol_id=proto_override, platform_id=platform_id)
+                trigger_tags = proto.get_trigger_tags()
+
+                tag_idx = -1
+                detect_start = getattr(proto, "detect_start", None)
+                if callable(detect_start):
+                    try:
+                        found, pos = detect_start(buffer)
+                        if found:
+                            tag_idx = pos
+                    except Exception:
+                        pass
+                if tag_idx == -1:
+                    for tag in trigger_tags:
+                        idx = buffer.find(tag)
+                        if idx != -1 and (tag_idx == -1 or idx < tag_idx):
+                            tag_idx = idx
                 if tag_idx != -1:
                     safe_part = buffer[:tag_idx]
                     if safe_part:
@@ -453,7 +485,7 @@ async def _stream_chat(
                     in_fncall = True
                     continue
 
-                safe_part, buffer = _safe_flush(buffer)
+                safe_part, buffer = _safe_flush(buffer, platform_id=platform_id, protocol_id=proto_override)
                 if safe_part:
                     await _send_init()
                     chunk_data = {
@@ -476,7 +508,9 @@ async def _stream_chat(
                     )
 
             elif isinstance(ch, dict):
-                if "thinking" in ch:
+                if "_meta" in ch:
+                    platform_id = ch["_meta"].get("platform", "")
+                elif "thinking" in ch:
                     await _send_init()
                     chunk_data = {
                         "id": cid,
@@ -486,9 +520,7 @@ async def _stream_chat(
                         "choices": [
                             {
                                 "index": 0,
-                                "delta": {
-                                    "reasoning_content": ch["thinking"]
-                                },
+                                "delta": {"reasoning_content": ch["thinking"]},
                                 "finish_reason": None,
                             }
                         ],
@@ -514,9 +546,7 @@ async def _stream_chat(
             ensure_ascii=False,
         )
         try:
-            await resp.write(
-                "data: {}\n\n".format(err_data).encode("utf-8")
-            )
+            await resp.write("data: {}\n\n".format(err_data).encode("utf-8"))
         except Exception as exc:
             logger.debug("流式错误信息写回失败，可能连接已关闭: %s", exc)
         return resp
@@ -537,13 +567,15 @@ async def _stream_chat(
             ],
         }
         await resp.write(
-            "data: {}\n\n".format(
-                json.dumps(chunk_data, ensure_ascii=False)
-            ).encode("utf-8")
+            "data: {}\n\n".format(json.dumps(chunk_data, ensure_ascii=False)).encode(
+                "utf-8"
+            )
         )
 
     if in_fncall and fncall_buffer and not tool_calls_data:
-        tool_calls_data = parse_fncall_xml(fncall_buffer, tools_raw)
+        from src.core.fncall.registry import get_protocol
+        proto = get_protocol(protocol_id=proto_override, platform_id=platform_id)
+        _, tool_calls_data = proto.parse(fncall_buffer, tools_raw)
         if tool_calls_data:
             has_tc = True
 
@@ -580,19 +612,20 @@ async def _stream_chat(
     }
     try:
         await resp.write(
-            "data: {}\n\n".format(
-                json.dumps(final_chunk, ensure_ascii=False)
-            ).encode("utf-8")
+            "data: {}\n\n".format(json.dumps(final_chunk, ensure_ascii=False)).encode(
+                "utf-8"
+            )
         )
         await resp.write(
-            "data: {}\n\n".format(
-                json.dumps(usage_chunk, ensure_ascii=False)
-            ).encode("utf-8")
+            "data: {}\n\n".format(json.dumps(usage_chunk, ensure_ascii=False)).encode(
+                "utf-8"
+            )
         )
         await resp.write(b"data: [DONE]\n\n")
     except Exception as exc:
         logger.debug("流式结束块写回失败，可能连接已关闭: %s", exc)
     return resp
+
 
 async def chat_completions(
     request: aiohttp.web.Request,
@@ -610,7 +643,9 @@ async def chat_completions(
     if request.method != "POST":
         return _err(
             405,
-            "Method {} not allowed. Use POST for /v1/chat/completions.".format(request.method),
+            "Method {} not allowed. Use POST for /v1/chat/completions.".format(
+                request.method
+            ),
             "method_not_allowed",
         )
 
@@ -640,10 +675,11 @@ async def chat_completions(
     tcs: List[Dict] = []
     usage_d: Optional[Dict] = None
     upload_files = _extract_upload_files(messages)
+    platform_id: str = ""
 
     try:
         async for ch in gateway.dispatch(
-            registry = request.app[REGISTRY_KEY],
+            registry=request.app[REGISTRY_KEY],
             messages=_normalize_messages(messages),
             model=mdl,
             stream=False,
@@ -659,7 +695,9 @@ async def chat_completions(
             if isinstance(ch, str):
                 cp.append(ch)
             elif isinstance(ch, dict):
-                if "thinking" in ch:
+                if "_meta" in ch:
+                    platform_id = ch["_meta"].get("platform", "")
+                elif "thinking" in ch:
                     tp.append(ch["thinking"])
                 elif "tool_calls" in ch:
                     tcs = ch["tool_calls"]
@@ -674,7 +712,22 @@ async def chat_completions(
         return _err(500, str(e), "internal_error", "server_error")
 
     content = "".join(cp)
-    content = _clean_fncall(content)
+
+    # 兜底：若网关未产出 tool_calls 块（请求未带 tools，或流式解析器
+    # 漏掉变体标签），对完整内容再跑一次协议解析，把 antml / bracket /
+    # 其它协议的 tool_calls 抠出来。
+    if not tcs and content:
+        try:
+            from src.core.fncall.registry import get_protocol
+            proto = get_protocol(platform_id=platform_id)
+            cleaned, extracted = proto.parse(content, body.get("tools"))
+            if extracted:
+                tcs = extracted
+                content = cleaned
+        except Exception as exc:
+            logger.debug("非流式兜底 fncall 解析失败: %s", exc)
+
+    content = _clean_fncall(content, platform_id=platform_id)
 
     u = usage_d or {
         "prompt_tokens": 0,
@@ -754,7 +807,7 @@ async def create_response(
     usage_d: Optional[Dict] = None
     try:
         async for ch in gateway.dispatch(
-            registry = request.app[REGISTRY_KEY],
+            registry=request.app[REGISTRY_KEY],
             messages=messages,
             model=mdl,
             stream=False,
@@ -818,7 +871,16 @@ async def create_embeddings(
     if body is None:
         return _err(400, "Invalid JSON", "invalid_json")
 
-    cand = await registry.get_capable_candidate("embedding")
+    model = body.get("model", "")
+    registry = request.app[REGISTRY_KEY]
+    cands = await registry.get_candidates(model=model, capability="embedding")
+    if not cands:
+        cands = await registry.get_candidates(capability="embedding")
+    if not cands:
+        return _not_supported("Embeddings")
+
+    selected = await registry.selector.select(cands, 1)
+    cand = selected[0] if selected else None
     if cand is None:
         return _not_supported("Embeddings")
 
@@ -882,11 +944,7 @@ async def create_image(
             cand,
             body.get("prompt", ""),
             body.get("model", ""),
-            **{
-                k: v
-                for k, v in body.items()
-                if k not in ("prompt", "model")
-            },
+            **{k: v for k, v in body.items() if k not in ("prompt", "model")},
         )
         return _json(result)
     except NotImplementedError:
@@ -958,9 +1016,7 @@ async def create_image_variation(
                 image_data = await field.read()
             elif field.name == "model":
                 model = (await field.read()).decode("utf-8")
-        result = await adapter.create_image_variation(
-            cand, image_data, model
-        )
+        result = await adapter.create_image_variation(cand, image_data, model)
         return _json(result)
     except NotImplementedError:
         return _not_supported("Image variations")
@@ -1633,9 +1689,7 @@ async def delete_thread(
         响应对象。
     """
     thread_id = request.match_info["thread_id"]
-    return _json(
-        {"id": thread_id, "object": "thread.deleted", "deleted": True}
-    )
+    return _json({"id": thread_id, "object": "thread.deleted", "deleted": True})
 
 
 async def create_thread_message(
@@ -1882,9 +1936,7 @@ async def delete_vector_store(
         响应对象。
     """
     store_id = request.match_info["store_id"]
-    return _json(
-        {"id": store_id, "object": "vector_store.deleted", "deleted": True}
-    )
+    return _json({"id": store_id, "object": "vector_store.deleted", "deleted": True})
 
 
 async def create_vector_store_file(
@@ -2014,9 +2066,7 @@ async def cancel_upload(
         响应对象。
     """
     upload_id = request.match_info["upload_id"]
-    return _json(
-        {"id": upload_id, "object": "upload", "status": "cancelled"}
-    )
+    return _json({"id": upload_id, "object": "upload", "status": "cancelled"})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2071,7 +2121,9 @@ def setup_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/threads/{thread_id}/runs", list_runs)
     app.router.add_get("/v1/threads/{thread_id}/runs/{run_id}", retrieve_run)
     app.router.add_post("/v1/threads/{thread_id}/runs/{run_id}/cancel", cancel_run)
-    app.router.add_post("/v1/threads/{thread_id}/runs/{run_id}/submit_tool_outputs", submit_tool_outputs)
+    app.router.add_post(
+        "/v1/threads/{thread_id}/runs/{run_id}/submit_tool_outputs", submit_tool_outputs
+    )
     app.router.add_post("/v1/vector_stores", create_vector_store)
     app.router.add_get("/v1/vector_stores", list_vector_stores)
     app.router.add_get("/v1/vector_stores/{store_id}", retrieve_vector_store)

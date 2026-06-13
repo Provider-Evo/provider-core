@@ -12,7 +12,7 @@ from src.logger import get_logger
 
 import aiohttp
 
-from src.platforms.deepseek.core.accounts import ACCOUNTS, Account
+from src.platforms.deepseek.accounts import ACCOUNTS, Account
 from src.platforms.deepseek.core.constants import (
     CAPS,
     DEFAULT_HOST,
@@ -28,9 +28,9 @@ from src.platforms.deepseek.core.constants import (
 from src.platforms.deepseek.core.headers import build_headers
 from src.platforms.deepseek.core.hif import HifTokenManager, fetch_hif_tokens
 from src.platforms.deepseek.core.pow import WasmPow, download_wasm, get_pow_response
-from src.platforms.deepseek.core.session_api import create_session
-from src.platforms.deepseek.core.stream_parser import StreamParser
-from src.platforms.deepseek.core.user_api import login
+from src.platforms.deepseek.core.sessionapi import create_session
+from src.platforms.deepseek.core.streamparser import StreamParser
+from src.platforms.deepseek.core.userapi import login
 from src.core.candidate import Candidate, make_id
 
 logger = get_logger(__name__)
@@ -251,7 +251,7 @@ class DeepseekClient:
         """根据当前账号状态重建候选项列表。"""
         self._candidates = [
             Candidate(
-                id=make_id("deepseek"),
+                id=make_id("deepseek", account.username[:20]),
                 platform="deepseek",
                 resource_id=account.username[:20],
                 models=list(self._models),

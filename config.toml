@@ -1,0 +1,58 @@
+[server]
+version = "2.2.61"
+host = "0.0.0.0"
+port = 1337
+debug = false
+startup_force_kill_port = true
+
+[anthropic]
+api_version = "2023-06-01"
+
+[auth]
+enabled = true
+keys = ["sk-provider-v2"]
+group_list_type = "blacklist"
+group_list = []
+
+[gateway]
+concurrent_enabled = true
+concurrent_count = 3
+min_tokens = 10
+group_list_type = "whitelist"
+group_list = []
+
+[proxy]
+proxy_server = "http://103.242.2.242:40000"
+proxy_enabled = false
+proxy_urls = []
+
+[platforms_proxy]
+enabled_platforms = ["qwen"]
+group_list_type = "whitelist"
+
+[platforms]
+platform_list_type = "blacklist"
+platform_list = ["caiyuesbk", "cerebras", "chutes", "codebuddy", "n1n", "nvidia", "openrouter", "perplexity", "deepseek", "cursor", "deepseek"]
+
+[fncall]
+protocol = "antml"
+record_prompt = true
+print_prompt = false
+custom_prompt_en = ""
+custom_prompt_zh = ""
+
+[debug]
+level = "DEBUG"
+color = false
+
+[autoupdate]
+enabled = false
+branch = "dev"
+interval = 300
+
+[anthropic.model_mapping]
+claude-haiku-4-5-20251001 = "qwen3-coder-plus"
+claude-sonnet-4-6 = "qwen3-coder-plus"
+
+[fncall.fncall_mapping]
+qwen = "nous"

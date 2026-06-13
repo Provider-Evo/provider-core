@@ -9,8 +9,9 @@ from __future__ import annotations
 from typing import Dict, List
 
 # ── URL常量 ──────────────────────────────────────────────
-BASE_URL: str = "https://freeollama.oneplus1.top/"
+BASE_URL: str = "https://freeollama.oneplus1.top"
 CHAT_PATH: str = "/api/chat"
+EMBED_PATH: str = "/api/embed"
 
 # ── 发现配置 ──────────────────────────────────────────────
 PAGE_SIZE: int = 100
@@ -21,6 +22,7 @@ REFRESH_INTERVAL: int = 86400
 # ── 能力声明 ──────────────────────────────────────────────
 CAPS: Dict[str, bool] = {
     "chat": True,
+    "embedding": True,
 }
 
 # ── 模型列表 ──────────────────────────────────────────────
@@ -30,3 +32,6 @@ MODELS: List[str] = []
 # ── 模型缓存配置 ──────────────────────────────────────────
 FETCH_MODELS_ENABLED: bool = False
 MODEL_FETCH_INTERVAL: int = 86400
+
+# ── 动态发现开关 ──────────────────────────────────────────
+DYNAMIC_DISCOVERY: bool = False  # 是否动态从网络获取服务器列表；False 时仅使用持久化缓存

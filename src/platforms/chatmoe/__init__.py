@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from src.platforms.chatmoe.adapter import ChatmoeAdapter
+from .adapter import Adapter, ChatmoeAdapter
 
-__all__ = ["ChatmoeAdapter"]
+__all__ = ["Adapter", "ChatmoeAdapter"]

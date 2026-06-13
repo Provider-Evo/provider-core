@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from src.platforms.cerebras.adapter import CerebrasAdapter
+from .adapter import Adapter, CerebrasAdapter
 
-__all__ = ["CerebrasAdapter"]
+__all__ = ["Adapter", "CerebrasAdapter"]
