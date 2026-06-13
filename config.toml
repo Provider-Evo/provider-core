@@ -42,8 +42,7 @@ print_prompt = false
 [debug]
 level = "DEBUG"
 color = false
-access_log = true
-log_name = "provider-v2"
+access_log = false
 
 [autoupdate]
 enabled = false

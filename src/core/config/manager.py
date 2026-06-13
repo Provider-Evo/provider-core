@@ -27,6 +27,12 @@ class ConfigManager:
             self._center.init_from_template(exit_after_create=True, exit_after_merge=True)
         self._config = self._center.bind_proxy(AppConfig)
         set_color(self._config.debug.color)
+        # 同步 loguru 日志颜色设置
+        try:
+            from src.logger import set_color as _loguru_set_color
+            _loguru_set_color(self._config.debug.color)
+        except Exception:
+            pass
         logger.info("配置已加载: %s", self._center.path)
         return self._config
 
@@ -35,6 +41,11 @@ class ConfigManager:
         if ok:
             self._config = self._center.bind_proxy(AppConfig)
             set_color(self._config.debug.color)
+            try:
+                from src.logger import set_color as _loguru_set_color
+                _loguru_set_color(self._config.debug.color)
+            except Exception:
+                pass
         return ok
 
     async def start_watching(self) -> None:
