@@ -18,11 +18,11 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.62-blue)
-![Version](https://img.shields.io/badge/version-2.2.62-blue)
+![Status](https://img.shields.io/badge/status-v2.2.63-blue)
+![Version](https://img.shields.io/badge/version-2.2.63-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Platforms](https://img.shields.io/badge/platforms-11+-orange)
+![Platforms](https://img.shields.io/badge/platforms-12+-orange)
 
 [![GitHub stars](https://img.shields.io/github/stars/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/issues)
@@ -153,6 +153,7 @@
 | Cursor | ✅ | chat |
 | CodeBuddy | ✅ | chat |
 | NVIDIA | ✅ | chat |
+| NoobKeys | ✅ | chat |
 | 更多平台 | 🚧 | 持续开发中 |
 
 ---
@@ -1256,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.62
+### 当前版本：v2.2.63
+
+✅ 已完成（v2.2.63）：
+- 新增 `noobkeys` 平台适配器：OpenAI 兼容协议的纯文本对话中转，支持 Claude / GPT-OSS / Qwen / Kimi 共 9 个模型；SSE 解析兼容 `delta.reasoning` 与 `delta.reasoning_content`；按上游错误消息区分余额不足、鉴权失败与限速并分类处理
 
 ✅ 已完成（v2.2.62）：
 - 修复并发竞速模式下 `inject_fncall()` 重复写入 prompt 文件：`_race()` 中 worker 启动前统一转储一次，worker 内部传 `dump_prompt=False` 抑制重复

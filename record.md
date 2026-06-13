@@ -162,6 +162,16 @@ src/platforms/nvidia/client.py
 src/platforms/nvidia/core/adaptercore.py
 src/platforms/nvidia/core/constants.py
 src/platforms/nvidia/util.py
+src/platforms/noobkeys/__init__.py
+src/platforms/noobkeys/adapter.py
+src/platforms/noobkeys/core/__init__.py
+src/platforms/noobkeys/core/adaptercore.py
+src/platforms/noobkeys/core/client.py
+src/platforms/noobkeys/core/constants.py
+src/platforms/noobkeys/core/headers.py
+src/platforms/noobkeys/core/payloads.py
+src/platforms/noobkeys/core/sse.py
+src/platforms/noobkeys/util.py
 src/platforms/ollama/__init__.py
 src/platforms/ollama/adapter.py
 src/platforms/ollama/client.py
@@ -254,6 +264,8 @@ tests/src/core/utils/test_ids.py
 tests/src/core/utils/test_io_utils.py
 tests/src/core/utils/test_retry.py
 tests/src/core/utils/test_scheduler.py
+tests/src/platforms/noobkeys/__init__.py
+tests/src/platforms/noobkeys/test_noobkeys_mvp.py
 tests/src/platforms/ollama/test_ollama_embedding.py
 tests/src/platforms/ollama/test_ollama_mvp.py
 tests/src/platforms/ollama/test_ollama_servers.py
@@ -287,6 +299,7 @@ docs-src/src/platforms/edgetts/INDEX.md
 docs-src/src/platforms/gtts/INDEX.md
 docs-src/src/platforms/n1n/INDEX.md
 docs-src/src/platforms/nvidia/INDEX.md
+docs-src/src/platforms/noobkeys/INDEX.md
 docs-src/src/platforms/ollama/INDEX.md
 docs-src/src/platforms/openaifm/INDEX.md
 docs-src/src/platforms/openrouter/INDEX.md
@@ -1068,3 +1081,24 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.62
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.61 → 2.2.62
 验证: py_compile 全部通过; pytest 560 passed, 16 skipped, 3 warnings
+
+2026-06-13 10:23:00
+
+[src/platforms/noobkeys/__init__.py] 新增 noobkeys 平台包：导出 NoobKeysAdapter / Adapter
+[src/platforms/noobkeys/adapter.py] 平台门面：从 util 重导出 Adapter 类
+[src/platforms/noobkeys/util.py] 懒加载门面：__getattr__ 延迟导入 core.adaptercore，re-export 常量与纯函数
+[src/platforms/noobkeys/core/__init__.py] core 子包初始化
+[src/platforms/noobkeys/core/adaptercore.py] NoobKeysAdapter 实现：init() 立即返回、后台完成模型拉取；complete() 透传 thinking/search 不进入 HTTP 请求体
+[src/platforms/noobkeys/core/client.py] HTTP 客户端：Bearer 鉴权、指数退避重试、按上游错误消息分类处理（鉴权失败/余额不足/限速/5xx）；流式与非流式统一产出 thinking/content/usage
+[src/platforms/noobkeys/core/constants.py] 平台常量：BASE_URL、CHAT_PATH、9 个模型、纯文本能力（chat=True 其余 False）、关闭远程模型拉取
+[src/platforms/noobkeys/core/headers.py] 请求头构造：Content-Type + Bearer
+[src/platforms/noobkeys/core/payloads.py] 请求体构造：model/messages/stream + temperature/top_p/max_tokens/stop
+[src/platforms/noobkeys/core/sse.py] SSE 解析：支持 delta.reasoning 与 delta.reasoning_content 两种 reasoning 字段
+[docs-src/src/platforms/noobkeys/INDEX.md] 新增 noobkeys 平台文档：能力、模型列表、reasoning 处理、错误分类、维护提示
+[tests/src/platforms/noobkeys/__init__.py] 新增 noobkeys 测试包
+[tests/src/platforms/noobkeys/test_noobkeys_mvp.py] 新增 noobkeys MVP 契约测试
+[template/template_config.toml] 版本 2.2.62 → 2.2.63
+[config.toml] 同步版本 2.2.63
+[README.md] 版本徽章更新为 2.2.63；platforms 徽章 11+ → 12+；已支持平台表新增 NoobKeys；路线图新增 v2.2.63 条目
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.62 → 2.2.63
+验证: py_compile 全部通过; pytest 561 passed, 16 skipped, 3 warnings
