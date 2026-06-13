@@ -85,6 +85,7 @@ record_prompt = false
 [debug]
 level = "INFO"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
 color = true    # 日志颜色输出：true 开启，false 关闭
+access_log = true  # aiohttp 访问日志：true 显示，false 关闭
 log_name = "provider-v2"  # 日志文件名前缀
 
 [autoupdate]

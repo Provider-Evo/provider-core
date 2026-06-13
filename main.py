@@ -73,7 +73,9 @@ async def _run() -> None:
     await registry.init(session)
 
     app = await create_app(registry, session)
-    runner = aiohttp.web.AppRunner(app)
+    import logging as _logging
+    _access_log = _logging.getLogger("aiohttp.access") if cfg.debug.access_log else None
+    runner = aiohttp.web.AppRunner(app, access_log=_access_log)
     await runner.setup()
     site = aiohttp.web.TCPSite(runner, host, port)
     await site.start()
