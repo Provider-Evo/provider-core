@@ -63,6 +63,8 @@ CUSTOM_BASE64_CHARS: Final[str] = (
     "DGi0YA7BemWnQjCl4_bR3f8SKIF9tUz/xhr2oEOgPpac=61ZqwTudLkM5vHyNXsVJ"
 )
 COOKIE_REFRESH_INTERVAL: Final[int] = 15 * 60
+TOKEN_REFRESH_INTERVAL: Final[int] = 30 * 60  # 每 30 分钟检查一次 Token 过期
+TOKEN_EXPIRY_MARGIN: Final[int] = 3600  # Token 在过期前 1 小时内视为即将过期
 HASH_FIELDS: Final[Dict[int, str]] = {
     16: "split",
     17: "full",

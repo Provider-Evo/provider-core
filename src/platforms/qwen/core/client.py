@@ -39,6 +39,8 @@ from src.platforms.qwen.core.shared import (
     STS_TOKEN_PATHS,
     STOP_CHAT_PATH,
     TASK_STATUS_PATH,
+    TOKEN_EXPIRY_MARGIN,
+    TOKEN_REFRESH_INTERVAL,
     TTS_DIR,
     TTS_PATH,
     TTS_TIMEOUT,
@@ -217,6 +219,9 @@ class QwenClient:
         )
         self._bg_tasks.append(
             asyncio.ensure_future(self._bg_persist())
+        )
+        self._bg_tasks.append(
+            asyncio.ensure_future(self._bg_token_refresh())
         )
         logger.info("Qwen 后台任务已启动")
 
@@ -421,6 +426,69 @@ class QwenClient:
         while not self._closing:
             await asyncio.sleep(PERSIST_INTERVAL)
             if not self._closing:
+                self._save_persist()
+
+    async def _bg_token_refresh(self) -> None:
+        """后台定期验证 Token 并自动重登过期账号。
+
+        每 TOKEN_REFRESH_INTERVAL 检查一次：
+        - 已登录账号：token_expires 在 MARGIN 内 → 主动重登
+        - 未登录账号：尝试重新登录
+        """
+        while not self._closing:
+            await asyncio.sleep(TOKEN_REFRESH_INTERVAL)
+            if self._closing:
+                break
+
+            now = time.time()
+            need_relogin: List[Account] = []
+
+            for acc in self._account_states.values():
+                if not acc.is_login:
+                    # 未登录的账号尝试重登
+                    need_relogin.append(acc)
+                elif acc.token and acc.token_expires > 0:
+                    remaining = acc.token_expires - now
+                    if remaining < TOKEN_EXPIRY_MARGIN:
+                        logger.info(
+                            "Qwen Token 即将过期 [%s***]，剩余 %.0f 秒，主动重登",
+                            acc.username[:6], remaining,
+                        )
+                        acc.is_login = False
+                        acc.token = ""
+                        need_relogin.append(acc)
+
+            if not need_relogin:
+                continue
+
+            sem = asyncio.Semaphore(LOGIN_CONCURRENCY)
+
+            async def _relogin_one(acc: Account) -> None:
+                async with sem:
+                    if self._closing:
+                        return
+                    try:
+                        await self._login(acc)
+                    except Exception as e:
+                        logger.warning(
+                            "Qwen 自动重登失败 [%s***]: %s",
+                            acc.username[:6], e,
+                        )
+
+            await asyncio.gather(
+                *[_relogin_one(acc) for acc in need_relogin],
+                return_exceptions=True,
+            )
+
+            refreshed = sum(
+                1 for acc in need_relogin if acc.is_login
+            )
+            if refreshed:
+                logger.info(
+                    "Qwen Token 刷新: %d/%d 账号重登成功",
+                    refreshed, len(need_relogin),
+                )
+                self._rebuild_candidates()
                 self._save_persist()
 
     # =========================================================================
