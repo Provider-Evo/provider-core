@@ -11,14 +11,12 @@ if PROJECT_ROOT not in sys.path:
 from src.core.tools import (
     normalize_content,
     format_tool_descs,
-    _render_tool_call,
-    _render_tool_result,
-    _format_conversation_history,
-    _normalize_messages,
     parse_fncall,
     parse_fncall_xml,
     FncallStreamParser,
 )
+from echotools.fncall.prompt.history import _render_tool_call, _render_tool_result
+from echotools.fncall.prompt.inject import _format_conversation_history, _normalize_messages
 
 SAMPLE_TOOL = {
     "type": "function",

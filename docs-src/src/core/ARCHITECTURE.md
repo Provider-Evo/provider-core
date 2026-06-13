@@ -60,17 +60,21 @@ main.py
 
 ## 核心模块
 
-| 模块 | 路径 | 职责 |
-|------|------|------|
-| Server | `src/core/server.py` | aiohttp.web 应用创建、路由注册 |
-| Registry | `src/core/registry.py` | 平台适配器发现、注册、候选项查询 |
-| Gateway | `src/core/gateway.py` | 请求分发、候选项选择、竞速执行 |
-| Proxy | `src/core/proxy.py` | 代理支持（HTTP/HTTPS/SOCKS5）、环境变量检测 |
-| Config | `src/core/config.py` | TOML 配置加载、热重载 |
-| Candidate | `src/core/candidate.py` | 候选项数据类（平台、模型、能力） |
-| Errors | `src/core/errors.py` | 错误分类（NoCandidateError, ProviderError 等） |
-| Selector | `src/core/selector.py` | TAS 算法选择最优候选项 |
-| Tools | `src/core/tools.py` | 工具调用处理（XML 格式、注入、解析） |
+> **v2.2.65 重构**：`src/core/` 下的模块已重构为 `echotools` 包的薄包装层。
+> 核心逻辑（配置管理、插件注册、函数调用解析、代理、进程管理等）统一迁移至 `echotools>=1.0.1`。
+> `src/core/` 保留原始 API 接口，内部委托给 `echotools` 对应组件。
+
+| 模块 | 路径 | 职责 | echotools 组件 |
+|------|------|------|----------------|
+| Server | `src/core/server.py` | aiohttp.web 应用创建、路由注册 | echotools Server |
+| Registry | `src/core/dispatch/registry.py` | 平台适配器发现、注册、候选项查询 | echotools PluginRegistry |
+| Gateway | `src/core/dispatch/gateway.py` | 请求分发、候选项选择、竞速执行 | echotools Gateway |
+| Selector | `src/core/dispatch/selector.py` | TAS 算法选择最优候选项 | echotools Selector |
+| Proxy | `src/core/server/proxy.py` | 代理支持（HTTP/HTTPS/SOCKS5）、环境变量检测 | echotools ProxyManager |
+| Config | `src/core/config/` | TOML 配置加载、热重载 | echotools ConfigCenter |
+| FnCall | `src/core/fncall/` | 工具调用解析、协议、注入 | echotools fncall |
+| ModelsCache | `src/core/models_cache.py` | 模型列表缓存 | echotools ListCache |
+| Tools | `src/core/tools.py` | 工具调用处理 | echotools Tools |
 
 ## 平台适配器接口
 

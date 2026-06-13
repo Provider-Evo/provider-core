@@ -8,8 +8,11 @@ from src.core.dispatch.candidate import Candidate
 from src.core.config import get_config
 from src.core.errors import NoCandidateError, ProviderError
 from src.core.fncall.registry import get_protocol
-from src.core.tools import FncallStreamParser, inject_fncall
-from src.logger import get_logger
+from echotools.fncall.parsers.stream import FncallStreamParser
+from echotools.fncall.prompt.inject import inject_fncall
+from echotools.dispatch.usage import fallback_usage as _fallback_usage
+from echotools.dispatch.usage import normalize_usage as _normalize_usage
+from echotools.logger.manager import get_logger
 
 __all__ = ["dispatch"]
 logger = get_logger(__name__)
@@ -18,48 +21,6 @@ logger = get_logger(__name__)
 _RACE_CHUNK_TIMEOUT: float = 120.0
 
 
-def _fallback_usage(prompt_len: int, resp_text: str) -> Dict[str, int]:
-    """估算 token 用量（无精确数据时的回退）。
-
-    Args:
-        prompt_len: 提示文本字符数。
-        resp_text: 响应文本。
-
-    Returns:
-        用量字典。
-    """
-    pt = max(prompt_len // 3, 1)
-    ct = max(len(resp_text) // 3, 0)
-    return {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": pt + ct}
-
-
-def _normalize_usage(
-    raw: Dict[str, Any], prompt_len: int, resp_text: str
-) -> Dict[str, int]:
-    """规范化 usage 字典。
-
-    Args:
-        raw: 原始 usage 数据。
-        prompt_len: 提示文本字符数。
-        resp_text: 响应文本。
-
-    Returns:
-        规范化后的用量字典。
-    """
-    try:
-        pt = int(raw.get("prompt_tokens", raw.get("input_tokens", 0)))
-        ct = int(raw.get("completion_tokens", raw.get("output_tokens", 0)))
-        if pt <= 0 and ct <= 0:
-            return _fallback_usage(prompt_len, resp_text)
-        if pt <= 0:
-            pt = prompt_len // 3
-        return {
-            "prompt_tokens": pt,
-            "completion_tokens": ct,
-            "total_tokens": pt + ct,
-        }
-    except (TypeError, ValueError):
-        return _fallback_usage(prompt_len, resp_text)
 
 
 async def _wait_for_candidates(

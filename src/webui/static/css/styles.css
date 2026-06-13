@@ -39,19 +39,22 @@ input, input:focus, input:focus-visible {
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Arial, sans-serif;
   background: linear-gradient(180deg, var(--bg) 0%, var(--panel-soft) 100%); color: var(--text); }
-.tab-panel.active { display: grid; gap: 14px; }
+.tab-panel.active { display: grid; gap: 14px; contain: layout style; }
 .tab-button.active { background: var(--accent); color: #fff; border-color: transparent; }
-.webui-body { display: grid; grid-template-columns: 180px 1fr; gap: 0; }
-.webui-layout { display: block; min-height: 60vh; }
+.webui-body { display: grid; grid-template-columns: 180px 1fr; gap: 0; align-items: start; }
+.webui-layout { display: block; min-height: 60vh; contain: layout style; }
 .webui-sidebar { display: grid; gap: 4px; padding: 14px; border-right: 1px solid var(--border);
-  background: var(--panel-soft); position: sticky; top: 0; max-height: 80vh; overflow-y: auto; }
+  background: var(--panel-soft); position: sticky; top: 0; max-height: 80vh; overflow-y: auto;
+  contain: layout style; }
 .sidebar-nav-item { text-align: left; border-radius: 10px; padding: 10px 14px; font-size: 14px;
-  border: 1px solid transparent; background: var(--panel); color: var(--text);
-  cursor: pointer; transition: all 0.15s; font-weight: 500; }
+  border: 1px solid transparent; border-left: 3px solid transparent; background: var(--panel); color: var(--text);
+  cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; font-weight: 500;
+  contain: layout style; }
 .sidebar-nav-item:hover { background: var(--panel-alt); }
 .sidebar-nav-item.active { background: var(--accent-soft); color: var(--accent);
-  border-color: var(--accent); font-weight: 600; border-left: 3px solid var(--accent); }
-.webui-content { padding: 14px; min-width: 0; }
+  border-color: transparent; border-left-color: var(--accent); }
+.webui-content { padding: 14px; min-width: 0; contain: layout style; }
+#mainTabSection { contain: layout style; overflow: hidden; }
 /* Chat input container */
 #chatInputViewport {
   position: relative;
@@ -367,10 +370,9 @@ body { margin: 0; font-family: Arial, sans-serif;
 
 /* ========================= Unified Design System ========================= */
 
-/* Section containers - consistent with chat input */
+/* Section containers */
 section.bg-panel,
 section.tab-panel {
-  will-change: transform, opacity;
   transition: box-shadow 0.2s ease;
 }
 
@@ -384,11 +386,12 @@ section.tab-panel {
 }
 
 /* Button transitions */
-button,
-.tab-button,
-.sidebar-nav-item {
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform, opacity;
+button:not(.sidebar-nav-item),
+.tab-button:not(.sidebar-nav-item) {
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Input focus effect */
@@ -402,10 +405,7 @@ textarea:focus {
 
 /* Sidebar item transitions */
 .sidebar-nav-item {
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-}
-.sidebar-nav-item:hover {
-  transform: translateX(2px);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 /* Badge pulse animation */
@@ -461,27 +461,9 @@ textarea:focus {
   animation: toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Section stagger children */
+/* Section stagger children - disabled to prevent tab-switch reflow */
 section.tab-panel > * {
-  opacity: 0;
-  animation: fadeInUp 0.4s ease forwards;
-}
-section.tab-panel > *:nth-child(1) { animation-delay: 0.05s; }
-section.tab-panel > *:nth-child(2) { animation-delay: 0.1s; }
-section.tab-panel > *:nth-child(3) { animation-delay: 0.15s; }
-section.tab-panel > *:nth-child(4) { animation-delay: 0.2s; }
-section.tab-panel > *:nth-child(5) { animation-delay: 0.25s; }
-section.tab-panel > *:nth-child(6) { animation-delay: 0.3s; }
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  opacity: 1;
 }
 
 /* ========================= Custom Dropdown Component ========================= */
@@ -883,4 +865,33 @@ section.tab-panel > *:nth-child(6) { animation-delay: 0.3s; }
 
 .confirm-dialog-ok:hover {
   opacity: 0.9;
+}
+
+/* ========== Stats: Timeline Chart ========== */
+.timeline-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 52px;
+  overflow-x: auto;
+}
+.timeline-bar {
+  flex: 1;
+  min-width: 4px;
+  max-width: 12px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  position: relative;
+  transition: opacity 0.15s;
+}
+.timeline-bar:hover {
+  opacity: 0.8;
+}
+.timeline-bar-err {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--err);
+  border-radius: 2px 2px 0 0;
 }

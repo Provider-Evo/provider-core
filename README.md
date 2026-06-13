@@ -18,11 +18,11 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.62-blue)
-![Version](https://img.shields.io/badge/version-2.2.62-blue)
+![Status](https://img.shields.io/badge/status-v2.2.68-blue)
+![Version](https://img.shields.io/badge/version-2.2.68-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Platforms](https://img.shields.io/badge/platforms-11+-orange)
+![Platforms](https://img.shields.io/badge/platforms-12+-orange)
 
 [![GitHub stars](https://img.shields.io/github/stars/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/issues)
@@ -153,6 +153,7 @@
 | Cursor | ✅ | chat |
 | CodeBuddy | ✅ | chat |
 | NVIDIA | ✅ | chat |
+| NoobKeys | ✅ | chat |
 | 更多平台 | 🚧 | 持续开发中 |
 
 ---
@@ -1256,7 +1257,37 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.62
+### 当前版本：v2.2.68
+
+✅ 已完成（v2.2.68）：
+- 修复工具调用标签泄露到流式输出的 bug（safe_flush 未检测 buffer 本身是 trigger tag 前缀）
+- 修复 clean_fncall/safe_flush 使用 echotools 而非项目 wrapper 的 get_protocol（忽略 config 配置）
+- 修复非流式路径未传递 protocol_id 到 gateway 和 clean_fncall
+- 修复 Runner 进程重复加载配置（proxy._init 仅在 Worker 中加载）
+- ConfigManager.exit_after_merge=False 消除模板合并后的多余重启
+- echotools 升级到 1.0.14（NousProtocol 重写为真正的 Nous/Hermes 格式）
+
+✅ 已完成（v2.2.67）：
+- 修复工具协议选择未生效 bug：`get_protocol()` 现在自动从 `[fncall]` 配置读取默认协议和平台映射
+- `gateway.py` 改用项目薄包装版 `get_protocol`（自动读 config），不再直接用 echotools 版本
+
+✅ 已完成（v2.2.66）：
+- WebUI 新增「统计」Tab：请求量、错误率、延迟分位数、Token 用量、请求趋势 sparkline、状态码分布、Top 平台/模型排行、系统资源
+- 新增请求统计收集器（内存环形缓冲 + 时间桶聚合，零外部依赖）
+- 新增统计 API：`GET /v1/webui/stats` + `POST /v1/webui/stats/reset`
+- 新增统计中间件：自动记录 API 请求（platform/model/status/latency）
+- 前端模块化架构：`js/core/`（api.js, router.js）+ `js/features/`（stats.js）
+
+✅ 已完成（v2.2.65）：
+- 核心重构：`src/core/` 全面迁移至 `echotools` 包，减少约 6000 行重复代码
+- 新增 `echotools>=1.0.1` 依赖
+- 修复 `registry.py` 持久化路径计算错误（`.parent` 层级不足导致写入 `src/persist/`）
+- `[debug]` 启用彩色日志（`color = true`）
+
+✅ 已完成（v2.2.64）：
+- `src/logger.py` 新增 `_resolve_log_name()` 函数，日志文件名和默认 `module_name` 改为从 `config.toml` 的 `debug.log_name` 读取（默认 `provider-v2`）
+- `[debug]` 新增 `log_name` 配置项，支持自定义日志文件名前缀
+- 新增 `noobkeys` 平台适配器：OpenAI 兼容协议的纯文本对话中转，支持 Claude / GPT-OSS / Qwen / Kimi 共 9 个模型；SSE 解析兼容 `delta.reasoning` 与 `delta.reasoning_content`；按上游错误消息区分余额不足、鉴权失败与限速并分类处理
 
 ✅ 已完成（v2.2.62）：
 - 修复并发竞速模式下 `inject_fncall()` 重复写入 prompt 文件：`_race()` 中 worker 启动前统一转储一次，worker 内部传 `dump_prompt=False` 抑制重复

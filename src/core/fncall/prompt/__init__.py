@@ -1,6 +1,3 @@
-# src/core/fncall/prompt/__init__.py
-"""fncall prompt 构建包。"""
-
-from src.core.fncall.prompt.inject import inject_fncall
-
-__all__ = ["inject_fncall"]
+"""fncall prompt 构建包 → echotools 重导出。"""
+from echotools.fncall.prompt import *  # noqa: F401,F403
+from echotools.fncall.prompt import inject_fncall

@@ -173,7 +173,13 @@ function initAllMotionEffects() {
 
     // Sidebar nav items - staggered
     const sidebarItems = document.querySelectorAll('.sidebar-nav-item');
-    sidebarItems.forEach((item, i) => appearIn(item, 40 + i * 35, 5));
+    sidebarItems.forEach((item, i) => {
+        appearIn(item, 40 + i * 35, 5).then(() => {
+            item.style.transform = '';
+            item.style.opacity = '';
+            item.style.filter = '';
+        });
+    });
 
     // Cards - hover lift
     const cards = document.querySelectorAll('.border.rounded-\\[14px\\], .border.rounded-xl');

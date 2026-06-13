@@ -3,8 +3,8 @@ import pytest
 
 from src.core.fncall.shared.normalization import normalize_content, format_tool_descs
 from src.core.fncall.shared.loop_detect import detect_tool_loop, LoopDetectionResult
-from src.core.fncall.shared.coercion import _coerce_param_value, _build_param_schema_index
-from src.core.fncall.shared.xml_helpers import extract_cdata, escape_xml_attr
+from echotools.fncall.shared.coercion import _coerce_param_value, _build_param_schema_index
+from echotools.fncall.shared.xml_helpers import extract_cdata, escape_xml_attr
 
 
 class TestNormalizeContent:

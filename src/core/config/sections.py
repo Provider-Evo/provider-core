@@ -114,6 +114,7 @@ class DebugCfg(ConfigBase):
     """调试日志级别配置。"""
     level: str = "INFO"
     color: bool = True
+    access_log: bool = True
 
 
 @dataclass

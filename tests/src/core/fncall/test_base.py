@@ -7,8 +7,8 @@ from src.core.fncall.base import (
     get_protocol_by_id,
     list_protocols,
     VALID_PROTOCOL_IDS,
-    _PROTOCOL_REGISTRY,
 )
+from echotools.protocol.base import _PROTOCOL_REGISTRY
 
 
 class TestValidProtocolIds:
