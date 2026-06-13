@@ -2,7 +2,7 @@
 # 复制此文件到项目根目录并重命名为 config.toml
 
 [server]
-version = "2.2.63"
+version = "2.2.64"
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -85,6 +85,7 @@ record_prompt = false
 [debug]
 level = "INFO"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
 color = true    # 日志颜色输出：true 开启，false 关闭
+log_name = "provider-v2"  # 日志文件名前缀
 
 [autoupdate]
 enabled = false

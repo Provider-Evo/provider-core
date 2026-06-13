@@ -3,7 +3,6 @@ from __future__ import annotations
 """集中日志配置模块。
 
 提供 `get_logger` 以统一项目日志输出（控制台 + 文件）。
-日志格式严格遵循 task.txt 第 11 节规范。
 """
 
 import sys
@@ -65,6 +64,24 @@ def _resolve_log_level() -> str:
     except Exception as exc:
         _loguru_logger.debug("读取 config.toml 日志级别失败: %s", exc)
     return "INFO"
+
+
+def _resolve_log_name() -> str:
+    """从 config.toml 读取日志名称，默认 provider-v2。"""
+    try:
+        import tomllib
+
+        root = Path(__file__).parent.parent
+        config_path = root / "config.toml"
+        if config_path.exists():
+            with open(config_path, "rb") as f:
+                raw = tomllib.load(f)
+            name = str(raw.get("debug", {}).get("log_name", "provider-v2")).strip()
+            if name:
+                return name
+    except Exception:
+        pass
+    return "provider-v2"
 
 
 def get_level_abbr(record: dict) -> str:
@@ -353,8 +370,9 @@ def _setup_handlers() -> None:
     )
 
     # 文件输出处理器 - 详细格式，记录所有 TRACE 级别
+    log_name = _resolve_log_name()
     _loguru_logger.add(
-        str(_LOG_DIR / "provider-v2_{time:YYYYMMDD_HHmmss}.log"),
+        str(_LOG_DIR / f"{log_name}_{{time:YYYYMMDD_HHmmss}}.log"),
         level="TRACE",
         format=(
             "{time:YYYY-MM-DD HH:mm:ss.SSS} | "
@@ -395,4 +413,4 @@ def get_logger(module_name: str) -> CompatLogger:
 
 
 # 默认 logger 实例（向后兼容）
-logger = _loguru_logger.bind(module_name="Adapter")
+logger = _loguru_logger.bind(module_name=_resolve_log_name())

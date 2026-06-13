@@ -1102,3 +1102,12 @@ pytest: (pending)
 [README.md] 版本徽章更新为 2.2.63；platforms 徽章 11+ → 12+；已支持平台表新增 NoobKeys；路线图新增 v2.2.63 条目
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.62 → 2.2.63
 验证: py_compile 全部通过; pytest 561 passed, 16 skipped, 3 warnings
+
+2026-06-13 16:00:00
+
+[src/logger.py] 新增 _resolve_log_name() 函数，日志文件名和默认 module_name 改为从 config.toml 的 debug.log_name 读取
+[config.toml] [debug] 新增 log_name 配置项；修复损坏的重复 [debug] 段落；版本 2.2.63 → 2.2.64
+[template/template_config.toml] 同步新增 log_name 配置项；版本 2.2.63 → 2.2.64
+[README.md] 版本徽章和路线图更新为 2.2.64
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.63 → 2.2.64
+验证: py_compile 通过; pytest tests/src/test_logger.py 3 passed
