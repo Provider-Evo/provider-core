@@ -1,6 +1,7 @@
 """代理支持模块 → echotools ProxyManager 封装。"""
 from __future__ import annotations
 
+import os
 import warnings
 from typing import Dict
 
@@ -50,7 +51,9 @@ def get_proxy_dict() -> Dict[str, str]:
 def _init() -> None:
     _mgr.patch_requests()
     _mgr.patch_aiohttp()
-    activate()
+    # Only load proxy config in Worker process (Runner doesn't need it)
+    if os.environ.get("WORKER_PROCESS") == "1":
+        activate()
 
 
 _init()

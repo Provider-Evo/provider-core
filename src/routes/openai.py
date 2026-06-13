@@ -676,6 +676,7 @@ async def chat_completions(
     usage_d: Optional[Dict] = None
     upload_files = _extract_upload_files(messages)
     platform_id: str = ""
+    proto_override = body.get("protocol", "")
 
     try:
         async for ch in gateway.dispatch(
@@ -691,6 +692,7 @@ async def chat_completions(
             max_tokens=body.get("max_tokens"),
             stop=_sl(body.get("stop")),
             upload_files=upload_files if upload_files else None,
+            protocol_id=proto_override,
         ):
             if isinstance(ch, str):
                 cp.append(ch)
@@ -727,7 +729,7 @@ async def chat_completions(
         except Exception as exc:
             logger.debug("非流式兜底 fncall 解析失败: %s", exc)
 
-    content = _clean_fncall(content, platform_id=platform_id)
+    content = _clean_fncall(content, platform_id=platform_id, protocol_id=proto_override)
 
     u = usage_d or {
         "prompt_tokens": 0,

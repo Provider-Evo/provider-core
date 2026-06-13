@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.67-blue)
-![Version](https://img.shields.io/badge/version-2.2.67-blue)
+![Status](https://img.shields.io/badge/status-v2.2.68-blue)
+![Version](https://img.shields.io/badge/version-2.2.68-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,15 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.67
+### 当前版本：v2.2.68
+
+✅ 已完成（v2.2.68）：
+- 修复工具调用标签泄露到流式输出的 bug（safe_flush 未检测 buffer 本身是 trigger tag 前缀）
+- 修复 clean_fncall/safe_flush 使用 echotools 而非项目 wrapper 的 get_protocol（忽略 config 配置）
+- 修复非流式路径未传递 protocol_id 到 gateway 和 clean_fncall
+- 修复 Runner 进程重复加载配置（proxy._init 仅在 Worker 中加载）
+- ConfigManager.exit_after_merge=False 消除模板合并后的多余重启
+- echotools 升级到 1.0.14（NousProtocol 重写为真正的 Nous/Hermes 格式）
 
 ✅ 已完成（v2.2.67）：
 - 修复工具协议选择未生效 bug：`get_protocol()` 现在自动从 `[fncall]` 配置读取默认协议和平台映射

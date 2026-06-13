@@ -24,7 +24,7 @@ class ConfigManager:
         if config_path:
             self._center.load(config_path)
         else:
-            self._center.init_from_template(exit_after_create=True, exit_after_merge=True)
+            self._center.init_from_template(exit_after_create=True, exit_after_merge=False)
         self._config = self._center.bind_proxy(AppConfig)
         set_color(self._config.debug.color)
         # 同步 loguru 日志颜色设置
