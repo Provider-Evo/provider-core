@@ -884,3 +884,32 @@ section.tab-panel > *:nth-child(6) { animation-delay: 0.3s; }
 .confirm-dialog-ok:hover {
   opacity: 0.9;
 }
+
+/* ========== Stats: Timeline Chart ========== */
+.timeline-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 52px;
+  overflow-x: auto;
+}
+.timeline-bar {
+  flex: 1;
+  min-width: 4px;
+  max-width: 12px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  position: relative;
+  transition: opacity 0.15s;
+}
+.timeline-bar:hover {
+  opacity: 0.8;
+}
+.timeline-bar-err {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--err);
+  border-radius: 2px 2px 0 0;
+}

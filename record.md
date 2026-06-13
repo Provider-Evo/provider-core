@@ -330,22 +330,28 @@ src/webui/app.py
 src/webui/config_schema.py
 src/webui/dependencies.py
 src/webui/logs_ws.py
+src/webui/middleware/stats.py
 src/webui/routers/__init__.py
 src/webui/routers/admin.py
 src/webui/routers/autoupdate.py
 src/webui/routers/pages.py
+src/webui/routers/stats.py
 src/webui/routes.py
 src/webui/schemas/__init__.py
 src/webui/schemas/summary.py
 src/webui/server.py
 src/webui/services/__init__.py
+src/webui/services/stats.py
 src/webui/services/summaries.py
 src/webui/static/css/styles.css
 src/webui/static/index.html
 src/webui/static/js/actions.js
 src/webui/static/js/bootstrap.js
 src/webui/static/js/chat.js
+src/webui/static/js/core/api.js
+src/webui/static/js/core/router.js
 src/webui/static/js/dropdown.js
+src/webui/static/js/features/stats.js
 src/webui/static/js/motion.js
 src/webui/static/js/render.js
 src/webui/static/js/state.js
@@ -1239,3 +1245,24 @@ pytest: (pending)
 [tests/src/core/test_tools.py] 修复私有名称导入路径（_render_tool_call 等改为从 echotools 子模块导入）
 [tests/src/core/fncall/shared/test_shared.py] 修复 coercion/xml_helpers 私有名称导入路径（改为从 echotools 导入）
 验证: py_compile 142 文件全部通过; pytest tests/src/core: 361 passed, 43 failed, 4 errors（失败均为 echotools 重构导致的内部 API 变更，测试引用了已迁移至 echotools 的私有名称）
+
+2026-06-14 00:12:21
+
+[src/webui/services/stats.py] 新增请求统计收集器：内存环形缓冲 + 时间桶聚合 + 延迟分位数（p50/p95/p99）+ Token 计数 + 按平台/模型/状态码分布
+[src/webui/routers/stats.py] 新增统计 API 路由：GET /v1/webui/stats（统计+系统资源）、POST /v1/webui/stats/reset（重置）
+[src/webui/middleware/stats.py] 新增请求统计中间件：自动记录 API 请求的 platform/model/status/latency
+[src/core/server/server.py] 主应用中间件链新增 stats_middleware
+[src/webui/routes.py] 注册统计路由 /v1/webui/stats 和 /v1/webui/stats/reset
+[src/webui/routers/__init__.py] 导出 stats_api, stats_reset
+[src/webui/services/__init__.py] 导出 RequestStats, get_stats
+[src/webui/middleware/__init__.py] 导出 stats_middleware
+[src/webui/static/index.html] 新增统计 Tab 按钮和面板；加载 core/api.js、core/router.js、features/stats.js
+[src/webui/static/js/core/api.js] 新增前端核心 API 层：统一 fetchJson/post/put 封装
+[src/webui/static/js/core/router.js] 新增前端核心路由：hash-based tab 路由 + feature 生命周期管理
+[src/webui/static/js/features/stats.js] 新增统计面板 feature 模块：6 指标卡片 + 趋势 sparkline + 状态码分布 + Top 排行 + 最近请求
+[src/webui/static/css/styles.css] 新增 timeline chart 样式
+[template/template_config.toml] 版本 2.2.65 -> 2.2.66
+[config.toml] 版本 2.2.65 -> 2.2.66
+[README.md] 版本徽章和路线图更新为 2.2.66
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.65 -> 2.2.66
+验证: py_compile 35 文件全部通过; pytest 结果与上版一致（pre-existing echotools 重构导致）

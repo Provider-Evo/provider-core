@@ -131,9 +131,10 @@ async def create_app(registry: Any, session: Any) -> aiohttp.web.Application:
     from src.routes.static import setup_routes as setup_static
     from src.webui.routes import setup_routes as setup_webui
     from src.webui.middleware.static_nocache import static_nocache_middleware
+    from src.webui.middleware.stats import stats_middleware
 
     app = aiohttp.web.Application(
-        middlewares=[_cors, _auth_middleware, static_nocache_middleware, _error],
+        middlewares=[_cors, _auth_middleware, stats_middleware, static_nocache_middleware, _error],
         client_max_size=100 * 1024 * 1024,  # 100MB
     )
 

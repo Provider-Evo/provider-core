@@ -73,6 +73,7 @@
     <div class="webui-body">
     <aside class="webui-sidebar" id="sidebar">
       <button class="sidebar-nav-item tab-button" data-tab="overview" type="button">概览</button>
+      <button class="sidebar-nav-item tab-button" data-tab="stats" type="button">统计</button>
       <button class="sidebar-nav-item tab-button" data-tab="platforms" type="button">平台</button>
       <button class="sidebar-nav-item tab-button" data-tab="models" type="button">模型</button>
       <button class="sidebar-nav-item tab-button" data-tab="config" type="button">配置</button>
@@ -98,6 +99,22 @@
         </div>
         <div class="border-l-4 border-accent px-3 py-2.5 bg-accent-soft rounded-xl leading-relaxed text-[14px]" id="overviewNotice">等待状态刷新后展示摘要提示。</div>
         <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]" id="overviewGrid"></div>
+      </section>
+
+      <section class="tab-panel hidden" id="tab-stats" aria-labelledby="tab-stats-button">
+        <div class="flex flex-wrap justify-between items-end gap-3">
+          <div>
+            <h2>请求统计</h2>
+            <p class="m-0 text-muted leading-relaxed">实时请求量、错误率、延迟分布、Token 用量与系统资源。</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-border bg-panel text-text hover:bg-panel-alt transition" id="statsRefreshBtn" type="button">刷新统计</button>
+            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-warn text-warn bg-panel hover:bg-warn hover:text-white transition" id="statsResetBtn" type="button">重置统计</button>
+          </div>
+        </div>
+        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(200px,1fr))]" id="statsGrid">
+          <div class="text-muted p-4 border border-dashed border-border rounded-xl text-center">点击刷新或等待自动加载…</div>
+        </div>
       </section>
 
       <section class="tab-panel hidden" id="tab-platforms" aria-labelledby="tab-platforms-button">
@@ -338,6 +355,8 @@
     </div>
   </div>
 
+  <script src="/static/js/core/api.js"></script>
+  <script src="/static/js/core/router.js"></script>
   <script src="/static/js/motion.js"></script>
   <script src="/static/js/state.js"></script>
   <script src="/static/js/render.js"></script>
@@ -345,5 +364,23 @@
   <script src="/static/js/chat.js"></script>
   <script src="/static/js/dropdown.js"></script>
   <script src="/static/js/bootstrap.js"></script>
+  <script src="/static/js/features/stats.js"></script>
+  <script>
+    // Initialize modular features
+    if (typeof StatsFeature !== 'undefined') {
+      StatsFeature.init();
+    }
+    // Wire stats tab buttons
+    var statsRefreshBtn = document.getElementById('statsRefreshBtn');
+    var statsResetBtn = document.getElementById('statsResetBtn');
+    if (statsRefreshBtn) statsRefreshBtn.addEventListener('click', function() { StatsFeature.refresh(); });
+    if (statsResetBtn) statsResetBtn.addEventListener('click', async function() {
+      try {
+        await Api.post('/v1/webui/stats/reset');
+        toast('统计已重置', 'ok');
+        StatsFeature.refresh();
+      } catch(e) { toast('重置失败: ' + e.message, 'error'); }
+    });
+  </script>
 </body>
 </html>

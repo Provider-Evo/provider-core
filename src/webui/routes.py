@@ -10,7 +10,7 @@ from src.webui.routers import (
     autoupdate_check, autoupdate_get, autoupdate_put,
     config_get, config_put, config_reload, export_summary,
     login_page, logout_page,
-    logs_ws, reload_service, summary_api, webui_page,
+    logs_ws, reload_service, stats_api, stats_reset, summary_api, webui_page,
 )
 
 __all__ = ["setup_routes"]
@@ -40,3 +40,5 @@ def setup_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/admin/autoupdate", autoupdate_get)
     app.router.add_put("/v1/admin/autoupdate", autoupdate_put)
     app.router.add_post("/v1/admin/autoupdate/check", autoupdate_check)
+    app.router.add_get("/v1/webui/stats", stats_api)
+    app.router.add_post("/v1/webui/stats/reset", stats_reset)
