@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.103-blue)
-![Version](https://img.shields.io/badge/version-2.2.103-blue)
+![Status](https://img.shields.io/badge/status-v2.2.104-blue)
+![Version](https://img.shields.io/badge/version-2.2.104-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.103
+### 当前版本：v2.2.104
+
+✅ 已完成（v2.2.104）：
+- 配置组件溢出修复：输入框弹性宽度 + _fieldBlock 纵向布局（列表/JSON 编辑器全宽显示）
 
 ✅ 已完成（v2.2.103）：
 - 配置 JSON 编辑器修复：textarea 只在失焦时提交（不再每次按键 parse），防止事件重复绑定

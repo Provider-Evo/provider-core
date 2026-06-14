@@ -86,11 +86,20 @@ function _renderJsonEditor(section, key, val) {
 }
 
 /**
- * Build a field row: label + control.
+ * Build a field row: label + control (side by side).
  */
 function _field(label, control) {
   return '<div class="config-field">'
     + '<span class="config-field-label">' + escapeHtml(label) + '</span>'
+    + control + '</div>';
+}
+
+/**
+ * Build a full-width field block: label on top, control below (for lists/JSON).
+ */
+function _fieldBlock(label, control) {
+  return '<div class="config-field-block">'
+    + '<div class="config-field-label" style="margin-bottom:4px;">' + escapeHtml(label) + '</div>'
     + control + '</div>';
 }
 
@@ -120,9 +129,9 @@ function _renderAuthSection(cfg) {
   var s = cfg.auth || {};
   return _sectionCard('auth',
     _field('enabled', _renderToggle('auth', 'enabled', !!s.enabled))
-    + _field('keys', _renderStringList('auth', 'keys', s.keys || []))
+    + _fieldBlock('keys', _renderStringList('auth', 'keys', s.keys || []))
     + _field('group_list_type', _renderSelect('auth', 'group_list_type', s.group_list_type || 'blacklist', ['blacklist', 'whitelist']))
-    + _field('group_list', _renderStringList('auth', 'group_list', s.group_list || []))
+    + _fieldBlock('group_list', _renderStringList('auth', 'group_list', s.group_list || []))
   );
 }
 
@@ -133,7 +142,7 @@ function _renderGatewaySection(cfg) {
     + _field('concurrent_count', _renderNumber('gateway', 'concurrent_count', s.concurrent_count || 3))
     + _field('min_tokens', _renderNumber('gateway', 'min_tokens', s.min_tokens || 10))
     + _field('group_list_type', _renderSelect('gateway', 'group_list_type', s.group_list_type || 'whitelist', ['blacklist', 'whitelist']))
-    + _field('group_list', _renderStringList('gateway', 'group_list', s.group_list || []))
+    + _fieldBlock('group_list', _renderStringList('gateway', 'group_list', s.group_list || []))
   );
 }
 
@@ -142,14 +151,14 @@ function _renderProxySection(cfg) {
   return _sectionCard('proxy',
     _field('proxy_enabled', _renderToggle('proxy', 'proxy_enabled', !!s.proxy_enabled))
     + _field('proxy_server', _renderText('proxy', 'proxy_server', s.proxy_server || ''))
-    + _field('proxy_urls', _renderStringList('proxy', 'proxy_urls', s.proxy_urls || []))
+    + _fieldBlock('proxy_urls', _renderStringList('proxy', 'proxy_urls', s.proxy_urls || []))
   );
 }
 
 function _renderPlatformsProxySection(cfg) {
   var s = cfg.platforms_proxy || {};
   return _sectionCard('platforms_proxy',
-    _field('enabled_platforms', _renderStringList('platforms_proxy', 'enabled_platforms', s.enabled_platforms || []))
+    _fieldBlock('enabled_platforms', _renderStringList('platforms_proxy', 'enabled_platforms', s.enabled_platforms || []))
     + _field('group_list_type', _renderSelect('platforms_proxy', 'group_list_type', s.group_list_type || 'whitelist', ['blacklist', 'whitelist']))
   );
 }
@@ -158,7 +167,7 @@ function _renderPlatformsSection(cfg) {
   var s = cfg.platforms || {};
   return _sectionCard('platforms',
     _field('platform_list_type', _renderSelect('platforms', 'platform_list_type', s.platform_list_type || 'blacklist', ['blacklist', 'whitelist']))
-    + _field('platform_list', _renderStringList('platforms', 'platform_list', s.platform_list || []))
+    + _fieldBlock('platform_list', _renderStringList('platforms', 'platform_list', s.platform_list || []))
   );
 }
 
@@ -169,7 +178,7 @@ function _renderFncallSection(cfg) {
       ['xml', 'antml', 'nous', 'bracket', 'original', 'custom']))
     + _field('record_prompt', _renderToggle('fncall', 'record_prompt', !!s.record_prompt))
     + _field('print_prompt', _renderToggle('fncall', 'print_prompt', !!s.print_prompt))
-    + _field('fncall_mapping', _renderJsonEditor('fncall', 'fncall_mapping', s.fncall_mapping || {}))
+    + _fieldBlock('fncall_mapping', _renderJsonEditor('fncall', 'fncall_mapping', s.fncall_mapping || {}))
   );
 }
 
@@ -191,7 +200,7 @@ function _renderAutoupdateSection(cfg) {
     + _field('branch', _renderText('autoupdate', 'branch', s.branch || 'dev'))
     + _field('interval', _renderNumber('autoupdate', 'interval', s.interval || 300))
     + _field('diff_update', _renderToggle('autoupdate', 'diff_update', !!s.diff_update))
-    + _field('mirrors', _renderStringList('autoupdate', 'mirrors', s.mirrors || []))
+    + _fieldBlock('mirrors', _renderStringList('autoupdate', 'mirrors', s.mirrors || []))
   );
 }
 
@@ -199,7 +208,7 @@ function _renderAnthropicSection(cfg) {
   var s = cfg.anthropic || {};
   return _sectionCard('anthropic',
     _field('api_version', _renderText('anthropic', 'api_version', s.api_version || ''))
-    + _field('model_mapping', _renderJsonEditor('anthropic', 'model_mapping', s.model_mapping || {}))
+    + _fieldBlock('model_mapping', _renderJsonEditor('anthropic', 'model_mapping', s.model_mapping || {}))
   );
 }
 

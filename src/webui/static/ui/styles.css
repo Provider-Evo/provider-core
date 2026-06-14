@@ -897,11 +897,12 @@ section.tab-panel > * {
 }
 
 /* ========== Config Form Controls ========== */
-.config-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; }
-.config-field-label { font-size: 13px; color: var(--text); flex-shrink: 0; }
-.config-input { width: 140px; padding: 4px 8px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); }
+.config-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; min-width: 0; }
+.config-field-block { padding: 6px 0; min-width: 0; }
+.config-field-label { font-size: 13px; color: var(--text); flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.config-input { flex: 0 1 180px; max-width: 100%; min-width: 0; padding: 4px 8px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); box-sizing: border-box; }
 .config-input:focus { border-color: var(--accent); outline: none; }
-.config-json { width: 100%; min-height: 48px; padding: 4px 8px; font-size: 12px; font-family: monospace; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); resize: vertical; }
+.config-json { width: 100%; min-height: 48px; padding: 4px 8px; font-size: 12px; font-family: monospace; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); resize: vertical; box-sizing: border-box; }
 
 /* Toggle switch */
 .config-toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
@@ -911,9 +912,9 @@ section.tab-panel > * {
 .config-toggle input:checked + .toggle-slider { background: var(--accent); }
 .config-toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
 .config-readonly { font-size: 13px; color: var(--muted); font-family: monospace; }
-.config-list { width: 100%; }
-.config-list-item { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
-.config-list-input { flex: 1; width: auto; }
+.config-list { width: 100%; max-width: 100%; overflow: hidden; }
+.config-list-item { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; min-width: 0; }
+.config-list-input { flex: 1; min-width: 0; width: auto; box-sizing: border-box; }
 .config-list-remove { background: none; border: none; color: var(--err); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
 .config-list-remove:hover { background: rgba(238,85,85,0.1); }
 .config-list-add { background: none; border: 1px dashed var(--border); color: var(--accent); cursor: pointer; font-size: 12px; padding: 4px 10px; border-radius: 6px; margin-top: 4px; }
