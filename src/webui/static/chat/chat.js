@@ -124,36 +124,28 @@ function finalizeStreamingMessage(toolCalls) {
       toolHtml += '<span class="chat-tool-dropdown-label">查看参数</span>';
       toolHtml += '<svg class="chat-tool-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
       toolHtml += '</div>';
-      toolHtml += '<pre class="chat-tool-args" id="' + toolId + '" hidden>' + escapeHtml(formattedArgs) + '</pre>';
+      toolHtml += '<pre class="chat-tool-args" id="' + toolId + '" style="display:none;">' + escapeHtml(formattedArgs) + '</pre>';
       toolHtml += '</div>';
     }
     toolHtml += '</div>';
     msg.innerHTML = toolHtml + '<div class="chat-assistant-text">' + renderWithCodeBlocks(content) + '</div>';
 
-    // 绑定下拉框事件
-    var triggers = msg.querySelectorAll('.chat-tool-dropdown-trigger');
-    for (var j = 0; j < triggers.length; j++) {
-      triggers[j].addEventListener('click', function() {
-        var targetId = this.getAttribute('data-target');
-        var argsEl = document.getElementById(targetId);
-        var chevron = this.querySelector('.chat-tool-chevron');
-        var label = this.querySelector('.chat-tool-dropdown-label');
-        if (argsEl) {
-          var isHidden = argsEl.hasAttribute('hidden');
-          if (isHidden) {
-            argsEl.removeAttribute('hidden');
-            this.setAttribute('aria-expanded', 'true');
-            label.textContent = '收起参数';
-            chevron.style.transform = 'rotate(180deg)';
-          } else {
-            argsEl.setAttribute('hidden', '');
-            this.setAttribute('aria-expanded', 'false');
-            label.textContent = '查看参数';
-            chevron.style.transform = 'rotate(0deg)';
-          }
-        }
-      });
-    }
+    // 使用事件委托绑定下拉框事件（更可靠）
+    msg.addEventListener('click', function(e) {
+      var trigger = e.target.closest('.chat-tool-dropdown-trigger');
+      if (!trigger) return;
+      var targetId = trigger.getAttribute('data-target');
+      var argsEl = document.getElementById(targetId);
+      var chevron = trigger.querySelector('.chat-tool-chevron');
+      var label = trigger.querySelector('.chat-tool-dropdown-label');
+      if (argsEl) {
+        var isHidden = argsEl.style.display === 'none';
+        argsEl.style.display = isHidden ? 'block' : 'none';
+        trigger.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+        if (label) label.textContent = isHidden ? '收起参数' : '查看参数';
+        if (chevron) chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+      }
+    });
   }
 
   appendMessageActions("assistant", msg);
