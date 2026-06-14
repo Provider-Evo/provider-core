@@ -222,22 +222,35 @@ if (typeof loadChatState === 'function') {
 var originalSwitchTab = window.switchTab;
 if (typeof switchTab === 'function') {
   window.switchTab = function(tabName) {
-    originalSwitchTab(tabName);
-    // Smooth scroll to top to avoid scrollbar jump when switching between tabs of different heights
     var scrollTarget = document.scrollingElement || document.documentElement;
     var startY = scrollTarget.scrollTop;
-    if (startY > 10) {
+    var startMaxScroll = Math.max(0, scrollTarget.scrollHeight - scrollTarget.clientHeight);
+
+    originalSwitchTab(tabName);
+
+    // After tab switch, check if current scroll position is valid
+    var newMaxScroll = Math.max(0, scrollTarget.scrollHeight - scrollTarget.clientHeight);
+    var targetY = startY;
+
+    // If current position exceeds new content height, scroll to max valid position
+    if (startY > newMaxScroll + 10) {
+      targetY = newMaxScroll;
+    }
+
+    // Only animate if we need to scroll
+    if (Math.abs(startY - targetY) > 10) {
       var startTime = null;
       var duration = 300;
       function step(ts) {
         if (!startTime) startTime = ts;
         var progress = Math.min((ts - startTime) / duration, 1);
         var ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-        scrollTarget.scrollTop = startY * (1 - ease);
+        scrollTarget.scrollTop = startY + (targetY - startY) * ease;
         if (progress < 1) requestAnimationFrame(step);
       }
       requestAnimationFrame(step);
     }
+
     // Animate the newly shown tab panel
     var activePanel = document.querySelector('.tab-panel.active');
     if (activePanel && typeof animateTabIn === 'function') {
