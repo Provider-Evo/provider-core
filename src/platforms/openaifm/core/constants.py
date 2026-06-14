@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """openaifm 平台常量定义。"""
+
+from __future__ import annotations
 
 from typing import Dict, Final, List
 
@@ -10,12 +10,11 @@ GENERATE_PATH: Final[str] = "/api/generate"
 USER_AGENT: Final[str] = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/120.0.0.0 Safari/537.36"
+    "Chrome/149.0.0.0 Safari/537.36"
 )
 
-MODELS: Final[List[str]] = [
-    "tts-1",
-    "tts-1-hd",
+# 声音列表（openai.fm 实际可用的 voice 名称）
+VOICES: Final[List[str]] = [
     "alloy",
     "ash",
     "ballad",
@@ -29,15 +28,15 @@ MODELS: Final[List[str]] = [
     "verse",
 ]
 
+# 模型列表（对 TTS 平台来说，voice 即模型）
+MODELS: Final[List[str]] = list(VOICES)
+
 CAPS: Final[Dict[str, bool]] = {
     "audio_gen": True,
 }
 
-DEFAULT_MODEL: Final[str] = "tts-1"
-DEFAULT_VOICE: Final[str] = "coral"
+DEFAULT_VOICE: Final[str] = "alloy"
 DEFAULT_STYLE: Final[str] = "calm"
-
-VOICES: Final[List[str]] = list(MODELS)
 
 STYLES: Final[List[str]] = [
     "friendly",

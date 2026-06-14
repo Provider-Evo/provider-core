@@ -9,13 +9,12 @@ import aiohttp
 from src.core.candidate import Candidate, make_id
 from src.core.errors import NotSupportedError
 from ..accounts import API_KEYS
-from .constants import BASE_URL, GENERATE_PATH
+from .constants import BASE_URL, CAPS, GENERATE_PATH, MODELS, VOICES
 from .headers import build_headers
 from .tts import (
     DEFAULT_STYLE,
     DEFAULT_VOICE,
     STYLE_PROMPTS,
-    VOICES,
     build_tts_form_data,
 )
 
@@ -24,51 +23,40 @@ MAX_RETRIES: int = 3
 
 
 class OpenaiFmClient:
-    """openaifm HTTP client coordinator."""
+    """openaifm HTTP 客户端。"""
 
     def __init__(self) -> None:
-        """Initialize client."""
         self._session: Optional[aiohttp.ClientSession] = None
+        self._candidates: List[Candidate] = []
 
     async def init(self, session: aiohttp.ClientSession) -> None:
-        """Initialize client, save session.
-
-        Args:
-            session: Shared aiohttp ClientSession.
-        """
+        """初始化客户端。"""
         self._session = session
-        logger.info("openaifm 初始化完成")
+        self._rebuild_candidates()
+        logger.info("openaifm 初始化完成，候选项: %d 个", len(self._candidates))
 
-    async def candidates(self) -> List[Candidate]:
-        """Build candidates from credentials.
-
-        Returns:
-            List of candidates.
-        """
-        from .constants import CAPS, MODELS
-
-        return [
+    def _rebuild_candidates(self) -> None:
+        """构建候选项（单候选项，无需认证）。"""
+        self._candidates = [
             Candidate(
-                id=make_id("openaifm", (key or "openaifm")[:12]),
+                id=make_id("openaifm", "openaifm"),
                 platform="openaifm",
-                resource_id=(key or "openaifm")[:12],
-                models=MODELS,
-                meta={"api_key": key},
+                resource_id="openaifm",
+                models=list(MODELS),
+                meta={},
                 **CAPS,
             )
-            for key in API_KEYS
+            for _ in API_KEYS
+            if _
         ]
 
+    async def candidates(self) -> List[Candidate]:
+        """返回候选项列表。"""
+        return list(self._candidates)
+
     async def ensure_candidates(self, count: int) -> int:
-        """Return available candidate count.
-
-        Args:
-            count: Expected candidate count.
-
-        Returns:
-            Actual candidate count.
-        """
-        return len(API_KEYS)
+        """返回可用候选项数量。"""
+        return len(self._candidates)
 
     async def complete(
         self,
@@ -81,20 +69,7 @@ class OpenaiFmClient:
         search: bool = False,
         **kw: Any,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
-        """openaifm does not support chat completion.
-
-        Args:
-            candidate: Candidate.
-            messages: Message list.
-            model: Model name.
-            stream: Whether streaming.
-            thinking: Enable thinking.
-            search: Enable search.
-            **kw: Extra parameters.
-
-        Yields:
-            Nothing; raises NotSupportedError.
-        """
+        """openaifm 不支持 chat 补全。"""
         raise NotSupportedError("openaifm 不支持 chat 补全")
 
     async def create_speech(
@@ -105,25 +80,27 @@ class OpenaiFmClient:
         voice: str,
         **kw: Any,
     ) -> bytes:
-        """Execute speech synthesis with retries.
+        """执行语音合成，含指数退避重试。
 
         Args:
-            candidate: Candidate.
-            input_text: Input text.
-            model: Model name.
-            voice: Voice name.
-            **kw: Extra parameters.
+            candidate: 候选项。
+            input_text: 合成文本。
+            model: 模型名（openaifm 中用作 voice）。
+            voice: 声音名称。
+            **kw: 额外参数（支持 prompt/vibe）。
 
         Returns:
-            Audio bytes.
+            音频字节。
         """
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:
                 await asyncio.sleep(1.0 * (2 ** (attempt - 1)))
             try:
-                return await self._do_tts(candidate, input_text, voice)
-            except Exception as exc:  # noqa: BLE001
+                return await self._do_tts(
+                    input_text, voice or model, kw
+                )
+            except Exception as exc:
                 last_exc = exc
                 logger.warning(
                     "openaifm 重试 %d/%d: %s", attempt + 1, MAX_RETRIES, exc
@@ -134,29 +111,31 @@ class OpenaiFmClient:
 
     async def _do_tts(
         self,
-        candidate: Candidate,
         text: str,
         voice: str,
+        kw: Dict[str, Any],
     ) -> bytes:
-        """Call openaifm TTS API.
+        """调用 openaifm TTS API。
 
         Args:
-            candidate: Candidate.
-            text: Synthesis text.
-            voice: Voice name.
+            text: 合成文本。
+            voice: 声音名称。
+            kw: 额外参数（prompt, vibe）。
 
         Returns:
-            Audio bytes.
+            音频字节。
         """
         if self._session is None:
             raise RuntimeError("openaifm session 未初始化")
-        selected_voice = voice or DEFAULT_VOICE
-        if selected_voice not in VOICES:
-            selected_voice = DEFAULT_VOICE
-        style = DEFAULT_STYLE
-        prompt = STYLE_PROMPTS.get(style, "")
-        headers = build_headers(candidate.meta.get("api_key", ""))
-        form_data = build_tts_form_data(text, prompt, selected_voice, "")
+
+        selected_voice = voice if voice in VOICES else DEFAULT_VOICE
+        style = kw.get("style", DEFAULT_STYLE)
+        prompt = kw.get("prompt") or STYLE_PROMPTS.get(style, "")
+        vibe = kw.get("vibe", "")
+
+        headers = build_headers()
+        form_data = build_tts_form_data(text, prompt, selected_voice, vibe)
+
         async with self._session.post(
             BASE_URL + GENERATE_PATH,
             data=form_data,
@@ -169,9 +148,8 @@ class OpenaiFmClient:
                 raise RuntimeError(
                     "openaifm HTTP {}: {}".format(resp.status, body_preview[:200])
                 )
-            content = await resp.read()
-            return content
+            return await resp.read()
 
     async def close(self) -> None:
-        """Close client (session managed externally)."""
+        """清理资源（session 由外部管理）。"""
         return
