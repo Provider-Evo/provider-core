@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.100-blue)
-![Version](https://img.shields.io/badge/version-2.2.100-blue)
+![Status](https://img.shields.io/badge/status-v2.2.101-blue)
+![Version](https://img.shields.io/badge/version-2.2.101-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.100
+### 当前版本：v2.2.101
+
+✅ 已完成（v2.2.101）：
+- config_get 添加 tomli 回退兼容 Python < 3.11
 
 ✅ 已完成（v2.2.100）：
 - 聊天工具参数切换改用 document 级全局事件委托，彻底修复点击无效

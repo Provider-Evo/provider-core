@@ -28,8 +28,12 @@ async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 async def config_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """GET /v1/config — 返回完整配置 JSON（直接读取 config.toml）。"""
-    import tomllib
     from pathlib import Path
+
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib  # Python < 3.11
 
     config_path = Path(__file__).resolve().parent.parent.parent.parent / "config.toml"
     try:
