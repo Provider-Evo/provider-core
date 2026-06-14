@@ -387,7 +387,7 @@ function _showCheckResults(d) {
   filesHtml += files.map(function(f) {
     return '<label class="flex items-center gap-2" style="padding:2px 0;cursor:pointer;">'
       + '<input type="checkbox" class="autoupdate-file-check" value="' + escapeHtml(f) + '" checked>'
-      + '<span class="text-[12px] font-mono">' + escapeHtml(f) + '</span>'
+      + '<span class="text-[12px] font-mono autoupdate-file-link" data-file="' + escapeHtml(f) + '" style="color:var(--accent);cursor:pointer;text-decoration:underline;" title="点击查看变更">' + escapeHtml(f) + '</span>'
       + '</label>';
   }).join('');
   filesEl.innerHTML = filesHtml;
@@ -405,7 +405,65 @@ function _showCheckResults(d) {
       filesEl.querySelectorAll('.autoupdate-file-check').forEach(function(cb) { cb.checked = false; });
     });
   }
+
+  // Bind file link clicks for diff preview
+  filesEl.querySelectorAll('.autoupdate-file-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      _showFileDiff(link.dataset.file);
+    });
+  });
+
   if (applyBtn) applyBtn.classList.remove('hidden');
+}
+
+async function _showFileDiff(filepath) {
+  // Create or reuse diff dialog
+  var overlay = document.getElementById('autoupdateDiffOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'autoupdateDiffOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:16px;';
+    overlay.innerHTML = '<div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;max-width:900px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;padding:16px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+      + '<strong id="autoupdateDiffTitle" style="font-size:14px;font-family:monospace;"></strong>'
+      + '<button id="autoupdateDiffClose" type="button" style="cursor:pointer;font-size:20px;border:none;background:none;color:var(--text);">&times;</button>'
+      + '</div>'
+      + '<pre id="autoupdateDiffContent" style="flex:1;overflow:auto;font-size:12px;line-height:1.5;padding:12px;background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;white-space:pre-wrap;word-break:break-all;margin:0;"></pre>'
+      + '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.style.display = 'none'; });
+    document.getElementById('autoupdateDiffClose').addEventListener('click', function() { overlay.style.display = 'none'; });
+  }
+  overlay.style.display = 'flex';
+  document.getElementById('autoupdateDiffTitle').textContent = filepath;
+  document.getElementById('autoupdateDiffContent').textContent = 'Loading diff...';
+
+  try {
+    var resp = await fetch('/v1/admin/autoupdate/diff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: filepath }),
+    });
+    var data = await resp.json();
+    var pre = document.getElementById('autoupdateDiffContent');
+    if (data.success) {
+      // Colorize diff output
+      var lines = (data.diff || '(no changes)').split('\n');
+      var html = lines.map(function(line) {
+        if (line.startsWith('+') && !line.startsWith('+++')) return '<span style="color:var(--ok);">' + escapeHtml(line) + '</span>';
+        if (line.startsWith('-') && !line.startsWith('---')) return '<span style="color:var(--err);">' + escapeHtml(line) + '</span>';
+        if (line.startsWith('@@')) return '<span style="color:var(--accent);">' + escapeHtml(line) + '</span>';
+        return escapeHtml(line);
+      }).join('\n');
+      pre.innerHTML = html;
+    } else {
+      pre.textContent = 'Error: ' + (data.error || 'unknown');
+    }
+  } catch (e) {
+    document.getElementById('autoupdateDiffContent').textContent = 'Error: ' + e.message;
+  }
 }
 
 async function triggerAutoupdateCheck() {
@@ -451,9 +509,18 @@ async function applyAutoupdate() {
     });
     var data = await resp.json();
     if (data.success) {
-      toast('更新已应用 ' + selectedFiles.length + ' 个文件，请重启服务', 'ok');
+      toast('更新已应用 ' + selectedFiles.length + ' 个文件，正在热重载配置...', 'ok');
       var applyBtn = document.getElementById('autoupdateApplyBtn');
       if (applyBtn) applyBtn.classList.add('hidden');
+      // Auto hot-reload config after apply
+      try {
+        var reloadResp = await fetch('/v1/config/reload', { method: 'POST' });
+        var reloadResult = await reloadResp.json();
+        if (reloadResult.status === 'ok') {
+          toast('配置已热重载', 'ok');
+        }
+      } catch (e) { /* ignore reload errors */ }
+      await refreshAll();
     } else {
       toast('应用失败：' + (data.error || 'unknown'), 'error');
     }

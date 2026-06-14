@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.83-blue)
-![Version](https://img.shields.io/badge/version-2.2.83-blue)
+![Status](https://img.shields.io/badge/status-v2.2.84-blue)
+![Version](https://img.shields.io/badge/version-2.2.84-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.83
+### 当前版本：v2.2.84
+
+✅ 已完成（v2.2.84）：
+- 自动更新检查结果支持文件 diff 预览：点击文件名弹出彩色 diff 对话框
+- 新增 POST /v1/admin/autoupdate/diff 接口返回单文件变更
+- 自动更新应用后自动热重载配置
 
 ✅ 已完成（v2.2.83）：
 - 请求检查器修复：流式响应内容改用 request 级别 chunk 收集器，路由层推入中间件广播

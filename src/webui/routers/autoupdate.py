@@ -197,6 +197,26 @@ async def autoupdate_check(request: aiohttp.web.Request) -> aiohttp.web.Response
         return aiohttp.web.json_response({"success": False, "error": str(e)}, status=500)
 
 
+async def autoupdate_diff(request: aiohttp.web.Request) -> aiohttp.web.Response:
+    """POST /v1/admin/autoupdate/diff — 返回单个文件的 diff。"""
+    try:
+        body = await request.json()
+        filepath = body.get("file", "")
+        if not filepath or ".." in filepath or filepath.startswith("/"):
+            return aiohttp.web.json_response({"success": False, "error": "Invalid file path"}, status=400)
+
+        cfg = get_config().autoupdate
+        branch = cfg.branch
+        ok, diff_out, err = await _run_git(
+            "diff", "HEAD..origin/{}".format(branch), "--", filepath, timeout=30
+        )
+        if not ok:
+            return aiohttp.web.json_response({"success": False, "error": err})
+        return aiohttp.web.json_response({"success": True, "diff": diff_out, "file": filepath})
+    except Exception as e:
+        return aiohttp.web.json_response({"success": False, "error": str(e)}, status=500)
+
+
 async def autoupdate_apply(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """POST /v1/admin/autoupdate/apply — 应用更新（差异或全量）。
 

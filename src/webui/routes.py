@@ -7,7 +7,7 @@ from pathlib import Path
 import aiohttp.web
 
 from src.webui.routers import (
-    autoupdate_apply, autoupdate_check, autoupdate_get, autoupdate_put,
+    autoupdate_apply, autoupdate_check, autoupdate_diff, autoupdate_get, autoupdate_put,
     config_get, config_put, config_reload, export_summary,
     login_page, logout_page,
     logs_ws, reload_service, requests_list, requests_ws,
@@ -49,6 +49,7 @@ def setup_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/admin/autoupdate", autoupdate_get)
     app.router.add_put("/v1/admin/autoupdate", autoupdate_put)
     app.router.add_post("/v1/admin/autoupdate/check", autoupdate_check)
+    app.router.add_post("/v1/admin/autoupdate/diff", autoupdate_diff)
     app.router.add_post("/v1/admin/autoupdate/apply", autoupdate_apply)
     app.router.add_get("/v1/webui/stats", stats_api)
     app.router.add_post("/v1/webui/stats/reset", stats_reset)
