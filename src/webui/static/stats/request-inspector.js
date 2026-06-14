@@ -1,24 +1,65 @@
 /**
  * Feature: 请求检查器 — 实时显示 API 请求和响应。
+ * 支持搜索、状态筛选、时间范围筛选、详细视图。
  */
 var RequestInspector = (function () {
   var _ws = null;
   var _requests = {};  // id -> request data
   var _order = [];     // id order (newest first)
   var _selectedId = null;
-  var _maxItems = 100;
+  var _maxItems = 200;
+
+  // Filter state
+  var _searchText = '';
+  var _statusFilter = '';
+  var _timeFilter = 0;  // seconds, 0 = all
 
   function init() {
     var panel = document.getElementById('requestInspector');
     if (!panel) return;
     connect();
-    // Poll: refresh when stats tab is visible
+    bindFilters();
     setInterval(function () {
       var tab = document.getElementById('tab-stats');
       if (tab && tab.classList.contains('active')) {
         renderList();
       }
     }, 2000);
+  }
+
+  function bindFilters() {
+    var searchInput = document.getElementById('requestSearchInput');
+    var statusFilter = document.getElementById('requestStatusFilter');
+    var timeFilter = document.getElementById('requestTimeFilter');
+    var clearBtn = document.getElementById('requestClearBtn');
+
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        _searchText = searchInput.value.toLowerCase();
+        renderList();
+      });
+    }
+    if (statusFilter) {
+      statusFilter.addEventListener('change', function () {
+        _statusFilter = statusFilter.value;
+        renderList();
+      });
+    }
+    if (timeFilter) {
+      timeFilter.addEventListener('change', function () {
+        _timeFilter = parseInt(timeFilter.value) || 0;
+        renderList();
+      });
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        _requests = {};
+        _order = [];
+        _selectedId = null;
+        renderList();
+        renderDetail();
+      });
+    }
   }
 
   function connect() {
@@ -30,10 +71,7 @@ var RequestInspector = (function () {
       if (notice) notice.textContent = 'WebSocket: connected';
     };
     _ws.onmessage = function (e) {
-      try {
-        var msg = JSON.parse(e.data);
-        handleMessage(msg);
-      } catch (err) {}
+      try { handleMessage(JSON.parse(e.data)); } catch (err) {}
     };
     _ws.onclose = function () {
       var notice = document.getElementById('requestWsNotice');
@@ -46,16 +84,12 @@ var RequestInspector = (function () {
   function handleMessage(msg) {
     if (msg.type === 'request_start') {
       _requests[msg.id] = {
-        id: msg.id,
-        ts: msg.ts,
-        model: msg.model || '',
+        id: msg.id, ts: msg.ts, model: msg.model || '',
         messages_count: msg.messages_count || 0,
         has_tools: msg.has_tools || false,
         stream: msg.stream || false,
-        status: 'pending',
-        latency_ms: null,
-        platform: '',
-        chunks: []
+        status: 'pending', latency_ms: null, platform: '',
+        chunks: [], content: ''
       };
       _order.unshift(msg.id);
       if (_order.length > _maxItems) {
@@ -66,6 +100,8 @@ var RequestInspector = (function () {
       var req = _requests[msg.id];
       if (req) {
         req.chunks.push(msg.delta || '');
+        req.content += (msg.delta || '');
+        if (_selectedId === msg.id) renderDetail();
       }
     } else if (msg.type === 'request_end') {
       var req = _requests[msg.id];
@@ -80,13 +116,36 @@ var RequestInspector = (function () {
     if (_selectedId === msg.id) renderDetail();
   }
 
+  function _matchFilter(req) {
+    // Time filter
+    if (_timeFilter > 0) {
+      var cutoff = Date.now() / 1000 - _timeFilter;
+      if (req.ts < cutoff) return false;
+    }
+    // Status filter
+    if (_statusFilter) {
+      if (_statusFilter === 'pending' && req.status !== 'pending') return false;
+      if (_statusFilter === '200' && req.status !== 200) return false;
+      if (_statusFilter === '4xx' && (req.status < 400 || req.status >= 500)) return false;
+      if (_statusFilter === '5xx' && (req.status < 500 || req.status >= 600)) return false;
+    }
+    // Text search
+    if (_searchText) {
+      var haystack = ((req.model || '') + ' ' + (req.platform || '') + ' ' + req.id).toLowerCase();
+      if (haystack.indexOf(_searchText) === -1) return false;
+    }
+    return true;
+  }
+
   function renderList() {
     var list = document.getElementById('requestList');
     if (!list) return;
     var html = '';
+    var visibleCount = 0;
     for (var i = 0; i < _order.length; i++) {
       var req = _requests[_order[i]];
-      if (!req) continue;
+      if (!req || !_matchFilter(req)) continue;
+      visibleCount++;
       var cls = 'req-item' + (_selectedId === req.id ? ' req-selected' : '');
       var statusCls = req.status === 'pending' ? 'req-pending' : (req.status >= 400 ? 'req-error' : 'req-ok');
       var time = new Date(req.ts * 1000);
@@ -100,7 +159,8 @@ var RequestInspector = (function () {
       html += '<span class="req-latency">' + latency + '</span>';
       html += '</div>';
     }
-    list.innerHTML = html || '<div class="text-muted" style="padding:12px;text-align:center;">No requests yet</div>';
+    list.innerHTML = html || '<div class="text-muted" style="padding:12px;text-align:center;">' +
+      (_order.length > 0 ? 'No matching requests' : 'No requests yet') + '</div>';
   }
 
   function select(id) {
@@ -117,25 +177,33 @@ var RequestInspector = (function () {
 
     var html = '<div class="req-detail">';
     html += '<div class="req-detail-header">';
-    html += '<strong>Request ' + req.id + '</strong>';
+    html += '<strong style="font-size:13px;">Request ' + req.id + '</strong>';
     html += '<span class="req-status ' + (req.status >= 400 ? 'req-error' : 'req-ok') + '">' + (req.status === 'pending' ? 'In Progress' : 'Status ' + req.status) + '</span>';
     html += '</div>';
 
+    // Meta info
     html += '<div class="req-detail-meta">';
-    html += '<span>Model: ' + escapeHtml(req.model || 'unknown') + '</span>';
-    html += '<span>Platform: ' + escapeHtml(req.platform || 'unknown') + '</span>';
+    html += '<span>Model: <strong>' + escapeHtml(req.model || 'unknown') + '</strong></span>';
+    html += '<span>Platform: <strong>' + escapeHtml(req.platform || 'unknown') + '</strong></span>';
     html += '<span>Messages: ' + req.messages_count + '</span>';
     html += '<span>Tools: ' + (req.has_tools ? 'yes' : 'no') + '</span>';
     html += '<span>Stream: ' + (req.stream ? 'yes' : 'no') + '</span>';
-    if (req.latency_ms !== null) html += '<span>Latency: ' + req.latency_ms + 'ms</span>';
+    if (req.latency_ms !== null) html += '<span>Latency: <strong>' + req.latency_ms + 'ms</strong></span>';
+    var time = new Date(req.ts * 1000);
+    html += '<span>Time: ' + time.toLocaleString() + '</span>';
     html += '</div>';
 
-    // Show streaming chunks if any
-    if (req.chunks.length > 0) {
+    // Response content
+    var content = req.content || req.chunks.join('');
+    if (content) {
       html += '<div class="req-detail-section">';
-      html += '<div class="req-detail-label">Response Stream</div>';
-      html += '<pre class="req-detail-content">' + escapeHtml(req.chunks.join('')) + '</pre>';
+      html += '<div class="req-detail-label">Response (' + content.length + ' chars)</div>';
+      html += '<pre class="req-detail-content">' + escapeHtml(content) + '</pre>';
       html += '</div>';
+    } else if (req.status === 'pending') {
+      html += '<div class="req-detail-section"><div class="text-muted" style="padding:8px;">Waiting for response...</div></div>';
+    } else {
+      html += '<div class="req-detail-section"><div class="text-muted" style="padding:8px;">No response content captured</div></div>';
     }
 
     html += '</div>';

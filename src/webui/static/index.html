@@ -122,6 +122,24 @@
             <h3 style="margin:0;font-size:15px;">请求日志</h3>
             <span id="requestWsNotice" class="text-muted" style="font-size:12px;"></span>
           </div>
+          <!-- Filter bar -->
+          <div class="flex flex-wrap gap-2 mb-2" id="requestFilterBar">
+            <input type="text" id="requestSearchInput" placeholder="搜索 model / platform..." class="config-input" style="width:200px;">
+            <select id="requestStatusFilter" class="config-input" style="width:120px;">
+              <option value="">全部状态</option>
+              <option value="200">200 OK</option>
+              <option value="4xx">4xx 错误</option>
+              <option value="5xx">5xx 错误</option>
+              <option value="pending">进行中</option>
+            </select>
+            <select id="requestTimeFilter" class="config-input" style="width:120px;">
+              <option value="0">全部时间</option>
+              <option value="300">最近 5 分钟</option>
+              <option value="900">最近 15 分钟</option>
+              <option value="3600">最近 1 小时</option>
+            </select>
+            <button type="button" id="requestClearBtn" class="text-[12px] text-muted hover:underline cursor-pointer" style="padding:4px 8px;">清空日志</button>
+          </div>
           <div id="requestInspector" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:200px;">
             <div id="requestList" class="border border-border rounded-xl bg-panel-alt overflow-auto" style="max-height:400px;"></div>
             <div id="requestDetail" class="border border-border rounded-xl bg-panel-alt overflow-auto" style="max-height:400px;padding:8px;">
