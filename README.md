@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.93-blue)
-![Version](https://img.shields.io/badge/version-2.2.93-blue)
+![Status](https://img.shields.io/badge/status-v2.2.94-blue)
+![Version](https://img.shields.io/badge/version-2.2.94-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.93
+### 当前版本：v2.2.94
+
+✅ 已完成（v2.2.94）：
+- openaifm 导入修复：util.py 移除已删除的 DEFAULT_MODEL 引用，恢复平台加载
 
 ✅ 已完成（v2.2.93）：
 - openaifm 候选项构建移除对 accounts.py（gitignored）的依赖，始终生成 1 个候选项

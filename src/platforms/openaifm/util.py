@@ -11,7 +11,6 @@ from typing import Any
 
 from .core.constants import (
     CAPS,
-    DEFAULT_MODEL,
     DEFAULT_STYLE,
     DEFAULT_VOICE,
     MODELS,
@@ -31,7 +30,6 @@ __all__ = [
     "STYLES",
     "DEFAULT_VOICE",
     "DEFAULT_STYLE",
-    "DEFAULT_MODEL",
     "STYLE_PROMPTS",
     "build_headers",
     "build_tts_form_data",
