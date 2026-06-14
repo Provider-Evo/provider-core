@@ -223,6 +223,21 @@ var originalSwitchTab = window.switchTab;
 if (typeof switchTab === 'function') {
   window.switchTab = function(tabName) {
     originalSwitchTab(tabName);
+    // Smooth scroll to top to avoid scrollbar jump when switching between tabs of different heights
+    var scrollTarget = document.scrollingElement || document.documentElement;
+    var startY = scrollTarget.scrollTop;
+    if (startY > 10) {
+      var startTime = null;
+      var duration = 300;
+      function step(ts) {
+        if (!startTime) startTime = ts;
+        var progress = Math.min((ts - startTime) / duration, 1);
+        var ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+        scrollTarget.scrollTop = startY * (1 - ease);
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
     // Animate the newly shown tab panel
     var activePanel = document.querySelector('.tab-panel.active');
     if (activePanel && typeof animateTabIn === 'function') {
