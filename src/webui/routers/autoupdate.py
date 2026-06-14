@@ -60,40 +60,76 @@ async def _fetch_from_mirrors(branch: str, mirrors: List[str]) -> Tuple[bool, st
     镜像源可以是完整 git remote URL，也可以是基础 URL（如 https://github.com/）。
     对于基础 URL，自动从当前 remote 提取仓库路径并拼接。
     """
-    # 获取当前 remote URL 以提取仓库路径
-    ok, current_url, _ = await _run_git("remote", "get-url", "origin")
-    repo_path = ""
-    if ok and current_url:
-        # 提取仓库路径：https://github.com/user/repo.git -> user/repo.git
-        # 或 git@github.com:user/repo.git -> user/repo.git
-        for prefix in ["https://", "http://", "git://"]:
-            if current_url.startswith(prefix):
-                current_url = current_url[len(prefix):]
-                # Remove host part
-                if "/" in current_url:
-                    current_url = current_url[current_url.index("/") + 1:]
-                break
-        else:
-            # SSH format: git@host:user/repo.git
-            if ":" in current_url:
-                current_url = current_url[current_url.index(":") + 1:]
-        repo_path = current_url
+    # 保存原始 remote URL，操作结束后恢复
+    ok, original_url, _ = await _run_git("remote", "get-url", "origin")
+    if not ok or not original_url:
+        return False, ""
 
-    for mirror in mirrors:
-        # 如果是基础 URL（以 / 结尾），拼接仓库路径
-        full_url = mirror
-        if mirror.endswith("/") and repo_path:
-            full_url = mirror + repo_path
+    try:
+        # 从原始 URL 提取仓库路径（user/repo.git）
+        repo_path = _extract_repo_path(original_url)
+        if not repo_path:
+            return False, ""
 
-        # 设置临时 remote URL
-        ok, _, _ = await _run_git("remote", "set-url", "origin", full_url)
-        if not ok:
-            continue
-        ok, _, err = await _run_git("fetch", "origin", branch, timeout=60)
-        if ok:
-            return True, mirror
-        logger.debug("fetch from %s failed: %s", full_url, err)
-    return False, ""
+        for mirror in mirrors:
+            # 如果是基础 URL（以 / 结尾），拼接仓库路径
+            full_url = mirror
+            if mirror.endswith("/") and repo_path:
+                full_url = mirror + repo_path
+
+            # 安全检查：构造的 URL 不应包含嵌套协议
+            if full_url.count("://") > 1:
+                logger.debug("跳过嵌套协议 URL: %s", full_url)
+                continue
+
+            # 设置临时 remote URL
+            ok, _, _ = await _run_git("remote", "set-url", "origin", full_url)
+            if not ok:
+                continue
+            ok, _, err = await _run_git("fetch", "origin", branch, timeout=60)
+            if ok:
+                return True, mirror
+            logger.debug("fetch from %s failed: %s", full_url, err)
+        return False, ""
+    finally:
+        # 始终恢复原始 remote URL
+        await _run_git("remote", "set-url", "origin", original_url)
+
+
+def _extract_repo_path(url: str) -> str:
+    """从 git remote URL 提取仓库路径（如 user/repo.git）。
+
+    处理 HTTPS、HTTP、git://、SSH 格式，并清理嵌套协议污染。
+    """
+    # 先清理可能存在的嵌套协议前缀（URL 被污染的常见模式）
+    # 例如 https://github.com/https://github.com/user/repo.git -> user/repo.git
+    import re
+    cleaned = re.sub(r'(https?://[^/]+/)+', '', url)
+    if cleaned and '/' not in cleaned and ':' in url:
+        cleaned = url  # fallback if cleaning removed everything useful
+
+    for prefix in ["https://", "http://", "git://"]:
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix):]
+            if "/" in cleaned:
+                cleaned = cleaned[cleaned.index("/") + 1:]
+            return cleaned
+
+    # SSH format: git@host:user/repo.git
+    if ":" in cleaned and "@" in cleaned:
+        return cleaned[cleaned.index(":") + 1:]
+
+    # 最后兜底：从原始 URL 重新尝试
+    for prefix in ["https://", "http://", "git://"]:
+        if url.startswith(prefix):
+            stripped = url[len(prefix):]
+            if "/" in stripped:
+                path = stripped[stripped.index("/") + 1:]
+                # 再次清理嵌套协议
+                path = re.sub(r'(https?://[^/]+/)+', '', path)
+                if path and "/" in path:
+                    return path
+    return ""
 
 
 async def _get_changed_files(branch: str) -> Tuple[Optional[str], Optional[str], List[str]]:

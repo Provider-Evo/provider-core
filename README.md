@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.86-blue)
-![Version](https://img.shields.io/badge/version-2.2.86-blue)
+![Status](https://img.shields.io/badge/status-v2.2.87-blue)
+![Version](https://img.shields.io/badge/version-2.2.87-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.86
+### 当前版本：v2.2.87
+
+✅ 已完成（v2.2.87）：
+- 修复自动更新 URL 污染 bug：_fetch_from_mirrors 改为 try/finally 保存恢复原始 remote URL
+- 新增 _extract_repo_path() 函数清理嵌套协议前缀（regex 去重）
+- 构造的 URL 含多个 :// 时直接跳过
 
 ✅ 已完成（v2.2.86）：
 - echotools 升级至 1.0.18：中间件跳过 GET 请求 + request 级别 chunk 收集器修复请求检查器
