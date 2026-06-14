@@ -166,6 +166,36 @@ class Adapter(PlatformAdapter):
         ):
             yield chunk
 
+    async def abort_stream(self, candidate: Candidate) -> bool:
+        """停止当前活跃的流式生成。
+
+        Args:
+            candidate: 候选项。
+
+        Returns:
+            是否成功停止。
+        """
+        if self._client is None:
+            return False
+        return await self._client.abort_stream(candidate)
+
+    async def resume_stream(
+        self,
+        candidate: Candidate,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """从上次中断处继续生成。
+
+        Args:
+            candidate: 候选项。
+
+        Yields:
+            文本片段或结构化数据字典。
+        """
+        if self._client is None:
+            return
+        async for chunk in self._client.resume_stream(candidate):
+            yield chunk
+
     async def close(self) -> None:
         """关闭适配器，释放资源。"""
         if self._refresh_task is not None and not self._refresh_task.done():

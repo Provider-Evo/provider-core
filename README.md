@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.90-blue)
-![Version](https://img.shields.io/badge/version-2.2.90-blue)
+![Status](https://img.shields.io/badge/status-v2.2.91-blue)
+![Version](https://img.shields.io/badge/version-2.2.91-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,14 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.90
+### 当前版本：v2.2.91
+
+✅ 已完成（v2.2.91）：
+- chatmoe 平台增强：配置 UUID Key + Authorization: Key 格式
+- SSE 解析重写：支持 event/data/id 行 + X-Stream-Id 捕获
+- 新增 abort_stream（停止生成）和 resume_stream（继续生成）
+- 定时 Key 重新生成（每 24 小时，类似 qwen 定时登录）
+- 新增 flash-lite 模型
 
 ✅ 已完成（v2.2.90）：
 - 移除自动更新中错误的嵌套协议检查，允许代理镜像 URL 正常拼接
