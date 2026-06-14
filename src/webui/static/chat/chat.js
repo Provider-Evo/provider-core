@@ -611,17 +611,19 @@ async function runChatTests() {
   var maxTokens = maxTokInput ? parseInt(maxTokInput.value) || 1024 : 1024;
   var systemPrompt = sysPromptInput ? sysPromptInput.value.trim() : "";
 
-  // Get prompts from textarea (one per line)
+  // Get prompts from textarea (one per line) or fallback to input box or default
   var prompts = [];
   if (batchTextarea && batchTextarea.value.trim()) {
     prompts = batchTextarea.value.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
   } else {
     var inputText = (window._chatInputBox && window._chatInputBox.getText()) || '';
     var single = inputText.trim();
-    if (single) prompts = [single];
+    if (single) {
+      prompts = [single];
+    } else {
+      prompts = ["你好，请介绍一下你自己"];
+    }
   }
-
-  if (prompts.length === 0) { toast("请输入至少一个测试 prompt", "warn"); return; }
 
   var report = document.getElementById("chatTestReport");
   if (!report) return;
@@ -648,8 +650,13 @@ async function runChatTests() {
       + '<span class="text-[12px] text-muted" id="' + resultId + '-status">测试中...</span>'
       + '</div>'
       + '<div class="text-[13px] mb-2" style="color:var(--text);">' + escapeHtml(prompt.substring(0, 100) + (prompt.length > 100 ? '...' : '')) + '</div>'
-      + '<div class="text-[12px] font-mono" style="color:var(--muted);min-height:20px;" id="' + resultId + '-content">...</div>';
-    resultDiv.addEventListener('click', function() { showBatchResultDialog(this.dataset.prompt, this.dataset.fullContent); });
+      + '<div class="text-[12px] font-mono" style="color:var(--muted);min-height:20px;" id="' + resultId + '-content">...</div>'
+      + '<div class="flex gap-3 mt-2 text-[11px] text-muted" id="' + resultId + '-stats">'
+      + '<span>首包: <span id="' + resultId + '-ftt">-</span>ms</span>'
+      + '<span>总时: <span id="' + resultId + '-total">-</span>ms</span>'
+      + '<span>TPS: <span id="' + resultId + '-tps">-</span></span>'
+      + '</div>';
+    resultDiv.addEventListener('click', function() { showBatchResultDialog(this.dataset.prompt, this.dataset.fullContent, this); });
     resultsList.appendChild(resultDiv);
 
     try {
@@ -691,6 +698,9 @@ async function runChatTests() {
       var completed = false;
       var contentEl = document.getElementById(resultId + '-content');
       var statusEl = document.getElementById(resultId + '-status');
+      var startTime = Date.now();
+      var firstTokenTime = null;
+      var tokenCount = 0;
 
       while (true) {
         var readResult = await reader.read();
@@ -712,8 +722,24 @@ async function runChatTests() {
             for (var ci = 0; ci < choices.length; ci++) {
               var delta = choices[ci].delta || {};
               if (delta.content) {
+                if (firstTokenTime === null) firstTokenTime = Date.now();
                 content += delta.content;
+                tokenCount++;
                 contentEl.textContent = content.substring(0, 200) + (content.length > 200 ? '...' : '');
+                resultDiv.dataset.fullContent = content;
+                resultDiv.dataset.firstTokenTime = firstTokenTime - startTime;
+                resultDiv.dataset.tokenCount = tokenCount;
+                resultDiv.dataset.elapsed = Date.now() - startTime;
+                // Update stats display in real-time
+                var fttEl = document.getElementById(resultId + '-ftt');
+                var totalEl = document.getElementById(resultId + '-total');
+                var tpsEl = document.getElementById(resultId + '-tps');
+                if (fttEl) fttEl.textContent = (firstTokenTime - startTime);
+                if (totalEl) totalEl.textContent = (Date.now() - startTime);
+                if (tpsEl && tokenCount > 0) {
+                  var elapsed = (Date.now() - startTime) / 1000;
+                  tpsEl.textContent = elapsed > 0 ? (tokenCount / elapsed).toFixed(1) : '0';
+                }
               }
               if (delta.tool_calls && delta.tool_calls.length > 0) hasToolCalls = true;
               if (choices[ci].finish_reason) completed = true;
@@ -723,10 +749,16 @@ async function runChatTests() {
         if (completed) break;
       }
 
+      var totalTime = Date.now() - startTime;
+      var tps = tokenCount > 0 && totalTime > 0 ? (tokenCount / (totalTime / 1000)).toFixed(1) : '0';
       statusEl.textContent = hasToolCalls ? '通过 (有工具调用)' : '通过';
       statusEl.style.color = 'var(--ok)';
       contentEl.textContent = content.substring(0, 200) + (content.length > 200 ? '...' : '');
       resultDiv.dataset.fullContent = content;
+      resultDiv.dataset.firstTokenTime = firstTokenTime ? (firstTokenTime - startTime) : '-';
+      resultDiv.dataset.totalTime = totalTime;
+      resultDiv.dataset.tokenCount = tokenCount;
+      resultDiv.dataset.tps = tps;
       passCount++;
     } catch (error) {
       document.getElementById(resultId + '-status').textContent = '失败: ' + String(error).substring(0, 50);
@@ -746,11 +778,22 @@ async function runChatTests() {
   toast("批量测试完成: " + passCount + "/" + prompts.length + " 通过", passCount === prompts.length ? "ok" : "warn");
 }
 
-function showBatchResultDialog(prompt, fullContent) {
-  if (!fullContent) { toast("暂无完整内容", "info"); return; }
+function showBatchResultDialog(prompt, fullContent, resultDiv) {
+  var displayContent = fullContent || '<span style="color:var(--muted);">生成中...</span>';
+  var stats = resultDiv ? {
+    ftt: resultDiv.dataset.firstTokenTime || '-',
+    total: resultDiv.dataset.totalTime || resultDiv.dataset.elapsed || '-',
+    tokens: resultDiv.dataset.tokenCount || '0',
+    tps: resultDiv.dataset.tps || '0'
+  } : { ftt: '-', total: '-', tokens: '0', tps: '0' };
+
   var overlay = document.createElement('div');
   overlay.className = 'batch-result-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:24px;';
+
+  var contentPreId = 'batch-result-content-' + Date.now();
+  var statsId = 'batch-result-stats-' + Date.now();
+
   overlay.innerHTML = '<div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;max-width:700px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);">'
     + '<span style="font-weight:600;font-size:15px;">测试结果详情</span>'
@@ -758,11 +801,42 @@ function showBatchResultDialog(prompt, fullContent) {
     + '</div>'
     + '<div style="padding:16px 20px;overflow-y:auto;flex:1;">'
     + '<div style="margin-bottom:12px;"><span style="font-size:12px;color:var(--muted);">Prompt:</span><div style="font-size:13px;margin-top:4px;color:var(--text);">' + escapeHtml(prompt) + '</div></div>'
-    + '<div><span style="font-size:12px;color:var(--muted);">响应:</span><pre style="font-size:13px;margin-top:4px;white-space:pre-wrap;word-break:break-word;color:var(--text);background:var(--panel-alt);padding:12px;border-radius:8px;max-height:400px;overflow-y:auto;">' + escapeHtml(fullContent) + '</pre></div>'
+    + '<div id="' + statsId + '" class="flex gap-4 mb-3 text-[12px] text-muted">'
+    + '<span>首包: <strong>' + stats.ftt + '</strong>ms</span>'
+    + '<span>总时: <strong>' + stats.total + '</strong>ms</span>'
+    + '<span>Tokens: <strong>' + stats.tokens + '</strong></span>'
+    + '<span>TPS: <strong>' + stats.tps + '</strong></span>'
+    + '</div>'
+    + '<div><span style="font-size:12px;color:var(--muted);">响应:</span><pre id="' + contentPreId + '" style="font-size:13px;margin-top:4px;white-space:pre-wrap;word-break:break-word;color:var(--text);background:var(--panel-alt);padding:12px;border-radius:8px;max-height:400px;overflow-y:auto;">' + (typeof displayContent === 'string' ? escapeHtml(displayContent) : displayContent) + '</pre></div>'
     + '</div></div>';
   document.body.appendChild(overlay);
-  document.getElementById('batchResultCloseBtn').addEventListener('click', function() { overlay.remove(); });
-  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+  // Real-time update: poll resultDiv dataset for updates
+  var updateInterval = null;
+  if (resultDiv) {
+    updateInterval = setInterval(function() {
+      var pre = document.getElementById(contentPreId);
+      var statsEl = document.getElementById(statsId);
+      if (!pre || !statsEl) { clearInterval(updateInterval); return; }
+      var currentContent = resultDiv.dataset.fullContent || '';
+      pre.textContent = currentContent || '生成中...';
+      statsEl.innerHTML = '<span>首包: <strong>' + (resultDiv.dataset.firstTokenTime || '-') + '</strong>ms</span>'
+        + '<span>总时: <strong>' + (resultDiv.dataset.totalTime || resultDiv.dataset.elapsed || '-') + '</strong>ms</span>'
+        + '<span>Tokens: <strong>' + (resultDiv.dataset.tokenCount || '0') + '</strong></span>'
+        + '<span>TPS: <strong>' + (resultDiv.dataset.tps || '0') + '</strong></span>';
+    }, 200);
+  }
+
+  document.getElementById('batchResultCloseBtn').addEventListener('click', function() {
+    if (updateInterval) clearInterval(updateInterval);
+    overlay.remove();
+  });
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) {
+      if (updateInterval) clearInterval(updateInterval);
+      overlay.remove();
+    }
+  });
 }
 
 // ========================= Tool Definition Section =========================

@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.78-blue)
-![Version](https://img.shields.io/badge/version-2.2.78-blue)
+![Status](https://img.shields.io/badge/status-v2.2.79-blue)
+![Version](https://img.shields.io/badge/version-2.2.79-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.78
+### 当前版本：v2.2.79
+
+✅ 已完成（v2.2.79）：
+- 批量测试统计：首包延迟、总耗时、Tokens、TPS 实时显示
+- 结果卡片点击展开详情对话框，支持实时流式内容更新（200ms 轮询）
+- 批量测试空 prompt 时使用默认 prompt 而非报错
 
 ✅ 已完成（v2.2.78）：
 - 配置 Tab 补全：新增 fncall 和 autoupdate 段，debug 段补充 color/access_log
