@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.85-blue)
-![Version](https://img.shields.io/badge/version-2.2.85-blue)
+![Status](https://img.shields.io/badge/status-v2.2.86-blue)
+![Version](https://img.shields.io/badge/version-2.2.86-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,11 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.85
+### 当前版本：v2.2.86
+
+✅ 已完成（v2.2.86）：
+- echotools 升级至 1.0.18：中间件跳过 GET 请求 + request 级别 chunk 收集器修复请求检查器
+- requirements.txt 更新为 echotools>=1.0.18
 
 ✅ 已完成（v2.2.85）：
 - 新增 SortableList 可排序列表组件（上下箭头 + 删除，来自 echotools）
