@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.80-blue)
-![Version](https://img.shields.io/badge/version-2.2.80-blue)
+![Status](https://img.shields.io/badge/status-v2.2.81-blue)
+![Version](https://img.shields.io/badge/version-2.2.81-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.80
+### 当前版本：v2.2.81
+
+✅ 已完成（v2.2.81）：
+- 语音输入波形 GIF 改为 base64 内嵌（与 echotools 一致），移除外部 waveform_64x64.gif 文件依赖
 
 ✅ 已完成（v2.2.80）：
 - 语音输入录音时按钮替换为波形 GIF 动画，录音结束后恢复原按钮内容
