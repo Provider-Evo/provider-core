@@ -400,14 +400,17 @@
           </label>
           <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
             <div class="text-[13px] text-muted m-0 mb-2">STT 模型（语音转文字）</div>
-            <input id="voiceSttModel" type="text" placeholder="如: whisper-1" class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+            <select id="voiceSttModel" class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]"><option value="">加载中...</option></select>
           </label>
           <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
             <div class="text-[13px] text-muted m-0 mb-2">TTS 模型（文字转语音）</div>
-            <input id="voiceTtsModel" type="text" placeholder="如: tts-1-hd" class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+            <select id="voiceTtsModel" class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]"><option value="">加载中...</option></select>
           </label>
           <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift" style="grid-column: 1 / -1;">
-            <div class="text-[13px] text-muted m-0 mb-2">TTS 引导 Prompt</div>
+            <div class="flex justify-between items-center mb-2">
+              <div class="text-[13px] text-muted m-0">TTS 引导 Prompt</div>
+              <button type="button" id="voiceTtsPromptRestoreBtn" class="text-[12px] text-accent hover:underline cursor-pointer" title="恢复默认 Prompt">恢复默认</button>
+            </div>
             <textarea id="voiceTtsPrompt" rows="2" placeholder="引导语音输出的风格和指令..." class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]" style="resize:vertical;"></textarea>
           </label>
         </div>

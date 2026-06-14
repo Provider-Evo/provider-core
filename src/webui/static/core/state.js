@@ -125,8 +125,16 @@ function applyVoiceSettings() {
   var stt = document.getElementById('voiceSttModel');
   var tts = document.getElementById('voiceTtsModel');
   var prompt = document.getElementById('voiceTtsPrompt');
-  if (stt) stt.value = vs.sttModel || '';
-  if (tts) tts.value = vs.ttsModel || '';
+  if (stt) {
+    stt.value = vs.sttModel || '';
+    var sttDd = window._dropdowns && window._dropdowns['voiceSttModel'];
+    if (sttDd && vs.sttModel) sttDd.setValue(vs.sttModel);
+  }
+  if (tts) {
+    tts.value = vs.ttsModel || '';
+    var ttsDd = window._dropdowns && window._dropdowns['voiceTtsModel'];
+    if (ttsDd && vs.ttsModel) ttsDd.setValue(vs.ttsModel);
+  }
   if (prompt) prompt.value = vs.ttsPrompt || '';
 }
 

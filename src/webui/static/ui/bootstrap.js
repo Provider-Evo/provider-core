@@ -197,7 +197,8 @@ applyVoiceSettings();
 // ========================= Custom Dropdown Initialization =========================
 window._dropdowns = {};
 ['modelPlatformSelect', 'modelCapabilitySelect', 'chatModelSelect',
- 'chatProtocolSelect', 'themeSelect', 'compactSelect'].forEach(function(id) {
+ 'chatProtocolSelect', 'themeSelect', 'compactSelect',
+ 'voiceSttModel', 'voiceTtsModel'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) {
     window._dropdowns[id] = new CustomDropdown(el);
@@ -223,6 +224,72 @@ if (typeof initAllMotionEffects === 'function') {
 // Load models list for chat test
 if (typeof loadModelsList === 'function') {
   loadModelsList();
+}
+
+// Load voice model lists for STT/TTS dropdowns
+(async function loadVoiceModels() {
+  try {
+    var result = await fetchJson("/v1/models");
+    if (!result || !result.data) return;
+    var models = result.data;
+    var opts = [{ value: '', text: '不使用' }];
+    for (var i = 0; i < models.length; i++) {
+      opts.push({ value: models[i].id, text: models[i].id });
+    }
+    var sttDropdown = window._dropdowns && window._dropdowns['voiceSttModel'];
+    var ttsDropdown = window._dropdowns && window._dropdowns['voiceTtsModel'];
+    if (sttDropdown) {
+      sttDropdown.setOptions(opts, false);
+      var vs = loadVoiceSettings();
+      if (vs.sttModel) sttDropdown.setValue(vs.sttModel);
+    }
+    if (ttsDropdown) {
+      ttsDropdown.setOptions(opts, false);
+      var vs = loadVoiceSettings();
+      if (vs.ttsModel) ttsDropdown.setValue(vs.ttsModel);
+    }
+  } catch (e) { /* ignore */ }
+})();
+
+// Voice dropdown change handlers
+['voiceSttModel', 'voiceTtsModel'].forEach(function(id) {
+  var dropdown = window._dropdowns && window._dropdowns[id];
+  if (dropdown) {
+    dropdown.onChange = function(value) {
+      saveVoiceSettings({
+        sttModel: (window._dropdowns['voiceSttModel'] || {}).value || document.getElementById('voiceSttModel').value || '',
+        ttsModel: (window._dropdowns['voiceTtsModel'] || {}).value || document.getElementById('voiceTtsModel').value || '',
+        ttsPrompt: (document.getElementById('voiceTtsPrompt') || {}).value || '',
+      });
+    };
+  }
+});
+
+// TTS prompt restore default button
+var ttsRestoreBtn = document.getElementById('voiceTtsPromptRestoreBtn');
+if (ttsRestoreBtn) {
+  ttsRestoreBtn.addEventListener('click', async function() {
+    try {
+      var resp = await fetch('/prompts/tts_default.prompt');
+      if (resp.ok) {
+        var text = await resp.text();
+        var textarea = document.getElementById('voiceTtsPrompt');
+        if (textarea) {
+          textarea.value = text.trim();
+          saveVoiceSettings({
+            sttModel: (window._dropdowns['voiceSttModel'] || {}).value || document.getElementById('voiceSttModel').value || '',
+            ttsModel: (window._dropdowns['voiceTtsModel'] || {}).value || document.getElementById('voiceTtsModel').value || '',
+            ttsPrompt: text.trim(),
+          });
+          toast('已恢复默认 Prompt', 'ok');
+        }
+      } else {
+        toast('加载默认 Prompt 失败', 'error');
+      }
+    } catch (e) {
+      toast('加载默认 Prompt 失败: ' + e.message, 'error');
+    }
+  });
 }
 
 // Restore chat history from localStorage

@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.81-blue)
-![Version](https://img.shields.io/badge/version-2.2.81-blue)
+![Status](https://img.shields.io/badge/status-v2.2.82-blue)
+![Version](https://img.shields.io/badge/version-2.2.82-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.81
+### 当前版本：v2.2.82
+
+✅ 已完成（v2.2.82）：
+- 便携设置 STT/TTS 模型改为下拉选择菜单（从 /v1/models 加载）
+- TTS 引导 Prompt 新增「恢复默认」按钮，从 prompts/tts_default.prompt 加载模板
+- 新增 /prompts/ 静态路由服务 prompt 模板文件
 
 ✅ 已完成（v2.2.81）：
 - 语音输入波形 GIF 改为 base64 内嵌（与 echotools 一致），移除外部 waveform_64x64.gif 文件依赖

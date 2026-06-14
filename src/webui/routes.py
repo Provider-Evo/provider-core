@@ -27,6 +27,14 @@ def setup_routes(app: aiohttp.web.Application) -> None:
         show_index=False,
         append_version=True,
     )
+    prompts_dir = Path(__file__).resolve().parent.parent.parent / "prompts"
+    if prompts_dir.is_dir():
+        app.router.add_static(
+            "/prompts/",
+            path=str(prompts_dir),
+            name="webui_prompts",
+            show_index=False,
+        )
 
     app.router.add_get("/", webui_page)
     app.router.add_route("*", "/login", login_page)
