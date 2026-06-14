@@ -189,33 +189,49 @@
         <div class="flex flex-wrap justify-between items-end gap-3">
           <div>
             <h2>自动更新</h2>
-            <p class="m-0 text-muted leading-relaxed">监控远端 git 仓库新提交，自动拉取更新并重启服务。</p>
+            <p class="m-0 text-muted leading-relaxed">监控远端 git 仓库新提交，支持差异更新（仅覆盖变更文件）。</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-border bg-panel text-text hover:bg-panel-alt transition" id="autoupdateCheckBtn" type="button">立即检查</button>
             <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-border bg-panel text-text hover:bg-panel-alt transition" id="autoupdateSaveBtn" type="button">保存设置</button>
+            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-accent text-accent bg-panel hover:bg-accent hover:text-white transition hidden" id="autoupdateApplyBtn" type="button">应用更新</button>
             <span id="autoupdateStatus" class="status-saved flex items-center">未启用</span>
           </div>
         </div>
-        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]" id="autoupdateGrid">
-          <div class="border border-border rounded-xl p-3.5 bg-panel card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2">启用状态</div>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="autoupdateEnabled" class="w-4 h-4 rounded">
-              <span>启用自动更新</span>
-            </label>
+        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]">
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="config-field"><span class="config-field-label">启用自动更新</span><label class="config-toggle"><input type="checkbox" id="autoupdateEnabled"><span class="toggle-slider"></span></label></div>
           </div>
-          <div class="border border-border rounded-xl p-3.5 bg-panel card-hover-lift">
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="config-field"><span class="config-field-label">差异更新</span><label class="config-toggle"><input type="checkbox" id="autoupdateDiffUpdate" checked><span class="toggle-slider"></span></label></div>
+            <div class="text-[11px] text-muted mt-1">仅覆盖变更文件，保留本地未提交改动</div>
+          </div>
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
             <div class="text-[13px] text-muted m-0 mb-2">目标分支</div>
-            <input id="autoupdateBranch" type="text" placeholder="main" class="w-full rounded-xl border border-border bg-panel-soft text-text px-3 py-2 text-[14px]">
+            <input id="autoupdateBranch" type="text" placeholder="dev" class="config-input w-full">
           </div>
-          <div class="border border-border rounded-xl p-3.5 bg-panel card-hover-lift">
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
             <div class="text-[13px] text-muted m-0 mb-2">检查间隔（秒）</div>
-            <input id="autoupdateInterval" type="number" min="30" step="30" placeholder="300" class="w-full rounded-xl border border-border bg-panel-soft text-text px-3 py-2 text-[14px]">
+            <input id="autoupdateInterval" type="number" min="30" step="30" placeholder="300" class="config-input w-full">
           </div>
-          <div class="border border-border rounded-xl p-3.5 bg-panel card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2">上次检查结果</div>
-            <div id="autoupdateLastCheck" class="text-2xl font-bold">--</div>
+        </div>
+        <!-- Mirror sources -->
+        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift mt-3">
+          <div class="flex justify-between items-center mb-2">
+            <div class="text-[13px] text-muted">镜像源（按优先级排序）</div>
+            <button class="text-[12px] text-accent hover:underline cursor-pointer" id="autoupdateAddMirrorBtn" type="button">+ 添加镜像源</button>
+          </div>
+          <div id="autoupdateMirrorsList"></div>
+        </div>
+        <!-- Check results -->
+        <div id="autoupdateResults" class="mt-3 hidden">
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="flex justify-between items-center mb-2">
+              <div class="text-[13px] font-semibold">检查结果</div>
+              <span id="autoupdateResultStatus" class="text-[12px]"></span>
+            </div>
+            <div id="autoupdateResultMeta" class="text-[12px] text-muted mb-2"></div>
+            <div id="autoupdateChangedFiles" class="text-[12px] font-mono" style="max-height:200px;overflow:auto;"></div>
           </div>
         </div>
       </section>

@@ -117,6 +117,18 @@ if (document.getElementById('autoupdateCheckBtn')) {
 if (document.getElementById('autoupdateSaveBtn')) {
   document.getElementById('autoupdateSaveBtn').addEventListener('click', saveAutoupdateSettings);
 }
+if (document.getElementById('autoupdateApplyBtn')) {
+  document.getElementById('autoupdateApplyBtn').addEventListener('click', applyAutoupdate);
+}
+if (document.getElementById('autoupdateAddMirrorBtn')) {
+  document.getElementById('autoupdateAddMirrorBtn').addEventListener('click', function() {
+    var mirrors = _getMirrorsFromUI();
+    mirrors.push('');
+    _renderMirrors(mirrors);
+    var inputs = document.querySelectorAll('#autoupdateMirrorsList .mirror-url');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+}
 
 // Chat tabs event listeners
 var chatSendBtn = document.getElementById('chatSendBtn');

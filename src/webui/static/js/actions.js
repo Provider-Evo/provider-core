@@ -258,57 +258,153 @@ async function loadAutoupdateSettings() {
     if (result.success) {
       const d = result.data;
       document.getElementById('autoupdateEnabled').checked = d.enabled || false;
-      document.getElementById('autoupdateBranch').value = d.branch || 'main';
+      document.getElementById('autoupdateBranch').value = d.branch || 'dev';
       document.getElementById('autoupdateInterval').value = d.interval || 300;
+      var diffEl = document.getElementById('autoupdateDiffUpdate');
+      if (diffEl) diffEl.checked = d.diff_update !== false;
       document.getElementById('autoupdateStatus').textContent = d.enabled ? '已启用' : '未启用';
+      // Render mirrors
+      _renderMirrors(d.mirrors || []);
+      // Show last check if available
+      if (d.last_check && d.last_check.status) {
+        _showCheckResults(d.last_check);
+      }
     }
   } catch (error) {
     toast('加载自动更新设置失败：' + String(error), 'error');
   }
 }
 
+function _renderMirrors(mirrors) {
+  var list = document.getElementById('autoupdateMirrorsList');
+  if (!list) return;
+  if (!mirrors.length) {
+    list.innerHTML = '<div class="text-[12px] text-muted">No mirrors configured</div>';
+    return;
+  }
+  list.innerHTML = mirrors.map(function(m, i) {
+    return '<div class="mirror-item" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
+      + '<span style="color:var(--muted);font-size:11px;width:16px;">' + (i+1) + '</span>'
+      + '<input type="text" class="config-input mirror-url" value="' + escapeHtml(m) + '" style="flex:1;">'
+      + '<button type="button" class="text-[12px] text-err hover:underline mirror-remove" data-index="' + i + '">remove</button>'
+      + '</div>';
+  }).join('');
+  // Bind remove buttons
+  list.querySelectorAll('.mirror-remove').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var inputs = list.querySelectorAll('.mirror-url');
+      var arr = [];
+      inputs.forEach(function(inp, idx) { if (idx !== parseInt(btn.dataset.index)) arr.push(inp.value); });
+      _renderMirrors(arr);
+    });
+  });
+}
+
+function _getMirrorsFromUI() {
+  var inputs = document.querySelectorAll('#autoupdateMirrorsList .mirror-url');
+  var arr = [];
+  inputs.forEach(function(inp) { if (inp.value.trim()) arr.push(inp.value.trim()); });
+  return arr;
+}
+
 async function saveAutoupdateSettings() {
   try {
-    const enabled = document.getElementById('autoupdateEnabled').checked;
-    const branch = document.getElementById('autoupdateBranch').value.trim() || 'main';
-    const interval = parseInt(document.getElementById('autoupdateInterval').value) || 300;
-    const result = await fetch('/v1/admin/autoupdate', {
+    var body = {
+      enabled: document.getElementById('autoupdateEnabled').checked,
+      branch: document.getElementById('autoupdateBranch').value.trim() || 'dev',
+      interval: parseInt(document.getElementById('autoupdateInterval').value) || 300,
+      diff_update: document.getElementById('autoupdateDiffUpdate').checked,
+      mirrors: _getMirrorsFromUI()
+    };
+    var resp = await fetch('/v1/admin/autoupdate', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: enabled, branch: branch, interval: interval })
+      body: JSON.stringify(body)
     });
-    const data = await result.json();
+    var data = await resp.json();
     if (data.success) {
       document.getElementById('autoupdateStatus').textContent = data.data.enabled ? '已启用' : '未启用';
       toast('自动更新设置已保存', 'ok');
-      log('自动更新设置已保存。');
     } else {
-      toast('保存失败：' + (data.error || '未知错误'), 'error');
+      toast('保存失败：' + (data.error || 'unknown'), 'error');
     }
   } catch (error) {
     toast('保存失败：' + String(error), 'error');
-    log('自动更新设置保存失败：' + String(error));
   }
+}
+
+function _showCheckResults(d) {
+  var panel = document.getElementById('autoupdateResults');
+  var statusEl = document.getElementById('autoupdateResultStatus');
+  var metaEl = document.getElementById('autoupdateResultMeta');
+  var filesEl = document.getElementById('autoupdateChangedFiles');
+  var applyBtn = document.getElementById('autoupdateApplyBtn');
+  if (!panel) return;
+  panel.classList.remove('hidden');
+
+  if (d.status === 'error') {
+    statusEl.textContent = '[error]';
+    statusEl.style.color = 'var(--err)';
+    metaEl.textContent = d.message || 'Check failed';
+    filesEl.innerHTML = '';
+    if (applyBtn) applyBtn.classList.add('hidden');
+    return;
+  }
+
+  if (!d.has_update) {
+    statusEl.textContent = '[up to date]';
+    statusEl.style.color = 'var(--ok)';
+    metaEl.textContent = (d.local_hash || '') + ' = ' + (d.remote_hash || '') + ' (mirror: ' + (d.mirror || '') + ')';
+    filesEl.innerHTML = '';
+    if (applyBtn) applyBtn.classList.add('hidden');
+    return;
+  }
+
+  statusEl.textContent = d.changed_count + ' file(s) changed';
+  statusEl.style.color = 'var(--warn)';
+  metaEl.textContent = (d.local_hash || '?') + ' -> ' + (d.remote_hash || '?') + ' (mirror: ' + (d.mirror || '') + ')';
+  filesEl.innerHTML = (d.changed_files || []).map(function(f) {
+    return '<div style="padding:1px 0;">' + escapeHtml(f) + '</div>';
+  }).join('');
+  if (applyBtn) applyBtn.classList.remove('hidden');
 }
 
 async function triggerAutoupdateCheck() {
   try {
-    log('正在触发自动更新检查...');
-    document.getElementById('autoupdateLastCheck').textContent = '检查中...';
-    const result = await fetch('/v1/admin/autoupdate/check', { method: 'POST' });
-    const data = await result.json();
+    var statusEl = document.getElementById('autoupdateResultStatus');
+    var panel = document.getElementById('autoupdateResults');
+    if (panel) panel.classList.remove('hidden');
+    if (statusEl) { statusEl.textContent = 'checking...'; statusEl.style.color = 'var(--muted)'; }
+    var resp = await fetch('/v1/admin/autoupdate/check', { method: 'POST' });
+    var data = await resp.json();
     if (data.success) {
-      document.getElementById('autoupdateLastCheck').textContent = '检查完成';
-      toast('更新检查完成', 'ok');
-      log('自动更新检查完成。');
+      _showCheckResults(data.data);
+      toast('检查完成：' + (data.data.changed_count || 0) + ' file(s) changed', 'ok');
     } else {
-      document.getElementById('autoupdateLastCheck').textContent = '错误';
-      toast('检查失败：' + (data.error || '未知错误'), 'error');
-      log('自动更新检查失败：' + String(data.error));
+      _showCheckResults({ status: 'error', message: data.error || 'unknown' });
+      toast('检查失败：' + (data.error || 'unknown'), 'error');
     }
   } catch (error) {
-    document.getElementById('autoupdateLastCheck').textContent = '错误';
+    _showCheckResults({ status: 'error', message: String(error) });
     toast('检查失败：' + String(error), 'error');
-    log('自动更新检查失败：' + String(error));
+  }
+}
+
+async function applyAutoupdate() {
+  try {
+    var confirmed = await showConfirmDialog('确定要应用更新吗？更新后需要重启服务才能生效。');
+    if (!confirmed) return;
+    toast('正在应用更新...', 'info');
+    var resp = await fetch('/v1/admin/autoupdate/apply', { method: 'POST' });
+    var data = await resp.json();
+    if (data.success) {
+      toast('更新已应用，请重启服务', 'ok');
+      var applyBtn = document.getElementById('autoupdateApplyBtn');
+      if (applyBtn) applyBtn.classList.add('hidden');
+    } else {
+      toast('应用失败：' + (data.error || 'unknown'), 'error');
+    }
+  } catch (error) {
+    toast('应用失败：' + String(error), 'error');
   }
 }

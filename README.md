@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.69-blue)
-![Version](https://img.shields.io/badge/version-2.2.69-blue)
+![Status](https://img.shields.io/badge/status-v2.2.70-blue)
+![Version](https://img.shields.io/badge/version-2.2.70-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,13 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.69
+### 当前版本：v2.2.70
+
+✅ 已完成（v2.2.70）：
+- 自动更新功能完善：差异更新（仅覆盖变更文件）、镜像源优先级配置、变更文件列表展示
+- 新增 `diff_update` 和 `mirrors` 配置字段
+- 新增 `POST /v1/admin/autoupdate/apply` API（差异 checkout / 全量 pull）
+- WebUI 自动更新 Tab 重写：toggle 开关 + 镜像源增删 + 检查结果面板 + 应用按钮
 
 ✅ 已完成（v2.2.69）：
 - WebUI 配置 Tab 表单化：布尔值显示开关、字符串/数字显示输入框、列表/字典显示 JSON 文本域

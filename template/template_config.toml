@@ -2,7 +2,7 @@
 # 复制此文件到项目根目录并重命名为 config.toml
 
 [server]
-version = "2.2.69"
+version = "2.2.70"
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -92,3 +92,5 @@ log_name = "provider-v2"  # 日志文件名前缀
 enabled = false
 branch = "main"
 interval = 300  # 检查间隔（秒）
+diff_update = true  # 差异更新：仅覆盖变更文件（true）或全量 pull（false）
+mirrors = ["https://github.com/nichengfuben/provider-v2.git"]  # 镜像源（按优先级排序）

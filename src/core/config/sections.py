@@ -119,10 +119,14 @@ class DebugCfg(ConfigBase):
 
 @dataclass
 class AutoupdateCfg(ConfigBase):
-    """自动更新配置：开关、分支和检查间隔。"""
+    """自动更新配置：开关、分支、检查间隔、差异更新和镜像源。"""
     enabled: bool = False
     branch: str = "main"
     interval: int = 300  # 检查间隔（秒）
+    diff_update: bool = True  # 差异更新：仅覆盖变更文件
+    mirrors: List[str] = field(default_factory=lambda: [
+        "https://github.com/nichengfuben/provider-v2.git",
+    ])
 
 
 @dataclass
