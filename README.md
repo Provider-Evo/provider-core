@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.70-blue)
-![Version](https://img.shields.io/badge/version-2.2.70-blue)
+![Status](https://img.shields.io/badge/status-v2.2.71-blue)
+![Version](https://img.shields.io/badge/version-2.2.71-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.70
+### 当前版本：v2.2.71
+
+✅ 已完成（v2.2.71）：
+- InputBox 通用组件集成：替换旧聊天输入区，支持文件上传、语音输入、长文本自动转文件
+- 便携设置新增 STT/TTS 模型配置和 TTS 引导 Prompt（localStorage 持久化）
+- echotools 新增 web/input_box 组件（input-box.js + input-box.css）
 
 ✅ 已完成（v2.2.70）：
 - 自动更新功能完善：差异更新（仅覆盖变更文件）、镜像源优先级配置、变更文件列表展示

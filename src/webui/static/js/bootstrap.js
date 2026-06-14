@@ -130,23 +130,29 @@ if (document.getElementById('autoupdateAddMirrorBtn')) {
   });
 }
 
-// Chat tabs event listeners
-var chatSendBtn = document.getElementById('chatSendBtn');
-var chatMessageInput = document.getElementById('chatMessageInput');
+// Chat InputBox initialization
 var chatClearBtn = document.getElementById('chatClearBtn');
 var chatRunTestsBtn = document.getElementById('chatRunTestsBtn');
 
-if (chatSendBtn) {
-  chatSendBtn.addEventListener('click', function() { sendChatMessage(); });
-}
-if (chatMessageInput) {
-  chatMessageInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendChatMessage();
-    }
+if (typeof InputBox !== 'undefined' && document.getElementById('chatInputBox')) {
+  var voiceSettings = {};
+  try { voiceSettings = JSON.parse(localStorage.getItem('provider.webui.voice') || '{}'); } catch(e) {}
+  window._chatInputBox = InputBox.create('#chatInputBox', {
+    placeholder: '输入消息... (Shift+Enter 换行, Enter 发送)',
+    buttons: { file: true, voice: true, send: true },
+    voice: {
+      sttModel: voiceSettings.sttModel || '',
+      ttsModel: voiceSettings.ttsModel || '',
+      ttsPrompt: voiceSettings.ttsPrompt || '',
+    },
+    onSend: function(text, files) {
+      sendChatMessage(text, files);
+    },
+    onVoiceStart: function() { toast('录音中...', 'info'); },
+    onVoiceEnd: function() {},
   });
 }
+
 if (chatClearBtn) {
   chatClearBtn.addEventListener('click', function() {
     clearChatMessages();
@@ -160,6 +166,21 @@ if (chatRunTestsBtn) {
 
 applyTheme();
 applyCompact();
+applyVoiceSettings();
+
+// Voice settings change handlers
+['voiceSttModel', 'voiceTtsModel', 'voiceTtsPrompt'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('change', function() {
+      saveVoiceSettings({
+        sttModel: (document.getElementById('voiceSttModel') || {}).value || '',
+        ttsModel: (document.getElementById('voiceTtsModel') || {}).value || '',
+        ttsPrompt: (document.getElementById('voiceTtsPrompt') || {}).value || '',
+      });
+    });
+  }
+});
 
 // ========================= Custom Dropdown Initialization =========================
 window._dropdowns = {};

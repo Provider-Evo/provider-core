@@ -1,159 +1,5 @@
-// ========================= Chat Input (quickshot-inspired) =========================
-(() => {
-  const textarea = document.getElementById("chatMessageInput");
-  const viewport = document.getElementById("chatInputViewport");
-  const scrollbar = document.getElementById("chatCustomScrollbar");
-  const thumb = document.getElementById("chatCustomThumb");
-  const caret = document.getElementById("chatCustomCaret");
+// Chat input handled by InputBox component (input-box.js)
 
-  // Exit early if chat input elements don't exist.
-  if (!textarea || !viewport || !scrollbar || !thumb || !caret) {
-    return;
-  }
-
-  const minRows = 4, maxRows = 6;
-  let visualHeight = 96, targetHeight = 96, heightFrame = 0;
-  let thumbY = 0, thumbTargetY = 0, thumbHeight = 28, thumbFrame = 0;
-  let caretX = 0, caretY = 0, caretTargetX = 0, caretTargetY = 0, caretHeight = 24, caretFrame = 0, caretReady = false;
-  let dragState = null;
-
-  const mirror = document.createElement("div");
-  mirror.setAttribute("aria-hidden", "true");
-  mirror.style.cssText = "position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;z-index:-1;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;";
-  document.body.appendChild(mirror);
-
-  function getComputedStyle_prop(prop) { return Number.parseFloat(getComputedStyle(textarea)[prop]); }
-  const metrics = { lineHeight: 24, minHeight: 96, maxHeight: 144 };
-  function refreshMetrics() {
-    const lh = getComputedStyle_prop("lineHeight"), fs = getComputedStyle_prop("fontSize");
-    metrics.lineHeight = Number.isFinite(lh) ? lh : fs * 1.5;
-    metrics.minHeight = metrics.lineHeight * minRows;
-    metrics.maxHeight = metrics.lineHeight * maxRows;
-  }
-  function applyHeight(h) { visualHeight = h; viewport.style.height = h + "px"; textarea.style.height = h + "px"; updateScrollbar(false); updateCaretTarget(false); }
-  function measureContentHeight() {
-    const prev = textarea.style.height, prevST = textarea.scrollTop;
-    textarea.style.height = "0px";
-    const h = textarea.scrollHeight;
-    textarea.style.height = prev; textarea.scrollTop = prevST;
-    return h;
-  }
-  function requestHeightUpdate(immediate) {
-    refreshMetrics();
-    targetHeight = Math.min(metrics.maxHeight, Math.max(metrics.minHeight, measureContentHeight()));
-    if (immediate) { applyHeight(targetHeight); return; }
-    if (!heightFrame) heightFrame = requestAnimationFrame(animateHeight);
-  }
-  function animateHeight() {
-    heightFrame = 0;
-    const diff = targetHeight - visualHeight;
-    if (Math.abs(diff) < 0.35) { applyHeight(targetHeight); return; }
-    applyHeight(visualHeight + diff * 0.18);
-    heightFrame = requestAnimationFrame(animateHeight);
-  }
-  function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
-  function updateScrollbar(immediate) {
-    const maxScroll = Math.max(0, textarea.scrollHeight - textarea.clientHeight);
-    const trackHeight = Math.max(0, viewport.clientHeight - 8);
-    if (maxScroll <= 1 || trackHeight <= 0) {
-      scrollbar.classList.remove("is-scrollable");
-      thumbTargetY = 0; thumbY = 0;
-      thumb.style.height = "28px";
-      thumb.style.transform = "translate3d(0,0,0)";
-      return;
-    }
-    scrollbar.classList.add("is-scrollable");
-    thumbHeight = clamp((textarea.clientHeight / textarea.scrollHeight) * trackHeight, 28, trackHeight);
-    const maxThumbY = Math.max(0, trackHeight - thumbHeight);
-    thumbTargetY = maxScroll > 0 ? (textarea.scrollTop / maxScroll) * maxThumbY : 0;
-    thumb.style.height = thumbHeight + "px";
-    if (immediate) { thumbY = thumbTargetY; renderThumb(); return; }
-    if (!thumbFrame) thumbFrame = requestAnimationFrame(animateThumb);
-  }
-  function renderThumb() { thumb.style.transform = "translate3d(0," + thumbY + "px,0)"; }
-  function animateThumb() {
-    thumbFrame = 0;
-    const diff = thumbTargetY - thumbY;
-    if (Math.abs(diff) < 0.25) { thumbY = thumbTargetY; renderThumb(); return; }
-    thumbY += diff * 0.28;
-    renderThumb();
-    thumbFrame = requestAnimationFrame(animateThumb);
-  }
-  function syncMirrorStyle() {
-    const props = ["boxSizing","fontFamily","fontSize","fontWeight","fontStyle","letterSpacing","textTransform","wordSpacing","textIndent","lineHeight","paddingTop","paddingRight","paddingBottom","paddingLeft"];
-    for (let i = 0; i < props.length; i++) mirror.style[props[i]] = getComputedStyle(textarea)[props[i]];
-    mirror.style.width = textarea.clientWidth + "px";
-  }
-  function getCaretCoordinates() {
-    syncMirrorStyle();
-    const pos = textarea.selectionEnd;
-    mirror.textContent = textarea.value.slice(0, pos);
-    const marker = document.createElement("span");
-    marker.textContent = "\u200b";
-    marker.style.cssText = "display:inline-block;width:1px;height:" + metrics.lineHeight + "px;";
-    mirror.appendChild(marker);
-    const mr = marker.getBoundingClientRect(), mir = mirror.getBoundingClientRect();
-    return { x: mr.left - mir.left - textarea.scrollLeft, y: mr.top - mir.top - textarea.scrollTop, height: metrics.lineHeight };
-  }
-  function updateCaretTarget(immediate) {
-    const focused = document.activeElement === textarea;
-    const collapsed = textarea.selectionStart === textarea.selectionEnd;
-    if (!focused || !collapsed) { caret.classList.remove("is-visible","is-moving"); return; }
-    const coords = getCaretCoordinates();
-    caretTargetX = clamp(coords.x, 0, Math.max(0, textarea.clientWidth - 3));
-    caretTargetY = coords.y;
-    caretHeight = coords.height;
-    if (caretTargetY < -metrics.lineHeight || caretTargetY > textarea.clientHeight) { caret.classList.remove("is-visible","is-moving"); return; }
-    caret.classList.add("is-visible");
-    caret.style.height = caretHeight + "px";
-    if (immediate || !caretReady) { caretX = caretTargetX; caretY = caretTargetY; caretReady = true; renderCaret(); return; }
-    if (!caretFrame) caretFrame = requestAnimationFrame(animateCaret);
-  }
-  function renderCaret() { caret.style.transform = "translate3d(" + caretX + "px," + caretY + "px,0)"; }
-  function animateCaret() {
-    caretFrame = 0;
-    const dx = caretTargetX - caretX, dy = caretTargetY - caretY;
-    if (Math.abs(dx) < 0.25 && Math.abs(dy) < 0.25) { caretX = caretTargetX; caretY = caretTargetY; renderCaret(); caret.classList.remove("is-moving"); return; }
-    caret.classList.add("is-moving");
-    caretX += dx * 0.38; caretY += dy * 0.38;
-    renderCaret();
-    caretFrame = requestAnimationFrame(animateCaret);
-  }
-  function syncAll(immediate) { requestHeightUpdate(immediate); updateScrollbar(immediate); updateCaretTarget(immediate); }
-
-  textarea.addEventListener("input", function() { syncAll(false); });
-  textarea.addEventListener("scroll", function() { updateScrollbar(false); updateCaretTarget(false); });
-  textarea.addEventListener("focus", function() { updateCaretTarget(true); });
-  textarea.addEventListener("blur", function() { caret.classList.remove("is-visible","is-moving"); });
-  textarea.addEventListener("click", function() { requestAnimationFrame(function() { updateCaretTarget(true); }); });
-  window.addEventListener("resize", function() { syncAll(true); });
-  refreshMetrics();
-  applyHeight(metrics.minHeight);
-  syncAll(true);
-
-  thumb.addEventListener("pointerdown", function(e) {
-    if (!scrollbar.classList.contains("is-scrollable")) return;
-    e.preventDefault();
-    const maxScroll = Math.max(0, textarea.scrollHeight - textarea.clientHeight);
-    const trackHeight = Math.max(0, viewport.clientHeight - 8);
-    const currentThumbHeight = parseFloat(thumb.style.height) || 28;
-    const maxThumbY = Math.max(0, trackHeight - currentThumbHeight);
-    dragState = { pointerId: e.pointerId, startY: e.clientY, startScrollTop: textarea.scrollTop, maxScroll, maxThumbY };
-    thumb.setPointerCapture(e.pointerId);
-    thumb.style.cursor = "grabbing";
-  });
-  thumb.addEventListener("pointermove", function(e) {
-    if (!dragState || dragState.pointerId !== e.pointerId) return;
-    e.preventDefault();
-    const deltaY = e.clientY - dragState.startY;
-    const ratio = dragState.maxThumbY > 0 ? deltaY / dragState.maxThumbY : 0;
-    textarea.scrollTop = clamp(dragState.startScrollTop + ratio * dragState.maxScroll, 0, dragState.maxScroll);
-    updateScrollbar(true);
-  });
-  function releaseDragText(e) { if (dragState && dragState.pointerId === e.pointerId) { thumb.releasePointerCapture(e.pointerId); dragState = null; thumb.style.cursor = ""; } }
-  thumb.addEventListener("pointerup", releaseDragText);
-  thumb.addEventListener("pointercancel", releaseDragText);
-})();
 
 // ========================= Code Block Rendering =========================
 /**
@@ -564,33 +410,21 @@ function loadChatState() {
   } catch (e) { /* corrupt data */ }
 }
 
-async function sendChatMessage(textOverride) {
-  var input = document.getElementById("chatMessageInput");
-  var sendBtn = document.getElementById("chatSendBtn");
-  var btnText = document.getElementById("chatBtnText");
-  if (!input || !sendBtn) return;
-  var text = (textOverride !== undefined) ? textOverride : input.value.trim();
-  if (!text) { input.focus(); return; }
+async function sendChatMessage(text, files) {
+  if (!text && (!files || files.length === 0)) return;
 
   var model = document.getElementById("chatModelSelect").value;
   var protocol = document.getElementById("chatProtocolSelect").value;
   if (!model) { toast("请先选择模型", "error"); return; }
 
-  // Disable send button
-  sendBtn.disabled = true;
-  btnText.textContent = "发送中...";
-
   // Add user message
-  appendChatMessage("user", text);
-  chatConversationHistory.push({ role: "user", content: text });
-  saveChatState();
-
-  // Clear input (only when not called from edit)
-  if (textOverride === undefined) {
-    input.value = "";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.focus();
+  var displayText = text || '';
+  if (files && files.length > 0) {
+    displayText += (displayText ? '\n' : '') + '[' + files.length + ' file(s) attached]';
   }
+  appendChatMessage("user", displayText);
+  chatConversationHistory.push({ role: "user", content: text || '' });
+  saveChatState();
 
   try {
     var tools = getToolsDefinition();
@@ -750,11 +584,10 @@ async function sendChatMessage(textOverride) {
 async function runChatTests() {
   var modelSelect = document.getElementById("chatModelSelect");
   var protocolSelect = document.getElementById("chatProtocolSelect");
-  var input = document.getElementById("chatMessageInput");
-
   var testModel = modelSelect ? modelSelect.value : "qwen3.7-max";
   var protocols = protocolSelect && protocolSelect.value ? [protocolSelect.value] : ["xml", "antml", "nous", "bracket"];
-  var testMessage = (input && input.value.trim()) || "请用工具调用测试一下当前协议是否正常工作。调用一个名为 echo 的工具，参数为 {\"text\": \"hello\"}。";
+  var inputText = (window._chatInputBox && window._chatInputBox.getText()) || '';
+  var testMessage = inputText.trim() || "请用工具调用测试一下当前协议是否正常工作。调用一个名为 echo 的工具，参数为 {\"text\": \"hello\"}。";
 
   var report = document.getElementById("chatTestReport");
   if (!report) return;

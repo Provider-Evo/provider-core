@@ -104,6 +104,32 @@ function saveSettings() {
   scheduleRefresh();
 }
 
+function loadVoiceSettings() {
+  try { return JSON.parse(localStorage.getItem('provider.webui.voice') || '{}'); } catch(e) { return {}; }
+}
+
+function saveVoiceSettings(vs) {
+  localStorage.setItem('provider.webui.voice', JSON.stringify(vs));
+  // Update InputBox if initialized
+  if (window._chatInputBox) {
+    window._chatInputBox._opts.voice = {
+      sttModel: vs.sttModel || '',
+      ttsModel: vs.ttsModel || '',
+      ttsPrompt: vs.ttsPrompt || '',
+    };
+  }
+}
+
+function applyVoiceSettings() {
+  var vs = loadVoiceSettings();
+  var stt = document.getElementById('voiceSttModel');
+  var tts = document.getElementById('voiceTtsModel');
+  var prompt = document.getElementById('voiceTtsPrompt');
+  if (stt) stt.value = vs.sttModel || '';
+  if (tts) tts.value = vs.ttsModel || '';
+  if (prompt) prompt.value = vs.ttsPrompt || '';
+}
+
 function applyTheme() {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const theme = state.settings.theme === 'auto' ? (prefersDark ? 'dark' : 'light') : state.settings.theme;

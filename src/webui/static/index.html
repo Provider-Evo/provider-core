@@ -34,6 +34,7 @@
     }
   </script>
   <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/input-box.css">
 </head>
 <body data-initial-tab="overview">
   <div class="max-w-[1440px] mx-auto p-3 md:p-4 grid gap-4">
@@ -291,31 +292,8 @@
         </div>
         <div class="border border-border rounded-xl p-3.5 bg-panel-alt min-h-[300px] max-h-[500px] overflow-auto card-hover-lift" id="chatMessagesContainer"></div>
         <div id="chatTestReport" class="hidden"></div>
-        <section class="w-full bg-panel border border-border rounded-2xl p-4 flex flex-col gap-3" id="chatInputSection">
-          <div class="relative w-full overflow-hidden" style="height: 96px;" id="chatInputViewport">
-            <textarea id="chatMessageInput" class="native-scroll-hidden chat-input" rows="4" placeholder="输入消息... (Shift+Enter 换行, Enter 发送)" spellcheck="true" autocomplete="off"></textarea>
-            <div class="custom-caret" id="chatCustomCaret"></div>
-            <div class="custom-scrollbar-root" id="chatCustomScrollbar">
-              <div class="custom-scrollbar-track"></div>
-              <div class="custom-scrollbar-thumb" id="chatCustomThumb"></div>
-            </div>
-          </div>
-          <div class="flex justify-between items-center h-11">
-            <div class="flex items-center gap-0.5">
-              <button type="button" class="tool-btn" title="文件" id="chatFileBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg>
-              </button>
-              <button type="button" class="tool-btn" title="语音输入" id="chatVoiceBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
-              </button>
-            </div>
-            <div class="flex items-center gap-2">
-              <button id="chatSendBtn" type="button" class="bg-accent hover:opacity-90 text-white px-4 h-11 rounded-xl flex items-center justify-center gap-2 font-medium text-sm shadow-sm">
-                <span id="chatBtnText">发送</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12L3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>
-              </button>
-            </div>
-          </div>
+        <section class="w-full" id="chatInputSection">
+          <div id="chatInputBox"></div>
         </section>
       </section>
 
@@ -378,6 +356,18 @@
               <option value="1">开启</option>
             </select>
           </label>
+          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="text-[13px] text-muted m-0 mb-2">STT 模型（语音转文字）</div>
+            <input id="voiceSttModel" type="text" placeholder="如: whisper-1" class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+          </label>
+          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="text-[13px] text-muted m-0 mb-2">TTS 模型（文字转语音）</div>
+            <input id="voiceTtsModel" type="text" placeholder="如: tts-1-hd" class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+          </label>
+          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift" style="grid-column: 1 / -1;">
+            <div class="text-[13px] text-muted m-0 mb-2">TTS 引导 Prompt</div>
+            <textarea id="voiceTtsPrompt" rows="2" placeholder="引导语音输出的风格和指令..." class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]" style="resize:vertical;"></textarea>
+          </label>
         </div>
         <p class="m-0 text-muted leading-relaxed">设置不写回服务端配置文件，避免对线上进程产生意外副作用。</p>
       </section>
@@ -390,6 +380,7 @@
   <script src="/static/js/state.js"></script>
   <script src="/static/js/render.js"></script>
   <script src="/static/js/actions.js"></script>
+  <script src="/static/js/input-box.js"></script>
   <script src="/static/js/chat.js"></script>
   <script src="/static/js/dropdown.js"></script>
   <script src="/static/js/bootstrap.js"></script>
