@@ -27,11 +27,19 @@ async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def config_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """GET /v1/config — 返回完整配置 JSON。"""
-    from src.core.config import get_config
+    """GET /v1/config — 返回完整配置 JSON（直接读取 config.toml）。"""
+    import tomllib
+    from pathlib import Path
 
-    cfg = get_config()
-    return aiohttp.web.json_response(cfg.to_dict())
+    config_path = Path(__file__).resolve().parent.parent.parent.parent / "config.toml"
+    try:
+        with open(config_path, "rb") as f:
+            data = tomllib.load(f)
+        return aiohttp.web.json_response(data)
+    except FileNotFoundError:
+        return aiohttp.web.json_response({"error": "config.toml not found"}, status=404)
+    except Exception as e:
+        return aiohttp.web.json_response({"error": str(e)}, status=500)
 
 
 async def config_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
