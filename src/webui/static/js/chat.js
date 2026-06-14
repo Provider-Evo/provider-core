@@ -213,6 +213,10 @@ function appendChatMessage(role, content, options) {
     msg.setAttribute("data-hist-index", histIdx);
     msg.setAttribute("data-raw", content);
     msg.textContent = content;
+  } else if (role === "system") {
+    msg.className = "chat-message chat-message-system";
+    msg.style.cssText = "background:rgba(255,180,0,0.12);border-left:3px solid #e6a817;color:#b8860b;padding:8px 12px;border-radius:6px;font-size:13px;margin:6px 0;";
+    msg.textContent = content;
   } else {
     msg.textContent = content;
   }
@@ -663,6 +667,16 @@ async function sendChatMessage(textOverride) {
 
         try {
           var chunk = JSON.parse(data);
+
+          // Check for error response in stream
+          if (chunk.error) {
+            var errMsg = chunk.error.message || chunk.error.code || "unknown error";
+            var errType = chunk.error.type || "error";
+            appendChatMessage("system", "[" + errType + "] " + errMsg);
+            chatConversationHistory.pop();
+            return;
+          }
+
           var choices = chunk.choices || [];
           for (var j = 0; j < choices.length; j++) {
             var choice = choices[j];
@@ -710,6 +724,12 @@ async function sendChatMessage(textOverride) {
       } else {
         chatConversationHistory.push({ role: "assistant", content: assistantContent });
       }
+    }
+
+    // 如果流结束但完全没有内容，显示错误提示
+    if (!assistantAdded && !assistantContent && toolCalls.length === 0) {
+      appendChatMessage("system", "[stream_error] response ended with no content from model " + (body.model || "unknown"));
+      chatConversationHistory.pop();
     }
   } catch (error) {
     if (error.name === 'AbortError') {
