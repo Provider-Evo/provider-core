@@ -210,13 +210,23 @@ var RequestInspector = (function () {
     // Raw request messages
     if (req.messages && req.messages.length > 0) {
       html += '<div class="req-detail-section">';
-      html += '<div class="req-detail-label" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">Request Messages (' + req.messages.length + ') &#9660;</div>';
+      html += '<div class="req-detail-label req-toggle-section" style="cursor:pointer;">Request Messages (' + req.messages.length + ') &#9660;</div>';
       html += '<pre class="req-detail-content" style="display:none;">' + escapeHtml(JSON.stringify(req.messages, null, 2)) + '</pre>';
       html += '</div>';
     }
 
     html += '</div>';
     detail.innerHTML = html;
+
+    // Bind toggle for collapsible sections
+    detail.querySelectorAll('.req-toggle-section').forEach(function(el) {
+      el.addEventListener('click', function() {
+        var next = this.nextElementSibling;
+        if (next) {
+          next.style.display = next.style.display === 'none' ? 'block' : 'none';
+        }
+      });
+    });
   }
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }

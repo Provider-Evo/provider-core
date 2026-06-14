@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.96-blue)
-![Version](https://img.shields.io/badge/version-2.2.96-blue)
+![Status](https://img.shields.io/badge/status-v2.2.97-blue)
+![Version](https://img.shields.io/badge/version-2.2.97-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.96
+### 当前版本：v2.2.97
+
+✅ 已完成（v2.2.97）：
+- 请求检查器 Request Messages 折叠切换改用 addEventListener 事件委托（修复 inline onclick 失效）
 
 ✅ 已完成（v2.2.96）：
 - WebUI 配置标签页改为从 /v1/config 加载真实配置（与 config.toml 结构一致），不再使用摘要 API 的简化版本
