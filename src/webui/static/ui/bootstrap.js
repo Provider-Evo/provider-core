@@ -235,19 +235,22 @@ if (typeof loadModelsList === 'function') {
     var result = await fetchJson("/v1/models");
     if (!result || !result.data) return;
     var models = result.data;
-    var opts = [{ value: '', text: '不使用' }];
+    var sttOpts = [{ value: '', text: '不使用' }];
+    var ttsOpts = [{ value: '', text: '不使用' }];
     for (var i = 0; i < models.length; i++) {
-      opts.push({ value: models[i].id, text: models[i].id });
+      var caps = models[i].capabilities || {};
+      if (caps.stt) sttOpts.push({ value: models[i].id, text: models[i].id });
+      if (caps.tts) ttsOpts.push({ value: models[i].id, text: models[i].id });
     }
     var sttDropdown = window._dropdowns && window._dropdowns['voiceSttModel'];
     var ttsDropdown = window._dropdowns && window._dropdowns['voiceTtsModel'];
     if (sttDropdown) {
-      sttDropdown.setOptions(opts, false);
+      sttDropdown.setOptions(sttOpts, false);
       var vs = loadVoiceSettings();
       if (vs.sttModel) sttDropdown.setValue(vs.sttModel);
     }
     if (ttsDropdown) {
-      ttsDropdown.setOptions(opts, false);
+      ttsDropdown.setOptions(ttsOpts, false);
       var vs = loadVoiceSettings();
       if (vs.ttsModel) ttsDropdown.setValue(vs.ttsModel);
     }

@@ -1869,3 +1869,13 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.129
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.128 -> 2.2.129
 验证: py_compile gateway.py + client.py + shared.py 通过
+
+2026-06-17 21:00:00
+
+[src/webui/static/chat/chat.js] loadModelsList() 按 capabilities.chat 过滤模型，聊天面板仅显示支持对话的模型
+[src/webui/static/ui/bootstrap.js] loadVoiceModels() 按能力分离 STT/TTS 模型列表：sttOpts 仅含 capabilities.stt，ttsOpts 仅含 capabilities.tts
+[template/template_config.toml] 版本 2.2.129 -> 2.2.130
+[config.toml] 版本 2.2.129 -> 2.2.130
+[README.md] 版本徽章和路线图更新为 2.2.130
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.129 -> 2.2.130
+纯前端 JS 变更，无需 py_compile

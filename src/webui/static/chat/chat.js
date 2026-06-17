@@ -507,6 +507,8 @@ async function loadModelsList() {
     var opts = [];
     var autoSelect = null;
     for (var i = 0; i < models.length; i++) {
+      var caps = models[i].capabilities || {};
+      if (!caps.chat) continue;
       opts.push({ value: models[i].id, text: models[i].id });
       if (models[i].id === "qwen3.7-max") autoSelect = models[i].id;
     }

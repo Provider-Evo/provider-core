@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.129-blue)
-![Version](https://img.shields.io/badge/version-2.2.129-blue)
+![Status](https://img.shields.io/badge/status-v2.2.130-blue)
+![Version](https://img.shields.io/badge/version-2.2.130-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.129
+### 当前版本：v2.2.130
+
+✅ 已完成（v2.2.130）：
+- 模型下拉菜单按能力过滤：聊天面板仅显示 chat 模型，STT/TTS 下拉仅显示对应能力模型
 
 ✅ 已完成（v2.2.129）：
 - 修复 record_prompt 不生效（gateway 导入路径修正）、日志双重时间戳、toast 恢复右下角、Qwen 定时任务持久化执行时间
