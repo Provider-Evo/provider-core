@@ -38,7 +38,7 @@ def _classify(changed: Set[str]) -> tuple:
         first = sub_parts[0]
         if first in _CORE_DIRS or first == "__init__.py":
             needs_restart = True
-        elif first == _PLATFORM_DIR and len(sub_parts) >= 2:
+        elif first == _PLATFORM_DIR and len(sub_parts) >= 3:
             platform_names.add(sub_parts[1])
         else:
             needs_restart = True
@@ -86,7 +86,7 @@ class FileWatcher:
                 logger.info("热重载平台: %s", name)
                 ok = await self._registry.reload_platform(name, self._session)
                 if ok:
-                    adapter = self._registry._adapters.get(name)
+                    adapter = self._registry.adapters.get(name)
                     for model in list(getattr(adapter, "supported_models", [])) if adapter else []:
                         try:
                             await self._registry.ensure_candidates(model, 1)

@@ -42,8 +42,15 @@ class Registry:
         )
 
     async def reload_platform(self, platform_name: str, session: Any) -> bool:
+        from src.platforms.base import PlatformAdapter  # noqa: PLC0415
         return await self._registry.reload(
-            platform_name, "src.platforms.{}".format(platform_name), context=session,
+            platform_name,
+            "src.platforms.{}".format(platform_name),
+            context=session,
+            base_class=PlatformAdapter,
+            required_methods=("init", "candidates", "ensure_candidates", "complete", "close"),
+            init_method="init",
+            shutdown_method="close",
         )
 
     @property

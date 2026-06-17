@@ -1665,3 +1665,14 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.115
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.114 -> 2.2.115
 验证: py_compile 3 文件全部通过
+
+2026-06-17 07:00:00
+
+[requirements.txt] echotools 升级 >=1.0.21 -> >=1.0.22（插件发现合并 dir(module) 与 module.__all__ 支持 __getattr__ 懒加载）
+[src/core/dispatch/registry.py] reload_platform() 显式传递 shutdown_method="close" 参数
+[src/core/server/watcher.py] _classify() 平台检测条件从 len>=2 改为 len>=3，修复 src/platforms/base.py 被误判为平台
+[template/template_config.toml] 版本 2.2.115 -> 2.2.116
+[config.toml] 版本 2.2.115 -> 2.2.116
+[README.md] 版本徽章和路线图更新为 2.2.116
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.115 -> 2.2.116
+验证: py_compile registry.py + watcher.py 通过

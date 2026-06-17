@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.115-blue)
-![Version](https://img.shields.io/badge/version-2.2.115-blue)
+![Status](https://img.shields.io/badge/status-v2.2.116-blue)
+![Version](https://img.shields.io/badge/version-2.2.116-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.115
+### 当前版本：v2.2.116
+
+✅ 已完成（v2.2.116）：
+- 修复 Qwen 平台热重载失败（echotools 插件发现支持 __getattr__ 懒加载 + watcher 平台分类修复）
 
 ✅ 已完成（v2.2.115）：
 - 新增智能代理选择器（src/core/proxy_selector.py），TAS 式 4 维评分（失败次数、最近成功、延迟 EMA、总调用数），Qwen 平台集成，代理状态独立持久化
