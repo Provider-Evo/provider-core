@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.118-blue)
-![Version](https://img.shields.io/badge/version-2.2.118-blue)
+![Status](https://img.shields.io/badge/status-v2.2.119-blue)
+![Version](https://img.shields.io/badge/version-2.2.119-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.118
+### 当前版本：v2.2.119
+
+✅ 已完成（v2.2.119）：
+- 修复 Windows 下 Runner 进程日志无颜色（colorama 包装 stderr 确保 VTP 启用 + isatty 检测改为 stderr）
 
 ✅ 已完成（v2.2.118）：
 - 请求日志每页调整为 7 条，搜索框始终显示

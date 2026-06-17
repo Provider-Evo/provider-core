@@ -1696,3 +1696,12 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.118
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.117 -> 2.2.118
 纯前端 JS/HTML 变更，无需 py_compile
+
+2026-06-17 10:00:00
+
+[src/logger.py] 修复 Windows 下 Runner 进程日志无颜色：新增 _get_windows_color_sink() 使用 colorama.AnsiToWin32 包装 stderr 确保 VTP 启用；_supports_color() 的 isatty 检测从 sys.stdout 改为 sys.stderr（loguru 写入 stderr）
+[template/template_config.toml] 版本 2.2.118 -> 2.2.119
+[config.toml] 版本 2.2.118 -> 2.2.119
+[README.md] 版本徽章和路线图更新为 2.2.119
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.118 -> 2.2.119
+验证: py_compile src/logger.py 通过

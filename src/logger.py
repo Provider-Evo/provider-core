@@ -128,7 +128,7 @@ def set_color(enabled: bool | None) -> None:
             )
 
         _console_handler_id = _loguru_logger.add(
-            sys.stderr,
+            _get_windows_color_sink() if use_color else sys.stderr,
             level=log_level,
             colorize=use_color,
             format=console_format,
@@ -278,7 +278,7 @@ def _supports_color() -> bool:
     3. FORCE_COLOR / CLICOLOR_FORCE → 启用
     4. TERM 环境变量（xterm, msys, cygwin 等）→ 启用
     5. Windows Terminal (WT_SESSION) / ANSICON → 启用
-    6. sys.stdout.isatty() → 启用
+    6. sys.stderr.isatty() → 启用
     """
     import os
 
@@ -305,8 +305,34 @@ def _supports_color() -> bool:
         if os.environ.get("ANSICON"):
             return True
 
-    # 回退：tty 检测
-    return sys.stdout.isatty()
+    # 回退：tty 检测（handler 写入 stderr，因此检测 stderr 而非 stdout）
+    return sys.stderr.isatty()
+
+
+def _get_windows_color_sink() -> Any:
+    """在 Windows 上返回经过 colorama 包装的 stderr sink。
+
+    loguru 在 ``colorize=True`` 时仅在 ``should_wrap`` 判断需要时才用
+    colorama 包装 stream，但 ``should_wrap`` 调用 ``enable_vt_processing``
+    仅对 stderr 句柄启用 VTP。在部分 Windows 终端上，stderr 句柄的 VTP
+    可能无法被控制台正确识别，导致 ANSI 转义码被写入但不被渲染。
+
+    通过显式用 ``AnsiToWin32`` 包装 stderr，可以确保：
+    1. VTP 被尝试启用（``AnsiToWin32`` 内部调用 ``enable_vt_processing``）
+    2. 若 VTP 不可用，自动回退到 Win32 API 翻译 ANSI 代码
+
+    非 Windows 平台或颜色未启用时直接返回 ``sys.stderr``。
+
+    Returns:
+        适合作为 loguru sink 的流对象。
+    """
+    if sys.platform != "win32":
+        return sys.stderr
+    try:
+        from colorama import AnsiToWin32
+        return AnsiToWin32(sys.stderr, convert=None, strip=False, autoreset=False).stream
+    except ImportError:
+        return sys.stderr
 
 
 def _setup_handlers() -> None:
@@ -361,7 +387,7 @@ def _setup_handlers() -> None:
         )
 
     _console_handler_id = _loguru_logger.add(
-        sys.stderr,
+        _get_windows_color_sink() if use_color else sys.stderr,
         level=log_level,
         colorize=use_color,
         format=console_format,
