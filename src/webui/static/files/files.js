@@ -131,6 +131,9 @@ var FileManager = (function () {
 
   function _renderTabBar() {
     if (!_tabBar) return;
+
+    // Save sidebar toggle button before clearing
+    var sidebarToggle = _tabBar.querySelector('.tab-sidebar-toggle');
     _tabBar.innerHTML = '';
 
     for (var i = 0; i < _tabs.length; i++) {
@@ -158,6 +161,11 @@ var FileManager = (function () {
       })(tab.id);
 
       _tabBar.appendChild(el);
+    }
+
+    // Re-add sidebar toggle button
+    if (sidebarToggle) {
+      _tabBar.insertBefore(sidebarToggle, _tabBar.firstChild);
     }
 
     // Add button

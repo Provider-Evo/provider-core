@@ -31,6 +31,14 @@ var TerminalManager = (function () {
 
     if (!_container || !_tabBar || !_body) return;
 
+    // Click on terminal body to focus the active terminal
+    _body.addEventListener('click', function () {
+      var tab = _getActiveTab();
+      if (tab && tab.term) {
+        tab.term.focus();
+      }
+    });
+
     // Add tab button
     var addBtn = document.getElementById('terminalAddBtn');
     if (addBtn) {
@@ -370,8 +378,11 @@ var TerminalManager = (function () {
   function _renderTabBar() {
     if (!_tabBar) return;
 
-    // Clear existing tabs (keep add button)
+    // Save sidebar toggle button before clearing
+    var sidebarToggle = _tabBar.querySelector('.tab-sidebar-toggle');
     var addBtn = document.getElementById('terminalAddBtn');
+
+    // Clear existing tabs
     _tabBar.innerHTML = '';
 
     for (var i = 0; i < _tabs.length; i++) {
@@ -404,6 +415,11 @@ var TerminalManager = (function () {
       })(tab.id);
 
       _tabBar.appendChild(el);
+    }
+
+    // Re-add sidebar toggle button
+    if (sidebarToggle) {
+      _tabBar.insertBefore(sidebarToggle, _tabBar.firstChild);
     }
 
     // Re-add the add button

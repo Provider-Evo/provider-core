@@ -625,6 +625,12 @@
   width: 100%;
 }
 
+/* Center add button in vertical expanded layout */
+.files-container.tab-layout-vertical .files-tab-bar:not(.tab-bar-compressed) .files-tab-add {
+  width: 100%;
+  margin-top: auto;
+}
+
 /* Files body fills remaining space */
 .files-container.tab-layout-vertical .files-body {
   flex: 1;

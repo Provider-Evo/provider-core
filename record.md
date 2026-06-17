@@ -1959,3 +1959,15 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.137
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.136 -> 2.2.137
 纯前端 JS 变更，无需 py_compile
+
+2026-06-18 05:00:00
+
+[src/webui/static/terminal/terminal.js] _renderTabBar() 保存并恢复侧边栏切换按钮（防止 innerHTML 清除时丢失）；新增终端区域点击聚焦 xterm 实例
+[src/webui/static/files/files.js] _renderTabBar() 同样保存并恢复侧边栏切换按钮
+[src/webui/static/terminal/terminal.css] 竖向展开布局加号按钮居中（margin-top: auto + width: 100%）
+[src/webui/static/files/files.css] 同上，文件管理器竖向展开布局加号居中
+[template/template_config.toml] 版本 2.2.137 -> 2.2.138
+[config.toml] 版本 2.2.137 -> 2.2.138
+[README.md] 版本徽章和路线图更新为 2.2.138
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.137 -> 2.2.138
+纯前端 JS/CSS 变更，无需 py_compile
