@@ -1686,3 +1686,13 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.117
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.116 -> 2.2.117
 纯前端 JS/HTML 变更，无需 py_compile
+
+2026-06-17 09:00:00
+
+[src/webui/static/stats/request-inspector.js] 每页条数从 5 调整为 7；搜索框改为始终显示（移除自动隐藏逻辑）
+[src/webui/static/index.html] 搜索框移除 display:none 样式，始终可见
+[template/template_config.toml] 版本 2.2.117 -> 2.2.118
+[config.toml] 版本 2.2.117 -> 2.2.118
+[README.md] 版本徽章和路线图更新为 2.2.118
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.117 -> 2.2.118
+纯前端 JS/HTML 变更，无需 py_compile

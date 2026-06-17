@@ -16,7 +16,7 @@ var RequestInspector = (function () {
 
   // Pagination state
   var _currentPage = 1;
-  var _pageSize = 5;
+  var _pageSize = 7;
 
   function init() {
     var panel = document.getElementById('requestInspector');
@@ -193,14 +193,10 @@ var RequestInspector = (function () {
     if (_currentPage > totalPages) _currentPage = totalPages;
     if (_currentPage < 1) _currentPage = 1;
 
-    // Auto-show/hide search input based on total count
+    // Search input is always visible
     var searchInput = document.getElementById('requestSearchInput');
     if (searchInput) {
-      searchInput.style.display = totalItems > _pageSize ? '' : 'none';
-      if (totalItems <= _pageSize) {
-        searchInput.value = '';
-        _searchText = '';
-      }
+      searchInput.style.display = '';
     }
 
     // Show/hide pagination
