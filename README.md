@@ -18,11 +18,11 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.123-blue)
-![Version](https://img.shields.io/badge/version-2.2.123-blue)
+![Status](https://img.shields.io/badge/status-v2.2.124-blue)
+![Version](https://img.shields.io/badge/version-2.2.124-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Platforms](https://img.shields.io/badge/platforms-12+-orange)
+![Platforms](https://img.shields.io/badge/platforms-16+-orange)
 
 [![GitHub stars](https://img.shields.io/github/stars/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/issues)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.123
+### 当前版本：v2.2.124
+
+✅ 已完成（v2.2.124）：
+- 新增 4 个翻译平台：DeepL、Google Translate（免费公共 API）、Yandex Translate、Azure Translator
 
 ✅ 已完成（v2.2.123）：
 - 聊天文件附件改为文件卡片显示（图标+名称+大小）；统计数据服务端持久化（30秒定时+启停保存，修复运行时间等数据丢失）

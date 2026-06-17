@@ -198,6 +198,13 @@ src/platforms/apiairforce/client.py
 src/platforms/apiairforce/core/adaptercore.py
 src/platforms/apiairforce/core/constants.py
 src/platforms/apiairforce/util.py
+src/platforms/azuretranslate/__init__.py
+src/platforms/azuretranslate/adapter.py
+src/platforms/azuretranslate/core/__init__.py
+src/platforms/azuretranslate/core/adaptercore.py
+src/platforms/azuretranslate/core/client.py
+src/platforms/azuretranslate/core/constants.py
+src/platforms/azuretranslate/util.py
 src/platforms/base.py
 src/platforms/caiyuesbk/__init__.py
 src/platforms/caiyuesbk/adapter.py
@@ -234,6 +241,13 @@ src/platforms/cursor/adapter.py
 src/platforms/cursor/client.py
 src/platforms/cursor/core/adaptercore.py
 src/platforms/cursor/util.py
+src/platforms/deepl/__init__.py
+src/platforms/deepl/adapter.py
+src/platforms/deepl/core/__init__.py
+src/platforms/deepl/core/adaptercore.py
+src/platforms/deepl/core/client.py
+src/platforms/deepl/core/constants.py
+src/platforms/deepl/util.py
 src/platforms/deepseek/__init__.py
 src/platforms/deepseek/adapter.py
 src/platforms/deepseek/core/__init__.py
@@ -264,6 +278,13 @@ src/platforms/gtts/adapter.py
 src/platforms/gtts/client.py
 src/platforms/gtts/core/adaptercore.py
 src/platforms/gtts/util.py
+src/platforms/googletranslate/__init__.py
+src/platforms/googletranslate/adapter.py
+src/platforms/googletranslate/core/__init__.py
+src/platforms/googletranslate/core/adaptercore.py
+src/platforms/googletranslate/core/client.py
+src/platforms/googletranslate/core/constants.py
+src/platforms/googletranslate/util.py
 src/platforms/n1n/__init__.py
 src/platforms/n1n/adapter.py
 src/platforms/n1n/client.py
@@ -323,6 +344,13 @@ src/platforms/qwen/core/client.py
 src/platforms/qwen/core/constants.py
 src/platforms/qwen/core/shared.py
 src/platforms/qwen/util.py
+src/platforms/yandextranslate/__init__.py
+src/platforms/yandextranslate/adapter.py
+src/platforms/yandextranslate/core/__init__.py
+src/platforms/yandextranslate/core/adaptercore.py
+src/platforms/yandextranslate/core/client.py
+src/platforms/yandextranslate/core/constants.py
+src/platforms/yandextranslate/util.py
 src/routes/__init__.py
 src/routes/anthropic.py
 src/routes/openai.py
@@ -1763,3 +1791,15 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.123
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.122 -> 2.2.123
 验证: py_compile server.py + stats.py 通过
+
+2026-06-17 15:00:00
+
+[src/platforms/deepl/] 新增 DeepL 翻译平台（7 个文件）：DeepL-Auth-Key 认证，自动检测免费/付费端点，URL-encoded 表单请求
+[src/platforms/googletranslate/] 新增 Google Translate 平台（7 个文件）：免费公共 API（X-Goog-Api-Key），无需 API Key，单候选项
+[src/platforms/yandextranslate/] 新增 Yandex Translate 平台（7 个文件）：Bearer Token 认证，Yandex Cloud API
+[src/platforms/azuretranslate/] 新增 Azure Translator 平台（7 个文件）：Ocp-Apim-Subscription-Key + Region 认证
+[template/template_config.toml] 版本 2.2.123 -> 2.2.124
+[config.toml] 版本 2.2.123 -> 2.2.124
+[README.md] 版本徽章更新为 2.2.124，平台数量 12+ -> 16+，路线图新增 v2.2.124 条目
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.123 -> 2.2.124
+验证: py_compile 28 文件全部通过
