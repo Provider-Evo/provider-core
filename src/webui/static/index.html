@@ -141,11 +141,8 @@
             </select>
             <button type="button" id="requestClearBtn" class="text-[12px] text-muted hover:underline cursor-pointer" style="padding:4px 8px;">清空日志</button>
           </div>
-          <div id="requestInspector" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:200px;">
-            <div id="requestList" class="border border-border rounded-xl bg-panel-alt overflow-auto" style="max-height:400px;"></div>
-            <div id="requestDetail" class="border border-border rounded-xl bg-panel-alt overflow-auto" style="max-height:400px;padding:8px;">
-              <div class="text-muted" style="padding:12px;text-align:center;">Click a request to view details</div>
-            </div>
+          <div id="requestInspector" style="min-height:200px;">
+            <div id="requestList" class="border border-border rounded-xl bg-panel-alt" style="max-height:400px;overflow-y:auto;"></div>
           </div>
         </div>
       </section>
@@ -334,12 +331,10 @@
             </div>
           </template>
         </div>
-        <div class="flex flex-col" style="height:550px;">
-          <div class="flex-1 min-h-0 overflow-y-auto border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift" id="chatMessagesContainer"></div>
-          <section class="w-full flex-shrink-0 mt-2" id="chatInputSection">
-            <div id="chatInputBox"></div>
-          </section>
-        </div>
+        <div class="border border-border rounded-xl p-3.5 bg-panel-alt overflow-y-auto card-hover-lift" style="max-height:calc(100vh - 340px);" id="chatMessagesContainer"></div>
+        <section class="w-full mt-2 sticky bottom-0 z-10 py-2" style="background:var(--panel);" id="chatInputSection">
+          <div id="chatInputBox"></div>
+        </section>
       </section>
 
       <section class="tab-panel hidden" id="tab-logs" aria-labelledby="tab-logs-button">

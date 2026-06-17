@@ -152,10 +152,12 @@ var RequestInspector = (function () {
       var time = new Date(req.ts * 1000);
       var ts = pad(time.getHours()) + ':' + pad(time.getMinutes()) + ':' + pad(time.getSeconds());
       var modelShort = (req.model || '').split('/').pop().split('-').slice(0, 2).join('-');
+      var platformShort = (req.platform || '').charAt(0).toUpperCase() + (req.platform || '').slice(1);
       var latency = req.latency_ms !== null ? req.latency_ms + 'ms' : '...';
       html += '<div class="' + cls + '" data-req-id="' + req.id + '" onclick="RequestInspector.select(\'' + req.id + '\')">';
       html += '<span class="req-ts">' + ts + '</span>';
       html += '<span class="req-model">' + escapeHtml(modelShort) + '</span>';
+      if (platformShort) html += '<span class="req-platform">' + escapeHtml(platformShort) + '</span>';
       html += '<span class="req-status ' + statusCls + '">' + (req.status === 'pending' ? '...' : req.status) + '</span>';
       html += '<span class="req-latency">' + latency + '</span>';
       html += '</div>';
@@ -167,23 +169,32 @@ var RequestInspector = (function () {
   function select(id) {
     _selectedId = id;
     renderList();
-    renderDetail();
+    showDetailModal(id);
   }
 
-  function renderDetail() {
-    var detail = document.getElementById('requestDetail');
-    if (!detail || !_selectedId) return;
-    var req = _requests[_selectedId];
-    if (!req) { detail.innerHTML = ''; return; }
+  function showDetailModal(id) {
+    var req = _requests[id];
+    if (!req) return;
 
-    var html = '<div class="req-detail">';
-    html += '<div class="req-detail-header">';
-    html += '<strong style="font-size:13px;">Request ' + req.id + '</strong>';
-    html += '<span class="req-status ' + (req.status >= 400 ? 'req-error' : 'req-ok') + '">' + (req.status === 'pending' ? 'In Progress' : 'Status ' + req.status) + '</span>';
+    // Remove any existing modal
+    var existing = document.getElementById('requestDetailModal');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'requestDetailModal';
+    overlay.className = 'confirm-overlay';
+
+    var html = '<div class="req-modal">';
+    html += '<div class="req-modal-header">';
+    html += '<div class="req-modal-title">Request ' + escapeHtml(req.id) + '</div>';
+    html += '<button type="button" class="req-modal-close" aria-label="Close">&times;</button>';
     html += '</div>';
 
-    // Meta info
-    html += '<div class="req-detail-meta">';
+    // Status and metadata
+    html += '<div class="req-modal-meta">';
+    html += '<span class="req-status ' + (req.status >= 400 ? 'req-error' : 'req-ok') + '">';
+    html += req.status === 'pending' ? 'In Progress' : 'Status ' + req.status;
+    html += '</span>';
     html += '<span>Model: <strong>' + escapeHtml(req.model || 'unknown') + '</strong></span>';
     html += '<span>Platform: <strong>' + escapeHtml(req.platform || 'unknown') + '</strong></span>';
     html += '<span>Messages: ' + req.messages_count + '</span>';
@@ -197,36 +208,77 @@ var RequestInspector = (function () {
     // Response content
     var content = req.content || req.chunks.join('');
     if (content) {
-      html += '<div class="req-detail-section">';
-      html += '<div class="req-detail-label">Response (' + content.length + ' chars)</div>';
-      html += '<pre class="req-detail-content">' + escapeHtml(content) + '</pre>';
+      html += '<div class="req-modal-section">';
+      html += '<div class="req-modal-label">Response (' + content.length + ' chars)</div>';
+      html += '<pre class="req-modal-content">' + escapeHtml(content) + '</pre>';
       html += '</div>';
     } else if (req.status === 'pending') {
-      html += '<div class="req-detail-section"><div class="text-muted" style="padding:8px;">Waiting for response...</div></div>';
+      html += '<div class="req-modal-section"><div class="text-muted" style="padding:12px;text-align:center;">Waiting for response...</div></div>';
     } else {
-      html += '<div class="req-detail-section"><div class="text-muted" style="padding:8px;">No response content captured</div></div>';
+      html += '<div class="req-modal-section"><div class="text-muted" style="padding:12px;text-align:center;">No response content captured</div></div>';
     }
 
-    // Raw request messages
+    // Request messages
     if (req.messages && req.messages.length > 0) {
-      html += '<div class="req-detail-section">';
-      html += '<div class="req-detail-label req-toggle-section" style="cursor:pointer;">Request Messages (' + req.messages.length + ') &#9660;</div>';
-      html += '<pre class="req-detail-content" style="display:none;">' + escapeHtml(JSON.stringify(req.messages, null, 2)) + '</pre>';
+      html += '<div class="req-modal-section">';
+      html += '<div class="req-modal-label">Request Messages (' + req.messages.length + ')</div>';
+      html += '<pre class="req-modal-content">' + escapeHtml(JSON.stringify(req.messages, null, 2)) + '</pre>';
       html += '</div>';
     }
 
     html += '</div>';
-    detail.innerHTML = html;
+    overlay.innerHTML = html;
+    document.body.appendChild(overlay);
 
-    // Bind toggle for collapsible sections
-    detail.querySelectorAll('.req-toggle-section').forEach(function(el) {
-      el.addEventListener('click', function() {
-        var next = this.nextElementSibling;
-        if (next) {
-          next.style.display = next.style.display === 'none' ? 'block' : 'none';
-        }
-      });
+    requestAnimationFrame(function() { overlay.classList.add('is-visible'); });
+
+    // Close handlers
+    function closeModal() {
+      overlay.classList.remove('is-visible');
+      document.removeEventListener('keydown', escHandler);
+      setTimeout(function() { overlay.remove(); }, 180);
+    }
+
+    function escHandler(e) {
+      if (e.key === 'Escape') closeModal();
+    }
+
+    overlay.querySelector('.req-modal-close').addEventListener('click', closeModal);
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) closeModal();
     });
+    document.addEventListener('keydown', escHandler);
+  }
+
+  function renderDetail() {
+    // Live-update the modal if it is currently open for the selected request
+    var modal = document.getElementById('requestDetailModal');
+    if (!modal || !_selectedId) return;
+    var req = _requests[_selectedId];
+    if (!req) return;
+
+    // Update response content section
+    var sections = modal.querySelectorAll('.req-modal-section');
+    var content = req.content || req.chunks.join('');
+    if (sections.length > 0) {
+      var firstSection = sections[0];
+      if (content) {
+        firstSection.innerHTML = '<div class="req-modal-label">Response (' + content.length + ' chars)</div>'
+          + '<pre class="req-modal-content">' + escapeHtml(content) + '</pre>';
+      } else if (req.status === 'pending') {
+        firstSection.innerHTML = '<div class="text-muted" style="padding:12px;text-align:center;">Waiting for response...</div>';
+      }
+    }
+
+    // Update status badge in meta section
+    var meta = modal.querySelector('.req-modal-meta');
+    if (meta) {
+      var statusSpan = meta.querySelector('.req-status');
+      if (statusSpan) {
+        statusSpan.className = 'req-status ' + (req.status >= 400 ? 'req-error' : 'req-ok');
+        statusSpan.textContent = req.status === 'pending' ? 'In Progress' : 'Status ' + req.status;
+      }
+    }
   }
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }

@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.110-blue)
-![Version](https://img.shields.io/badge/version-2.2.110-blue)
+![Status](https://img.shields.io/badge/status-v2.2.111-blue)
+![Version](https://img.shields.io/badge/version-2.2.111-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-12+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.110
+### 当前版本：v2.2.111
+
+✅ 已完成（v2.2.111）：
+- 请求检查器卡片支持点击弹出详情对话框（完整消息 JSON、响应内容、元数据），卡片显示截断摘要
 
 ✅ 已完成（v2.2.110）：
 - WebUI 聊天错误消息与正常助手消息完全一致（无任何视觉区分），输入框始终固定在聊天面板底部

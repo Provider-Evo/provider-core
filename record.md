@@ -1604,3 +1604,14 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.110
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.109 -> 2.2.110
 纯前端 JS/HTML/CSS 变更，无需 py_compile
+
+2026-06-17 02:00:00
+
+[src/webui/static/stats/request-inspector.js] 重写 select() 为 showDetailModal()，点击请求卡片弹出模态对话框显示完整请求消息 JSON、响应内容和元数据；支持 Escape/外部点击关闭；流式请求实时更新；新增平台列显示
+[src/webui/static/ui/styles.css] 新增 .req-modal 系列样式（模态对话框、头部、关闭按钮、元数据区、内容区）和 .req-platform 卡片列样式；移动端响应式适配
+[src/webui/static/index.html] 请求检查器改为单列布局（列表 + 模态详情），移除双列网格
+[template/template_config.toml] 版本 2.2.110 -> 2.2.111
+[config.toml] 版本 2.2.110 -> 2.2.111
+[README.md] 版本徽章和路线图更新为 2.2.111
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.110 -> 2.2.111
+纯前端 JS/HTML/CSS 变更，无需 py_compile
