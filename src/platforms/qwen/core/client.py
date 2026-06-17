@@ -5,6 +5,7 @@ import asyncio
 import base64
 import json
 import os
+import random
 import time
 import uuid
 from pathlib import Path
@@ -27,8 +28,12 @@ from src.platforms.qwen.core.shared import (
     EXTENSION_TO_MIME,
     GENERATED_IMAGE_DIR,
     GENERATED_VIDEO_DIR,
-    LOGIN_BATCH,
-    LOGIN_CONCURRENCY,
+    INITIAL_LOGIN_MAX,
+    LOGIN_BATCH_SIZE,
+    LOGIN_POLL_INTERVAL,
+    LOGIN_POOL_SIZE,
+    LOGIN_SELECT_MAX,
+    LOGIN_SELECT_MIN,
     MODELS_PATH,
     NEW_CHAT_PATH,
     PERSIST_INTERVAL,
@@ -40,7 +45,6 @@ from src.platforms.qwen.core.shared import (
     STOP_CHAT_PATH,
     TASK_STATUS_PATH,
     TOKEN_EXPIRY_MARGIN,
-    TOKEN_REFRESH_INTERVAL,
     TTS_DIR,
     TTS_PATH,
     TTS_TIMEOUT,
@@ -201,7 +205,13 @@ class QwenClient:
 
     async def background_setup(self) -> None:
         """后台完善——在后台 Task 中执行。"""
-        await self._bg_login()
+        # Phase 1: 快速初始登录（验证持久化 token，登录过期账号）
+        await self._initial_login_pass()
+
+        # Phase 2: 启动后台循环
+        self._bg_tasks.append(
+            asyncio.ensure_future(self._login_poll_loop())
+        )
 
         # 模型定时刷新：立即一次，之后每 24h
         self._bg_tasks.append(
@@ -219,9 +229,6 @@ class QwenClient:
         )
         self._bg_tasks.append(
             asyncio.ensure_future(self._bg_persist())
-        )
-        self._bg_tasks.append(
-            asyncio.ensure_future(self._bg_token_refresh())
         )
         logger.info("Qwen 后台任务已启动")
 
@@ -428,108 +435,184 @@ class QwenClient:
             if not self._closing:
                 self._save_persist()
 
-    async def _bg_token_refresh(self) -> None:
-        """后台定期验证 Token 并自动重登过期账号。
+    # =========================================================================
+    # 登录与 Token 管理（统一轮询式）
+    # =========================================================================
 
-        每 TOKEN_REFRESH_INTERVAL 检查一次：
-        - 已登录账号：token_expires 在 MARGIN 内 → 主动重登
-        - 未登录账号：尝试重新登录
+    async def _initial_login_pass(self) -> None:
+        """启动时快速初始登录批次。
+
+        验证从持久化恢复的 token，对无效或过期的账号执行重新登录。
+        最多处理 INITIAL_LOGIN_MAX 个账号，顺序执行（非并发）。
         """
-        while not self._closing:
-            await asyncio.sleep(TOKEN_REFRESH_INTERVAL)
-            if self._closing:
-                break
+        now = time.time()
+        need_login: List[Account] = []
 
-            now = time.time()
-            need_relogin: List[Account] = []
+        for acc in self._account_states.values():
+            if acc.is_login and acc.token:
+                # 验证持久化恢复的 token 是否仍有效
+                if not await self._validate_token(acc):
+                    logger.debug(
+                        "Qwen 初始登录: token 无效 [%s***]，排队重登",
+                        acc.username[:6],
+                    )
+                    acc.is_login = False
+                    acc.token = ""
+                    need_login.append(acc)
+            elif not acc.is_login:
+                need_login.append(acc)
 
-            for acc in self._account_states.values():
-                if not acc.is_login:
-                    # 未登录的账号尝试重登
-                    need_relogin.append(acc)
-                elif acc.token and acc.token_expires > 0:
-                    remaining = acc.token_expires - now
-                    if remaining < TOKEN_EXPIRY_MARGIN:
-                        logger.info(
-                            "Qwen Token 即将过期 [%s***]，剩余 %.0f 秒，主动重登",
-                            acc.username[:6], remaining,
-                        )
-                        acc.is_login = False
-                        acc.token = ""
-                        need_relogin.append(acc)
+        # 按 token_expires 排序（最旧/过期的优先）
+        need_login.sort(key=lambda a: a.token_expires)
 
-            if not need_relogin:
-                continue
+        # 限制初始登录数量
+        batch = need_login[:INITIAL_LOGIN_MAX]
 
-            sem = asyncio.Semaphore(LOGIN_CONCURRENCY)
-
-            async def _relogin_one(acc: Account) -> None:
-                async with sem:
-                    if self._closing:
-                        return
-                    try:
-                        await self._login(acc)
-                    except Exception as e:
-                        logger.warning(
-                            "Qwen 自动重登失败 [%s***]: %s",
-                            acc.username[:6], e,
-                        )
-
-            await asyncio.gather(
-                *[_relogin_one(acc) for acc in need_relogin],
-                return_exceptions=True,
+        if batch:
+            logger.info(
+                "Qwen 初始登录: %d 个账号需要登录，本次处理 %d 个",
+                len(need_login), len(batch),
             )
-
-            refreshed = sum(
-                1 for acc in need_relogin if acc.is_login
-            )
-            if refreshed:
-                logger.info(
-                    "Qwen Token 刷新: %d/%d 账号重登成功",
-                    refreshed, len(need_relogin),
-                )
-                self._rebuild_candidates()
-                self._save_persist()
-
-    # =========================================================================
-    # 登录与 Token 管理
-    # =========================================================================
-
-    async def _bg_login(self) -> None:
-        """并发批量登录所有账号。"""
-        sem = asyncio.Semaphore(LOGIN_CONCURRENCY)
-
-        async def _do_one(acc: Account) -> None:
-            async with sem:
+            for acc in batch:
                 if self._closing:
-                    return
-                # is_login=False 的账号尝试重新登录
-                if not acc.is_login:
-                    acc.token = ""  # 清除旧 token
-                elif acc.token and await self._validate_token(acc):
-                    return
+                    break
                 try:
-                    await self._login(acc)
+                    await self._login_and_configure(acc)
                 except Exception as e:
-                    logger.error(
-                        "Qwen 登录失败 [%s***]: %s", acc.username[:6], e
+                    logger.warning(
+                        "Qwen 初始登录失败 [%s***]: %s",
+                        acc.username[:6], e,
                     )
 
-        accounts_list = list(self._account_states.values())
-        for i in range(0, len(accounts_list), LOGIN_BATCH):
-            if self._closing:
-                break
-            batch = accounts_list[i: i + LOGIN_BATCH]
-            await asyncio.gather(
-                *[_do_one(acc) for acc in batch],
-                return_exceptions=True,
-            )
+            self._rebuild_candidates()
+            self._save_persist()
 
         logged = sum(
-            1 for acc in self._account_states.values() if acc.token
+            1 for acc in self._account_states.values() if acc.is_login
         )
-        logger.info("Qwen 登录完成: %d/%d", logged, len(self._account_states))
-        self._save_persist()
+        logger.info(
+            "Qwen 初始登录完成: %d/%d 账号已登录",
+            logged, len(self._account_states),
+        )
+
+    async def _login_poll_loop(self) -> None:
+        """后台登录轮询循环。
+
+        每 LOGIN_POLL_INTERVAL 秒执行一次：
+        1. 智能选择需要登录的账号批次
+        2. 顺序登录每个账号（含设置同步）
+        3. 批次完成后统一重建候选项和持久化
+        """
+        while not self._closing:
+            await asyncio.sleep(LOGIN_POLL_INTERVAL)
+            if self._closing:
+                break
+
+            try:
+                batch = self._select_login_batch()
+                if batch:
+                    logger.info(
+                        "Qwen 登录轮询: 选中 %d 个账号", len(batch),
+                    )
+                    for acc in batch:
+                        if self._closing:
+                            break
+                        try:
+                            await self._login_and_configure(acc)
+                        except Exception as e:
+                            logger.warning(
+                                "Qwen 轮询登录失败 [%s***]: %s",
+                                acc.username[:6], e,
+                            )
+
+                    self._rebuild_candidates()
+                    self._save_persist()
+
+                    success = sum(1 for a in batch if a.is_login)
+                    logger.info(
+                        "Qwen 登录轮询完成: %d/%d 成功",
+                        success, len(batch),
+                    )
+            except Exception as e:
+                logger.warning("Qwen 登录轮询异常: %s", e)
+
+    def _select_login_batch(self) -> List[Account]:
+        """智能选择本轮需要登录的账号批次。
+
+        算法：
+        1. 筛选未登录或 token 即将过期的账号
+        2. 按 token_expires 升序排序（最旧/过期的优先）
+        3. 取前 LOGIN_POOL_SIZE 个作为候选池
+        4. 从候选池中随机选取 LOGIN_SELECT_MIN~LOGIN_SELECT_MAX 个
+        5. 从选取结果中取前 LOGIN_BATCH_SIZE 个作为最终批次
+        6. 随机打乱最终批次顺序
+
+        Returns:
+            本轮需要登录的账号列表。
+        """
+        now = time.time()
+        not_logged_in: List[Account] = []
+
+        for acc in self._account_states.values():
+            if not acc.is_login:
+                not_logged_in.append(acc)
+            elif acc.token and acc.token_expires > 0:
+                remaining = acc.token_expires - now
+                if remaining < TOKEN_EXPIRY_MARGIN:
+                    not_logged_in.append(acc)
+
+        if not not_logged_in:
+            return []
+
+        # 按 token_expires 升序排序（最旧/过期的优先）
+        not_logged_in.sort(key=lambda a: a.token_expires)
+
+        # 取前 LOGIN_POOL_SIZE 个
+        pool = not_logged_in[:LOGIN_POOL_SIZE]
+
+        # 随机选取数量
+        select_count = random.randint(LOGIN_SELECT_MIN, LOGIN_SELECT_MAX)
+        selected = pool[:select_count]
+
+        # 随机打乱
+        random.shuffle(selected)
+
+        # 取最终批次
+        batch = selected[:LOGIN_BATCH_SIZE]
+
+        # 对即将过期的账号清除 token，使其完全重新登录
+        for acc in batch:
+            if acc.is_login and acc.token:
+                acc.is_login = False
+                acc.token = ""
+
+        return batch
+
+    async def _login_and_configure(self, acc: Account) -> None:
+        """统一登录并配置单个账号。
+
+        流程：
+        1. 调用 _login() 执行 HTTP 登录
+        2. 登录成功后立即 await _update_settings()（非 fire-and-forget）
+        3. 设置同步成功后标记 memory_disabled=True
+
+        调用方负责在整批完成后调用 _rebuild_candidates() 和 _save_persist()。
+
+        Args:
+            acc: 账号对象。
+
+        Raises:
+            Exception: 登录失败。
+        """
+        await self._login(acc)
+
+        # 登录成功后同步设置（awaited，非 fire-and-forget）
+        try:
+            await self._update_settings(acc)
+        except Exception as e:
+            logger.warning(
+                "Qwen 设置同步异常 [%s***]: %s", acc.username[:6], e,
+            )
 
     async def _validate_token(self, acc: Account) -> bool:
         """验证账号 token 是否仍然有效。
@@ -553,18 +636,24 @@ class QwenClient:
                 "accept": "application/json",
             }
             url = "{}{}".format(BASE_URL, AUTH_CHECK_PATH)
-            async with self._session.get(
-                url,
-                headers=headers,
-                ssl=False,
-                timeout=aiohttp.ClientTimeout(total=10),
-            ) as resp:
+            proxy_kw = self._get_proxy_kwarg()
+            req_kw: Dict[str, Any] = {
+                "headers": headers,
+                "ssl": False,
+                "timeout": aiohttp.ClientTimeout(total=10),
+            }
+            if proxy_kw is not None:
+                req_kw["proxy"] = proxy_kw
+            async with self._session.get(url, **req_kw) as resp:
                 return resp.status == 200
         except Exception:
             return False
 
     async def _login(self, acc: Account) -> None:
-        """登录单个账号，成功后立即重建候选项。
+        """登录单个账号（纯 HTTP 登录，不触发候选项重建或设置同步）。
+
+        调用方（_login_and_configure）负责后续的设置同步和候选项重建。
+        支持代理：当平台启用代理时，登录请求也会走代理。
 
         Args:
             acc: 账号对象。
@@ -590,13 +679,18 @@ class QwenClient:
                 await asyncio.sleep(1.0 * (2 ** (attempt - 1)))
             try:
                 url = "{}{}".format(BASE_URL, SIGNIN_PATH)
-                async with self._session.post(
-                    url,
-                    headers=headers,
-                    json=payload,
-                    ssl=False,
-                    timeout=aiohttp.ClientTimeout(total=LOGIN_TIMEOUT),
-                ) as resp:
+                post_kw: Dict[str, Any] = {
+                    "headers": headers,
+                    "json": payload,
+                    "ssl": False,
+                    "timeout": aiohttp.ClientTimeout(total=LOGIN_TIMEOUT),
+                }
+                # 代理支持
+                proxy_kw = self._get_proxy_kwarg()
+                if proxy_kw is not None:
+                    post_kw["proxy"] = proxy_kw
+
+                async with self._session.post(url, **post_kw) as resp:
                     if resp.status != 200:
                         err = await resp.text()
                         # WAF detection: if response is HTML, the endpoint is blocked
@@ -622,14 +716,12 @@ class QwenClient:
                     acc.password_hash = pwd_hash
                     acc.token_expires = float(data.get("expires_at", 0))
                     acc.is_login = True
-
-                    asyncio.ensure_future(self._update_settings(acc))
-                    self._rebuild_candidates()
                     return
             except Exception as e:
                 last_exc = e
 
         if last_exc:
+            acc.is_login = False
             raise last_exc
 
     async def _update_settings(self, acc: Account) -> None:
@@ -643,13 +735,17 @@ class QwenClient:
         headers = build_headers(acc.token, cookies=self._cookies)
         url = "{}{}".format(BASE_URL, SETTINGS_PATH)
         try:
-            async with self._session.post(
-                url,
-                headers=headers,
-                json=DEFAULT_FULL_SETTINGS,
-                ssl=False,
-                timeout=aiohttp.ClientTimeout(total=SETTINGS_TIMEOUT),
-            ) as resp:
+            post_kw: Dict[str, Any] = {
+                "headers": headers,
+                "json": DEFAULT_FULL_SETTINGS,
+                "ssl": False,
+                "timeout": aiohttp.ClientTimeout(total=SETTINGS_TIMEOUT),
+            }
+            proxy_kw = self._get_proxy_kwarg()
+            if proxy_kw is not None:
+                post_kw["proxy"] = proxy_kw
+
+            async with self._session.post(url, **post_kw) as resp:
                 if resp.status == 200:
                     acc.memory_disabled = True
                 else:
@@ -1967,11 +2063,12 @@ class QwenClient:
                     err = await resp.text()
                     # 检测 token 过期或未授权错误
                     if resp.status == 401 or "Token has expired" in err or "unauthorized" in err.lower():
-                        username = candidate.meta.get("username", "")
-                        if username and username in self._account_states:
-                            acc = self._account_states[username]
-                            logger.warning("账号 [%s] token 已过期，设置 is_login=False", username)
+                        email = candidate.meta.get("email", "")
+                        if email and email in self._account_states:
+                            acc = self._account_states[email]
+                            logger.warning("账号 [%s***] token 已过期，反应式清除", email[:6])
                             acc.is_login = False
+                            acc.token = ""
                             self._rebuild_candidates()
                             self._save_persist()
                         raise Exception(

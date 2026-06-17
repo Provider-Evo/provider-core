@@ -1625,3 +1625,13 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.112
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.111 -> 2.2.112
 验证: py_compile main.py 通过
+
+2026-06-17 04:00:00
+
+[src/platforms/qwen/core/client.py] 登录逻辑重写：移除 _bg_login() 和 _bg_token_refresh()，新增 _login_poll_loop()（30分钟轮询）、_select_login_batch()（智能选择：最旧100→随机15-30→取10顺序登录）、_login_and_configure()（统一登录+设置同步）、_initial_login_pass()（启动时验证+最多50个账号登录）；_login() 新增代理支持、移除每账号 _rebuild_candidates 和 fire-and-forget _update_settings；_update_settings/_validate_token 新增代理支持；_do_request 401 处理修复 meta key 从 username 改为 email
+[src/platforms/qwen/core/shared.py] 新增 6 个登录轮询常量：LOGIN_POLL_INTERVAL(1800s)、LOGIN_BATCH_SIZE(10)、LOGIN_POOL_SIZE(100)、LOGIN_SELECT_MIN(15)、LOGIN_SELECT_MAX(30)、INITIAL_LOGIN_MAX(50)
+[template/template_config.toml] 版本 2.2.112 -> 2.2.113
+[config.toml] 版本 2.2.112 -> 2.2.113
+[README.md] 版本徽章和路线图更新为 2.2.113
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.112 -> 2.2.113
+验证: py_compile client.py + shared.py 通过
