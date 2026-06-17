@@ -12,6 +12,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
+from echotools.translate import extract_text_from_messages, split_text_chunks
+
 from src.core.candidate import Candidate, make_id
 from src.core.errors import PlatformError
 from ..accounts import API_KEYS
@@ -111,27 +113,6 @@ class _KeyState:
             self.error_count += 1
 
 
-def _extract_text_from_messages(messages: List[Dict[str, Any]]) -> tuple:
-    """从消息列表中提取源语言和待翻译文本。
-
-    Args:
-        messages: chat/completions 格式的消息列表。
-
-    Returns:
-        (source_lang, text) 元组。
-    """
-    source_lang = ""
-    text = ""
-    for msg in messages:
-        role = msg.get("role", "")
-        content = msg.get("content", "")
-        if role == "system":
-            source_lang = content.strip()
-        elif role == "user":
-            text = content
-    return source_lang, text
-
-
 class DeepLClient:
     """DeepL 翻译 HTTP 客户端。"""
 
@@ -203,7 +184,7 @@ class DeepLClient:
         target_lang = kw.get("target_lang", DEFAULT_TARGET_LANG)
         source_lang_override = kw.get("source_lang", "")
 
-        msg_source, text = _extract_text_from_messages(messages)
+        text, msg_source, _target = extract_text_from_messages(messages)
         source_lang = source_lang_override or msg_source or DEFAULT_SOURCE_LANG
 
         if not text or not text.strip():
@@ -305,7 +286,7 @@ class DeepLClient:
 
                 if stream:
                     # 按句子分割，模拟流式输出
-                    for chunk_text in _split_text_chunks(translated_text):
+                    for chunk_text in split_text_chunks(translated_text):
                         yield chunk_text
                 else:
                     yield translated_text
@@ -321,37 +302,3 @@ class DeepLClient:
     async def close(self) -> None:
         """清理资源。"""
         return
-
-
-def _split_text_chunks(text: str) -> List[str]:
-    """将翻译文本按句子分割，用于模拟流式输出。
-
-    Args:
-        text: 完整翻译文本。
-
-    Returns:
-        文本片段列表。
-    """
-    if not text:
-        return []
-
-    # 按常见句子终止符分割
-    import re
-    # 保留分隔符在结果中
-    parts = re.split(r'(?<=[.!?。！？\n])', text)
-    chunks = [p for p in parts if p]
-
-    # 如果分割后只有1段或没有，按空格分割
-    if len(chunks) <= 1:
-        words = text.split()
-        if len(words) > 5:
-            # 每5个词一组
-            chunk_size = 5
-            chunks = [
-                " ".join(words[i:i + chunk_size])
-                for i in range(0, len(words), chunk_size)
-            ]
-        else:
-            chunks = [text]
-
-    return chunks

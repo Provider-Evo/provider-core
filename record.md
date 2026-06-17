@@ -1803,3 +1803,17 @@ pytest: (pending)
 [README.md] 版本徽章更新为 2.2.124，平台数量 12+ -> 16+，路线图新增 v2.2.124 条目
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.123 -> 2.2.124
 验证: py_compile 28 文件全部通过
+
+2026-06-17 16:00:00
+
+[src/core/proxy_selector.py] 替换为 echotools 重导出 shim（189 行实现 -> 8 行），ProxySelector 和 ProxyRecord 现由 echotools.dispatch.proxy_selector 提供
+[src/platforms/deepl/core/client.py] 移除 _extract_text_from_messages 和 _split_text_chunks 本地实现，改为从 echotools.translate 导入
+[src/platforms/googletranslate/core/client.py] 同上，翻译工具函数改为 echotools.translate 导入
+[src/platforms/yandextranslate/core/client.py] 同上
+[src/platforms/azuretranslate/core/client.py] 同上
+[requirements.txt] echotools 升级 >=1.0.22 -> >=1.0.23（新增 KeyState/KeyPool、translate 工具、ProxySelector、retry_async_generator）
+[template/template_config.toml] 版本 2.2.124 -> 2.2.125
+[config.toml] 版本 2.2.124 -> 2.2.125
+[README.md] 版本徽章和路线图更新为 2.2.125
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.124 -> 2.2.125
+验证: py_compile 5 文件全部通过
