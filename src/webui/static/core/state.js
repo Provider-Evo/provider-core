@@ -275,7 +275,9 @@ function switchTab(nextTab) {
     node.setAttribute('aria-selected', node.dataset.tab === nextTab ? 'true' : 'false');
   });
   document.querySelectorAll('.tab-panel').forEach(function(node) {
-    node.classList.toggle('active', node.id === 'tab-' + nextTab);
+    var isActive = node.id === 'tab-' + nextTab;
+    node.classList.toggle('active', isActive);
+    node.classList.toggle('hidden', !isActive);
   });
 }
 

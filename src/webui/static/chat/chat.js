@@ -94,8 +94,15 @@ function renderWithCodeBlocks(text) {
   }
   processed = resultLines.join('\n');
 
-  // Convert newlines to <br>
-  processed = processed.replace(/\n/g, '<br>');
+  // Convert newlines to <br>, but not after block-level elements
+  processed = processed.replace(/\n/g, function(match, offset) {
+    // Check if the preceding content ends with a block-level closing tag
+    var before = processed.substring(Math.max(0, offset - 30), offset);
+    if (/<\/(h[1-6]|div|pre|ul|ol|li|table|blockquote)>\s*$/.test(before)) {
+      return '';
+    }
+    return '<br>';
+  });
 
   // Restore code blocks with toggle and raw storage
   for (var j = 0; j < codeBlocks.length; j++) {

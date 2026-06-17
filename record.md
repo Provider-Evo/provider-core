@@ -1940,3 +1940,13 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.135
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.134 -> 2.2.135
 验证: py_compile ollama/client.py 通过
+
+2026-06-18 03:00:00
+
+[src/webui/static/core/state.js] 修复 switchTab() 未移除 hidden 类导致终端/文件等选项卡不显示的 bug
+[src/webui/static/chat/chat.js] 修复 renderWithCodeBlocks() 在块级元素（h1-h6/div/pre/ul/ol 等）后插入多余 br 导致空行
+[template/template_config.toml] 版本 2.2.135 -> 2.2.136
+[config.toml] 版本 2.2.135 -> 2.2.136
+[README.md] 版本徽章和路线图更新为 2.2.136
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.135 -> 2.2.136
+纯前端 JS 变更，无需 py_compile

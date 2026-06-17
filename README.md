@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.135-blue)
-![Version](https://img.shields.io/badge/version-2.2.135-blue)
+![Status](https://img.shields.io/badge/status-v2.2.136-blue)
+![Version](https://img.shields.io/badge/version-2.2.136-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.135
+### 当前版本：v2.2.136
+
+✅ 已完成（v2.2.136）：
+- 修复终端选项卡不显示（switchTab 未移除 hidden 类）；修复 Markdown 渲染多余空行（块级元素后不插入 br）
 
 ✅ 已完成（v2.2.135）：
 - Ollama 服务器发现使用代理获取、网络故障时保留缓存不覆盖、发现日志降为 DEBUG、WebUI 日志渲染匹配控制台格式
