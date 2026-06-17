@@ -26,10 +26,10 @@
 .ib-bar { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 8px; }
 .ib-bar-left { display: flex; align-items: center; gap: 2px; }
 .ib-bar-right { display: flex; align-items: center; gap: 8px; }
-.ib-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none; color: var(--muted, #a8b3cf); cursor: pointer; transition: color 0.15s, background 0.15s; flex-shrink: 0; }
-.ib-btn:hover { color: var(--accent, #5865bc); background: var(--accent-soft, #f4f6fd); }
+.ib-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none; color: var(--text, #1e2a3e); cursor: pointer; transition: color 0.15s, background 0.15s; flex-shrink: 0; opacity: 0.7; }
+.ib-btn:hover { color: var(--accent, #5865bc); background: var(--accent-soft, #f4f6fd); opacity: 1; }
 .ib-btn svg { width: 19px; height: 19px; display: block; }
-.ib-btn.ib-recording { color: var(--err, #ef4444); animation: ib-pulse 1.2s ease infinite; }
+.ib-btn.ib-recording { color: var(--err, #ef4444); animation: ib-pulse 1.2s ease infinite; opacity: 1; }
 @keyframes ib-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 .ib-file-count { font-size: 12px; color: var(--muted, #a8b3cf); }
 

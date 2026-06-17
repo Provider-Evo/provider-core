@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.127-blue)
-![Version](https://img.shields.io/badge/version-2.2.127-blue)
+![Status](https://img.shields.io/badge/status-v2.2.128-blue)
+![Version](https://img.shields.io/badge/version-2.2.128-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.127
+### 当前版本：v2.2.128
+
+✅ 已完成（v2.2.128）：
+- WebUI 10 项修复：复选框渲染、镜像源拖拽排序、配置下拉菜单自定义组件、diff 左右对比+分支下拉、主题切换分离、语音按钮亮色模式、静音自动停止录音、录音停止修复
 
 ✅ 已完成（v2.2.127）：
 - 修复更新面板复选框不显示（CSS input reset 排除 checkbox）、toast 移至左下角、zip 脚本自动替换 color=false、deepseek/ollama 初始化不阻塞

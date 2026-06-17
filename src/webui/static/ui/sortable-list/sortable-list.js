@@ -57,7 +57,8 @@
     for (var i = 0; i < this._items.length; i++) {
       var isFirst = (i === 0);
       var isLast = (i === this._items.length - 1);
-      html += '<div class="sl-item" data-index="' + i + '">';
+      html += '<div class="sl-item" data-index="' + i + '" draggable="true">';
+      html += '<div class="sl-drag-handle" title="Drag to reorder">&#x2630;</div>';
       html += '<div class="sl-controls">';
       html += '<button type="button" class="sl-btn sl-up' + (isFirst ? ' sl-disabled' : '') + '" data-action="up" data-index="' + i + '" title="上移"' + (isFirst ? ' disabled' : '') + '>&#9650;</button>';
       html += '<button type="button" class="sl-btn sl-down' + (isLast ? ' sl-disabled' : '') + '" data-action="down" data-index="' + i + '" title="下移"' + (isLast ? ' disabled' : '') + '>&#9660;</button>';
@@ -68,7 +69,7 @@
     }
     list.innerHTML = html;
 
-    // Bind events via delegation
+    // Bind click events via delegation
     list.onclick = function(e) {
       var btn = e.target.closest('[data-action]');
       if (!btn) return;
@@ -86,6 +87,80 @@
         self._fireChange();
       }
     };
+
+    // Bind drag-and-drop events
+    var dragSrcIndex = null;
+
+    list.addEventListener('dragstart', function(e) {
+      var item = e.target.closest('.sl-item');
+      if (!item) return;
+      dragSrcIndex = parseInt(item.dataset.index);
+      item.classList.add('sl-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(dragSrcIndex));
+    });
+
+    list.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      var item = e.target.closest('.sl-item');
+      if (!item) return;
+      // Remove all drag-over classes first
+      var allItems = list.querySelectorAll('.sl-item');
+      for (var k = 0; k < allItems.length; k++) {
+        allItems[k].classList.remove('sl-drag-over-top', 'sl-drag-over-bottom');
+      }
+      // Determine if mouse is in top or bottom half of the target
+      var rect = item.getBoundingClientRect();
+      var midY = rect.top + rect.height / 2;
+      if (e.clientY < midY) {
+        item.classList.add('sl-drag-over-top');
+      } else {
+        item.classList.add('sl-drag-over-bottom');
+      }
+    });
+
+    list.addEventListener('dragleave', function(e) {
+      var item = e.target.closest('.sl-item');
+      if (item) {
+        item.classList.remove('sl-drag-over-top', 'sl-drag-over-bottom');
+      }
+    });
+
+    list.addEventListener('drop', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var item = e.target.closest('.sl-item');
+      if (!item || dragSrcIndex === null) return;
+      var targetIndex = parseInt(item.dataset.index);
+      var rect = item.getBoundingClientRect();
+      var midY = rect.top + rect.height / 2;
+      // Determine insertion position
+      var insertIndex = e.clientY < midY ? targetIndex : targetIndex + 1;
+      // Adjust if dragging downward (source item shifts target indices)
+      if (dragSrcIndex < insertIndex) insertIndex--;
+      if (dragSrcIndex !== insertIndex) {
+        // Remove item from source and insert at new position
+        var movedItem = self._items.splice(dragSrcIndex, 1)[0];
+        self._items.splice(insertIndex, 0, movedItem);
+        self._render();
+        self._fireChange();
+      }
+      // Clean up
+      var allItems = list.querySelectorAll('.sl-item');
+      for (var k = 0; k < allItems.length; k++) {
+        allItems[k].classList.remove('sl-drag-over-top', 'sl-drag-over-bottom', 'sl-dragging');
+      }
+      dragSrcIndex = null;
+    });
+
+    list.addEventListener('dragend', function(e) {
+      var allItems = list.querySelectorAll('.sl-item');
+      for (var k = 0; k < allItems.length; k++) {
+        allItems[k].classList.remove('sl-drag-over-top', 'sl-drag-over-bottom', 'sl-dragging');
+      }
+      dragSrcIndex = null;
+    });
   };
 
   SortableList.prototype._swap = function(a, b) {

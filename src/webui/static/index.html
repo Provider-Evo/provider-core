@@ -237,7 +237,11 @@
           </div>
           <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
             <div class="text-[13px] text-muted m-0 mb-2">目标分支</div>
-            <input id="autoupdateBranch" type="text" placeholder="dev" class="config-input w-full">
+            <select id="autoupdateBranch" class="config-input w-full">
+              <option value="dev">dev</option>
+              <option value="main">main</option>
+              <option value="classical">classical</option>
+            </select>
           </div>
           <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
             <div class="text-[13px] text-muted m-0 mb-2">检查间隔（秒）</div>

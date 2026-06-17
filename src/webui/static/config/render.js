@@ -291,6 +291,42 @@ function _renderConfigData(config) {
 
   configGrid.innerHTML = html;
 
+  // Convert native <select> elements to CustomDropdown for consistent UI
+  if (typeof CustomDropdown !== 'undefined') {
+    var configSelects = configGrid.querySelectorAll('select.config-input');
+    for (var si = 0; si < configSelects.length; si++) {
+      var sel = configSelects[si];
+      // Skip if already converted
+      if (sel.classList.contains('custom-dropdown') || sel._customDropdown) continue;
+      var dd = new CustomDropdown(sel, {
+        onChange: function(value, text, prevValue) {
+          // Trigger the same change handler as native selects
+          var wrapper = this.el || this;
+          var section = wrapper.getAttribute('data-section') || (wrapper._section);
+          var key = wrapper.getAttribute('data-key') || (wrapper._key);
+          if (section && key) {
+            if (!window._currentConfig[section]) window._currentConfig[section] = {};
+            window._currentConfig[section][key] = value;
+            configJsonBox.textContent = JSON.stringify(window._currentConfig, null, 2);
+            if (configEditArea && !configEditArea.classList.contains('hidden')) {
+              configEditArea.value = configJsonBox.textContent;
+            }
+            scheduleConfigSave();
+          }
+        }
+      });
+      // Store section/key on the dropdown wrapper for the onChange handler
+      if (dd && dd.el) {
+        dd.el._section = sel.getAttribute('data-section');
+        dd.el._key = sel.getAttribute('data-key');
+        // Also copy data attributes to the wrapper for event delegation
+        dd.el.setAttribute('data-section', sel.getAttribute('data-section') || '');
+        dd.el.setAttribute('data-key', sel.getAttribute('data-key') || '');
+        dd.el.setAttribute('data-type', sel.getAttribute('data-type') || 'string');
+      }
+    }
+  }
+
   // Bind events only once (survives re-renders since delegation is on configGrid)
   if (!configGrid._eventsBound) {
     configGrid._eventsBound = true;

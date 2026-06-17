@@ -1,9 +1,9 @@
 document.getElementById('refreshButton').addEventListener('click', refreshAll);
 document.getElementById('refreshModelsButton').addEventListener('click', refreshModels);
 document.getElementById('fabThemeButton').addEventListener('click', function() {
-  const order = ['auto', 'light', 'dark'];
-  const index = order.indexOf(state.settings.theme);
-  state.settings.theme = order[(index + 1) % order.length];
+  // Portable toggle: only switches between light and dark (no auto)
+  var current = state.settings.theme;
+  state.settings.theme = (current === 'light') ? 'dark' : 'light';
   saveSettings();
   toast('主题已切换为 ' + state.settings.theme, 'ok');
   log('主题已切换为 ' + state.settings.theme + '。');
@@ -200,7 +200,8 @@ applyVoiceSettings();
 window._dropdowns = {};
 ['modelPlatformSelect', 'modelCapabilitySelect', 'chatModelSelect',
  'chatProtocolSelect', 'themeSelect', 'compactSelect',
- 'voiceSttModel', 'voiceTtsModel', 'recordingDeviceSelect'].forEach(function(id) {
+ 'voiceSttModel', 'voiceTtsModel', 'recordingDeviceSelect',
+ 'autoupdateBranch', 'requestStatusFilter', 'requestTimeFilter'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) {
     window._dropdowns[id] = new CustomDropdown(el);

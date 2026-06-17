@@ -1839,3 +1839,20 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.127
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.126 -> 2.2.127
 验证: py_compile deepseek/adaptercore.py + ollama/adaptercore.py 通过
+
+2026-06-17 19:00:00
+
+[src/webui/static/ui/styles.css] 复选框/单选框从全局 input reset 排除（appearance: auto !important），新增 .autoupdate-file-check 样式
+[src/webui/static/ui/sortable-list/sortable-list.js] 新增 HTML5 拖拽排序支持（draggable、dragstart/dragover/drop 事件、视觉反馈）
+[src/webui/static/ui/sortable-list/sortable-list.css] 新增拖拽相关样式（透明度、拖拽指示器）
+[src/webui/static/config/render.js] 配置面板下拉菜单从原生 select 转为 CustomDropdown 组件
+[src/webui/static/config/actions.js] 更新面板 diff 改为左右对比视图（旧版左/新版右），分支选择器改为下拉菜单
+[src/webui/static/index.html] 分支选择从 text input 改为 select [dev/main/classical]；新增 diff 对比容器
+[src/webui/static/ui/bootstrap.js] 主题切换按钮仅切换 light/dark（不含 auto）；下拉菜单保留 3 选项
+[src/webui/static/ui/input-box.css] 语音按钮颜色从 var(--muted) 改为 var(--text) opacity 0.7，适配亮色主题
+[src/webui/static/ui/input-box.js] 新增 _startSilenceDetection() 静音 30 秒自动停止录音；修复停止录音竞态条件（_stopRequested 标志 + stream.getTracks().stop()）
+[template/template_config.toml] 版本 2.2.127 -> 2.2.128
+[config.toml] 版本同步至 2.2.128
+[README.md] 版本徽章和路线图更新为 2.2.128
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.127 -> 2.2.128
+纯前端 JS/CSS/HTML 变更，无需 py_compile

@@ -449,12 +449,15 @@ async function _showFileDiff(filepath) {
     overlay = document.createElement('div');
     overlay.id = 'autoupdateDiffOverlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:16px;';
-    overlay.innerHTML = '<div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;max-width:900px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;padding:16px;">'
+    overlay.innerHTML = '<div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;max-width:1200px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;padding:16px;">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
       + '<strong id="autoupdateDiffTitle" style="font-size:14px;font-family:monospace;"></strong>'
       + '<button id="autoupdateDiffClose" type="button" style="cursor:pointer;font-size:20px;border:none;background:none;color:var(--text);">&times;</button>'
       + '</div>'
-      + '<pre id="autoupdateDiffContent" style="flex:1;overflow:auto;font-size:12px;line-height:1.5;padding:12px;background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;white-space:pre-wrap;word-break:break-all;margin:0;"></pre>'
+      + '<div id="autoupdateDiffContent" style="flex:1;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+      + '<div id="diffLeft" style="overflow:auto;font-size:12px;line-height:1.5;padding:12px;background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;white-space:pre-wrap;word-break:break-all;font-family:monospace;"><div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;">OLD (local)</div><pre id="diffLeftPre" style="margin:0;white-space:pre-wrap;"></pre></div>'
+      + '<div id="diffRight" style="overflow:auto;font-size:12px;line-height:1.5;padding:12px;background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;white-space:pre-wrap;word-break:break-all;font-family:monospace;"><div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;">NEW (remote)</div><pre id="diffRightPre" style="margin:0;white-space:pre-wrap;"></pre></div>'
+      + '</div>'
       + '</div>';
     document.body.appendChild(overlay);
     overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.style.display = 'none'; });
@@ -462,7 +465,8 @@ async function _showFileDiff(filepath) {
   }
   overlay.style.display = 'flex';
   document.getElementById('autoupdateDiffTitle').textContent = filepath;
-  document.getElementById('autoupdateDiffContent').textContent = 'Loading diff...';
+  document.getElementById('diffLeftPre').textContent = 'Loading diff...';
+  document.getElementById('diffRightPre').textContent = '';
 
   try {
     var resp = await fetch('/v1/admin/autoupdate/diff', {
@@ -471,22 +475,61 @@ async function _showFileDiff(filepath) {
       body: JSON.stringify({ file: filepath }),
     });
     var data = await resp.json();
-    var pre = document.getElementById('autoupdateDiffContent');
+    var leftPre = document.getElementById('diffLeftPre');
+    var rightPre = document.getElementById('diffRightPre');
     if (data.success) {
-      // Colorize diff output
       var lines = (data.diff || '(no changes)').split('\n');
-      var html = lines.map(function(line) {
-        if (line.startsWith('+') && !line.startsWith('+++')) return '<span style="color:var(--ok);">' + escapeHtml(line) + '</span>';
-        if (line.startsWith('-') && !line.startsWith('---')) return '<span style="color:var(--err);">' + escapeHtml(line) + '</span>';
-        if (line.startsWith('@@')) return '<span style="color:var(--accent);">' + escapeHtml(line) + '</span>';
-        return escapeHtml(line);
-      }).join('\n');
-      pre.innerHTML = html;
+      var leftHtml = [];
+      var rightHtml = [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (line.startsWith('+++') || line.startsWith('---')) {
+          // File header lines — show on both sides
+          leftHtml.push('<span style="color:var(--muted);">' + escapeHtml(line) + '</span>');
+          rightHtml.push('<span style="color:var(--muted);">' + escapeHtml(line) + '</span>');
+        } else if (line.startsWith('@@')) {
+          // Hunk header — show on both sides
+          leftHtml.push('<span style="color:var(--accent);">' + escapeHtml(line) + '</span>');
+          rightHtml.push('<span style="color:var(--accent);">' + escapeHtml(line) + '</span>');
+        } else if (line.startsWith('-')) {
+          // Removed line — left side only
+          leftHtml.push('<span style="color:var(--err);background:rgba(217,72,72,0.1);display:block;padding:0 4px;margin:0 -4px;">' + escapeHtml(line) + '</span>');
+          rightHtml.push('<span style="display:block;min-height:1.5em;">&nbsp;</span>');
+        } else if (line.startsWith('+')) {
+          // Added line — right side only
+          leftHtml.push('<span style="display:block;min-height:1.5em;">&nbsp;</span>');
+          rightHtml.push('<span style="color:var(--ok);background:rgba(31,157,97,0.1);display:block;padding:0 4px;margin:0 -4px;">' + escapeHtml(line) + '</span>');
+        } else {
+          // Context line — show on both sides
+          leftHtml.push(escapeHtml(line));
+          rightHtml.push(escapeHtml(line));
+        }
+      }
+      leftPre.innerHTML = leftHtml.join('\n');
+      rightPre.innerHTML = rightHtml.join('\n');
+      // Sync scroll between the two panels
+      var diffLeft = document.getElementById('diffLeft');
+      var diffRight = document.getElementById('diffRight');
+      var syncing = false;
+      diffLeft.onscroll = function() {
+        if (syncing) return;
+        syncing = true;
+        diffRight.scrollTop = diffLeft.scrollTop;
+        syncing = false;
+      };
+      diffRight.onscroll = function() {
+        if (syncing) return;
+        syncing = true;
+        diffLeft.scrollTop = diffRight.scrollTop;
+        syncing = false;
+      };
     } else {
-      pre.textContent = 'Error: ' + (data.error || 'unknown');
+      leftPre.textContent = 'Error: ' + (data.error || 'unknown');
+      rightPre.textContent = '';
     }
   } catch (e) {
-    document.getElementById('autoupdateDiffContent').textContent = 'Error: ' + e.message;
+    document.getElementById('diffLeftPre').textContent = 'Error: ' + e.message;
+    document.getElementById('diffRightPre').textContent = '';
   }
 }
 

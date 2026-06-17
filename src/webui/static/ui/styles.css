@@ -38,14 +38,26 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   -webkit-appearance: none;
   appearance: none;
 }
-/* Preserve native rendering for checkboxes and radios */
+/* Preserve native rendering for checkboxes and radios — !important to override any conflicting rules */
 input[type="checkbox"],
 input[type="radio"] {
-  outline: revert;
-  box-shadow: revert;
-  border-color: revert;
-  -webkit-appearance: auto;
-  appearance: auto;
+  outline: revert !important;
+  box-shadow: revert !important;
+  border-color: revert !important;
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
+  width: auto !important;
+  height: auto !important;
+  opacity: 1 !important;
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+/* Autoupdate file checkboxes — explicit sizing for consistent rendering */
+.autoupdate-file-check {
+  accent-color: var(--accent);
+  min-width: 14px;
+  min-height: 14px;
 }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Arial, sans-serif;
@@ -449,8 +461,8 @@ button:not(.sidebar-nav-item),
               opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Input focus effect */
-input:focus,
+/* Input focus effect — exclude checkboxes and radios to preserve native rendering */
+input:not([type="checkbox"]):not([type="radio"]):focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent) !important;
