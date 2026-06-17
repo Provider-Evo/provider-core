@@ -286,8 +286,11 @@ var RequestInspector = (function () {
     var content = req.content || req.chunks.join('');
     if (content) {
       html += '<div class="req-modal-section">';
+      html += '<div class="req-modal-section-header">';
       html += '<div class="req-modal-label">Response (' + content.length + ' chars)</div>';
-      html += '<pre class="req-modal-content">' + escapeHtml(content) + '</pre>';
+      html += '<button type="button" class="req-copy-btn" data-copy-target="response" title="复制">复制</button>';
+      html += '</div>';
+      html += '<pre class="req-modal-content" id="req-response-content">' + escapeHtml(content) + '</pre>';
       html += '</div>';
     } else if (req.status === 'pending') {
       html += '<div class="req-modal-section"><div class="text-muted" style="padding:12px;text-align:center;">Waiting for response...</div></div>';
@@ -297,9 +300,13 @@ var RequestInspector = (function () {
 
     // Request messages
     if (req.messages && req.messages.length > 0) {
+      var messagesJson = JSON.stringify(req.messages, null, 2);
       html += '<div class="req-modal-section">';
+      html += '<div class="req-modal-section-header">';
       html += '<div class="req-modal-label">Request Messages (' + req.messages.length + ')</div>';
-      html += '<pre class="req-modal-content">' + escapeHtml(JSON.stringify(req.messages, null, 2)) + '</pre>';
+      html += '<button type="button" class="req-copy-btn" data-copy-target="messages" title="复制">复制</button>';
+      html += '</div>';
+      html += '<pre class="req-modal-content" id="req-messages-content">' + escapeHtml(messagesJson) + '</pre>';
       html += '</div>';
     }
 
@@ -325,6 +332,25 @@ var RequestInspector = (function () {
       if (e.target === overlay) closeModal();
     });
     document.addEventListener('keydown', escHandler);
+
+    // Copy button handlers
+    overlay.querySelectorAll('.req-copy-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var target = btn.dataset.copyTarget;
+        var el = target === 'response'
+          ? document.getElementById('req-response-content')
+          : document.getElementById('req-messages-content');
+        if (!el) return;
+        var text = el.textContent || '';
+        navigator.clipboard.writeText(text).then(function() {
+          btn.textContent = '已复制';
+          setTimeout(function() { btn.textContent = '复制'; }, 1500);
+        }, function() {
+          btn.textContent = '失败';
+          setTimeout(function() { btn.textContent = '复制'; }, 1500);
+        });
+      });
+    });
   }
 
   function renderDetail() {
@@ -340,8 +366,26 @@ var RequestInspector = (function () {
     if (sections.length > 0) {
       var firstSection = sections[0];
       if (content) {
-        firstSection.innerHTML = '<div class="req-modal-label">Response (' + content.length + ' chars)</div>'
-          + '<pre class="req-modal-content">' + escapeHtml(content) + '</pre>';
+        firstSection.innerHTML = '<div class="req-modal-section-header">'
+          + '<div class="req-modal-label">Response (' + content.length + ' chars)</div>'
+          + '<button type="button" class="req-copy-btn" data-copy-target="response" title="复制">复制</button>'
+          + '</div>'
+          + '<pre class="req-modal-content" id="req-response-content">' + escapeHtml(content) + '</pre>';
+        // Re-bind copy button
+        var newBtn = firstSection.querySelector('.req-copy-btn');
+        if (newBtn) {
+          newBtn.addEventListener('click', function() {
+            var el = document.getElementById('req-response-content');
+            if (!el) return;
+            navigator.clipboard.writeText(el.textContent || '').then(function() {
+              newBtn.textContent = '已复制';
+              setTimeout(function() { newBtn.textContent = '复制'; }, 1500);
+            }, function() {
+              newBtn.textContent = '失败';
+              setTimeout(function() { newBtn.textContent = '复制'; }, 1500);
+            });
+          });
+        }
       } else if (req.status === 'pending') {
         firstSection.innerHTML = '<div class="text-muted" style="padding:12px;text-align:center;">Waiting for response...</div>';
       }

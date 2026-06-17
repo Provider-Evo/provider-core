@@ -1817,3 +1817,13 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.125
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.124 -> 2.2.125
 验证: py_compile 5 文件全部通过
+
+2026-06-17 17:00:00
+
+[src/webui/static/stats/request-inspector.js] 请求详情弹窗新增复制按钮：响应内容和请求消息各一个，点击复制到剪贴板（显示"已复制"/"失败"反馈）；renderDetail() 流式更新时保留复制按钮和事件绑定
+[src/webui/static/ui/styles.css] 新增 .req-modal-section-header（flex 布局标签+按钮）和 .req-copy-btn（复制按钮样式，hover 变 accent 色）
+[template/template_config.toml] 版本 2.2.125 -> 2.2.126
+[config.toml] 版本 2.2.125 -> 2.2.126
+[README.md] 版本徽章和路线图更新为 2.2.126
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.125 -> 2.2.126
+纯前端 JS/CSS 变更，无需 py_compile
