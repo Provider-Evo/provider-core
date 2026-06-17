@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.136-blue)
-![Version](https://img.shields.io/badge/version-2.2.136-blue)
+![Status](https://img.shields.io/badge/status-v2.2.137-blue)
+![Version](https://img.shields.io/badge/version-2.2.137-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.136
+### 当前版本：v2.2.137
+
+✅ 已完成（v2.2.137）：
+- 修复 STT/TTS 模型下拉菜单无法识别模型（TTS 使用 audio_gen 能力、STT 使用 chat+vision 多模态能力）
 
 ✅ 已完成（v2.2.136）：
 - 修复终端选项卡不显示（switchTab 未移除 hidden 类）；修复 Markdown 渲染多余空行（块级元素后不插入 br）

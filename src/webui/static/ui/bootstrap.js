@@ -241,8 +241,8 @@ if (typeof loadModelsList === 'function') {
     var ttsOpts = [{ value: '', text: '不使用' }];
     for (var i = 0; i < models.length; i++) {
       var caps = models[i].capabilities || {};
-      if (caps.stt) sttOpts.push({ value: models[i].id, text: models[i].id });
-      if (caps.tts) ttsOpts.push({ value: models[i].id, text: models[i].id });
+      if (caps.stt || (caps.chat && caps.vision)) sttOpts.push({ value: models[i].id, text: models[i].id });
+      if (caps.tts || caps.audio_gen) ttsOpts.push({ value: models[i].id, text: models[i].id });
     }
     var sttDropdown = window._dropdowns && window._dropdowns['voiceSttModel'];
     var ttsDropdown = window._dropdowns && window._dropdowns['voiceTtsModel'];
