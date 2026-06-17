@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.126-blue)
-![Version](https://img.shields.io/badge/version-2.2.126-blue)
+![Status](https://img.shields.io/badge/status-v2.2.127-blue)
+![Version](https://img.shields.io/badge/version-2.2.127-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.126
+### 当前版本：v2.2.127
+
+✅ 已完成（v2.2.127）：
+- 修复更新面板复选框不显示（CSS input reset 排除 checkbox）、toast 移至左下角、zip 脚本自动替换 color=false、deepseek/ollama 初始化不阻塞
 
 ✅ 已完成（v2.2.126）：
 - 请求检查器详情弹窗新增复制按钮（响应内容 + 请求消息），支持流式更新时保留

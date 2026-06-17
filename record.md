@@ -1827,3 +1827,15 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.126
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.125 -> 2.2.126
 纯前端 JS/CSS 变更，无需 py_compile
+
+2026-06-17 18:00:00
+
+[src/webui/static/ui/styles.css] 修复全局 input CSS reset 误删 checkbox/radio 原生样式：添加 :not([type="checkbox"]):not([type="radio"]) 排除规则和 appearance: auto 恢复
+[src/webui/static/index.html] toast 通知容器从右下角（right-4）移至左下角（left-4），避免遮挡交互元素
+[src/platforms/deepseek/core/adaptercore.py] init() 不再直接 await init_immediate()，改为后台任务执行，避免初始化阻塞导致平台无法注册
+[src/platforms/ollama/core/adaptercore.py] 同上，init_immediate() 移入后台任务
+[template/template_config.toml] 版本 2.2.126 -> 2.2.127
+[config.toml] 版本同步至 2.2.127
+[README.md] 版本徽章和路线图更新为 2.2.127
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.126 -> 2.2.127
+验证: py_compile deepseek/adaptercore.py + ollama/adaptercore.py 通过

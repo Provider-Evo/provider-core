@@ -63,14 +63,25 @@ function connectLogsSocket() {
         log('已加载 ' + payload.count + ' 条历史日志。');
       }
       if (payload.type === 'log' && payload.message) {
-        var line = '[' + (payload.timestamp || '--:--:--') + '] [' + (payload.level || 'INFO') + '] ' + payload.message;
-        logBox.textContent = line + '\n' + logBox.textContent;
+        var levelColors = {
+          'D': '90', 'DEBUG': '90',
+          'I': '34', 'INFO': '34',
+          'W': '33', 'WARNING': '33',
+          'E': '31', 'ERROR': '31',
+          'C': '91', 'CRITICAL': '91'
+        };
+        var level = (payload.level || 'INFO').toUpperCase();
+        var colorCode = levelColors[level] || '37';
+        var ts = payload.timestamp || '--:--:--';
+        var mod = payload.module ? ' ' + payload.module + ' |' : ' |';
+        var line = '\x1b[' + colorCode + 'm[' + ts + '] [' + level + ']' + mod + ' ' + payload.message + '\x1b[0m';
+        log(line);
       }
       if (payload.type === 'pong') {
         // 心跳响应不显示
       }
     } catch (error) {
-      logBox.textContent = '[error] 消息解析失败：' + String(error) + '\n' + logBox.textContent;
+      log('\x1b[31m[error] 消息解析失败：' + String(error) + '\x1b[0m');
     }
   };
   logsSocket.onerror = function() {

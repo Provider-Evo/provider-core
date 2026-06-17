@@ -35,6 +35,7 @@ class OllamaAdapter(PlatformAdapter):
         self._client: Any = None
         self._models: List[str] = list(MODELS)
         self._cache: Optional[ModelsCache] = None
+        self._init_task: Optional[asyncio.Task] = None
         self._refresh_task: Optional[asyncio.Task] = None
 
     @property
@@ -67,7 +68,7 @@ class OllamaAdapter(PlatformAdapter):
         return CAPS
 
     async def init(self, session: aiohttp.ClientSession) -> None:
-        """初始化适配器——立即注册，后台完善。
+        """初始化适配器——立即注册，后台完成服务器发现。
 
         Args:
             session: aiohttp 会话实例。
@@ -75,22 +76,35 @@ class OllamaAdapter(PlatformAdapter):
         from src.platforms.ollama.core.client import OllamaClient  # noqa: PLC0415
 
         self._client = OllamaClient()
-        await self._client.init_immediate(session)
-
-        self._cache = ModelsCache(
-            platform="ollama",
-            fallback_models=MODELS,
-            fetch_enabled=FETCH_MODELS_ENABLED,
-        )
-        cached = await self._cache.load()
-        if cached:
-            self._models = cached
-            self._client.update_models(self._models)
-
+        self._init_task = asyncio.ensure_future(self._init_immediate(session))
         self._refresh_task = asyncio.ensure_future(self._background_init())
 
+    async def _init_immediate(self, session: aiohttp.ClientSession) -> None:
+        """后台完成即时初始化：服务器发现、连接验证。"""
+        if self._client is None:
+            return
+        try:
+            await self._client.init_immediate(session)
+            self._cache = ModelsCache(
+                platform="ollama",
+                fallback_models=MODELS,
+                fetch_enabled=FETCH_MODELS_ENABLED,
+            )
+            cached = await self._cache.load()
+            if cached:
+                self._models = cached
+                self._client.update_models(self._models)
+        except Exception as exc:
+            logger.warning("ollama 即时初始化失败，将在后台重试: %s", exc)
+
     async def _background_init(self) -> None:
-        """后台初始化：服务器发现后持续刷新。"""
+        """后台初始化：等待即时初始化完成后，服务器发现并持续刷新。"""
+        # Wait for init_immediate to finish before starting background work
+        if self._init_task is not None:
+            try:
+                await self._init_task
+            except Exception:
+                pass  # already logged in _init_immediate
         try:
             await self._client.background_setup()
         except Exception as e:
@@ -200,6 +214,12 @@ class OllamaAdapter(PlatformAdapter):
 
     async def close(self) -> None:
         """关闭适配器。"""
+        if self._init_task is not None and not self._init_task.done():
+            self._init_task.cancel()
+            try:
+                await self._init_task
+            except asyncio.CancelledError:
+                logger.debug("ollama init task cancelled")
         if self._refresh_task is not None and not self._refresh_task.done():
             self._refresh_task.cancel()
             try:

@@ -1,5 +1,5 @@
 [server]
-version = "2.2.126"
+version = "2.2.127"
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -42,6 +42,8 @@ platform_list = ["caiyuesbk", "cerebras", "chutes", "codebuddy", "n1n", "nvidia"
 protocol = "antml"
 record_prompt = true
 print_prompt = false
+custom_prompt_en = ""
+custom_prompt_zh = ""
 
 [fncall.fncall_mapping]
 qwen = "nous"
@@ -49,7 +51,8 @@ qwen = "nous"
 [debug]
 level = "DEBUG"
 color = true
-access_log = true
+access_log = false
+log_name = "provider-v2"
 
 [autoupdate]
 enabled = false

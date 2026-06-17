@@ -29,12 +29,23 @@
 /* Global form element resets (from quickshot input-box) */
 textarea, textarea:focus, textarea:focus-visible,
 button, button:focus, button:focus-visible,
-input, input:focus, input:focus-visible {
+input:not([type="checkbox"]):not([type="radio"]),
+input:not([type="checkbox"]):not([type="radio"]):focus,
+input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   outline: none !important;
   box-shadow: none !important;
   border-color: transparent !important;
   -webkit-appearance: none;
   appearance: none;
+}
+/* Preserve native rendering for checkboxes and radios */
+input[type="checkbox"],
+input[type="radio"] {
+  outline: revert;
+  box-shadow: revert;
+  border-color: revert;
+  -webkit-appearance: auto;
+  appearance: auto;
 }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Arial, sans-serif;
