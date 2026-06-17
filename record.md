@@ -1856,3 +1856,16 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.128
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.127 -> 2.2.128
 纯前端 JS/CSS/HTML 变更，无需 py_compile
+
+2026-06-17 20:00:00
+
+[src/core/dispatch/gateway.py] 修复 record_prompt 不生效：inject_fncall 导入路径从 echotools 改为 src.core.fncall.prompt.inject（项目包装层含 dump_dir 逻辑）
+[src/platforms/qwen/core/client.py] 新增 _load_task_timers()/_save_task_timers()，登录轮询和 Cookie 刷新持久化执行时间到 persist/qwen/task_timers.json，重启后计算剩余等待时间
+[src/platforms/qwen/core/shared.py] 新增 TASK_TIMERS_PATH 常量
+[src/webui/static/config/actions.js] 修复日志双重时间戳：WebSocket 消息行移除 [ts]（log() 函数已添加时间戳）
+[src/webui/static/index.html] toast 通知容器从左下角恢复为右下角（right-4）
+[template/template_config.toml] 版本 2.2.128 -> 2.2.129
+[config.toml] 版本 2.2.128 -> 2.2.129
+[README.md] 版本徽章和路线图更新为 2.2.129
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.128 -> 2.2.129
+验证: py_compile gateway.py + client.py + shared.py 通过

@@ -74,7 +74,7 @@ function connectLogsSocket() {
         var colorCode = levelColors[level] || '37';
         var ts = payload.timestamp || '--:--:--';
         var mod = payload.module ? ' ' + payload.module + ' |' : ' |';
-        var line = '\x1b[' + colorCode + 'm[' + ts + '] [' + level + ']' + mod + ' ' + payload.message + '\x1b[0m';
+        var line = '\x1b[' + colorCode + 'm[' + level + ']' + mod + ' ' + payload.message + '\x1b[0m';
         log(line);
       }
       if (payload.type === 'pong') {

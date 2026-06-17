@@ -9,7 +9,7 @@ from src.core.config import get_config
 from src.core.errors import NoCandidateError, ProviderError
 from src.core.fncall.registry import get_protocol
 from echotools.fncall.parsers.stream import FncallStreamParser
-from echotools.fncall.prompt.inject import inject_fncall
+from src.core.fncall.prompt.inject import inject_fncall
 from echotools.dispatch.usage import fallback_usage as _fallback_usage
 from echotools.dispatch.usage import normalize_usage as _normalize_usage
 from echotools.logger.manager import get_logger

@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.128-blue)
-![Version](https://img.shields.io/badge/version-2.2.128-blue)
+![Status](https://img.shields.io/badge/status-v2.2.129-blue)
+![Version](https://img.shields.io/badge/version-2.2.129-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.128
+### 当前版本：v2.2.129
+
+✅ 已完成（v2.2.129）：
+- 修复 record_prompt 不生效（gateway 导入路径修正）、日志双重时间戳、toast 恢复右下角、Qwen 定时任务持久化执行时间
 
 ✅ 已完成（v2.2.128）：
 - WebUI 10 项修复：复选框渲染、镜像源拖拽排序、配置下拉菜单自定义组件、diff 左右对比+分支下拉、主题切换分离、语音按钮亮色模式、静音自动停止录音、录音停止修复

@@ -76,6 +76,7 @@ HASH_FIELDS: Final[Dict[int, str]] = {
 
 # 持久化与任务配置
 PERSIST_PATH: Final[str] = "persist/qwen/usage.json"
+TASK_TIMERS_PATH: Final[str] = "persist/qwen/task_timers.json"
 LOGIN_CONCURRENCY: Final[int] = 5
 LOGIN_BATCH: Final[int] = 10
 PERSIST_INTERVAL: Final[int] = 60

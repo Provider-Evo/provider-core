@@ -50,6 +50,7 @@ from src.platforms.qwen.core.shared import (
     STS_TOKEN_PATHS,
     STOP_CHAT_PATH,
     TASK_STATUS_PATH,
+    TASK_TIMERS_PATH,
     TOKEN_EXPIRY_MARGIN,
     TTS_DIR,
     TTS_PATH,
@@ -383,6 +384,38 @@ class QwenClient:
         except Exception as e:
             logger.warning("Qwen 持久化加载失败: %s", e)
 
+    def _load_task_timers(self) -> Dict[str, float]:
+        """从磁盘加载后台任务的上次执行时间戳。
+
+        Returns:
+            任务名到时间戳的字典，加载失败返回空字典。
+        """
+        try:
+            if Path(TASK_TIMERS_PATH).exists():
+                data = json.loads(
+                    Path(TASK_TIMERS_PATH).read_text(encoding="utf-8")
+                )
+                return {k: float(v) for k, v in data.items()}
+        except Exception as e:
+            logger.debug("Qwen 任务计时器加载失败: %s", e)
+        return {}
+
+    def _save_task_timers(self, timers: Dict[str, float]) -> None:
+        """将后台任务的上次执行时间戳保存到磁盘。
+
+        Args:
+            timers: 任务名到时间戳的字典。
+        """
+        try:
+            Path(TASK_TIMERS_PATH).parent.mkdir(
+                parents=True, exist_ok=True
+            )
+            Path(TASK_TIMERS_PATH).write_text(
+                json.dumps(timers, indent=2), encoding="utf-8"
+            )
+        except Exception as e:
+            logger.debug("Qwen 任务计时器保存失败: %s", e)
+
     # =========================================================================
     # 模型刷新（ModelsCache）
     # =========================================================================
@@ -519,9 +552,21 @@ class QwenClient:
         1. 智能选择需要登录的账号批次
         2. 顺序登录每个账号（含设置同步）
         3. 批次完成后统一重建候选项和持久化
+
+        任务计时器持久化：首次循环从磁盘恢复上次执行时间，
+        计算剩余等待时间，避免重启后重置计时器。
         """
+        # 恢复上次轮询时间，计算首次等待时长
+        timers = self._load_task_timers()
+        last_run = timers.get("login_poll", 0)
+        remaining = LOGIN_POLL_INTERVAL - (time.time() - last_run)
+
         while not self._closing:
-            await asyncio.sleep(LOGIN_POLL_INTERVAL)
+            # 首次循环使用剩余时间，后续使用完整间隔
+            sleep_time = remaining if remaining > 0 else LOGIN_POLL_INTERVAL
+            remaining = -1  # 仅首次生效
+
+            await asyncio.sleep(sleep_time)
             if self._closing:
                 break
 
@@ -552,6 +597,10 @@ class QwenClient:
                     )
             except Exception as e:
                 logger.warning("Qwen 登录轮询异常: %s", e)
+
+            # 保存本次执行时间戳
+            timers["login_poll"] = time.time()
+            self._save_task_timers(timers)
 
     def _select_login_batch(self) -> List[Account]:
         """智能选择本轮需要登录的账号批次。
@@ -783,13 +832,30 @@ class QwenClient:
     # =========================================================================
 
     async def _bg_cookie_refresh(self) -> None:
-        """后台定期刷新指纹和 Cookie。"""
+        """后台定期刷新指纹和 Cookie。
+
+        任务计时器持久化：首次循环从磁盘恢复上次刷新时间，
+        计算剩余等待时间，避免重启后重置计时器。
+        """
+        # 恢复上次刷新时间，计算首次等待时长
+        timers = self._load_task_timers()
+        last_run = timers.get("cookie_refresh", 0)
+        remaining = COOKIE_REFRESH_INTERVAL - (time.time() - last_run)
+
         while not self._closing:
-            await asyncio.sleep(COOKIE_REFRESH_INTERVAL)
+            # 首次循环使用剩余时间，后续使用完整间隔
+            sleep_time = remaining if remaining > 0 else COOKIE_REFRESH_INTERVAL
+            remaining = -1  # 仅首次生效
+
+            await asyncio.sleep(sleep_time)
             if not self._closing:
                 self._fp = generate_fingerprint()
                 self._cookies = generate_cookies(self._fp)
                 logger.debug("Qwen: Cookie 已刷新")
+
+                # 保存本次刷新时间戳
+                timers["cookie_refresh"] = time.time()
+                self._save_task_timers(timers)
 
     # =========================================================================
     # 远程模型列表获取
