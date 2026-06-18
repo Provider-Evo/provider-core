@@ -2038,3 +2038,12 @@ pytest: (pending)
 [agent_log/activity/20260618.md] 新建当日活动日志
 [agent_log/audit/20260618_arch_provider-self.md] 新建七维度架构审计报告（总评 6.1/10）
 无 Python 源码变更，无需 py_compile
+
+2026-06-18 23:25:00
+
+[src/platforms/qwen/core/client.py] 新增排队重登日志聚合：_log_queued_relogin() 缓冲 60 秒，多账号 token 无效时合并为单条日志 [xxx*** and N other account(s)]，close() 时 hasattr 守卫兼容热重载旧实例
+[template/template_config.toml] 版本 2.2.144 -> 2.2.145
+[config.toml] 版本跟随模板 2.2.145
+[README.md] 版本徽章和路线图更新为 2.2.145
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.144 -> 2.2.145
+验证: py_compile client.py 通过; pytest 跳过（pre-existing echotools 迁移失败 + qwen 网络测试超时）

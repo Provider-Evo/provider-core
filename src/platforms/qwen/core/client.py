@@ -92,6 +92,7 @@ OSS_UPLOAD_TIMEOUT: int = 120
 HTTP_TIMEOUT: int = 30
 
 _PROXY_AUTO_EXPIRY = 86400
+_RELOGIN_LOG_BUFFER_SECS = 60
 
 
 class WAFBlockedError(Exception):
@@ -128,6 +129,8 @@ class QwenClient:
         self._proxy_override: Optional[bool] = None
         self._proxy_auto_enabled_at: Optional[float] = None
         self._proxy_selector = ProxySelector(Path(PROXY_SELECTOR_PERSIST_PATH))
+        self._relogin_log_buffer: List[str] = []
+        self._relogin_flush_task: Optional[asyncio.Task] = None
 
     def get_models(self) -> List[str]:
         """返回当前模型列表副本。"""
@@ -287,6 +290,11 @@ class QwenClient:
     async def close(self) -> None:
         """关闭客户端：停止后台任务，保存持久化。"""
         self._closing = True
+        if hasattr(self, '_relogin_flush_task') and self._relogin_flush_task and not self._relogin_flush_task.done():
+            self._relogin_flush_task.cancel()
+            self._relogin_flush_task = None
+        if hasattr(self, '_flush_relogin_buffer_now'):
+            self._flush_relogin_buffer_now()
         for task in self._bg_tasks:
             task.cancel()
         for task in self._bg_tasks:
@@ -486,6 +494,44 @@ class QwenClient:
                 self._save_persist()
 
     # =========================================================================
+    # 排队重登日志聚合
+    # =========================================================================
+
+    def _log_queued_relogin(self, username_prefix: str) -> None:
+        """缓冲「排队重登」日志，60 秒后聚合输出，避免刷屏。"""
+        self._relogin_log_buffer.append(username_prefix)
+
+        if self._relogin_flush_task is None or self._relogin_flush_task.done():
+            self._relogin_flush_task = asyncio.create_task(
+                self._flush_relogin_buffer()
+            )
+
+    async def _flush_relogin_buffer(self) -> None:
+        """等待缓冲窗口后聚合输出排队重登日志。"""
+        await asyncio.sleep(_RELOGIN_LOG_BUFFER_SECS)
+        self._flush_relogin_buffer_now()
+
+    def _flush_relogin_buffer_now(self) -> None:
+        """立即聚合输出缓冲区中的排队重登日志（同步）。"""
+        buffer = self._relogin_log_buffer
+        self._relogin_log_buffer = []
+        self._relogin_flush_task = None
+
+        if not buffer:
+            return
+
+        if len(buffer) == 1:
+            logger.debug(
+                "Qwen 初始登录: token 无效 [%s***]，排队重登",
+                buffer[0],
+            )
+        else:
+            logger.debug(
+                "Qwen 初始登录: token 无效 [%s*** and %d other account(s)]，排队重登",
+                buffer[0], len(buffer) - 1,
+            )
+
+    # =========================================================================
     # 登录与 Token 管理（统一轮询式）
     # =========================================================================
 
@@ -502,10 +548,7 @@ class QwenClient:
             if acc.is_login and acc.token:
                 # 验证持久化恢复的 token 是否仍有效
                 if not await self._validate_token(acc):
-                    logger.debug(
-                        "Qwen 初始登录: token 无效 [%s***]，排队重登",
-                        acc.username[:6],
-                    )
+                    self._log_queued_relogin(acc.username[:6])
                     acc.is_login = False
                     acc.token = ""
                     need_login.append(acc)
