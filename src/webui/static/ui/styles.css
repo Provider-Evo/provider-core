@@ -550,6 +550,90 @@ textarea:focus {
   animation: chatSpinnerRotate 0.8s linear infinite;
 }
 
+/* Code blocks */
+.chat-codeblock-wrapper {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 8px 0;
+  background: var(--panel-alt);
+}
+.chat-codeblock-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.chat-codeblock-lang {
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: lowercase;
+  margin-right: auto;
+}
+.chat-codeblock-tabs {
+  display: flex;
+  gap: 2px;
+}
+.chat-codeblock-tab {
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+.chat-codeblock-tab.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+.chat-codeblock-copy,
+.chat-codeblock-collapse {
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+.chat-codeblock-copy:hover,
+.chat-codeblock-collapse:hover {
+  background: var(--panel-alt);
+  color: var(--text);
+}
+.chat-codeblock-body {
+  overflow: auto;
+}
+.chat-codeblock {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.chat-codeblock code {
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+}
+.chat-codeblock-preview {
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.chat-inline-code {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
 /* Section stagger children - disabled to prevent tab-switch reflow */
 section.tab-panel > * {
   opacity: 1;

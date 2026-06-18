@@ -2084,3 +2084,13 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.148
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.147 -> 2.2.148
 验证: py_compile request_log.py + server.py 通过
+
+2026-06-19 16:00:00
+
+[src/webui/static/chat/chat.js] 代码块渲染重构：_codeBlockStore 数组存储原始代码避免 HTML 属性双引号转义截断；preview 改用独立 div 容器渲染 HTML；新增折叠/展开按钮；选项卡切换显示/隐藏对应容器
+[src/webui/static/ui/styles.css] 新增代码块完整 CSS：wrapper/header/lang/tabs/tab/copy/collapse/body/code/preview/inline-code 样式
+[template/template_config.toml] 版本 2.2.148 -> 2.2.149
+[config.toml] 版本跟随模板 2.2.149
+[README.md] 版本徽章和路线图更新为 2.2.149
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.148 -> 2.2.149
+纯前端 JS/CSS 变更，无需 py_compile

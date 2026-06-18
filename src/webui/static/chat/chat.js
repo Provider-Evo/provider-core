@@ -79,6 +79,8 @@ function renderInlineMarkdown(text) {
  * @param {string} text - 原始文本
  * @returns {string} HTML 字符串
  */
+var _codeBlockStore = [];
+
 function renderWithCodeBlocks(text) {
   // Extract code blocks first (protect from escaping and markdown)
   var codeBlocks = [];
@@ -98,7 +100,6 @@ function renderWithCodeBlocks(text) {
   var resultLines = [];
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
-    // Headers
     var hMatch = line.match(/^(#{1,6})\s+(.+)$/);
     if (hMatch) {
       var level = hMatch[1].length;
@@ -106,28 +107,23 @@ function renderWithCodeBlocks(text) {
       resultLines.push('<h' + level + ' style="margin:8px 0 4px;font-size:' + sizes[level] + ';font-weight:bold;">' + renderInlineMarkdown(hMatch[2]) + '</h' + level + '>');
       continue;
     }
-    // Unordered list items (* or -)
     var ulMatch = line.match(/^(\s*)[*-]\s+(.+)$/);
     if (ulMatch) {
       var indent = Math.floor(ulMatch[1].length / 2);
       resultLines.push('<div style="padding-left:' + (indent * 20 + 16) + 'px;">\u2022 ' + renderInlineMarkdown(ulMatch[2]) + '</div>');
       continue;
     }
-    // Ordered list items
     var olMatch = line.match(/^(\s*)(\d+)[.)]\s+(.+)$/);
     if (olMatch) {
       var indent2 = Math.floor(olMatch[1].length / 2);
       resultLines.push('<div style="padding-left:' + (indent2 * 20 + 16) + 'px;">' + olMatch[2] + '. ' + renderInlineMarkdown(olMatch[3]) + '</div>');
       continue;
     }
-    // Regular line with inline markdown
     resultLines.push(renderInlineMarkdown(line));
   }
   processed = resultLines.join('\n');
 
-  // Convert newlines to <br>, but not after block-level elements
   processed = processed.replace(/\n/g, function(match, offset) {
-    // Check if the preceding content ends with a block-level closing tag
     var before = processed.substring(Math.max(0, offset - 30), offset);
     if (/<\/(h[1-6]|div|pre|ul|ol|li|table|blockquote)>\s*$/.test(before)) {
       return '';
@@ -135,9 +131,11 @@ function renderWithCodeBlocks(text) {
     return '<br>';
   });
 
-  // Restore code blocks with toggle and raw storage
+  // Restore code blocks — store raw code in JS Map, render with collapse/expand
   for (var j = 0; j < codeBlocks.length; j++) {
     var cb = codeBlocks[j];
+    var storeIdx = _codeBlockStore.length;
+    _codeBlockStore.push(cb.code);
     var langClass = cb.lang ? ' class="language-' + cb.lang.toLowerCase() + '"' : '';
     var langLabel = cb.lang ? cb.lang.toLowerCase() : 'code';
     var escapedCode = escapeHtml(cb.code);
@@ -155,8 +153,12 @@ function renderWithCodeBlocks(text) {
           '<span class="chat-codeblock-lang">' + langLabel + '</span>' +
           tabsHtml +
           '<button class="chat-codeblock-copy" type="button">复制</button>' +
+          '<button class="chat-codeblock-collapse" type="button" title="折叠/展开">\u25B2</button>' +
         '</div>' +
-        '<pre class="chat-codeblock" data-raw-code="' + escapedCode + '"><code' + langClass + '>' + escapedCode + '</code></pre>' +
+        '<div class="chat-codeblock-body">' +
+          '<pre class="chat-codeblock" data-cb-index="' + storeIdx + '"><code' + langClass + '>' + escapedCode + '</code></pre>' +
+          '<div class="chat-codeblock-preview" data-cb-index="' + storeIdx + '" style="display:none;"></div>' +
+        '</div>' +
       '</div>';
     processed = processed.replace(sentinel + j + sentinel, blockHtml);
   }
@@ -380,9 +382,10 @@ document.addEventListener("click", function(e) {
   // Code block copy button
   var btn = e.target.closest(".chat-codeblock-copy");
   if (btn) {
-    var pre = btn.closest('.chat-codeblock-wrapper').querySelector('.chat-codeblock');
-    if (!pre) return;
-    var raw = pre.getAttribute('data-raw-code') || pre.textContent || '';
+    var wrapper = btn.closest('.chat-codeblock-wrapper');
+    var pre = wrapper ? wrapper.querySelector('.chat-codeblock') : null;
+    var idx = pre ? parseInt(pre.getAttribute('data-cb-index'), 10) : -1;
+    var raw = (idx >= 0 && idx < _codeBlockStore.length) ? _codeBlockStore[idx] : (pre ? pre.textContent : '');
     navigator.clipboard.writeText(raw).then(function() {
       btn.textContent = "已复制";
       btn.classList.add("is-copied");
@@ -394,24 +397,42 @@ document.addEventListener("click", function(e) {
     return;
   }
 
+  // Code block collapse/expand toggle
+  var collapseBtn = e.target.closest(".chat-codeblock-collapse");
+  if (collapseBtn) {
+    var wrapper = collapseBtn.closest('.chat-codeblock-wrapper');
+    if (!wrapper) return;
+    var body = wrapper.querySelector('.chat-codeblock-body');
+    if (!body) return;
+    var isCollapsed = body.style.display === 'none';
+    body.style.display = isCollapsed ? '' : 'none';
+    collapseBtn.textContent = isCollapsed ? '\u25B2' : '\u25BC';
+    return;
+  }
+
   // Code block preview/code toggle
   var tab = e.target.closest(".chat-codeblock-tab");
   if (tab) {
     var wrapper = tab.closest('.chat-codeblock-wrapper');
     if (!wrapper) return;
     var pre = wrapper.querySelector('.chat-codeblock');
-    var codeEl = pre.querySelector('code');
+    var previewDiv = wrapper.querySelector('.chat-codeblock-preview');
+    var idx = pre ? parseInt(pre.getAttribute('data-cb-index'), 10) : -1;
+    var raw = (idx >= 0 && idx < _codeBlockStore.length) ? _codeBlockStore[idx] : '';
     var mode = tab.getAttribute('data-tab');
-    // Update active tab
     wrapper.querySelectorAll('.chat-codeblock-tab').forEach(function(t) {
       t.classList.toggle('is-active', t === tab);
     });
     if (mode === 'code') {
-      codeEl.textContent = pre.getAttribute('data-raw-code') || '';
+      if (pre) pre.style.display = '';
+      if (previewDiv) previewDiv.style.display = 'none';
     } else {
-      // preview mode: render HTML content
-      var raw = pre.getAttribute('data-raw-code') || '';
-      codeEl.innerHTML = raw;
+      // preview mode: render HTML in the preview div
+      if (pre) pre.style.display = 'none';
+      if (previewDiv) {
+        previewDiv.style.display = '';
+        previewDiv.innerHTML = raw;
+      }
     }
     return;
   }
