@@ -700,10 +700,15 @@ async function loadChatState() {
             for (var i = 0; i < chatConversationHistory.length; i++) {
               var msg = chatConversationHistory[i];
               if (msg.role === "tool") continue;
-              appendChatMessage(msg.role, msg.content || '', {
-                toolCalls: msg.tool_calls,
-                files: msg.files || null
-              });
+              try {
+                console.log('[loadChatState] rendering', i, msg.role, (msg.content || '').substring(0, 30), msg.tool_calls ? 'has_tools' : '');
+                appendChatMessage(msg.role, msg.content || '', {
+                  toolCalls: msg.tool_calls,
+                  files: msg.files || null
+                });
+              } catch (renderErr) {
+                console.error('[loadChatState] Failed to render message', i, msg.role, renderErr);
+              }
             }
           }
           return;

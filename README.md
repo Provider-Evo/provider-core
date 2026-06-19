@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.151-blue)
-![Version](https://img.shields.io/badge/version-2.2.151-blue)
+![Status](https://img.shields.io/badge/status-v2.2.152-blue)
+![Version](https://img.shields.io/badge/version-2.2.152-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.151
+### 当前版本：v2.2.152
+
+✅ 已完成（v2.2.152）：
+- 聊天历史加载添加调试日志和逐条错误处理，定位首条助手消息消失问题
 
 ✅ 已完成（v2.2.151）：
 - 修复聊天历史加载竞态：sendChatMessage 等待 loadChatState 完成后再读取历史

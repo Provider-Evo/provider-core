@@ -2113,3 +2113,12 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.151
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.150 -> 2.2.151
 纯前端 JS 变更，无需 py_compile
+
+2026-06-19 23:30:00
+
+[src/webui/static/chat/chat.js] loadChatState 渲染循环添加逐条 try/catch 和 console.log 调试日志，定位首条助手消息消失问题
+[template/template_config.toml] 版本 2.2.151 -> 2.2.152
+[config.toml] 版本跟随模板 2.2.152
+[README.md] 版本徽章和路线图更新为 2.2.152
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.151 -> 2.2.152
+纯前端 JS 变更，无需 py_compile
