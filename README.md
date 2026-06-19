@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.163-blue)
-![Version](https://img.shields.io/badge/version-2.2.163-blue)
+![Status](https://img.shields.io/badge/status-v2.2.164-blue)
+![Version](https://img.shields.io/badge/version-2.2.164-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,11 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.163
+### 当前版本：v2.2.164
+
+✅ 已完成（v2.2.164）：
+- 修正 zen 平台日志 format 字符串（{} → %d/%s），修复占位符原样输出 bug
+- ollama 平台空网络发现日志从 WARNING 降级为 DEBUG
 
 ✅ 已完成（v2.2.163）：
 - 新增 native_tools 能力 — 平台可声明原生工具调用支持，跳过 inject_fncall 直接传递 tools

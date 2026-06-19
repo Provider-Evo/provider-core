@@ -73,7 +73,7 @@ class ZenAdapter(PlatformAdapter):
         try:
             await self._client.background_setup()
         except Exception as e:
-            logger.warning("zen后台初始化失败: {}", e)
+            logger.warning("zen后台初始化失败: %s", e)
 
         if self._cache is not None:
             asyncio.ensure_future(
@@ -89,7 +89,7 @@ class ZenAdapter(PlatformAdapter):
         self._models = models
         if self._client is not None:
             self._client.update_models(models)
-        logger.info("zen模型列表已更新: {}个", len(models))
+        logger.info("zen模型列表已更新: %d个", len(models))
 
     async def fetch_remote_models(self) -> List[str]:
         """拉取远程模型列表，委托给client。"""

@@ -35,6 +35,8 @@ config.toml
 
 # File names
 .DS_Store
+RAW.md
+raw.md
 agents.md
 AGENTS.md
 CLAUDE.md

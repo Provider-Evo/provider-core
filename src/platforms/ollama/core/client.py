@@ -938,7 +938,7 @@ def _do_refresh(
 
     # 网络返回空结果但缓存有数据时，保留缓存不覆盖（网络故障保护）
     if not servers and cached_servers and not skip_network:
-        logger.warning(
+        logger.debug(
             "ollama网络发现返回空结果，保留缓存（%d服务器, %d模型）",
             len(cached_servers),
             len(cached_registry),

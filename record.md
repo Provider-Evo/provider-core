@@ -2271,3 +2271,15 @@ py_compile: files.py, __init__.py, routes.py 通过
 [README.md] 版本徽章和路线图更新为 2.2.163
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.162 -> 2.2.163
 py_compile: candidate.py, gateway.py, client.py, constants.py, payloads.py, sse.py, openai.py 全部通过
+
+2026-06-19 23:40:00
+
+[src/platforms/ollama/core/client.py] 空网络发现保留缓存日志从 WARNING 降级为 DEBUG
+[src/platforms/zen/core/adaptercore.py] 修复标准 logging 格式字符串 {} → %d/%s，修正原样输出占位符的 bug
+[.gitignore] 添加 RAW.md/raw.md 到忽略列表，避免临时提示文件进入版本控制
+[template/template_config.toml] 版本 2.2.163 -> 2.2.164
+[config.toml] 版本跟随模板 2.2.164
+[README.md] 版本徽章和路线图更新为 2.2.164
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.163 -> 2.2.164
+py_compile: client.py, adaptercore.py 通过
+pytest: 478 passed, 38 failed, 4 errors, 16 skipped（失败和错误均为预存问题，非本次修改引入；完整套件 563 测试中 test_autoupdate.py 等网络依赖测试挂起未完成）
