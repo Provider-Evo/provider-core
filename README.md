@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.158-blue)
-![Version](https://img.shields.io/badge/version-2.2.158-blue)
+![Status](https://img.shields.io/badge/status-v2.2.159-blue)
+![Version](https://img.shields.io/badge/version-2.2.159-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,11 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.158
+### 当前版本：v2.2.159
+
+✅ 已完成（v2.2.159）：
+- persist_get 文件不存在时返回 200 null 而非 404，消除控制台报错
+- index.html 添加 console.warn 过滤器抑制 Tailwind CDN 生产环境警告
 
 ✅ 已完成（v2.2.158）：
 - echotools 1.0.25：修复 Windows asyncio ProactorEventLoop ConnectionResetError（终端关闭时 [WinError 10054] 日志噪音）

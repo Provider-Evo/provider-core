@@ -2191,3 +2191,13 @@ echotools 1.0.24 已发布到 PyPI
 [README.md] 版本徽章和路线图更新为 2.2.158
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.157 -> 2.2.158
 echotools 1.0.25 已发布到 PyPI，无需 py_compile
+
+2026-06-19 16:30:00
+
+[src/webui/routers/admin.py] persist_get 文件不存在时返回 200 null 而非 404，消除控制台报错
+[src/webui/static/index.html] 添加 console.warn 过滤器抑制 Tailwind CDN 生产环境警告
+[template/template_config.toml] 版本 2.2.158 -> 2.2.159
+[config.toml] 版本跟随模板 2.2.159
+[README.md] 版本徽章和路线图更新为 2.2.159
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.158 -> 2.2.159
+py_compile: admin.py 通过

@@ -104,7 +104,7 @@ async def persist_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
                 data = json.load(f)
         return aiohttp.web.json_response(data)
     except FileNotFoundError:
-        return aiohttp.web.json_response({"error": "not found"}, status=404)
+        return aiohttp.web.json_response(None)
     except Exception as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)
 
