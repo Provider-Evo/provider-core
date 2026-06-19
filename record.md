@@ -2182,3 +2182,12 @@ echotools 1.0.24 已发布到 PyPI
 [README.md] 版本徽章和路线图更新为 2.2.157
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.156 -> 2.2.157
 纯前端 JS 修复，无需 py_compile
+
+2026-06-19 16:00:00
+
+[requirements.txt] echotools 版本要求从 >=1.0.24 更新为 >=1.0.25，修复 Windows asyncio ProactorEventLoop ConnectionResetError
+[template/template_config.toml] 版本 2.2.157 -> 2.2.158
+[config.toml] 版本跟随模板 2.2.158
+[README.md] 版本徽章和路线图更新为 2.2.158
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.157 -> 2.2.158
+echotools 1.0.25 已发布到 PyPI，无需 py_compile
