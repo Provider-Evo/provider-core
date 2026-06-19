@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.150-blue)
-![Version](https://img.shields.io/badge/version-2.2.150-blue)
+![Status](https://img.shields.io/badge/status-v2.2.151-blue)
+![Version](https://img.shields.io/badge/version-2.2.151-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.150
+### 当前版本：v2.2.151
+
+✅ 已完成（v2.2.151）：
+- 修复聊天历史加载竞态：sendChatMessage 等待 loadChatState 完成后再读取历史
 
 ✅ 已完成（v2.2.150）：
 - 聊天工具定义持久化（保存到 persist/webui/tools.json，页面加载自动恢复）

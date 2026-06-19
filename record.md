@@ -2104,3 +2104,12 @@ pytest: (pending)
 [README.md] 版本徽章和路线图更新为 2.2.150
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.149 -> 2.2.150
 纯前端 JS 变更，无需 py_compile
+
+2026-06-19 22:00:00
+
+[src/webui/static/chat/chat.js] 修复聊天历史加载竞态：loadChatState 返回 promise 存入 _chatStateLoaded；sendChatMessage 开头 await _chatStateLoaded 确保历史加载完毕；localStorage 回退增加 JSON 解析保护
+[template/template_config.toml] 版本 2.2.150 -> 2.2.151
+[config.toml] 版本跟随模板 2.2.151
+[README.md] 版本徽章和路线图更新为 2.2.151
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.150 -> 2.2.151
+纯前端 JS 变更，无需 py_compile

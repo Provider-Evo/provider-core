@@ -644,6 +644,7 @@ async function loadModelsList() {
 // ========================= Send Chat Message (Streaming) =========================
 var chatConversationHistory = [];
 var _chatAbortController = null;
+var _chatStateLoaded = null;
 
 function _setStreaming(isStreaming) {
   if (!window._chatInputBox) return;
@@ -682,6 +683,7 @@ function saveChatState() {
 }
 
 async function loadChatState() {
+  _chatStateLoaded = (async function() {
   try {
     // Try loading from backend persist first
     if (typeof persistLoad === 'function') {
@@ -712,17 +714,33 @@ async function loadChatState() {
     var hist = localStorage.getItem("provider.webui.chatHistory");
     var dom = localStorage.getItem("provider.webui.chatDom");
     var count = localStorage.getItem("provider.webui.userMsgCount");
-    if (hist) chatConversationHistory = JSON.parse(hist);
+    if (hist) {
+      try {
+        var parsed = JSON.parse(hist);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          chatConversationHistory = parsed;
+        }
+      } catch (e) { /* corrupt JSON */ }
+    }
     if (count) _userMsgCount = parseInt(count, 10) || 0;
     if (dom) {
       var container = document.getElementById("chatMessagesContainer");
-      if (container) container.innerHTML = dom;
+      if (container && (!chatConversationHistory || chatConversationHistory.length === 0)) {
+        container.innerHTML = dom;
+      }
     }
   } catch (e) { /* corrupt data */ }
+  })();
+  return _chatStateLoaded;
 }
 
 async function sendChatMessage(text, files) {
   if (!text && (!files || files.length === 0)) return;
+  // Ensure chat history is loaded before sending
+  if (_chatStateLoaded) {
+    try { await _chatStateLoaded; } catch (e) {}
+    _chatStateLoaded = null;
+  }
 
   var model = document.getElementById("chatModelSelect").value;
   var protocol = document.getElementById("chatProtocolSelect").value;
