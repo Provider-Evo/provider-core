@@ -28,6 +28,10 @@ var FileManager = (function () {
   var _searchActiveIdx = -1;
   var _searchAbortCtrl = null;
 
+  // Filesystem root state (drives on Windows, ["/"] on Linux)
+  var _drives = null;       // cached from GET /v1/webui/files/drives
+  var _projectRoot = null;  // cached from GET /v1/webui/files/project-root
+
   // DOM references
   var _container = null;
   var _tabBar = null;
@@ -35,7 +39,82 @@ var FileManager = (function () {
 
   // ========================= Initialization =========================
 
-  function init() {
+  async function _fetchDrives() {
+    try {
+      var data = await Api.fetchJson('/v1/webui/files/drives');
+      _drives = data.drives || ['/'];
+    } catch (e) {
+      _drives = ['/'];
+    }
+  }
+
+  async function _fetchProjectRoot() {
+    try {
+      var data = await Api.fetchJson('/v1/webui/files/project-root');
+      _projectRoot = data.path || '/';
+    } catch (e) {
+      _projectRoot = '/';
+    }
+  }
+
+  /**
+   * Return true when *path* represents the OS "root" view
+   * (the drives list on Windows, or "/" on Linux).
+   */
+  function _isRootView(path) {
+    if (!path || path === '/') return true;
+    return false;
+  }
+
+  /**
+   * Return the parent of *path*, or "/" if already at the root.
+   * Works with both Unix (/home/user) and Windows (C:\Users) paths.
+   */
+  function _parentPath(path) {
+    if (!path || path === '/') return '/';
+
+    // Normalise separators
+    var norm = path.replace(/\\/g, '/');
+
+    // Windows drive root: "C:/" → "/"  (drives view)
+    if (/^[a-zA-Z]:\/?$/.test(norm)) return '/';
+
+    // Strip trailing separator
+    norm = norm.replace(/[\/\\]+$/, '');
+
+    var lastSlash = norm.lastIndexOf('/');
+    if (lastSlash <= 0) {
+      // Check if it's a Windows path like "C:" (no slash at all after norm)
+      if (/^[a-zA-Z]:$/.test(norm)) return '/';
+      // Plain Unix path like "/foo" → parent is "/"
+      return '/';
+    }
+
+    var parent = norm.substring(0, lastSlash);
+
+    // Windows: "C:/Users" → "C:\"
+    var winMatch = parent.match(/^([a-zA-Z]:)$/);
+    if (winMatch) return winMatch[1] + '\\';
+
+    // Windows: "C:/Users" parent might be "C:" → that's the drive root
+    // Already handled above by the regex test
+
+    return parent;
+  }
+
+  /**
+   * Join a directory path with a child name, cross-platform.
+   */
+  function _pathJoin(basePath, name) {
+    if (!basePath || basePath === '/') return '/' + name;
+    var norm = basePath.replace(/\\/g, '/');
+    if (norm.endsWith('/')) return norm + name;
+    // Windows drive root: "C:\" → "C:\name"
+    if (/^[a-zA-Z]:\\$/.test(basePath)) return basePath + name;
+    return basePath.replace(/[\/\\]+$/, '') + '/' + name;
+  }
+
+  async function init() {
     _container = document.getElementById('filesContainer');
     _tabBar = document.getElementById('filesTabBar');
     _body = document.getElementById('filesBody');
@@ -228,6 +307,10 @@ var FileManager = (function () {
         deactivate: function () { _onDeactivate(); },
       });
     }
+
+    // Fetch drives and project root before restoring session
+    await _fetchDrives();
+    await _fetchProjectRoot();
 
     // Restore saved tabs
     _restoreSession();
@@ -446,12 +529,8 @@ var FileManager = (function () {
   }
 
   function _goUp(tab) {
-    var path = tab.path;
-    if (path === '/' || !path) return;
-    var parts = path.replace(/\/$/, '').split('/').filter(Boolean);
-    parts.pop();
-    var parent = '/' + parts.join('/');
-    if (!parent || parent === '') parent = '/';
+    var parent = _parentPath(tab.path);
+    if (parent === tab.path) return; // already at root, nowhere to go
     _navigateTo(tab, parent);
   }
 
@@ -530,38 +609,85 @@ var FileManager = (function () {
     upBtn.className = 'files-nav-btn';
     upBtn.innerHTML = '&#9650;';
     upBtn.title = 'Parent directory';
-    upBtn.disabled = tab.path === '/';
+    upBtn.disabled = _isRootView(tab.path);
     upBtn.addEventListener('click', function () { _goUp(tab); });
     toolbar.appendChild(upBtn);
 
     // Breadcrumb
     var breadcrumb = document.createElement('div');
     breadcrumb.className = 'files-breadcrumb';
-    var segments = tab.path.split('/').filter(Boolean);
 
-    // Root segment
+    // Parse the current path into segments for the breadcrumb
+    var normPath = (tab.path || '/').replace(/\\/g, '/');
+    var isWinDrive = /^[a-zA-Z]:/.test(normPath);
+
+    // Root segment — clicking navigates to the drives/root view
     var rootSeg = document.createElement('span');
-    rootSeg.className = 'files-breadcrumb-seg' + (segments.length === 0 ? ' current' : '');
+    rootSeg.className = 'files-breadcrumb-seg' + (_isRootView(tab.path) ? ' current' : '');
     rootSeg.textContent = '/';
     rootSeg.addEventListener('click', function () { _navigateTo(tab, '/'); });
     breadcrumb.appendChild(rootSeg);
 
-    for (var i = 0; i < segments.length; i++) {
-      var sep = document.createElement('span');
-      sep.className = 'files-breadcrumb-sep';
-      sep.textContent = '/';
-      breadcrumb.appendChild(sep);
+    if (isWinDrive) {
+      // Windows path: show drive letter as first segment, then sub-dirs
+      var driveLetter = normPath.substring(0, 2); // e.g. "C:"
+      var rest = normPath.substring(2); // e.g. "/Users/Foo" or "" or "/"
+      var segments = rest.split('/').filter(Boolean);
 
-      var seg = document.createElement('span');
-      seg.className = 'files-breadcrumb-seg' + (i === segments.length - 1 ? ' current' : '');
-      seg.textContent = segments[i];
-      (function (idx) {
-        seg.addEventListener('click', function () {
-          var p = '/' + segments.slice(0, idx + 1).join('/');
-          _navigateTo(tab, p);
+      // Drive segment
+      var sep0 = document.createElement('span');
+      sep0.className = 'files-breadcrumb-sep';
+      sep0.textContent = '/';
+      breadcrumb.appendChild(sep0);
+
+      var driveSeg = document.createElement('span');
+      driveSeg.className = 'files-breadcrumb-seg' + (segments.length === 0 ? ' current' : '');
+      driveSeg.textContent = driveLetter;
+      (function (dl) {
+        driveSeg.addEventListener('click', function () {
+          _navigateTo(tab, dl + '\\');
         });
-      })(i);
-      breadcrumb.appendChild(seg);
+      })(driveLetter);
+      breadcrumb.appendChild(driveSeg);
+
+      // Sub-directory segments
+      for (var wi = 0; wi < segments.length; wi++) {
+        var wsep = document.createElement('span');
+        wsep.className = 'files-breadcrumb-sep';
+        wsep.textContent = '/';
+        breadcrumb.appendChild(wsep);
+
+        var wseg = document.createElement('span');
+        wseg.className = 'files-breadcrumb-seg' + (wi === segments.length - 1 ? ' current' : '');
+        wseg.textContent = segments[wi];
+        (function (dl, segs, idx) {
+          wseg.addEventListener('click', function () {
+            var p = dl + '\\' + segs.slice(0, idx + 1).join('\\');
+            _navigateTo(tab, p);
+          });
+        })(driveLetter, segments, wi);
+        breadcrumb.appendChild(wseg);
+      }
+    } else {
+      // Unix-style path
+      var segments = normPath.split('/').filter(Boolean);
+      for (var i = 0; i < segments.length; i++) {
+        var sep = document.createElement('span');
+        sep.className = 'files-breadcrumb-sep';
+        sep.textContent = '/';
+        breadcrumb.appendChild(sep);
+
+        var seg = document.createElement('span');
+        seg.className = 'files-breadcrumb-seg' + (i === segments.length - 1 ? ' current' : '');
+        seg.textContent = segments[i];
+        (function (idx) {
+          seg.addEventListener('click', function () {
+            var p = '/' + segments.slice(0, idx + 1).join('/');
+            _navigateTo(tab, p);
+          });
+        })(i);
+        breadcrumb.appendChild(seg);
+      }
     }
 
     breadcrumb.addEventListener('dblclick', function (e) {
@@ -570,6 +696,16 @@ var FileManager = (function () {
     });
 
     toolbar.appendChild(breadcrumb);
+
+    // Project root shortcut button
+    if (_projectRoot) {
+      var projBtn = document.createElement('button');
+      projBtn.className = 'files-nav-btn files-project-btn';
+      projBtn.innerHTML = '&#128193;';
+      projBtn.title = 'Project root';
+      projBtn.addEventListener('click', function () { _navigateTo(tab, _projectRoot); });
+      toolbar.appendChild(projBtn);
+    }
 
     // Search input
     var searchWrapper = document.createElement('div');
@@ -1266,7 +1402,7 @@ var FileManager = (function () {
 
   async function _deleteEntries(tab, paths) {
     var msg = paths.length === 1 ?
-      'Delete "' + paths[0].split('/').pop() + '"?' :
+      'Delete "' + paths[0].split(/[\/\\]/).pop() + '"?' :
       'Delete ' + paths.length + ' items?';
     if (!confirm(msg)) return;
 
@@ -1323,8 +1459,8 @@ var FileManager = (function () {
       var newName = input.value.trim();
       if (!newName || newName === entry.name) { overlay.remove(); return; }
 
-      var parentPath = entry.path.replace(/\/[^/]+\/?$/, '') || '/';
-      var newPath = (parentPath === '/' ? '/' : parentPath + '/') + newName;
+      var parentPath = entry.path.replace(/[\/\\][^\/\\]+[\/\\]?$/, '') || '/';
+      var newPath = _pathJoin(parentPath, newName);
 
       Api.post('/v1/webui/files/rename', {
         old_path: entry.path,
@@ -1350,10 +1486,7 @@ var FileManager = (function () {
     var name = prompt('New folder name:');
     if (!name || !name.trim()) return;
 
-    var basePath = tab.path === '/' ? '' : tab.path;
-    var newPath = '/' + basePath.replace(/^\//, '') + '/' + name.trim();
-    // Clean double slashes
-    newPath = newPath.replace(/\/+/g, '/');
+    var newPath = _pathJoin(tab.path, name.trim());
 
     Api.post('/v1/webui/files/mkdir', { path: newPath }).then(function () {
       if (typeof toast === 'function') toast('Folder created', 'ok');
@@ -1808,7 +1941,16 @@ var FileManager = (function () {
 
   function _pathDisplayName(path) {
     if (!path || path === '/') return 'Root';
-    var parts = path.replace(/\/$/, '').split('/').filter(Boolean);
+    // Windows drive letter: "C:\", "C:\Users", etc.
+    var winMatch = path.match(/^([a-zA-Z]:\\?)(.*)/);
+    if (winMatch) {
+      var rest = winMatch[2];
+      if (!rest || rest === '\\') return winMatch[1].replace(/\\$/, '');
+      var parts = rest.split(/[\/\\]/).filter(Boolean);
+      return parts[parts.length - 1] || winMatch[1].replace(/\\$/, '');
+    }
+    // Unix paths
+    var parts = path.replace(/[\/\\]+$/, '').split(/[\/\\]/).filter(Boolean);
     return parts[parts.length - 1] || 'Root';
   }
 
@@ -2011,9 +2153,9 @@ var FileManager = (function () {
   }
 
   function _searchRelativePath(filePath, searchDir) {
-    // Compute a display-friendly relative path from searchDir to the file's parent
-    var normDir = searchDir.replace(/\/$/, '') || '/';
-    var normPath = filePath.replace(/\/$/, '');
+    // Normalise both paths to use forward slashes for comparison
+    var normDir = (searchDir || '/').replace(/\\/g, '/').replace(/\/$/, '') || '/';
+    var normPath = (filePath || '').replace(/\\/g, '/').replace(/\/$/, '');
 
     // Get parent directory of the result
     var lastSlash = normPath.lastIndexOf('/');
@@ -2044,8 +2186,7 @@ var FileManager = (function () {
       _navigateTo(tab, entry.path);
     } else {
       // Navigate to parent directory, then highlight the file
-      var lastSlash = entry.path.lastIndexOf('/');
-      var parentDir = lastSlash > 0 ? entry.path.substring(0, lastSlash) : '/';
+      var parentDir = _parentPath(entry.path);
       if (!parentDir) parentDir = '/';
 
       _navigateTo(tab, parentDir);

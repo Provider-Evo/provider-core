@@ -39,7 +39,7 @@ function TerminalRenderer(container, cols, rows) {
   // Path detection regex for clickable file/directory paths in terminal output
   // Matches: absolute Windows paths (C:\foo\bar), absolute Unix paths (/home/user/...),
   // and common relative paths with extensions (src/foo.py, ./bar.js, ../lib/utils.ts)
-  var _PATH_REGEX = /(?:[A-Z]:\\(?:[^\s<>|"*?]+\\)*[^\s<>|"*?]+)|(?:\/(?:[\w.-]+\/)*[\w.-]+(?:\.[\w]+)?)|(?:(?:\.{0,2}\/[\w.-]+)+\.[\w]+)/gi;
+  var _PATH_REGEX = /(?:[A-Z]:\\(?:[^\s<>|"*?>]+\\)*[^\s<>|"*?>]+)|(?:\/(?:[\w.-]+\/)*[\w.-]+(?:\.[\w]+)?)|(?:(?:\.{0,2}\/[\w.-]+)+\.[\w]+)/gi;
 
   function _escapeAttr(text) {
     return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
@@ -103,14 +103,14 @@ function TerminalRenderer(container, cols, rows) {
     switch (e.key) {
       case 'Enter':
         e.preventDefault(); e.stopPropagation();
-        if (_onDataCb) _onDataCb('\r\n');
+        if (_onDataCb) _onDataCb('\r');
         return;
       case 'Backspace':
         e.preventDefault(); e.stopPropagation();
         if (e.ctrlKey) {
           if (_onDataCb) _onDataCb('\x17');
         } else {
-          if (_onDataCb) _onDataCb('\x08');
+          if (_onDataCb) _onDataCb('\x7f');
         }
         return;
       case 'Tab':
@@ -921,12 +921,83 @@ var TerminalManager = (function () {
       renderer.resize(dims.cols, dims.rows);
     }, 50);
 
-    // Input handler -- convert DEL to BS for Windows compatibility
+    // Local echo flag: default ON for Windows PIPE I/O (cmd.exe does not echo
+    // typed characters when stdin is a pipe). Unix PTY backends already echo,
+    // so set this to false if double-echo is observed.
+    var LOCAL_ECHO = true;
+
+    // Tracks characters typed on the current input line.
+    // Used only to gate Backspace so it cannot erase the shell prompt.
+    var _currentLine = '';
+
+    // Input handler with local echo for Windows PIPE I/O compatibility.
+    // Handles printable chars, Enter, Backspace, arrows, Ctrl keys, Tab.
     renderer.onData(function (data) {
-      if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
-        var fixed = data.replace(/\x7f/g, '\x08');
-        tab.ws.send(JSON.stringify({ type: 'input', data: fixed }));
+      // Helper: send data string to the backend via WebSocket
+      function _send(s) {
+        if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+          tab.ws.send(JSON.stringify({ type: 'input', data: s }));
+        }
       }
+
+      var code = data.charCodeAt(0);
+
+      // --- Enter (\r from _handleKeydown, or \r\n from paste) ---
+      if (data === '\r' || data === '\r\n') {
+        if (LOCAL_ECHO) renderer.write('\r\n');
+        _send('\r\n');  // cmd.exe PIPE I/O requires \r\n as line terminator
+        _currentLine = '';
+        return;
+      }
+
+      // --- Backspace (DEL \x7f or BS \x08) ---
+      if (code === 0x7f || code === 0x08) {
+        if (_currentLine.length > 0) {
+          _currentLine = _currentLine.slice(0, -1);
+          if (LOCAL_ECHO) renderer.write('\x08 \x08');  // BS space BS: erase char visually
+        }
+        // Send \x08 to backend (BS works with both cmd.exe PIPE and PTY)
+        _send('\x08');
+        return;
+      }
+
+      // --- Ctrl+W (word delete, from Ctrl+Backspace) ---
+      if (code === 0x17) {
+        // Erase all tracked line chars locally (best-effort visual cleanup)
+        if (LOCAL_ECHO) {
+          for (var w = 0; w < _currentLine.length; w++) {
+            renderer.write('\x08 \x08');
+          }
+        }
+        _currentLine = '';
+        _send(data);
+        return;
+      }
+
+      // --- Arrow keys (Up/Down/Left/Right), Home, End, etc. ---
+      // Forward to backend for shell history/cursor movement, no local echo.
+      if (code === 0x1b && data.length > 1) {
+        _send(data);
+        return;
+      }
+
+      // --- Tab (\x09) — forward for backend completion, no local echo ---
+      if (code === 0x09) {
+        _send(data);
+        return;
+      }
+
+      // --- Other control characters (Ctrl+A–Z, \x00–\x1a) ---
+      // Forward to backend, no local echo.
+      if (code < 0x20) {
+        _send(data);
+        return;
+      }
+
+      // --- Printable character (code >= 0x20, not DEL) ---
+      _currentLine += data;
+      if (LOCAL_ECHO) renderer.write(data);
+      _send(data);
     });
 
     // Connect WebSocket

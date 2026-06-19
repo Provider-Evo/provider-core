@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.164-blue)
-![Version](https://img.shields.io/badge/version-2.2.164-blue)
+![Status](https://img.shields.io/badge/status-v2.2.165-blue)
+![Version](https://img.shields.io/badge/version-2.2.165-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,11 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.164
+### 当前版本：v2.2.165
+
+✅ 已完成（v2.2.165）：
+- WebUI 文件管理器完全解锁：支持浏览整个文件系统，Windows 枚举盘符，Linux 直达根目录，新增项目根快捷按钮
+- WebUI 终端全量本地回显：修复 Windows PIPE I/O 下输入不可见，修正 Enter 行终止为 \r\n，修复提示符误染蓝色
 
 ✅ 已完成（v2.2.164）：
 - 修正 zen 平台日志 format 字符串（{} → %d/%s），修复占位符原样输出 bug

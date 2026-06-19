@@ -2,7 +2,7 @@
 # 复制此文件到项目根目录并重命名为 config.toml
 
 [server]
-version = "2.2.164"
+version = "2.2.165"
 host = "0.0.0.0"
 port = 1337
 debug = false

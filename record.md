@@ -2283,3 +2283,17 @@ py_compile: candidate.py, gateway.py, client.py, constants.py, payloads.py, sse.
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.163 -> 2.2.164
 py_compile: client.py, adaptercore.py 通过
 pytest: 478 passed, 38 failed, 4 errors, 16 skipped（失败和错误均为预存问题，非本次修改引入；完整套件 563 测试中 test_autoupdate.py 等网络依赖测试挂起未完成）
+
+2026-06-20 00:10:00
+
+[src/webui/routers/__init__.py] 导出 files_drives 和 files_project_root 两个新端点
+[src/webui/routers/files.py] 重写 _safe_resolve 去除项目根沙箱，新增 /drives 和 /project-root 端点，支持 Windows 盘符枚举和跨文件系统访问
+[src/webui/routes.py] 注册 GET /v1/webui/files/drives 和 GET /v1/webui/files/project-root
+[src/webui/static/files/files.js] 前端支持盘符/根目录浏览、跨平台面包屑导航、项目根快捷按钮
+[src/webui/static/terminal/terminal.js] 全量本地回显（兼容 Windows PIPE I/O）、Enter 行终止改回 \r\n、修复 _PATH_REGEX 漏排 > 导致提示符被染蓝
+[template/template_config.toml] 版本 2.2.164 -> 2.2.165
+[config.toml] 版本跟随模板 2.2.165
+[README.md] 版本徽章和路线图更新为 2.2.165
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.164 -> 2.2.165
+py_compile: files.py, routes.py, __init__.py 通过
+pytest: 414 passed, 50 failed, 4 errors（失败和错误均为预存问题，非本次修改引入；test_autoupdate.py/test_process.py/test_webui_async_tasks.py/platforms 等挂起测试已排除）

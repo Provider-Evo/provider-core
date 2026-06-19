@@ -3,7 +3,7 @@ from __future__ import annotations
 """WebUI File Manager API router.
 
 Provides file system browsing, reading, downloading, and basic
-file/directory operations scoped to the project root directory.
+file/directory operations across the entire host filesystem.
 """
 
 import base64
@@ -11,6 +11,7 @@ import mimetypes
 import os
 import shutil
 import stat
+import string
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -28,10 +29,19 @@ __all__ = [
     "files_copy",
     "files_move",
     "files_search",
+    "files_drives",
+    "files_project_root",
 ]
 
 # Project root: src/webui/routers/files.py -> project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+# Platform detection
+_IS_WINDOWS = os.name == "nt"
+
+# Sentinel returned by _safe_resolve when the caller should show the
+# Windows drives list (no real directory corresponds to "all drives").
+_DRIVES_SENTINEL = object()
 
 # Maximum file size for text preview (2 MB)
 _MAX_PREVIEW_SIZE = 2 * 1024 * 1024
@@ -54,28 +64,32 @@ _SENSITIVE_PATH_PARTS = frozenset({
 })
 
 
-def _safe_resolve(rel_path: str) -> Optional[Path]:
-    """Resolve a relative path and verify it stays within project root.
+def _safe_resolve(requested_path: str) -> Optional[Path]:
+    """Resolve *requested_path* to an absolute filesystem path.
 
-    Returns the resolved Path if safe, None otherwise.
+    No longer restricted to the project root.  Returns:
+    - ``_DRIVES_SENTINEL`` on Windows when the path represents "root"
+      (empty, ``/``, or ``\\``).
+    - A resolved :class:`Path` for any valid absolute or relative path.
+    - ``None`` when the input is malformed (null bytes).
     """
-    # Normalise: strip leading slashes so it's relative
-    rel_path = rel_path.strip().replace("\\", "/")
-    if rel_path.startswith("/"):
-        rel_path = rel_path[1:]
+    requested_path = requested_path.strip()
 
-    # Reject obvious traversal attempts before resolve
-    # (Path.resolve() handles most, but be explicit)
-    parts = Path(rel_path).parts
-    if ".." in parts:
+    # Reject null bytes
+    if "\x00" in requested_path:
         return None
 
-    resolved = (_PROJECT_ROOT / rel_path).resolve()
+    # Root-like paths: empty, "/", or bare "\"
+    if not requested_path or requested_path in ("/", "\\"):
+        if _IS_WINDOWS:
+            return _DRIVES_SENTINEL  # type: ignore[return-value]
+        return Path("/")
 
-    # Must start with project root
+    # Resolve as an absolute (or drive-relative) path.
+    # pathlib.Path handles both forward and back slashes on Windows.
     try:
-        resolved.relative_to(_PROJECT_ROOT)
-    except ValueError:
+        resolved = Path(requested_path).resolve()
+    except (OSError, ValueError):
         return None
 
     return resolved
@@ -89,17 +103,14 @@ def _entry_info(entry: Path) -> Dict[str, Any]:
         return {}
 
     is_dir = stat.S_ISDIR(st.st_mode)
-    rel = str(entry.relative_to(_PROJECT_ROOT)).replace("\\", "/")
-    # Represent root as "/"
-    if rel == ".":
-        rel = "/"
+    abs_path = str(entry)
 
     return {
         "name": entry.name,
         "type": "dir" if is_dir else "file",
         "size": st.st_size if not is_dir else None,
         "modified": st.st_mtime,
-        "path": "/" + rel if not rel.startswith("/") else rel,
+        "path": abs_path,
     }
 
 
@@ -118,12 +129,30 @@ def _is_binary_file(path: Path) -> bool:
 
 def _is_write_forbidden(path: Path) -> bool:
     """Return True if *path* touches a sensitive file or directory."""
-    parts = path.resolve().relative_to(_PROJECT_ROOT).parts
+    try:
+        parts = path.resolve().parts
+    except (OSError, ValueError):
+        parts = path.parts
     # Block writes inside or to sensitive path components
     for part in parts:
         if part in _SENSITIVE_PATH_PARTS:
             return True
     return False
+
+
+def _get_drives() -> List[str]:
+    """Return a list of available root paths.
+
+    Windows: drive letters that exist (e.g. ``["C:\\", "D:\\"]``).
+    Linux/Mac: ``["/"]``.
+    """
+    if _IS_WINDOWS:
+        drives: List[str] = []
+        for letter in string.ascii_uppercase:
+            if os.path.exists(f"{letter}:\\"):
+                drives.append(f"{letter}:\\")
+        return drives
+    return ["/"]
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +164,37 @@ async def files_list(request: aiohttp.web.Request) -> aiohttp.web.Response:
     rel_path = request.query.get("path", "/")
 
     target = _safe_resolve(rel_path)
+
+    # Windows "root" → return available drives as directory entries
+    if target is _DRIVES_SENTINEL:
+        drives = _get_drives()
+        entries: List[Dict[str, Any]] = []
+        for drive in drives:
+            drive_path = Path(drive)
+            try:
+                st = drive_path.stat()
+                entries.append({
+                    "name": drive.rstrip("\\").rstrip("/"),
+                    "type": "dir",
+                    "size": None,
+                    "modified": st.st_mtime,
+                    "path": drive,
+                })
+            except OSError:
+                entries.append({
+                    "name": drive.rstrip("\\").rstrip("/"),
+                    "type": "dir",
+                    "size": None,
+                    "modified": 0,
+                    "path": drive,
+                })
+        return aiohttp.web.json_response({
+            "entries": entries,
+            "path": "/",
+            "root": str(_PROJECT_ROOT),
+            "isDrives": True,
+        })
+
     if target is None:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
@@ -150,7 +210,7 @@ async def files_list(request: aiohttp.web.Request) -> aiohttp.web.Response:
             {"error": "path is not a directory"}, status=400,
         )
 
-    entries: List[Dict[str, Any]] = []
+    entries = []
     try:
         for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
             info = _entry_info(child)
@@ -161,15 +221,10 @@ async def files_list(request: aiohttp.web.Request) -> aiohttp.web.Response:
             {"error": "permission denied"}, status=403,
         )
 
-    # Include parent path info for breadcrumb
-    current_rel = str(target.relative_to(_PROJECT_ROOT)).replace("\\", "/")
-    if current_rel == ".":
-        current_rel = "/"
-
     return aiohttp.web.json_response({
         "entries": entries,
-        "path": "/" + current_rel if not current_rel.startswith("/") else current_rel,
-        "root": str(_PROJECT_ROOT).replace("\\", "/"),
+        "path": str(target),
+        "root": str(_PROJECT_ROOT),
     })
 
 
@@ -186,7 +241,7 @@ async def files_read(request: aiohttp.web.Request) -> aiohttp.web.Response:
         )
 
     target = _safe_resolve(rel_path)
-    if target is None:
+    if target is None or target is _DRIVES_SENTINEL:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
         )
@@ -275,7 +330,7 @@ async def files_download(request: aiohttp.web.Request) -> aiohttp.web.StreamResp
         )
 
     target = _safe_resolve(rel_path)
-    if target is None:
+    if target is None or target is _DRIVES_SENTINEL:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
         )
@@ -329,7 +384,7 @@ async def files_mkdir(request: aiohttp.web.Request) -> aiohttp.web.Response:
         )
 
     target = _safe_resolve(rel_path)
-    if target is None:
+    if target is None or target is _DRIVES_SENTINEL:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
         )
@@ -361,13 +416,8 @@ async def files_delete(request: aiohttp.web.Request) -> aiohttp.web.Response:
     results: List[Dict[str, Any]] = []
     for rel_path in paths:
         target = _safe_resolve(str(rel_path))
-        if target is None:
+        if target is None or target is _DRIVES_SENTINEL:
             results.append({"path": rel_path, "ok": False, "error": "unsafe path"})
-            continue
-
-        # Prevent deleting the project root itself
-        if target == _PROJECT_ROOT:
-            results.append({"path": rel_path, "ok": False, "error": "cannot delete project root"})
             continue
 
         try:
@@ -405,7 +455,7 @@ async def files_rename(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
     src = _safe_resolve(old_path)
     dst = _safe_resolve(new_path)
-    if src is None or dst is None:
+    if src is None or dst is None or src is _DRIVES_SENTINEL or dst is _DRIVES_SENTINEL:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
         )
@@ -413,12 +463,6 @@ async def files_rename(request: aiohttp.web.Request) -> aiohttp.web.Response:
     if not src.exists():
         return aiohttp.web.json_response(
             {"error": "source path not found"}, status=404,
-        )
-
-    # Prevent moving project root
-    if src == _PROJECT_ROOT:
-        return aiohttp.web.json_response(
-            {"error": "cannot rename project root"}, status=400,
         )
 
     try:
@@ -459,15 +503,9 @@ async def files_write(request: aiohttp.web.Request) -> aiohttp.web.Response:
         )
 
     target = _safe_resolve(rel_path)
-    if target is None:
+    if target is None or target is _DRIVES_SENTINEL:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
-        )
-
-    # Prevent writing to the project root itself
-    if target == _PROJECT_ROOT:
-        return aiohttp.web.json_response(
-            {"error": "cannot overwrite project root"}, status=400,
         )
 
     # Block writes to sensitive files/directories
@@ -533,7 +571,7 @@ async def files_upload(request: aiohttp.web.Request) -> aiohttp.web.Response:
         )
 
     target_dir = _safe_resolve(dir_value)
-    if target_dir is None:
+    if target_dir is None or target_dir is _DRIVES_SENTINEL:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
         )
@@ -575,12 +613,6 @@ async def files_upload(request: aiohttp.web.Request) -> aiohttp.web.Response:
             continue
 
         dest = target_dir / filename
-
-        # Safety: ensure resolved dest stays inside project root
-        try:
-            dest.resolve().relative_to(_PROJECT_ROOT)
-        except ValueError:
-            continue
 
         # Block overwriting sensitive files
         if _is_write_forbidden(dest):
@@ -670,7 +702,7 @@ async def files_copy(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
     src = _safe_resolve(source_rel)
     dst = _safe_resolve(dest_rel)
-    if src is None or dst is None:
+    if src is None or dst is None or src is _DRIVES_SENTINEL or dst is _DRIVES_SENTINEL:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
         )
@@ -678,12 +710,6 @@ async def files_copy(request: aiohttp.web.Request) -> aiohttp.web.Response:
     if not src.exists():
         return aiohttp.web.json_response(
             {"error": "source path not found"}, status=404,
-        )
-
-    # Prevent copying the project root itself
-    if src == _PROJECT_ROOT:
-        return aiohttp.web.json_response(
-            {"error": "cannot copy project root"}, status=400,
         )
 
     # Block writes to sensitive paths
@@ -705,8 +731,7 @@ async def files_copy(request: aiohttp.web.Request) -> aiohttp.web.Response:
         else:
             shutil.copy2(str(src), str(dst))
 
-        dest_rel_out = "/" + str(dst.relative_to(_PROJECT_ROOT)).replace("\\", "/")
-        return aiohttp.web.json_response({"status": "ok", "dest": dest_rel_out})
+        return aiohttp.web.json_response({"status": "ok", "dest": str(dst)})
     except OSError as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)
 
@@ -734,7 +759,7 @@ async def files_move(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
     src = _safe_resolve(source_rel)
     dst = _safe_resolve(dest_rel)
-    if src is None or dst is None:
+    if src is None or dst is None or src is _DRIVES_SENTINEL or dst is _DRIVES_SENTINEL:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
         )
@@ -742,12 +767,6 @@ async def files_move(request: aiohttp.web.Request) -> aiohttp.web.Response:
     if not src.exists():
         return aiohttp.web.json_response(
             {"error": "source path not found"}, status=404,
-        )
-
-    # Prevent moving the project root
-    if src == _PROJECT_ROOT:
-        return aiohttp.web.json_response(
-            {"error": "cannot move project root"}, status=400,
         )
 
     # Block writes to sensitive paths
@@ -766,8 +785,7 @@ async def files_move(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
         shutil.move(str(src), str(dst))
 
-        dest_rel_out = "/" + str(dst.relative_to(_PROJECT_ROOT)).replace("\\", "/")
-        return aiohttp.web.json_response({"status": "ok", "dest": dest_rel_out})
+        return aiohttp.web.json_response({"status": "ok", "dest": str(dst)})
     except OSError as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)
 
@@ -801,7 +819,7 @@ async def files_search(request: aiohttp.web.Request) -> aiohttp.web.Response:
         )
 
     target = _safe_resolve(dir_rel)
-    if target is None:
+    if target is None or target is _DRIVES_SENTINEL:
         return aiohttp.web.json_response(
             {"error": "invalid or unsafe path"}, status=400,
         )
@@ -856,17 +874,11 @@ async def files_search(request: aiohttp.web.Request) -> aiohttp.web.Response:
             return
 
         is_dir = stat.S_ISDIR(st.st_mode)
-        try:
-            rel = str(entry_path.relative_to(_PROJECT_ROOT)).replace("\\", "/")
-        except ValueError:
-            return
-
-        if rel == ".":
-            rel = "/"
+        abs_path = str(entry_path)
 
         bucket.append({
             "name": name,
-            "path": "/" + rel if not rel.startswith("/") else rel,
+            "path": abs_path,
             "is_dir": is_dir,
             "size": st.st_size if not is_dir else None,
             "modified": st.st_mtime,
@@ -906,3 +918,25 @@ async def files_search(request: aiohttp.web.Request) -> aiohttp.web.Response:
     results = (exact + prefix + substring)[:max_results]
 
     return aiohttp.web.json_response({"results": results})
+
+
+# ---------------------------------------------------------------------------
+# GET /v1/webui/files/drives
+# ---------------------------------------------------------------------------
+
+async def files_drives(request: aiohttp.web.Request) -> aiohttp.web.Response:
+    """Return a list of available filesystem roots.
+
+    Windows: drive letters (``["C:\\\\", "D:\\\\"]``).
+    Linux/Mac: ``["/"]``.
+    """
+    return aiohttp.web.json_response({"drives": _get_drives()})
+
+
+# ---------------------------------------------------------------------------
+# GET /v1/webui/files/project-root
+# ---------------------------------------------------------------------------
+
+async def files_project_root(request: aiohttp.web.Request) -> aiohttp.web.Response:
+    """Return the project root path so the frontend can offer a shortcut."""
+    return aiohttp.web.json_response({"path": str(_PROJECT_ROOT)})
