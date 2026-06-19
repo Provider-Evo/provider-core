@@ -2173,3 +2173,12 @@ echotools 1.0.24 已发布到 PyPI
 [README.md] 版本徽章和路线图更新为 2.2.156
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.155 -> 2.2.156
 纯前端 JS/CSS 修复，无需 py_compile
+
+2026-06-19 15:30:00
+
+[src/webui/static/terminal/terminal.js] 键盘捕获改为 document 级别 capture phase，不依赖元素焦点
+[template/template_config.toml] 版本 2.2.156 -> 2.2.157
+[config.toml] 版本跟随模板 2.2.157
+[README.md] 版本徽章和路线图更新为 2.2.157
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.156 -> 2.2.157
+纯前端 JS 修复，无需 py_compile

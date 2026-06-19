@@ -54,15 +54,30 @@ function TerminalRenderer(container, cols, rows) {
   _wrapper.appendChild(_pre);
   container.appendChild(_wrapper);
 
-  // --- Keyboard capture (all keys handled at wrapper level) ---
+  // --- Document-level keyboard capture ---
+  // Captures ALL keydown events when this terminal is the active tab,
+  // regardless of which element has focus. Skips events targeting other
+  // input elements (text inputs, selects, etc.)
 
-  _wrapper.addEventListener('keydown', function (e) {
+  function _handleKeydown(e) {
+    // Only capture when this terminal's tab panel is visible
+    var panel = _wrapper.closest('.tab-panel');
+    if (!panel || panel.classList.contains('hidden')) return;
+
+    // Don't steal input from other form elements on the page
+    var active = document.activeElement;
+    if (active && active !== _wrapper && active !== document.body) {
+      var tag = active.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    }
+
     // Ctrl+key (A-Z)
     if (e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
       var c = e.key.toLowerCase();
       var code = c.charCodeAt(0);
       if (code >= 97 && code <= 122 && c !== 'c' && c !== 'v') {
         e.preventDefault();
+        e.stopPropagation();
         if (_onDataCb) _onDataCb(String.fromCharCode(code - 96));
         return;
       }
@@ -70,17 +85,18 @@ function TerminalRenderer(container, cols, rows) {
     // Alt+key
     if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1) {
       e.preventDefault();
+      e.stopPropagation();
       if (_onDataCb) _onDataCb('\x1b' + e.key);
       return;
     }
 
     switch (e.key) {
       case 'Enter':
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         if (_onDataCb) _onDataCb('\r\n');
         return;
       case 'Backspace':
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         if (e.ctrlKey) {
           if (_onDataCb) _onDataCb('\x17');
         } else {
@@ -88,39 +104,40 @@ function TerminalRenderer(container, cols, rows) {
         }
         return;
       case 'Tab':
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         if (_onDataCb) _onDataCb('\t');
         return;
       case 'Escape':
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         if (_onDataCb) _onDataCb('\x1b');
         return;
-      case 'ArrowUp':    e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[A'); return;
-      case 'ArrowDown':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[B'); return;
-      case 'ArrowRight': e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[C'); return;
-      case 'ArrowLeft':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[D'); return;
-      case 'Home':    e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[H'); return;
-      case 'End':     e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[F'); return;
-      case 'Insert':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[2~'); return;
-      case 'Delete':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[3~'); return;
-      case 'PageUp':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[5~'); return;
-      case 'PageDown': e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[6~'); return;
+      case 'ArrowUp':    e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[A'); return;
+      case 'ArrowDown':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[B'); return;
+      case 'ArrowRight': e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[C'); return;
+      case 'ArrowLeft':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[D'); return;
+      case 'Home':    e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[H'); return;
+      case 'End':     e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[F'); return;
+      case 'Insert':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[2~'); return;
+      case 'Delete':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[3~'); return;
+      case 'PageUp':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[5~'); return;
+      case 'PageDown': e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[6~'); return;
     }
 
     // Regular printable character
     if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
       e.preventDefault();
+      e.stopPropagation();
       if (_onDataCb) _onDataCb(e.key);
       return;
     }
-  });
+  }
 
-  // Focus management
+  document.addEventListener('keydown', _handleKeydown, true);
+
+  // Focus management — click anywhere in terminal area to focus wrapper
   _wrapper.addEventListener('mousedown', function (e) {
     _wrapper.focus();
   });
-  _wrapper.addEventListener('touchstart', function () { _wrapper.focus(); });
-  setTimeout(function () { _wrapper.focus(); }, 50);
 
   // --- Public API ---
 
@@ -166,6 +183,7 @@ function TerminalRenderer(container, cols, rows) {
 
   this.dispose = function () {
     _disposed = true;
+    document.removeEventListener('keydown', _handleKeydown, true);
     if (_wrapper.parentNode) _wrapper.parentNode.removeChild(_wrapper);
   };
 
