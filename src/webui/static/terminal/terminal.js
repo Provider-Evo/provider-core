@@ -1,7 +1,9 @@
 /**
- * Terminal Tab — xterm.js-based terminal with local and SSH support.
+ * Terminal Tab -- Custom-rendered terminal with local and SSH support.
+ * No external dependencies (no xterm.js, no FitAddon).
  *
  * Features:
+ * - Custom ANSI escape sequence parser and renderer
  * - Horizontal tab bar with add/close/rename
  * - Local terminal via WebSocket to backend
  * - SSH remote terminal via paramiko on backend
@@ -10,6 +12,705 @@
  * - SSH dialog with quick-parse (user@host:port, user:pass@host:port)
  * - Saved SSH connections via persist API
  */
+
+// ========================= TerminalRenderer =========================
+// Replaces xterm.js with a lightweight custom ANSI terminal renderer.
+// Renders into a <pre> element, captures input via a hidden <textarea>.
+
+function TerminalRenderer(container, cols, rows) {
+  var _lines = [[]];           // scrollback buffer: arrays of {char, fg, bg, bold}
+  var _cursorRow = 0;
+  var _cursorCol = 0;
+  var _attrs = { fg: 37, bg: -1, bold: false };
+  var _maxScrollback = 5000;
+  var _cols = cols || 80;
+  var _rows = rows || 24;
+  var _onDataCb = null;
+  var _savedCursor = { row: 0, col: 0 };
+  var _csiMode = false;
+  var _csiParams = '';
+  var _escMode = false;
+  var _charWidth = 8.4;
+  var _charHeight = 16;
+  var _disposed = false;
+  var _composing = false;
+  var _renderPending = false;
+
+  // DOM: wrapper div > pre.terminal-output + textarea.terminal-input
+  var _wrapper = document.createElement('div');
+  _wrapper.style.cssText = 'width:100%;height:100%;position:relative;overflow:hidden;';
+
+  var _pre = document.createElement('pre');
+  _pre.className = 'terminal-output';
+  _pre.tabIndex = 0;
+  _pre.style.cssText =
+    'margin:0;padding:4px 8px;overflow:hidden;' +
+    'font-family:"Cascadia Code","Fira Code","JetBrains Mono",Menlo,Monaco,monospace;' +
+    'font-size:14px;line-height:16px;background:#1e1e1e;color:#d4d4d4;' +
+    'white-space:pre;user-select:text;-webkit-user-select:text;' +
+    'width:100%;height:100%;box-sizing:border-box;';
+
+  var _input = document.createElement('textarea');
+  _input.className = 'terminal-input';
+  _input.setAttribute('autocapitalize', 'off');
+  _input.setAttribute('autocomplete', 'off');
+  _input.setAttribute('autocorrect', 'off');
+  _input.spellcheck = false;
+  _input.style.cssText =
+    'position:absolute;opacity:0.01;width:1px;height:1px;' +
+    'left:0;top:0;padding:0;border:none;resize:none;' +
+    'overflow:hidden;outline:none;z-index:10;';
+
+  _wrapper.appendChild(_pre);
+  _wrapper.appendChild(_input);
+  container.appendChild(_wrapper);
+
+  // --- Input capture ---
+
+  _input.addEventListener('input', function () {
+    if (_composing) return;
+    var d = _input.value;
+    _input.value = '';
+    if (d && _onDataCb) _onDataCb(d);
+  });
+
+  // IME composition guards
+  _input.addEventListener('compositionstart', function () { _composing = true; });
+  _input.addEventListener('compositionend', function () {
+    _composing = false;
+    var d = _input.value;
+    _input.value = '';
+    if (d && _onDataCb) _onDataCb(d);
+  });
+
+  // Key handler for special keys (arrows, enter, backspace, ctrl combos, etc.)
+  _input.addEventListener('keydown', function (e) {
+    // Ctrl/Alt modifiers with letter keys
+    if (e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
+      var c = e.key.toLowerCase();
+      var code = c.charCodeAt(0);
+      // Ctrl+A..Z -> \x01..\x1a (skip C and V for copy/paste)
+      if (code >= 97 && code <= 122 && c !== 'c' && c !== 'v') {
+        e.preventDefault();
+        if (_onDataCb) _onDataCb(String.fromCharCode(code - 96));
+        return;
+      }
+    }
+    // Alt+key -> ESC prefix
+    if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1) {
+      e.preventDefault();
+      if (_onDataCb) _onDataCb('\x1b' + e.key);
+      return;
+    }
+
+    // Special keys
+    switch (e.key) {
+      case 'Enter':
+        e.preventDefault();
+        if (_onDataCb) _onDataCb('\r');
+        return;
+      case 'Backspace':
+        e.preventDefault();
+        if (e.ctrlKey) {
+          if (_onDataCb) _onDataCb('\x17'); // Ctrl+W: delete word
+        } else {
+          if (_onDataCb) _onDataCb('\x08');
+        }
+        return;
+      case 'Tab':
+        e.preventDefault();
+        if (_onDataCb) _onDataCb('\t');
+        return;
+      case 'Escape':
+        e.preventDefault();
+        if (_onDataCb) _onDataCb('\x1b');
+        return;
+      case 'ArrowUp':    e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[A'); return;
+      case 'ArrowDown':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[B'); return;
+      case 'ArrowRight': e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[C'); return;
+      case 'ArrowLeft':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[D'); return;
+      case 'Home':    e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[H'); return;
+      case 'End':     e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[F'); return;
+      case 'Insert':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[2~'); return;
+      case 'Delete':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[3~'); return;
+      case 'PageUp':  e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[5~'); return;
+      case 'PageDown': e.preventDefault(); if (_onDataCb) _onDataCb('\x1b[6~'); return;
+    }
+    // Printable characters: do NOT preventDefault. Let the character appear
+    // in the textarea, then the 'input' event captures and forwards it.
+  });
+
+  // Focus delegation
+  _pre.addEventListener('click', function () { _input.focus(); });
+  _wrapper.addEventListener('click', function () { _input.focus(); });
+
+  // Measure character metrics once visible
+  _measureChar();
+
+  // --- Public API ---
+
+  this.write = function (data) {
+    if (_disposed) return;
+    _parseAnsi(data);
+    _scheduleRender();
+  };
+
+  this.resize = function (cols, rows) {
+    _cols = cols;
+    _rows = rows;
+    _scheduleRender();
+  };
+
+  this.getCols = function () { return _cols; };
+  this.getRows = function () { return _rows; };
+
+  this.getDimensions = function () {
+    _measureChar();
+    var w = _wrapper.clientWidth || _wrapper.parentElement.clientWidth;
+    var h = _wrapper.clientHeight || _wrapper.parentElement.clientHeight;
+    var cols = Math.max(10, Math.floor((w - 16) / _charWidth));
+    var rows = Math.max(3, Math.floor((h - 8) / _charHeight));
+    _cols = cols;
+    _rows = rows;
+    return { cols: cols, rows: rows };
+  };
+
+  this.onData = function (cb) { _onDataCb = cb; };
+  this.focus = function () { _input.focus(); };
+
+  this.clear = function () {
+    _lines = [[]];
+    _cursorRow = 0;
+    _cursorCol = 0;
+    _scheduleRender();
+  };
+
+  this.writeln = function (text) {
+    this.write(text + '\r\n');
+  };
+
+  this.dispose = function () {
+    _disposed = true;
+    if (_wrapper.parentNode) _wrapper.parentNode.removeChild(_wrapper);
+  };
+
+  // --- Internal: character metrics ---
+
+  function _measureChar() {
+    if (_wrapper.clientWidth < 10) return; // not visible yet
+    var span = document.createElement('span');
+    span.style.cssText =
+      'visibility:hidden;position:absolute;white-space:pre;' +
+      'font-family:"Cascadia Code","Fira Code","JetBrains Mono",Menlo,Monaco,monospace;' +
+      'font-size:14px;line-height:16px;';
+    span.textContent = 'MMMMMMMMMM'; // 10 M characters
+    document.body.appendChild(span);
+    var rect = span.getBoundingClientRect();
+    _charWidth = rect.width / 10;
+    _charHeight = rect.height || 16;
+    document.body.removeChild(span);
+  }
+
+  // --- Internal: ANSI parser state machine ---
+
+  function _parseAnsi(data) {
+    for (var i = 0; i < data.length; i++) {
+      var ch = data[i];
+      var code = data.charCodeAt(i);
+
+      // CSI sequence collection mode
+      if (_csiMode) {
+        if ((code >= 0x30 && code <= 0x3F) || ch === ';') {
+          // Parameter bytes: 0-9, :, ;, <, =, >, ?
+          _csiParams += ch;
+        } else if (code >= 0x40 && code <= 0x7E) {
+          // Final byte -- execute the CSI sequence
+          _handleCSI(_csiParams, ch);
+          _csiMode = false;
+          _csiParams = '';
+        } else {
+          // Unexpected byte, abort CSI
+          _csiMode = false;
+          _csiParams = '';
+        }
+        continue;
+      }
+
+      // ESC was seen, check next character
+      if (_escMode) {
+        _escMode = false;
+        if (ch === '[') {
+          _csiMode = true;
+          _csiParams = '';
+        } else if (ch === 's') {
+          _savedCursor.row = _cursorRow;
+          _savedCursor.col = _cursorCol;
+        } else if (ch === 'u') {
+          _cursorRow = _savedCursor.row;
+          _cursorCol = _savedCursor.col;
+        } else if (ch === 'c') {
+          // Full reset
+          _lines = [[]];
+          _cursorRow = 0;
+          _cursorCol = 0;
+          _attrs = { fg: 37, bg: -1, bold: false };
+        }
+        // Other ESC sequences (ESC (, ESC ), etc.) are silently ignored
+        continue;
+      }
+
+      // ESC starts escape mode
+      if (code === 0x1b) {
+        _escMode = true;
+        continue;
+      }
+
+      // Control characters
+      if (code === 0x0d) { // CR
+        _cursorCol = 0;
+        continue;
+      }
+      if (code === 0x0a || code === 0x0b || code === 0x0c) { // LF, VT, FF
+        _cursorRow++;
+        _ensureLine(_cursorRow);
+        if (_cursorRow >= _lines.length + _maxScrollback) {
+          _lines.shift();
+          _cursorRow--;
+        }
+        continue;
+      }
+      if (code === 0x08) { // BS
+        if (_cursorCol > 0) _cursorCol--;
+        continue;
+      }
+      if (code === 0x09) { // TAB
+        var nextTab = Math.min(_cols, _cursorCol + (8 - (_cursorCol % 8)));
+        _ensureLine(_cursorRow);
+        while (_cursorCol < nextTab) {
+          _setChar(_cursorRow, _cursorCol, ' ');
+          _cursorCol++;
+        }
+        continue;
+      }
+      if (code === 0x07) { // BEL -- ignore
+        continue;
+      }
+      if (code < 0x20) {
+        // Other C0 control characters -- skip
+        continue;
+      }
+
+      // DEL -- ignore
+      if (code === 0x7f) continue;
+
+      // Printable character
+      _ensureLine(_cursorRow);
+      _setChar(_cursorRow, _cursorCol, ch);
+      _cursorCol++;
+      if (_cursorCol >= _cols) {
+        _cursorCol = 0;
+        _cursorRow++;
+        _ensureLine(_cursorRow);
+      }
+    }
+  }
+
+  // --- Internal: CSI sequence handler ---
+
+  function _handleCSI(params, cmd) {
+    var args = params.split(';').map(function (p) {
+      return p === '' ? 0 : parseInt(p, 10);
+    });
+    if (isNaN(args[0])) args[0] = 0;
+
+    switch (cmd) {
+      case 'm': // SGR -- set graphics rendition
+        _handleSGR(args);
+        break;
+
+      case 'H': case 'f': // Cursor position
+        var r = (args[0] || 1) - 1;
+        var c = (args[1] || 1) - 1;
+        _cursorRow = Math.max(0, r);
+        _cursorCol = Math.max(0, Math.min(c, _cols - 1));
+        _ensureLine(_cursorRow);
+        break;
+
+      case 'J': // Erase in display
+        _eraseDisplay(args[0] || 0);
+        break;
+
+      case 'K': // Erase in line
+        _eraseLine(args[0] || 0);
+        break;
+
+      case 'A': // Cursor up
+        _cursorRow = Math.max(0, _cursorRow - (args[0] || 1));
+        break;
+
+      case 'B': // Cursor down
+        _cursorRow += (args[0] || 1);
+        _ensureLine(_cursorRow);
+        break;
+
+      case 'C': // Cursor forward
+        _cursorCol = Math.min(_cols - 1, _cursorCol + (args[0] || 1));
+        break;
+
+      case 'D': // Cursor back
+        _cursorCol = Math.max(0, _cursorCol - (args[0] || 1));
+        break;
+
+      case 'E': // Cursor next line
+        _cursorRow += (args[0] || 1);
+        _cursorCol = 0;
+        _ensureLine(_cursorRow);
+        break;
+
+      case 'F': // Cursor previous line
+        _cursorRow = Math.max(0, _cursorRow - (args[0] || 1));
+        _cursorCol = 0;
+        break;
+
+      case 'G': // Cursor horizontal absolute
+        _cursorCol = Math.max(0, Math.min((args[0] || 1) - 1, _cols - 1));
+        break;
+
+      case 'd': // Cursor vertical absolute
+        _cursorRow = Math.max(0, (args[0] || 1) - 1);
+        _ensureLine(_cursorRow);
+        break;
+
+      case 's': // Save cursor (CSI variant)
+        _savedCursor.row = _cursorRow;
+        _savedCursor.col = _cursorCol;
+        break;
+
+      case 'u': // Restore cursor (CSI variant)
+        _cursorRow = _savedCursor.row;
+        _cursorCol = _savedCursor.col;
+        break;
+
+      case 'r': // Set scrolling region -- partially handled (ignored for now)
+        break;
+
+      case 'l': case 'h': // Set/reset mode (e.g., cursor visibility)
+        break;
+
+      case 'P': // Delete characters
+        _deleteChars(args[0] || 1);
+        break;
+
+      case '@': // Insert blank characters
+        _insertChars(args[0] || 1);
+        break;
+
+      case 'X': // Erase characters
+        _eraseChars(args[0] || 1);
+        break;
+
+      // n (device status report), c (device attributes), etc. -- ignored
+    }
+  }
+
+  // --- Internal: SGR (Select Graphic Rendition) ---
+
+  function _handleSGR(args) {
+    for (var i = 0; i < args.length; i++) {
+      var p = args[i];
+      if (p === 0) {
+        _attrs = { fg: 37, bg: -1, bold: false };
+      } else if (p === 1) {
+        _attrs.bold = true;
+      } else if (p === 22) {
+        _attrs.bold = false;
+      } else if (p >= 30 && p <= 37) {
+        _attrs.fg = p;
+      } else if (p === 38) {
+        // Extended foreground
+        if (args[i + 1] === 5) {
+          // 256-color: 38;5;N
+          _attrs.fg = 'fg-' + (args[i + 2] || 0);
+          i += 2;
+        } else if (args[i + 1] === 2) {
+          // RGB: 38;2;R;G;B -- fall back to default
+          i += 4;
+        }
+      } else if (p === 39) {
+        _attrs.fg = 37; // default fg
+      } else if (p >= 40 && p <= 47) {
+        _attrs.bg = p;
+      } else if (p === 48) {
+        // Extended background
+        if (args[i + 1] === 5) {
+          _attrs.bg = 'bg-' + (args[i + 2] || 0);
+          i += 2;
+        } else if (args[i + 1] === 2) {
+          i += 4;
+        }
+      } else if (p === 49) {
+        _attrs.bg = -1; // default bg
+      } else if (p >= 90 && p <= 97) {
+        _attrs.fg = p; // bright foreground
+      } else if (p >= 100 && p <= 107) {
+        _attrs.bg = p; // bright background
+      }
+    }
+  }
+
+  // --- Internal: buffer helpers ---
+
+  function _ensureLine(row) {
+    while (_lines.length <= row) {
+      _lines.push([]);
+    }
+    if (_lines.length > _maxScrollback) {
+      var excess = _lines.length - _maxScrollback;
+      _lines.splice(0, excess);
+      _cursorRow = Math.max(0, _cursorRow - excess);
+      row -= excess;
+    }
+  }
+
+  function _setChar(row, col, ch) {
+    if (!_lines[row]) _lines[row] = [];
+    _lines[row][col] = {
+      char: ch,
+      fg: _attrs.fg,
+      bg: _attrs.bg,
+      bold: _attrs.bold
+    };
+  }
+
+  function _eraseDisplay(mode) {
+    if (mode === 2) {
+      // Clear entire screen
+      _lines = [];
+      for (var i = 0; i < _rows; i++) _lines.push([]);
+      _cursorRow = 0;
+      _cursorCol = 0;
+      return;
+    }
+    if (mode === 0) {
+      // Erase from cursor to end of display
+      _eraseLine(0);
+      for (var i = _cursorRow + 1; i < _lines.length; i++) _lines[i] = [];
+    } else if (mode === 1) {
+      // Erase from start of display to cursor
+      for (var i = 0; i < _cursorRow; i++) _lines[i] = [];
+      _eraseLine(1);
+    } else if (mode === 3) {
+      // Erase scrollback
+      var visible = _lines.slice(-_rows);
+      _lines = visible;
+      _cursorRow = Math.min(_cursorRow, _lines.length - 1);
+    }
+  }
+
+  function _eraseLine(mode) {
+    _ensureLine(_cursorRow);
+    var line = _lines[_cursorRow];
+    if (mode === 0) {
+      // Erase from cursor to end of line
+      line.length = Math.min(line.length, _cursorCol);
+    } else if (mode === 1) {
+      // Erase from start of line to cursor
+      for (var i = 0; i <= Math.min(_cursorCol, line.length - 1); i++) {
+        delete line[i];
+      }
+    } else if (mode === 2) {
+      // Erase entire line
+      _lines[_cursorRow] = [];
+    }
+  }
+
+  function _deleteChars(n) {
+    _ensureLine(_cursorRow);
+    var line = _lines[_cursorRow];
+    if (_cursorCol < line.length) {
+      line.splice(_cursorCol, n);
+    }
+  }
+
+  function _insertChars(n) {
+    _ensureLine(_cursorRow);
+    var line = _lines[_cursorRow];
+    for (var i = 0; i < n; i++) {
+      line.splice(_cursorCol, 0, undefined);
+    }
+    if (line.length > _cols) line.length = _cols;
+  }
+
+  function _eraseChars(n) {
+    _ensureLine(_cursorRow);
+    var line = _lines[_cursorRow];
+    for (var i = _cursorCol; i < Math.min(_cursorCol + n, line.length); i++) {
+      delete line[i];
+    }
+  }
+
+  // --- Internal: rendering ---
+
+  function _scheduleRender() {
+    if (_renderPending) return;
+    _renderPending = true;
+    requestAnimationFrame(function () {
+      _renderPending = false;
+      if (!_disposed) _render();
+    });
+  }
+
+  function _render() {
+    var visibleStart = Math.max(0, _lines.length - _rows);
+    var html = [];
+
+    for (var vr = 0; vr < _rows; vr++) {
+      var lineIdx = visibleStart + vr;
+      var line = (lineIdx < _lines.length) ? _lines[lineIdx] : null;
+      var absRow = lineIdx;
+
+      // Render characters for this visible row
+      var lineHtml = _renderLine(line, _cols);
+
+      // Overlay the block cursor on this row if it belongs here
+      if (absRow === _cursorRow) {
+        var cCol = Math.min(_cursorCol, _cols - 1);
+        var cursorCh = ' ';
+        if (line && line[cCol] && line[cCol].char) {
+          cursorCh = line[cCol].char;
+        }
+        // Build cursor span and inject at correct position
+        lineHtml = _injectCursor(lineHtml, line, cCol, cursorCh);
+      }
+
+      html.push('<div class="term-line">' + lineHtml + '</div>');
+    }
+
+    _pre.innerHTML = html.join('');
+  }
+
+  function _renderLine(line, cols) {
+    if (!line || line.length === 0) {
+      return '<span class="term-space"> </span>';
+    }
+
+    var parts = [];
+    var curFg = -1, curBg = -1, curBold = false;
+    var buf = '';
+
+    for (var i = 0; i < cols; i++) {
+      var cell = line[i];
+      var fg = 37, bg = -1, bold = false, ch = ' ';
+
+      if (cell) {
+        fg = cell.fg;
+        bg = cell.bg;
+        bold = cell.bold || false;
+        ch = cell.char || ' ';
+      }
+
+      if (fg !== curFg || bg !== curBg || bold !== curBold) {
+        if (buf) {
+          parts.push(_wrapSpan(buf, curFg, curBg, curBold));
+        }
+        buf = ch;
+        curFg = fg;
+        curBg = bg;
+        curBold = bold;
+      } else {
+        buf += ch;
+      }
+    }
+
+    if (buf) {
+      parts.push(_wrapSpan(buf, curFg, curBg, curBold));
+    }
+
+    return parts.join('') || '<span class="term-space"> </span>';
+  }
+
+  function _injectCursor(lineHtml, line, cCol, cursorCh) {
+    // Render the line up to the cursor column, then the cursor span, then the rest
+    var before = '';
+    var curFg = -1, curBg = -1, curBold = false;
+    var buf = '';
+
+    for (var i = 0; i < cCol; i++) {
+      var cell = (line && line[i]) ? line[i] : null;
+      var fg = cell ? (cell.fg || 37) : 37;
+      var bg = cell ? (cell.bg != null ? cell.bg : -1) : -1;
+      var bold = cell ? (cell.bold || false) : false;
+      var ch = (cell && cell.char) ? cell.char : ' ';
+
+      if (fg !== curFg || bg !== curBg || bold !== curBold) {
+        if (buf) before += _wrapSpan(buf, curFg, curBg, curBold);
+        buf = ch;
+        curFg = fg; curBg = bg; curBold = bold;
+      } else {
+        buf += ch;
+      }
+    }
+    if (buf) before += _wrapSpan(buf, curFg, curBg, curBold);
+
+    // Cursor block character
+    var cursorSpan =
+      '<span class="term-cursor">' + _escapeChar(cursorCh) + '</span>';
+
+    // After cursor
+    var afterParts = [];
+    curFg = -1; curBg = -1; curBold = false;
+    buf = '';
+    for (var i = cCol + 1; i < _cols; i++) {
+      var cell = (line && line[i]) ? line[i] : null;
+      var fg = cell ? (cell.fg || 37) : 37;
+      var bg = cell ? (cell.bg != null ? cell.bg : -1) : -1;
+      var bold = cell ? (cell.bold || false) : false;
+      var ch = (cell && cell.char) ? cell.char : ' ';
+
+      if (fg !== curFg || bg !== curBg || bold !== curBold) {
+        if (buf) afterParts.push(_wrapSpan(buf, curFg, curBg, curBold));
+        buf = ch;
+        curFg = fg; curBg = bg; curBold = bold;
+      } else {
+        buf += ch;
+      }
+    }
+    if (buf) afterParts.push(_wrapSpan(buf, curFg, curBg, curBold));
+
+    var result = before + cursorSpan + afterParts.join('');
+    return result || '<span class="term-space"> </span>';
+  }
+
+  function _wrapSpan(text, fg, bg, bold) {
+    var cls = [];
+    if (typeof fg === 'string') {
+      cls.push('term-' + fg);
+    } else if (fg !== 37) {
+      cls.push('term-fg-' + fg);
+    }
+    if (typeof bg === 'string') {
+      cls.push('term-' + bg);
+    } else if (bg >= 0) {
+      cls.push('term-bg-' + bg);
+    }
+    if (bold) cls.push('term-bold');
+    if (cls.length === 0) {
+      return _escapeChar(text);
+    }
+    return '<span class="' + cls.join(' ') + '">' + _escapeChar(text) + '</span>';
+  }
+
+  function _escapeChar(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+}
+
+
+// ========================= TerminalManager =========================
+
 var TerminalManager = (function () {
   var _tabs = [];
   var _activeTabId = null;
@@ -34,8 +735,8 @@ var TerminalManager = (function () {
     // Click on terminal body to focus the active terminal
     _body.addEventListener('click', function () {
       var tab = _getActiveTab();
-      if (tab && tab.term) {
-        tab.term.focus();
+      if (tab && tab.renderer) {
+        tab.renderer.focus();
       }
     });
 
@@ -48,7 +749,7 @@ var TerminalManager = (function () {
       });
     }
 
-    // Close context menu on click outside
+    // Close context menu and add menu on click outside
     document.addEventListener('click', function () {
       _hideContextMenu();
       _hideAddMenu();
@@ -63,8 +764,9 @@ var TerminalManager = (function () {
       if (_resizeTimer) clearTimeout(_resizeTimer);
       _resizeTimer = setTimeout(function () {
         var tab = _getActiveTab();
-        if (tab && tab.fitAddon) {
-          tab.fitAddon.fit();
+        if (tab && tab.renderer) {
+          var dims = tab.renderer.getDimensions();
+          tab.renderer.resize(dims.cols, dims.rows);
           _sendResize(tab);
         }
       }, 150);
@@ -82,9 +784,10 @@ var TerminalManager = (function () {
   function _onActivate() {
     // Fit the active terminal when tab becomes visible
     var tab = _getActiveTab();
-    if (tab && tab.fitAddon) {
+    if (tab && tab.renderer) {
       setTimeout(function () {
-        tab.fitAddon.fit();
+        var dims = tab.renderer.getDimensions();
+        tab.renderer.resize(dims.cols, dims.rows);
         _sendResize(tab);
       }, 100);
     }
@@ -100,22 +803,21 @@ var TerminalManager = (function () {
     options = options || {};
 
     // Ensure the terminal sidebar tab is active so the panel is visible
-    // (xterm.js needs visible container for proper dimension calculation)
+    // (renderer needs visible container for proper dimension calculation)
     if (typeof switchTab === 'function') {
       switchTab('terminal');
     }
 
     _tabCounter++;
     var tabId = 'term-' + _tabCounter + '-' + Date.now();
-    var name = options.name || (kind === 'ssh' ? '远程' : '本地') + ' ' + _tabCounter;
+    var name = options.name || (kind === 'ssh' ? '\u8FDC\u7A0B' : '\u672C\u5730') + ' ' + _tabCounter;
 
     var tab = {
       id: tabId,
       kind: kind,
       name: name,
       status: 'connecting',
-      term: null,
-      fitAddon: null,
+      renderer: null,
       ws: null,
       sessionId: null,
       options: options,
@@ -129,78 +831,31 @@ var TerminalManager = (function () {
   }
 
   function _initTerminal(tab) {
-    // Create xterm instance
+    // Create terminal pane container
     var termDiv = document.createElement('div');
     termDiv.className = 'terminal-pane';
     termDiv.id = 'terminal-pane-' + tab.id;
     termDiv.style.cssText = 'width:100%;height:100%;display:none;';
     _body.appendChild(termDiv);
 
-    var term = new Terminal({
-      cursorBlink: true,
-      fontSize: 14,
-      fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, Monaco, monospace',
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-        selectionBackground: '#264f78',
-        black: '#1e1e1e',
-        red: '#f44747',
-        green: '#6a9955',
-        yellow: '#d7ba7d',
-        blue: '#569cd6',
-        magenta: '#c586c0',
-        cyan: '#4ec9b0',
-        white: '#d4d4d4',
-        brightBlack: '#808080',
-        brightRed: '#f44747',
-        brightGreen: '#6a9955',
-        brightYellow: '#d7ba7d',
-        brightBlue: '#569cd6',
-        brightMagenta: '#c586c0',
-        brightCyan: '#4ec9b0',
-        brightWhite: '#ffffff',
-      },
-      allowProposedApi: true,
-    });
+    // Create custom renderer (initial size will be recalculated once visible)
+    var renderer = new TerminalRenderer(termDiv, 80, 24);
 
-    var fitAddon = new FitAddon.FitAddon();
-    term.loadAddon(fitAddon);
+    tab.renderer = renderer;
 
-    term.open(termDiv);
-
-    // Small delay to let DOM settle, then fit
+    // Small delay to let DOM settle, then measure and fit
     setTimeout(function () {
-      fitAddon.fit();
+      var dims = renderer.getDimensions();
+      renderer.resize(dims.cols, dims.rows);
     }, 50);
 
-    tab.term = term;
-    tab.fitAddon = fitAddon;
-
-    // Input handler — convert backspace for Windows compatibility
-    term.onData(function (data) {
+    // Input handler -- convert DEL to BS for Windows compatibility
+    renderer.onData(function (data) {
       if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
-        // Convert DEL (\x7f) to BS (\x08) for Windows shells
         var fixed = data.replace(/\x7f/g, '\x08');
         tab.ws.send(JSON.stringify({ type: 'input', data: fixed }));
       }
     });
-
-    // Custom key handler for special keys
-    term.attachCustomKeyEventHandler(function (ev) {
-      // Ctrl+Backspace → send Ctrl+W (\x17) for word delete
-      if (ev.type === 'keydown' && ev.key === 'Backspace' && ev.ctrlKey) {
-        if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
-          tab.ws.send(JSON.stringify({ type: 'input', data: '\x17' }));
-        }
-        return false; // Prevent default
-      }
-      return true; // Let xterm handle other keys
-    });
-
-    // Context menu on tab bar
-    // (handled in _renderTabBar)
 
     // Connect WebSocket
     _connectWebSocket(tab);
@@ -219,11 +874,13 @@ var TerminalManager = (function () {
 
     ws.onopen = function () {
       // Send init message
+      var cols = tab.renderer ? tab.renderer.getCols() : 80;
+      var rows = tab.renderer ? tab.renderer.getRows() : 24;
       var initMsg = {
         type: 'init',
         kind: tab.kind,
-        cols: tab.term.cols,
-        rows: tab.term.rows,
+        cols: cols,
+        rows: rows,
       };
 
       if (tab.kind === 'ssh') {
@@ -247,13 +904,16 @@ var TerminalManager = (function () {
           // Send initial size
           _sendResize(tab);
         } else if (msg.type === 'output') {
-          tab.term.write(msg.data);
+          tab.renderer.write(msg.data);
         } else if (msg.type === 'error') {
-          tab.term.writeln('\r\n\x1b[31m错误: ' + msg.message + '\x1b[0m');
+          tab.renderer.writeln('\r\n\x1b[31m\u9519\u8BEF: ' + msg.message + '\x1b[0m');
           tab.status = 'disconnected';
           _renderTabBar();
         } else if (msg.type === 'exit') {
-          tab.term.writeln('\r\n\x1b[33m[进程已退出，退出码 ' + msg.code + ']\x1b[0m');
+          tab.renderer.writeln(
+            '\r\n\x1b[33m[\u8FDB\u7A0B\u5DF2\u9000\u51FA\uFF0C\u9000\u51FA\u7801 ' +
+            msg.code + ']\x1b[0m'
+          );
           tab.status = 'disconnected';
           _renderTabBar();
         }
@@ -270,16 +930,18 @@ var TerminalManager = (function () {
     ws.onerror = function () {
       tab.status = 'disconnected';
       _renderTabBar();
-      tab.term.writeln('\r\n\x1b[31m[WebSocket 连接错误]\x1b[0m');
+      if (tab.renderer) {
+        tab.renderer.writeln('\r\n\x1b[31m[WebSocket \u8FDE\u63A5\u9519\u8BEF]\x1b[0m');
+      }
     };
   }
 
   function _sendResize(tab) {
-    if (tab.ws && tab.ws.readyState === WebSocket.OPEN && tab.term) {
+    if (tab.ws && tab.ws.readyState === WebSocket.OPEN && tab.renderer) {
       tab.ws.send(JSON.stringify({
         type: 'resize',
-        cols: tab.term.cols,
-        rows: tab.term.rows,
+        cols: tab.renderer.getCols(),
+        rows: tab.renderer.getRows(),
       }));
     }
   }
@@ -289,13 +951,14 @@ var TerminalManager = (function () {
     _renderTabBar();
     _showTabPane(tabId);
 
-    // Fit the active terminal
+    // Measure and fit the active terminal
     var tab = _getActiveTab();
-    if (tab && tab.fitAddon) {
+    if (tab && tab.renderer) {
       setTimeout(function () {
-        tab.fitAddon.fit();
+        var dims = tab.renderer.getDimensions();
+        tab.renderer.resize(dims.cols, dims.rows);
         _sendResize(tab);
-        if (tab.term) tab.term.focus();
+        tab.renderer.focus();
       }, 50);
     }
   }
@@ -328,9 +991,9 @@ var TerminalManager = (function () {
       try { tab.ws.close(); } catch (e) {}
     }
 
-    // Dispose xterm
-    if (tab.term) {
-      try { tab.term.dispose(); } catch (e) {}
+    // Dispose renderer
+    if (tab.renderer) {
+      try { tab.renderer.dispose(); } catch (e) {}
     }
 
     // Remove DOM
@@ -405,13 +1068,15 @@ var TerminalManager = (function () {
       el.className = 'terminal-tab' + (tab.id === _activeTabId ? ' active' : '');
       el.dataset.tabId = tab.id;
 
-      var statusClass = tab.status === 'connected' ? 'connected' : (tab.status === 'disconnected' ? 'disconnected' : '');
+      var statusClass = tab.status === 'connected'
+        ? 'connected'
+        : (tab.status === 'disconnected' ? 'disconnected' : '');
       el.innerHTML =
         '<span class="terminal-tab-status ' + statusClass + '"></span>' +
         '<span class="terminal-tab-name">' + _escapeHtml(tab.name) + '</span>' +
         '<span class="terminal-tab-close">&times;</span>';
 
-      // Click to switch
+      // Click to switch or close
       (function (tid) {
         el.addEventListener('click', function (e) {
           if (e.target.classList.contains('terminal-tab-close')) {
@@ -458,8 +1123,8 @@ var TerminalManager = (function () {
         closeAllBtn = document.createElement('div');
         closeAllBtn.id = 'terminalCloseAllBtn';
         closeAllBtn.className = 'tab-close-all-btn';
-        closeAllBtn.innerHTML = '&times; 全部关闭';
-        closeAllBtn.title = '关闭所有标签';
+        closeAllBtn.innerHTML = '&times; \u5168\u90E8\u5173\u95ED';
+        closeAllBtn.title = '\u5173\u95ED\u6240\u6709\u6807\u7B7E';
         closeAllBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           closeAllTabs();
@@ -483,12 +1148,12 @@ var TerminalManager = (function () {
     _contextMenu.style.top = event.clientY + 'px';
 
     var items = [
-      { label: '重命名', action: function () { _promptRename(tabId); } },
-      { label: '重新连接', action: function () { _reconnectTab(tabId); } },
+      { label: '\u91CD\u547D\u540D', action: function () { _promptRename(tabId); } },
+      { label: '\u91CD\u65B0\u8FDE\u63A5', action: function () { _reconnectTab(tabId); } },
       { separator: true },
-      { label: '关闭', action: function () { closeTab(tabId); } },
-      { label: '关闭其他', action: function () { closeOtherTabs(tabId); } },
-      { label: '关闭全部', action: function () { closeAllTabs(); }, danger: true },
+      { label: '\u5173\u95ED', action: function () { closeTab(tabId); } },
+      { label: '\u5173\u95ED\u5176\u4ED6', action: function () { closeOtherTabs(tabId); } },
+      { label: '\u5173\u95ED\u5168\u90E8', action: function () { closeAllTabs(); }, danger: true },
     ];
 
     for (var i = 0; i < items.length; i++) {
@@ -533,7 +1198,7 @@ var TerminalManager = (function () {
   function _promptRename(tabId) {
     var tab = _getTabById(tabId);
     if (!tab) return;
-    var newName = prompt('重命名终端标签:', tab.name);
+    var newName = prompt('\u91CD\u547D\u540D\u7EC8\u7AEF\u6807\u7B7E:', tab.name);
     if (newName && newName.trim()) {
       renameTab(tabId, newName.trim());
     }
@@ -548,8 +1213,8 @@ var TerminalManager = (function () {
       try { tab.ws.close(); } catch (e) {}
     }
     tab.status = 'connecting';
-    tab.term.clear();
-    tab.term.writeln('\x1b[33m[重新连接中...]\x1b[0m\r\n');
+    tab.renderer.clear();
+    tab.renderer.writeln('\x1b[33m[\u91CD\u65B0\u8FDE\u63A5\u4E2D...]\x1b[0m\r\n');
     _renderTabBar();
     _connectWebSocket(tab);
   }
@@ -566,8 +1231,14 @@ var TerminalManager = (function () {
     menu.style.top = (event.clientY + 4) + 'px';
 
     var items = [
-      { label: '+ 本地终端', action: function () { createTab('local'); } },
-      { label: '+ 远程终端', action: function () { _showSSHDialog(); } },
+      {
+        label: '+ \u672C\u5730\u7EC8\u7AEF',
+        action: function () { createTab('local'); }
+      },
+      {
+        label: '+ \u8FDC\u7A0B\u7EC8\u7AEF',
+        action: function () { _showSSHDialog(); }
+      },
     ];
 
     // Add saved connections
@@ -640,13 +1311,15 @@ var TerminalManager = (function () {
     var savedHtml = '';
     if (_savedConnections.length > 0) {
       savedHtml = '<div class="terminal-ssh-saved">';
-      savedHtml += '<div class="terminal-ssh-saved-title">已保存的连接</div>';
+      savedHtml += '<div class="terminal-ssh-saved-title">\u5DF2\u4FDD\u5B58\u7684\u8FDE\u63A5</div>';
       for (var i = 0; i < _savedConnections.length; i++) {
         var conn = _savedConnections[i];
         savedHtml += '<div class="terminal-ssh-saved-item" data-idx="' + i + '">';
         savedHtml += '<div class="terminal-ssh-saved-item-info">';
-        savedHtml += '<div class="terminal-ssh-saved-item-name">' + _escapeHtml(conn.name || conn.host) + '</div>';
-        savedHtml += '<div class="terminal-ssh-saved-item-host">' + _escapeHtml(conn.username + '@' + conn.host + ':' + (conn.port || 22)) + '</div>';
+        savedHtml += '<div class="terminal-ssh-saved-item-name">' +
+          _escapeHtml(conn.name || conn.host) + '</div>';
+        savedHtml += '<div class="terminal-ssh-saved-item-host">' +
+          _escapeHtml(conn.username + '@' + conn.host + ':' + (conn.port || 22)) + '</div>';
         savedHtml += '</div>';
         savedHtml += '<span class="terminal-ssh-saved-item-del" data-idx="' + i + '">&times;</span>';
         savedHtml += '</div>';
@@ -656,48 +1329,56 @@ var TerminalManager = (function () {
 
     overlay.innerHTML =
       '<div class="terminal-ssh-dialog">' +
-      '<h3>SSH 远程终端</h3>' +
-      '<p class="terminal-ssh-dialog-subtitle">通过 SSH 连接远程服务器</p>' +
+      '<h3>SSH \u8FDC\u7A0B\u7EC8\u7AEF</h3>' +
+      '<p class="terminal-ssh-dialog-subtitle">\u901A\u8FC7 SSH \u8FDE\u63A5\u8FDC\u7A0B\u670D\u52A1\u5668</p>' +
       '<div class="terminal-ssh-field">' +
-      '<label>快速连接</label>' +
-      '<input type="text" id="sshQuickInput" placeholder="user@host:port 或 user:pass@host:port">' +
-      '<div class="terminal-ssh-quick-hint">按回车解析，或在下方填写详细信息</div>' +
+      '<label>\u5FEB\u901F\u8FDE\u63A5</label>' +
+      '<input type="text" id="sshQuickInput" ' +
+        'placeholder="user@host:port \u6216 user:pass@host:port">' +
+      '<div class="terminal-ssh-quick-hint">' +
+        '\u6309\u56DE\u8F66\u89E3\u6790\uFF0C\u6216\u5728\u4E0B\u65B9\u586B\u5199\u8BE6\u7EC6\u4FE1\u606F</div>' +
       '</div>' +
       '<div class="terminal-ssh-row">' +
       '<div class="terminal-ssh-field">' +
-      '<label>主机地址</label>' +
+      '<label>\u4E3B\u673A\u5730\u5740</label>' +
       '<input type="text" id="sshHost" placeholder="192.168.1.1">' +
       '</div>' +
       '<div class="terminal-ssh-field" style="max-width:100px;">' +
-      '<label>端口</label>' +
+      '<label>\u7AEF\u53E3</label>' +
       '<input type="number" id="sshPort" value="22">' +
       '</div>' +
       '</div>' +
       '<div class="terminal-ssh-field">' +
-      '<label>用户名</label>' +
+      '<label>\u7528\u6237\u540D</label>' +
       '<input type="text" id="sshUsername" placeholder="root">' +
       '</div>' +
       '<div class="terminal-ssh-field">' +
-      '<label>密码</label>' +
-      '<input type="password" id="sshPassword" placeholder="（留空则使用密钥认证）">' +
+      '<label>\u5BC6\u7801</label>' +
+      '<input type="password" id="sshPassword" ' +
+        'placeholder="\uFF08\u7559\u7A7A\u5219\u4F7F\u7528\u5BC6\u94A5\u8BA4\u8BC1\uFF09">' +
       '</div>' +
       '<div class="terminal-ssh-field">' +
-      '<label>私钥（可选）</label>' +
-      '<textarea id="sshKey" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"></textarea>' +
+      '<label>\u79C1\u94A5\uFF08\u53EF\u9009\uFF09</label>' +
+      '<textarea id="sshKey" placeholder="' +
+        '-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----' +
+      '"></textarea>' +
       '</div>' +
       '<div class="terminal-ssh-field">' +
-      '<label>连接名称（可选）</label>' +
-      '<input type="text" id="sshName" placeholder="我的服务器">' +
+      '<label>\u8FDE\u63A5\u540D\u79F0\uFF08\u53EF\u9009\uFF09</label>' +
+      '<input type="text" id="sshName" placeholder="\u6211\u7684\u670D\u52A1\u5668">' +
       '</div>' +
       '<div class="terminal-ssh-field">' +
       '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
-      '<input type="checkbox" id="sshSave" checked style="width:auto;"> 保存连接以便后续使用' +
+      '<input type="checkbox" id="sshSave" checked style="width:auto;">' +
+      ' \u4FDD\u5B58\u8FDE\u63A5\u4EE5\u4FBF\u540E\u7EED\u4F7F\u7528' +
       '</label>' +
       '</div>' +
       savedHtml +
       '<div class="terminal-ssh-actions">' +
-      '<button class="terminal-ssh-btn-cancel" type="button" id="sshCancelBtn">取消</button>' +
-      '<button class="terminal-ssh-btn-connect" type="button" id="sshConnectBtn">连接</button>' +
+      '<button class="terminal-ssh-btn-cancel" type="button" id="sshCancelBtn">' +
+        '\u53D6\u6D88</button>' +
+      '<button class="terminal-ssh-btn-connect" type="button" id="sshConnectBtn">' +
+        '\u8FDE\u63A5</button>' +
       '</div>' +
       '</div>';
 
@@ -725,7 +1406,7 @@ var TerminalManager = (function () {
       }
     });
 
-    // Saved connection click
+    // Saved connection click handlers
     var savedItems = overlay.querySelectorAll('.terminal-ssh-saved-item');
     for (var i = 0; i < savedItems.length; i++) {
       (function (item) {
@@ -766,8 +1447,10 @@ var TerminalManager = (function () {
     if (!input || !input.trim()) return;
     input = input.trim();
 
+    var match;
+
     // Pattern: user:pass@host:port
-    var match = input.match(/^([^:@]+):([^@]+)@([^:]+):(\d+)$/);
+    match = input.match(/^([^:@]+):([^@]+)@([^:]+):(\d+)$/);
     if (match) {
       overlay.querySelector('#sshUsername').value = match[1];
       overlay.querySelector('#sshPassword').value = match[2];
@@ -815,11 +1498,11 @@ var TerminalManager = (function () {
     var saveConn = overlay.querySelector('#sshSave').checked;
 
     if (!host) {
-      if (typeof toast === 'function') toast('主机地址不能为空', 'error');
+      if (typeof toast === 'function') toast('\u4E3B\u673A\u5730\u5740\u4E0D\u80FD\u4E3A\u7A7A', 'error');
       return;
     }
     if (!username) {
-      if (typeof toast === 'function') toast('用户名不能为空', 'error');
+      if (typeof toast === 'function') toast('\u7528\u6237\u540D\u4E0D\u80FD\u4E3A\u7A7A', 'error');
       return;
     }
 
@@ -881,6 +1564,8 @@ var TerminalManager = (function () {
     d.textContent = String(text);
     return d.innerHTML;
   }
+
+  // ========================= Public API =========================
 
   return {
     init: init,

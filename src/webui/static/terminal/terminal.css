@@ -144,13 +144,92 @@
   background: #1e1e1e;
 }
 
-.terminal-body .xterm {
+/* Custom terminal renderer */
+.terminal-output {
+  margin: 0;
+  padding: 8px 12px;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, Monaco, "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.3;
+  color: #d4d4d4;
+  background: #1e1e1e;
+  overflow-y: auto;
+  overflow-x: hidden;
   height: 100%;
-  padding: 4px;
+  white-space: pre;
+  cursor: text;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
-.terminal-body .xterm-viewport {
-  overflow-y: auto !important;
+.terminal-input {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  resize: none;
+  border: none;
+  padding: 0;
+}
+
+/* Cursor */
+.term-cursor {
+  background-color: #d4d4d4;
+  color: #1e1e1e;
+}
+
+/* Bold */
+.term-bold { font-weight: bold; }
+
+/* Foreground colors (standard 8) */
+.term-fg-30 { color: #1e1e1e; }
+.term-fg-31 { color: #f44747; }
+.term-fg-32 { color: #6a9955; }
+.term-fg-33 { color: #d7ba7d; }
+.term-fg-34 { color: #569cd6; }
+.term-fg-35 { color: #c586c0; }
+.term-fg-36 { color: #4ec9b0; }
+.term-fg-37 { color: #d4d4d4; }
+
+/* Bright foreground colors */
+.term-fg-90 { color: #808080; }
+.term-fg-91 { color: #f44747; }
+.term-fg-92 { color: #6a9955; }
+.term-fg-93 { color: #d7ba7d; }
+.term-fg-94 { color: #569cd6; }
+.term-fg-95 { color: #c586c0; }
+.term-fg-96 { color: #4ec9b0; }
+.term-fg-97 { color: #ffffff; }
+
+/* Background colors (standard 8) */
+.term-bg-40 { background-color: #1e1e1e; }
+.term-bg-41 { background-color: #f44747; }
+.term-bg-42 { background-color: #6a9955; }
+.term-bg-43 { background-color: #d7ba7d; }
+.term-bg-44 { background-color: #569cd6; }
+.term-bg-45 { background-color: #c586c0; }
+.term-bg-46 { background-color: #4ec9b0; }
+.term-bg-47 { background-color: #d4d4d4; }
+
+/* Bright background colors */
+.term-bg-100 { background-color: #808080; }
+.term-bg-101 { background-color: #f44747; }
+.term-bg-102 { background-color: #6a9955; }
+.term-bg-103 { background-color: #d7ba7d; }
+.term-bg-104 { background-color: #569cd6; }
+.term-bg-105 { background-color: #c586c0; }
+.term-bg-106 { background-color: #4ec9b0; }
+.term-bg-107 { background-color: #ffffff; }
+
+/* Terminal pane needs relative positioning for the hidden input */
+.terminal-pane {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 /* Empty state */

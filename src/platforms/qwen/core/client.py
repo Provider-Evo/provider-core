@@ -93,6 +93,7 @@ HTTP_TIMEOUT: int = 30
 
 _PROXY_AUTO_EXPIRY = 86400
 _RELOGIN_LOG_BUFFER_SECS = 60
+_RETRY_LOG_BUFFER_SECS = 30
 
 
 class WAFBlockedError(Exception):
@@ -131,6 +132,8 @@ class QwenClient:
         self._proxy_selector = ProxySelector(Path(PROXY_SELECTOR_PERSIST_PATH))
         self._relogin_log_buffer: List[str] = []
         self._relogin_flush_task: Optional[asyncio.Task] = None
+        self._retry_log_buffer: List[str] = []
+        self._retry_log_flush_task: Optional[asyncio.Task] = None
 
     def get_models(self) -> List[str]:
         """返回当前模型列表副本。"""
@@ -295,6 +298,11 @@ class QwenClient:
             self._relogin_flush_task = None
         if hasattr(self, '_flush_relogin_buffer_now'):
             self._flush_relogin_buffer_now()
+        if hasattr(self, '_retry_log_flush_task') and self._retry_log_flush_task and not self._retry_log_flush_task.done():
+            self._retry_log_flush_task.cancel()
+            self._retry_log_flush_task = None
+        if hasattr(self, '_flush_retry_log_buffer_now'):
+            self._flush_retry_log_buffer_now()
         for task in self._bg_tasks:
             task.cancel()
         for task in self._bg_tasks:
@@ -530,6 +538,38 @@ class QwenClient:
                 "Qwen 初始登录: token 无效 [%s*** and %d other account(s)]，排队重登",
                 buffer[0], len(buffer) - 1,
             )
+
+    # =========================================================================
+    # 重试日志聚合
+    # =========================================================================
+
+    def _log_retry(self, message: str) -> None:
+        """缓冲重试日志，30 秒后聚合输出，避免刷屏。"""
+        self._retry_log_buffer.append(message)
+
+        if self._retry_log_flush_task is None or self._retry_log_flush_task.done():
+            self._retry_log_flush_task = asyncio.create_task(
+                self._flush_retry_log_buffer()
+            )
+
+    async def _flush_retry_log_buffer(self) -> None:
+        """等待缓冲窗口后聚合输出重试日志。"""
+        await asyncio.sleep(_RETRY_LOG_BUFFER_SECS)
+        self._flush_retry_log_buffer_now()
+
+    def _flush_retry_log_buffer_now(self) -> None:
+        """立即聚合输出缓冲区中的重试日志（同步）。"""
+        buffer = self._retry_log_buffer
+        self._retry_log_buffer = []
+        self._retry_log_flush_task = None
+
+        if not buffer:
+            return
+
+        if len(buffer) == 1:
+            logger.debug("Qwen 重试: %s", buffer[0])
+        else:
+            logger.debug("Qwen 重试: %s (共 %d 条)", buffer[0], len(buffer))
 
     # =========================================================================
     # 登录与 Token 管理（统一轮询式）
@@ -2059,14 +2099,15 @@ class QwenClient:
                         self.set_proxy_enabled(True, auto=True)
                         self._save_persist()
                 last_exc = None  # 清除 last_exc，让重试使用新代理
-                logger.warning(
-                    "Qwen WAF 重试 %d/%d（代理已启用）", attempt + 1, MAX_RETRIES
+                self._log_retry(
+                    f"WAF 重试 {attempt + 1}/{MAX_RETRIES}（代理已启用）"
                 )
             except Exception as e:
                 last_exc = e
-                logger.warning(
-                    "Qwen 重试 %d/%d: %s", attempt + 1, MAX_RETRIES, e
+                self._log_retry(
+                    f"{attempt + 1}/{MAX_RETRIES}: {e}"
                 )
+        self._flush_retry_log_buffer_now()
         if last_exc:
             raise last_exc
 

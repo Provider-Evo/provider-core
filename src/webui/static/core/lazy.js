@@ -7,9 +7,6 @@ var LazyLoader = (function() {
 
   var TAB_RESOURCES = {
     terminal: [
-      { type: 'css', url: 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css' },
-      { type: 'js',  url: 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js' },
-      { type: 'js',  url: 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js' },
       { type: 'css', url: '/static/terminal/terminal.css' },
       { type: 'js',  url: '/static/terminal/terminal.js' },
     ],

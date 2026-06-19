@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.153-blue)
-![Version](https://img.shields.io/badge/version-2.2.153-blue)
+![Status](https://img.shields.io/badge/status-v2.2.154-blue)
+![Version](https://img.shields.io/badge/version-2.2.154-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.153
+### 当前版本：v2.2.154
+
+✅ 已完成（v2.2.154）：
+- Qwen 重试日志改为缓冲聚合输出（DEBUG 级别）
+- WebUI 终端重写：移除 xterm.js，自研轻量终端渲染器
+- echotools 新增 terminal 模块（v1.0.24），终端逻辑下沉为通用组件
 
 ✅ 已完成（v2.2.153）：
 - WebUI 静态资源懒加载：按标签页延迟加载 JS/CSS，初始负载从 ~335KB 降至 ~100KB

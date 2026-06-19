@@ -2139,3 +2139,18 @@ pytest: (pending)
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.152 -> 2.2.153
 py_compile: src/webui/middleware/static_nocache.py 通过
 纯前端 JS 变更 + 1 个 Python 中间件变更
+
+2026-06-19 13:00:00
+
+[src/platforms/qwen/core/client.py] 重试日志改为缓冲聚合输出，级别从 WARNING 降为 DEBUG
+[src/webui/routers/terminal.py] 重构为使用 echotools.terminal 模块，移除内联 TerminalSession
+[src/webui/static/terminal/terminal.js] 完全重写：移除 xterm.js 依赖，自研 ANSI 终端渲染器
+[src/webui/static/terminal/terminal.css] 移除 xterm 样式，新增自定义终端渲染器样式
+[src/webui/static/core/lazy.js] 移除 xterm.js CDN 引用，终端资源改为本地加载
+[requirements.txt] echotools 版本要求从 >=1.0.23 更新为 >=1.0.24
+[template/template_config.toml] 版本 2.2.153 -> 2.2.154
+[config.toml] 版本跟随模板 2.2.154
+[README.md] 版本徽章和路线图更新为 2.2.154
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.153 -> 2.2.154
+py_compile: client.py, terminal.py 全部通过
+echotools 1.0.24 已发布到 PyPI

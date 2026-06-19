@@ -4,186 +4,60 @@ from __future__ import annotations
 
 Provides local and SSH remote terminal sessions via WebSocket,
 using xterm.js on the frontend.
+
+Terminal process management is delegated to ``echotools.terminal``
+(``LocalTerminal`` / ``SSHTerminal``).  This module only handles the
+WebSocket transport layer via ``_TerminalBridge``.
 """
 
-import asyncio
 import json
-import os
-import signal
-import subprocess
-import sys
+import logging
 import uuid
 from typing import Any, Dict, Optional
 
 import aiohttp.web
+from echotools.terminal import LocalTerminal, SSHTerminal, TerminalCallback
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["terminal_ws", "terminal_sessions_api"]
 
-# Active terminal sessions: session_id -> TerminalSession
-_sessions: Dict[str, "TerminalSession"] = {}
+# Active terminal sessions: session_id -> _TerminalBridge
+_sessions: Dict[str, "_TerminalBridge"] = {}
 
 
-class TerminalSession:
-    """Manages a single terminal process (local or SSH)."""
+class _TerminalBridge:
+    """Bridges echotools TerminalSession to aiohttp WebSocket.
 
-    def __init__(self, session_id: str, kind: str = "local") -> None:
+    Holds a reference to the WebSocket response and wires the
+    ``TerminalCallback`` hooks so that output / error / exit events
+    produced by the echotools session are forwarded to the client as
+    JSON messages.
+    """
+
+    def __init__(self, session_id: str, kind: str, ws: aiohttp.web.WebSocketResponse) -> None:
         self.session_id = session_id
         self.kind = kind
-        self.process: Optional[subprocess.Popen] = None
-        self._async_process = None  # asyncio subprocess (Windows)
-        self._fd: Optional[int] = None  # pty master fd (Unix)
-        self._reader_task: Optional[asyncio.Task] = None
-        self._ws: Optional[aiohttp.web.WebSocketResponse] = None
-        self._ssh_client = None  # paramiko.SSHClient
-        self._ssh_channel = None  # paramiko.Channel
-        self._alive = False
+        self.ws = ws
+        self._session: Optional[LocalTerminal | SSHTerminal] = None
+        self.alive: bool = False
+
+    # ------------------------------------------------------------------
+    # Start helpers
+    # ------------------------------------------------------------------
 
     async def start_local(self, cols: int = 80, rows: int = 24) -> bool:
-        """Start a local shell process."""
-        try:
-            if sys.platform == "win32":
-                return await self._start_local_windows(cols, rows)
-            else:
-                return await self._start_local_unix(cols, rows)
-        except Exception as e:
-            await self._send_error(f"Failed to start local terminal: {e}")
-            return False
-
-    async def _start_local_windows(self, cols: int, rows: int) -> bool:
-        """Start local terminal on Windows using asyncio subprocess."""
-        env = os.environ.copy()
-        env["TERM"] = "xterm-256color"
-        env["PYTHONIOENCODING"] = "utf-8"
-        env["ANSICON"] = "1"
-
-        try:
-            self._async_process = await asyncio.create_subprocess_exec(
-                "cmd.exe", "/K", "chcp 65001 >nul & prompt $P$G",
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                env=env,
-            )
-        except Exception as e:
-            await self._send_error(f"Failed to start Windows terminal: {e}")
-            return False
-
-        self._alive = True
-        self._reader_task = asyncio.ensure_future(self._read_windows_async())
-        return True
-
-    async def _read_windows_async(self) -> None:
-        """Read from Windows process using asyncio StreamReader."""
-        proc = self._async_process
-        if not proc or not proc.stdout:
-            return
-        try:
-            while self._alive and proc.returncode is None:
-                try:
-                    data = await asyncio.wait_for(proc.stdout.read(4096), timeout=0.5)
-                except asyncio.TimeoutError:
-                    continue
-                if not data:
-                    break
-                if self._ws and not self._ws.closed:
-                    await self._ws.send_json({
-                        "type": "output",
-                        "data": data.decode("utf-8", errors="replace"),
-                    })
-        except asyncio.CancelledError:
-            pass
-        except Exception:
-            pass
-        finally:
-            if self._ws and not self._ws.closed:
-                code = proc.returncode if proc else -1
-                await self._ws.send_json({"type": "exit", "code": code if code is not None else -1})
-
-    async def _read_windows_output(self) -> None:
-        """Legacy reader — not used on Windows anymore."""
-        pass
-
-    def _read_chunk(self) -> Optional[bytes]:
-        """Legacy chunk reader — not used on Windows anymore."""
-        return None
-
-    async def _start_local_unix(self, cols: int, rows: int) -> bool:
-        """Start local terminal on Unix using pty."""
-        import pty
-
-        master_fd, slave_fd = pty.openpty()
-        shell = os.environ.get("SHELL", "/bin/bash")
-
-        env = os.environ.copy()
-        env["TERM"] = "xterm-256color"
-        env["COLUMNS"] = str(cols)
-        env["LINES"] = str(rows)
-
-        self.process = subprocess.Popen(
-            [shell],
-            stdin=slave_fd,
-            stdout=slave_fd,
-            stderr=slave_fd,
-            env=env,
-            preexec_fn=os.setsid,
-            bufsize=0,
+        """Create and start a ``LocalTerminal`` session."""
+        callback = TerminalCallback(
+            on_output=self._send_output,
+            on_error=self._send_error,
+            on_exit=self._send_exit,
         )
-        os.close(slave_fd)
-        self._fd = master_fd
-        self._alive = True
-
-        # Set window size
-        self._set_pty_size(cols, rows)
-
-        # Start reader
-        loop = asyncio.get_event_loop()
-        self._reader_task = loop.create_task(self._read_pty_output())
-        return True
-
-    async def _read_pty_output(self) -> None:
-        """Read from pty master fd and send to WebSocket."""
-        loop = asyncio.get_event_loop()
-        try:
-            while self._alive and self._fd is not None:
-                data = await loop.run_in_executor(None, self._read_pty_chunk)
-                if data is None:
-                    break
-                if data and self._ws and not self._ws.closed:
-                    await self._ws.send_json({
-                        "type": "output",
-                        "data": data.decode("utf-8", errors="replace"),
-                    })
-        except Exception:
-            pass
-        finally:
-            if self._ws and not self._ws.closed:
-                code = self.process.returncode if self.process else -1
-                await self._ws.send_json({"type": "exit", "code": code})
-
-    def _read_pty_chunk(self) -> Optional[bytes]:
-        """Read from pty fd (blocking, runs in executor)."""
-        if self._fd is None:
-            return None
-        try:
-            data = os.read(self._fd, 4096)
-            if not data:
-                return None
-            return data
-        except OSError:
-            return None
-
-    def _set_pty_size(self, cols: int, rows: int) -> None:
-        """Set pty window size (Unix only)."""
-        if self._fd is None or sys.platform == "win32":
-            return
-        try:
-            import fcntl
-            import struct
-            import termios
-            winsize = struct.pack("HHHH", rows, cols, 0, 0)
-            fcntl.ioctl(self._fd, termios.TIOCSWINSZ, winsize)
-        except Exception:
-            pass
+        self._session = LocalTerminal(self.session_id, callback)
+        ok = await self._session.start(cols, rows)
+        if ok:
+            self.alive = True
+        return ok
 
     async def start_ssh(
         self,
@@ -195,204 +69,66 @@ class TerminalSession:
         cols: int = 80,
         rows: int = 24,
     ) -> bool:
-        """Start an SSH remote terminal session using paramiko."""
-        try:
-            import paramiko
-        except ImportError:
-            await self._send_error("paramiko is not installed. Add 'paramiko>=3.0.0' to requirements.txt and restart.")
-            return False
+        """Create and start an ``SSHTerminal`` session."""
+        callback = TerminalCallback(
+            on_output=self._send_output,
+            on_error=self._send_error,
+            on_exit=self._send_exit,
+        )
+        self._session = SSHTerminal(
+            self.session_id,
+            host=host,
+            port=port,
+            username=username,
+            password=password or None,
+            key_data=key_data or None,
+            callback=callback,
+        )
+        ok = await self._session.start(cols, rows)
+        if ok:
+            self.alive = True
+        return ok
 
-        try:
-            self._ssh_client = paramiko.SSHClient()
-            self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    # ------------------------------------------------------------------
+    # Callback implementations (echotools -> WebSocket)
+    # ------------------------------------------------------------------
 
-            connect_kwargs: Dict[str, Any] = {
-                "hostname": host,
-                "port": port,
-                "username": username,
-                "timeout": 15,
-            }
-
-            if key_data:
-                import io
-                # Try RSA key first, then Ed25519
-                for key_class in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
-                    try:
-                        pkey = key_class.from_private_key(io.StringIO(key_data))
-                        connect_kwargs["pkey"] = pkey
-                        break
-                    except Exception:
-                        continue
-                if "pkey" not in connect_kwargs:
-                    await self._send_error("Failed to parse private key. Supported formats: RSA, Ed25519, ECDSA.")
-                    return False
-            elif password:
-                connect_kwargs["password"] = password
-            else:
-                # Try system keys
-                connect_kwargs["look_for_keys"] = True
-                connect_kwargs["allow_agent"] = True
-
-            await asyncio.get_event_loop().run_in_executor(
-                None, lambda: self._ssh_client.connect(**connect_kwargs)
-            )
-
-            self._ssh_channel = self._ssh_client.get_transport().open_session()
-            self._ssh_channel.get_pty(term="xterm-256color", width=cols, height=rows)
-            self._ssh_channel.invoke_shell()
-            self._alive = True
-
-            loop = asyncio.get_event_loop()
-            self._reader_task = loop.create_task(self._read_ssh_output())
-            return True
-
-        except Exception as e:
-            await self._send_error(f"SSH connection failed: {e}")
-            return False
-
-    async def _read_ssh_output(self) -> None:
-        """Read from SSH channel and send to WebSocket."""
-        loop = asyncio.get_event_loop()
-        try:
-            while self._alive and self._ssh_channel:
-                data = await loop.run_in_executor(None, self._read_ssh_chunk)
-                if data is None:
-                    break
-                if data and self._ws and not self._ws.closed:
-                    await self._ws.send_json({
-                        "type": "output",
-                        "data": data.decode("utf-8", errors="replace"),
-                    })
-        except Exception:
-            pass
-        finally:
-            if self._ws and not self._ws.closed:
-                await self._ws.send_json({"type": "exit", "code": 0})
-
-    def _read_ssh_chunk(self) -> Optional[bytes]:
-        """Read from SSH channel (blocking, runs in executor)."""
-        if not self._ssh_channel:
-            return None
-        try:
-            if self._ssh_channel.recv_ready():
-                data = self._ssh_channel.recv(4096)
-                if not data:
-                    return None
-                return data
-            elif self._ssh_channel.closed or self._ssh_channel.eof_received:
-                return None
-            else:
-                # Small sleep to avoid busy-waiting
-                import time
-                time.sleep(0.05)
-                return b""
-        except Exception:
-            return None
-
-    async def write_input(self, data: str) -> None:
-        """Write input data to the terminal process."""
-        try:
-            encoded = data.encode("utf-8")
-            if self.kind == "ssh" and self._ssh_channel:
-                await asyncio.get_event_loop().run_in_executor(
-                    None, self._ssh_channel.send, encoded
-                )
-            elif hasattr(self, '_async_process') and self._async_process and self._async_process.stdin:
-                self._async_process.stdin.write(encoded)
-                await self._async_process.stdin.drain()
-            elif self.process and self.process.stdin:
-                await asyncio.get_event_loop().run_in_executor(
-                    None, self._write_stdin, encoded
-                )
-            elif self._fd is not None:
-                await asyncio.get_event_loop().run_in_executor(
-                    None, os.write, self._fd, encoded
-                )
-        except Exception:
-            pass
-
-    def _write_stdin(self, data: bytes) -> None:
-        """Write data to process stdin and flush."""
-        if self.process and self.process.stdin:
-            self.process.stdin.write(data)
-            self.process.stdin.flush()
-
-    async def resize(self, cols: int, rows: int) -> None:
-        """Resize the terminal."""
-        try:
-            if self.kind == "ssh" and self._ssh_channel:
-                await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: self._ssh_channel.resize_pty(width=cols, height=rows)
-                )
-            elif self._fd is not None:
-                self._set_pty_size(cols, rows)
-            # Windows pipe-based terminals don't support resize
-        except Exception:
-            pass
+    async def _send_output(self, data: str) -> None:
+        """Forward terminal output to the WebSocket client."""
+        if self.ws and not self.ws.closed:
+            await self.ws.send_json({"type": "output", "data": data})
 
     async def _send_error(self, message: str) -> None:
-        """Send an error message to the WebSocket client."""
-        if self._ws and not self._ws.closed:
-            await self._ws.send_json({"type": "error", "message": message})
+        """Forward an error message to the WebSocket client."""
+        if self.ws and not self.ws.closed:
+            await self.ws.send_json({"type": "error", "message": message})
+
+    async def _send_exit(self, code: int) -> None:
+        """Forward an exit event to the WebSocket client."""
+        self.alive = False
+        if self.ws and not self.ws.closed:
+            await self.ws.send_json({"type": "exit", "code": code})
+
+    # ------------------------------------------------------------------
+    # Client -> session delegation
+    # ------------------------------------------------------------------
+
+    async def write(self, data: str) -> None:
+        """Write client input to the underlying terminal session."""
+        if self._session:
+            await self._session.write(data)
+
+    async def resize(self, cols: int, rows: int) -> None:
+        """Resize the underlying terminal session."""
+        if self._session:
+            await self._session.resize(cols, rows)
 
     async def close(self) -> None:
-        """Terminate the session and clean up resources."""
-        self._alive = False
-
-        # Cancel reader task
-        if self._reader_task and not self._reader_task.done():
-            self._reader_task.cancel()
-            try:
-                await self._reader_task
-            except (asyncio.CancelledError, Exception):
-                pass
-
-        # Close SSH channel/client
-        if self._ssh_channel:
-            try:
-                self._ssh_channel.close()
-            except Exception:
-                pass
-        if self._ssh_client:
-            try:
-                self._ssh_client.close()
-            except Exception:
-                pass
-
-        # Close pty fd
-        if self._fd is not None:
-            try:
-                os.close(self._fd)
-            except Exception:
-                pass
-            self._fd = None
-
-        # Kill process
-        if hasattr(self, '_async_process') and self._async_process:
-            try:
-                self._async_process.terminate()
-                await asyncio.wait_for(self._async_process.wait(), timeout=3)
-            except Exception:
-                try:
-                    self._async_process.kill()
-                except Exception:
-                    pass
-        if self.process:
-            try:
-                if sys.platform != "win32":
-                    try:
-                        os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
-                    except Exception:
-                        pass
-                self.process.terminate()
-                self.process.wait(timeout=3)
-            except Exception:
-                try:
-                    self.process.kill()
-                except Exception:
-                    pass
-
-        # Remove from sessions dict
+        """Close the terminal session and remove it from the registry."""
+        self.alive = False
+        if self._session:
+            await self._session.close()
+            self._session = None
         _sessions.pop(self.session_id, None)
 
 
@@ -415,7 +151,7 @@ async def terminal_ws(request: aiohttp.web.Request) -> aiohttp.web.WebSocketResp
     ws = aiohttp.web.WebSocketResponse(heartbeat=30.0)
     await ws.prepare(request)
 
-    session: Optional[TerminalSession] = None
+    bridge: Optional[_TerminalBridge] = None
 
     try:
         async for msg in ws:
@@ -438,12 +174,11 @@ async def terminal_ws(request: aiohttp.web.Request) -> aiohttp.web.WebSocketResp
                 cols = int(payload.get("cols", 80))
                 rows = int(payload.get("rows", 24))
 
-                session = TerminalSession(session_id, kind)
-                session._ws = ws
-                _sessions[session_id] = session
+                bridge = _TerminalBridge(session_id, kind, ws)
+                _sessions[session_id] = bridge
 
                 if kind == "ssh":
-                    ok = await session.start_ssh(
+                    ok = await bridge.start_ssh(
                         host=payload.get("host", ""),
                         port=int(payload.get("port", 22)),
                         username=payload.get("username", ""),
@@ -453,41 +188,41 @@ async def terminal_ws(request: aiohttp.web.Request) -> aiohttp.web.WebSocketResp
                         rows=rows,
                     )
                 else:
-                    ok = await session.start_local(cols, rows)
+                    ok = await bridge.start_local(cols, rows)
 
                 if ok:
                     await ws.send_json({"type": "ready", "session_id": session_id})
                 else:
-                    # Error already sent by start_local/start_ssh
+                    # Error already sent via callback (_send_error)
                     _sessions.pop(session_id, None)
 
-            elif msg_type == "input" and session:
+            elif msg_type == "input" and bridge:
                 data = payload.get("data", "")
                 if data:
-                    await session.write_input(data)
+                    await bridge.write(data)
 
-            elif msg_type == "resize" and session:
+            elif msg_type == "resize" and bridge:
                 cols = int(payload.get("cols", 80))
                 rows = int(payload.get("rows", 24))
-                await session.resize(cols, rows)
+                await bridge.resize(cols, rows)
 
             elif msg_type == "ping":
                 await ws.send_json({"type": "pong"})
 
     finally:
-        if session:
-            await session.close()
+        if bridge:
+            await bridge.close()
 
     return ws
 
 
 async def terminal_sessions_api(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """GET /v1/webui/terminal/sessions — list active terminal sessions."""
+    """GET /v1/webui/terminal/sessions -- list active terminal sessions."""
     result = []
-    for sid, sess in _sessions.items():
+    for sid, bridge in _sessions.items():
         result.append({
             "session_id": sid,
-            "kind": sess.kind,
-            "alive": sess._alive,
+            "kind": bridge.kind,
+            "alive": bridge.alive,
         })
     return aiohttp.web.json_response(result)
