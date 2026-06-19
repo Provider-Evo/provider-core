@@ -149,8 +149,11 @@ function TerminalRenderer(container, cols, rows) {
     _wrapper.focus();
   });
 
-  // Click handler for detected file paths — navigate to file manager
+  // Click handler for detected file paths -- DISABLED for plain-text terminal output.
+  // Path hyperlinking is turned off; paths render as normal text with no click action.
+  // To re-enable: remove the early-return below and ensure _renderLine emits .term-path spans.
   _wrapper.addEventListener('click', function (e) {
+    return; // path-click navigation disabled
     var pathEl = e.target.closest('.term-path');
     if (!pathEl) return;
     e.preventDefault();
@@ -615,46 +618,12 @@ function TerminalRenderer(container, cols, rows) {
       return '<span class="term-space"> </span>';
     }
 
-    // Extract plain text for path detection
-    var plainText = '';
-    for (var i = 0; i < cols; i++) {
-      var cell = line[i];
-      plainText += (cell && cell.char) ? cell.char : ' ';
-    }
-
-    // Find path ranges in the plain text
-    var pathRanges = [];
-    var pathMatch;
-    _PATH_REGEX.lastIndex = 0;
-    while ((pathMatch = _PATH_REGEX.exec(plainText)) !== null) {
-      var matchStr = pathMatch[0];
-      // Trim trailing punctuation that is unlikely to be part of a path
-      var trimLen = matchStr.length;
-      while (trimLen > 0 && /[.,;:!?)\]}>]/.test(matchStr[trimLen - 1])) {
-        trimLen--;
-      }
-      matchStr = matchStr.substring(0, trimLen);
-      // Require minimum length and at least one path separator or drive letter
-      if (matchStr.length >= 4 && (matchStr.indexOf('/') !== -1 || matchStr.indexOf('\\') !== -1)) {
-        pathRanges.push({
-          start: pathMatch.index,
-          end: pathMatch.index + trimLen,
-          text: matchStr
-        });
-      }
-    }
-
-    // Check if a column index falls within a path range; return range index or -1
-    function _pathAt(col) {
-      for (var r = 0; r < pathRanges.length; r++) {
-        if (col >= pathRanges[r].start && col < pathRanges[r].end) return r;
-      }
-      return -1;
-    }
+    // Path detection disabled for plain-text terminal output.
+    // _PATH_REGEX and .term-path CSS are preserved for potential future re-enable.
+    // Previously: extracted plainText, matched _PATH_REGEX, wrapped matches in .term-path spans.
 
     var parts = [];
     var curFg = -1, curBg = -1, curBold = false;
-    var curPath = -2; // -2 = uninitialized, -1 = not in path, >= 0 = path range index
     var buf = '';
 
     for (var i = 0; i < cols; i++) {
@@ -668,34 +637,21 @@ function TerminalRenderer(container, cols, rows) {
         ch = cell.char || ' ';
       }
 
-      var pi = _pathAt(i);
-
-      if (fg !== curFg || bg !== curBg || bold !== curBold || pi !== curPath) {
+      if (fg !== curFg || bg !== curBg || bold !== curBold) {
         if (buf) {
-          var html = _wrapSpan(buf, curFg, curBg, curBold);
-          if (curPath >= 0) {
-            var ptext = pathRanges[curPath].text;
-            html = '<span class="term-path" data-path="' + _escapeAttr(ptext) + '">' + html + '</span>';
-          }
-          parts.push(html);
+          parts.push(_wrapSpan(buf, curFg, curBg, curBold));
         }
         buf = ch;
         curFg = fg;
         curBg = bg;
         curBold = bold;
-        curPath = pi;
       } else {
         buf += ch;
       }
     }
 
     if (buf) {
-      var html = _wrapSpan(buf, curFg, curBg, curBold);
-      if (curPath >= 0) {
-        var ptext = pathRanges[curPath].text;
-        html = '<span class="term-path" data-path="' + _escapeAttr(ptext) + '">' + html + '</span>';
-      }
-      parts.push(html);
+      parts.push(_wrapSpan(buf, curFg, curBg, curBold));
     }
 
     return parts.join('') || '<span class="term-space"> </span>';
