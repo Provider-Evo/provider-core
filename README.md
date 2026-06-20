@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.187-blue)
-![Version](https://img.shields.io/badge/version-2.2.187-blue)
+![Status](https://img.shields.io/badge/status-v2.2.188-blue)
+![Version](https://img.shields.io/badge/version-2.2.188-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1258,7 +1258,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.187
+### 当前版本：v2.2.188
+
+✅ 已完成（v2.2.188）：
+- opencode 支持从 accounts.py 注入本地代理（LOCAL_PROXIES），启动和每次刷新时合并到代理池参与 TAS 选择
 
 ✅ 已完成（v2.2.187）：
 - opencode 连接重试修复：连接断开/负载截断时不再中止，所有连接错误均触发 TAS 选择新代理重试；仅 PlatformError 为不可重试异常

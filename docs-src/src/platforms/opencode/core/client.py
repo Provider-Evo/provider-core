@@ -29,9 +29,15 @@ from .constants import (
 )
 from .headers import build_headers
 from .payloads import build_payload
-from .proxypool import ProxyPool, fetch_all_proxies
+from .proxypool import ProxyInfo, ProxyPool, fetch_all_proxies
 from .proxyscore import DIRECT, ProxyPoolSelector
 from .sse import parse_sse_line
+
+# accounts.py is gitignored; import at runtime with fallback
+try:
+    from src.platforms.opencode.accounts import LOCAL_PROXIES
+except ImportError:
+    LOCAL_PROXIES: list = []
 
 logger = get_logger(__name__)
 
@@ -60,7 +66,10 @@ class OpencodeClient:
         """Store session and load cached proxy pool -- non-blocking."""
         self._session = session
         pool = await self._load_pool_from_disk()
-        if pool is not None and pool.count > 0:
+        if pool is None:
+            pool = ProxyPool()
+        self._inject_local_proxies(pool)
+        if pool.count > 0:
             self._pool = pool
             self._selector.update_pool(pool.to_address_list())
         logger.debug(
@@ -89,7 +98,8 @@ class OpencodeClient:
         return fetch_all_proxies()
 
     async def _apply_pool(self, pool: ProxyPool) -> None:
-        """Apply a freshly fetched pool under lock."""
+        """Apply a freshly fetched pool under lock, merging local proxies."""
+        self._inject_local_proxies(pool)
         async with self._proxy_lock:
             self._pool = pool
             self._selector.update_pool(pool.to_address_list())
@@ -99,6 +109,23 @@ class OpencodeClient:
                 pool.count,
                 pool.fetch_time,
             )
+
+    @staticmethod
+    def _inject_local_proxies(pool: ProxyPool) -> None:
+        """Merge LOCAL_PROXIES from accounts.py into the pool."""
+        for addr in LOCAL_PROXIES:
+            addr = addr.strip()
+            if not addr or ":" not in addr:
+                continue
+            parts = addr.rsplit(":", 1)
+            try:
+                ip, port = parts[0], int(parts[1])
+            except (ValueError, IndexError):
+                continue
+            pool.add(ProxyInfo(
+                ip=ip, port=port, protocol="http",
+                country="local",
+            ))
 
     async def _bg_refresh_proxy(self) -> None:
         """Periodically refresh the proxy pool."""
