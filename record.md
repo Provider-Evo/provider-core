@@ -2341,3 +2341,13 @@ pytest: 11 passed, 3 failed（预存问题，非本次修改引入）, 549 desel
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.168 -> 2.2.169
 py_compile: 跳过（仅前端变更）
 pytest: 0 passed, 549 deselected, 1 collection error（test_xml_protocol.py 预存 import 错误，非本次修改引入；无 terminal/webui 匹配用例）
+
+2026-06-20 10:00:00
+
+[src/webui/static/files/files.js] 文件管理器默认目录从系统根改为项目根（_restoreSession 无会话回退/Ctrl+T/新建标签/createTab 默认值四处统一为 _projectRoot || '/'）
+[template/template_config.toml] 版本 2.2.169 -> 2.2.170
+[config.toml] 版本跟随模板 2.2.170
+[README.md] 版本徽章和路线图更新为 2.2.170
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.169 -> 2.2.170
+py_compile: 跳过（仅前端变更）
+pytest: 41 passed, 3 failed（预存 webui 静态资源路径断言失败，非本次修改引入）, 519 deselected

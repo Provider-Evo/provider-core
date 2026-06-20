@@ -216,7 +216,7 @@ var FileManager = (function () {
       // Ctrl+T: New tab
       if ((e.key === 't' || e.key === 'T') && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
         e.preventDefault();
-        createTab('/');
+        createTab(_projectRoot || '/');
         return;
       }
 
@@ -339,7 +339,7 @@ var FileManager = (function () {
 
     _tabCounter++;
     var tabId = 'file-' + _tabCounter + '-' + Date.now();
-    path = path || '/';
+    path = path || _projectRoot || '/';
     var name = _pathDisplayName(path);
 
     var tab = {
@@ -456,7 +456,7 @@ var FileManager = (function () {
     addBtn.innerHTML = '+';
     addBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      createTab('/');
+      createTab(_projectRoot || '/');
     });
     _tabBar.appendChild(addBtn);
 
@@ -1932,9 +1932,8 @@ var FileManager = (function () {
       }
     } catch (e) { /* ignore */ }
 
-    // No saved session — show empty state
-    _renderTabBar();
-    _renderContent();
+    // No saved session — open at project root
+    createTab(_projectRoot || '/');
   }
 
   // ========================= Utilities =========================
