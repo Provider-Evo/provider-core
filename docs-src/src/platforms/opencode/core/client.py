@@ -94,7 +94,7 @@ class OpencodeClient:
             self._pool = pool
             self._selector.update_pool(pool.to_address_list())
             await self._save_pool_to_disk(pool)
-            logger.info(
+            logger.debug(
                 "Proxy pool refreshed: %d proxies, fetch_time=%s",
                 pool.count,
                 pool.fetch_time,
@@ -145,38 +145,23 @@ class OpencodeClient:
     # ------------------------------------------------------------------
 
     async def candidates(self) -> List[Candidate]:
-        """Build one Candidate per proxy in the pool, plus a direct candidate."""
-        models = self._models
-        result = [
+        """Return a single candidate -- proxy selection is handled internally."""
+        if self._pool.count == 0:
+            return []
+        return [
             Candidate(
-                id=make_id("opencode", proxy.address),
+                id=make_id("opencode"),
                 platform="opencode",
-                resource_id=proxy.address,
-                models=list(models),
+                resource_id="proxy-pool",
+                models=list(self._models),
                 context_length=None,
-                meta={
-                    "proxy_addr": proxy.address,
-                    "proxy_protocol": proxy.protocol,
-                },
+                meta={"proxy_addr": "", "proxy_protocol": ""},
                 **CAPS,
             )
-            for proxy in self._pool.proxies
         ]
-        # Always include a direct-connection candidate
-        direct_candidate = Candidate(
-            id=make_id("opencode", "direct"),
-            platform="opencode",
-            resource_id="direct",
-            models=list(models),
-            context_length=None,
-            meta={"proxy_addr": "", "proxy_protocol": "direct"},
-            **CAPS,
-        )
-        result.append(direct_candidate)
-        return result
 
     async def ensure_candidates(self, count: int) -> int:
-        """If pool is empty trigger a fetch; otherwise no-op."""
+        """Ensure the single candidate is available (proxy pool non-empty)."""
         if self._pool.count == 0:
             try:
                 loop = asyncio.get_running_loop()
@@ -184,7 +169,7 @@ class OpencodeClient:
                 await self._apply_pool(pool)
             except Exception as e:
                 logger.warning("opencode ensure_candidates fetch failed: %s", e)
-        return self._pool.count
+        return 1 if self._pool.count > 0 else 0
 
     # ------------------------------------------------------------------
     # Chat completion
@@ -213,20 +198,21 @@ class OpencodeClient:
         """
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES):
-            # After the first failure, rotate to a new proxy via TAS
+            # TAS-select a proxy for every attempt (first included)
+            pool_addrs = self._pool.to_address_list()
+            # Exclude the last failed proxy on retries
             if attempt > 0:
-                pool_addrs = self._pool.to_address_list()
-                selector_addrs = [
+                pool_addrs = [
                     a for a in pool_addrs
                     if a != candidate.meta.get("proxy_addr", "")
                 ]
-                chosen = self._selector.select(selector_addrs)
-                if chosen == DIRECT or chosen is None:
-                    new_addr = ""
-                else:
-                    new_addr = chosen
-                candidate.meta["proxy_addr"] = new_addr
-                candidate.meta["proxy_protocol"] = "proxy" if new_addr else "direct"
+            chosen = self._selector.select(pool_addrs)
+            if chosen == DIRECT or chosen is None:
+                new_addr = ""
+            else:
+                new_addr = chosen
+            candidate.meta["proxy_addr"] = new_addr
+            candidate.meta["proxy_protocol"] = "proxy" if new_addr else "direct"
 
             try:
                 async for chunk in self._do_request(

@@ -156,17 +156,27 @@ def test_direct_can_be_selected(tmp_path) -> None:
     assert selector.select([]) == DIRECT
 
 
-def test_direct_candidate_in_candidates() -> None:
-    """Verify that the direct candidate appears in the client's candidates list."""
+def test_single_candidate_model() -> None:
+    """Verify the single-candidate model: one candidate when pool has proxies."""
     import asyncio
     from src.platforms.opencode.core.client import OpencodeClient
+    from src.platforms.opencode.core.proxypool import ProxyInfo, ProxyPool
 
     client = OpencodeClient()
-    # Even with empty pool, candidates() should include the direct candidate
+    # Empty pool -> no candidates
     result = asyncio.run(client.candidates())
-    direct_cands = [c for c in result if c.resource_id == "direct"]
-    assert len(direct_cands) == 1
-    dc = direct_cands[0]
-    assert dc.meta["proxy_addr"] == ""
-    assert dc.meta["proxy_protocol"] == "direct"
-    assert dc.platform == "opencode"
+    assert result == []
+
+    # Simulate a non-empty pool
+    pool = ProxyPool()
+    pool.add(ProxyInfo(ip="1.2.3.4", port=8080, protocol="http"))
+    pool.add(ProxyInfo(ip="5.6.7.8", port=3128, protocol="https"))
+    client._pool = pool
+    client._selector.update_pool(pool.to_address_list())
+
+    result = asyncio.run(client.candidates())
+    assert len(result) == 1
+    c = result[0]
+    assert c.platform == "opencode"
+    assert c.resource_id == "proxy-pool"
+    assert c.meta["proxy_addr"] == ""

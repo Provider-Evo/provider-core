@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.185-blue)
-![Version](https://img.shields.io/badge/version-2.2.185-blue)
+![Status](https://img.shields.io/badge/status-v2.2.186-blue)
+![Version](https://img.shields.io/badge/version-2.2.186-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1258,7 +1258,11 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.185
+### 当前版本：v2.2.186
+
+✅ 已完成（v2.2.186）：
+- opencode 平台改为单候选项模式，代理选择完全由平台内部 TAS 处理（包括首次尝试）
+- 代理池抓取日志全部从 INFO 降为 DEBUG，减少运行时日志噪音
 
 ✅ 已完成（v2.2.185）：
 - opencode 平台重试逻辑优化：每次重试用 TAS 选择器轮换到不同代理，排除上次失败的代理
