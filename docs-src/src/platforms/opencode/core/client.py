@@ -302,6 +302,10 @@ class OpencodeClient:
                 if resp.status != 200:
                     body = await resp.text()
                     self._selector.record_failure(selector_key)
+                    if resp.status == 429:
+                        raise RuntimeError(
+                            "opencode rate limited (429): {}".format(body[:200])
+                        )
                     raise PlatformError(
                         "opencode HTTP{}: {}".format(resp.status, body[:200])
                     )
