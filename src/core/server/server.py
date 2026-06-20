@@ -147,7 +147,7 @@ async def create_app(registry: Any, session: Any) -> aiohttp.web.Application:
     setup_webui(app)
 
     async def _on_startup(application: aiohttp.web.Application) -> None:
-        logger.info("aiohttp.web 应用已启动")
+        logger.debug("aiohttp.web 应用已启动")
         # Start stats persistence (load from disk + periodic save)
         try:
             from src.webui.services.stats import start_persist

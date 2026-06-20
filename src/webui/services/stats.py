@@ -37,7 +37,7 @@ def load_stats() -> None:
             data = json.loads(raw)
             if isinstance(data, dict):
                 get_stats().restore(data)
-                _log.info("Stats restored from %s", _PERSIST_FILE)
+                _log.debug("Stats restored from %s", _PERSIST_FILE)
     except Exception:
         _log.debug("Failed to restore stats", exc_info=True)
 

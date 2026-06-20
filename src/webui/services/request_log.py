@@ -38,7 +38,7 @@ def load_requests() -> None:
                 for entry in items:
                     if isinstance(entry, dict):
                         request_broker._buffer.append(entry)
-                _log.info("Request log restored %d entries from %s", len(items), _PERSIST_FILE)
+                _log.debug("Request log restored %d entries from %s", len(items), _PERSIST_FILE)
     except Exception:
         _log.debug("Failed to restore request log", exc_info=True)
 
