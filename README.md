@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.168-blue)
-![Version](https://img.shields.io/badge/version-2.2.168-blue)
+![Status](https://img.shields.io/badge/status-v2.2.169-blue)
+![Version](https://img.shields.io/badge/version-2.2.169-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,13 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.168
+### 当前版本：v2.2.169
+
+✅ 已完成（v2.2.169）：
+- WebUI 终端前端全量重写：自定义 DOM ANSI 渲染器迁移到 @xterm/xterm 5.5.0 + @xterm/addon-fit
+- 删除 ~720 行自写 ANSI 解析、SGR、光标、DOM 渲染代码；删除 LOCAL_ECHO 与行回显剥离
+- xterm.js 通过 CDN 懒加载（lazy.js 注入 TAB_RESOURCES.terminal）
+- 键盘输入由 xterm.js 内部 textarea 原生捕获，不再依赖 document 级 keydown 捕获
 
 ✅ 已完成（v2.2.168）：
 - WebUI 终端升级 ConPTY：echotools 1.0.26 新增 Windows ConPTY 后端，支持 cls/color/ANSI/resize

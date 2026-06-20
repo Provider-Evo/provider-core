@@ -1,741 +1,23 @@
 /**
- * Terminal Tab -- Custom-rendered terminal with local and SSH support.
- * No external dependencies (no xterm.js, no FitAddon).
+ * Terminal Tab -- xterm.js-based terminal with local and SSH support.
+ *
+ * Uses @xterm/xterm v5 for rendering and keyboard capture (loaded via CDN).
+ * Uses @xterm/addon-fit for automatic resize to container dimensions.
  *
  * Features:
- * - Custom ANSI escape sequence parser and renderer
+ * - xterm.js for full VT100/xterm emulation (ANSI, cursor, scrollback, etc.)
  * - Horizontal tab bar with add/close/rename
- * - Local terminal via WebSocket to backend
+ * - Local terminal via WebSocket to backend (ConPTY or pipe mode)
  * - SSH remote terminal via paramiko on backend
- * - Resize handling
+ * - ResizeObserver-based resize propagation to backend
  * - Right-click context menu
  * - SSH dialog with quick-parse (user@host:port, user:pass@host:port)
  * - Saved SSH connections via persist API
+ *
+ * Requires (loaded by LazyLoader before this script):
+ * - @xterm/xterm v5.5.0  (global: Terminal)
+ * - @xterm/addon-fit v0.10.0  (global: FitAddon)
  */
-
-// ========================= TerminalRenderer =========================
-// Replaces xterm.js with a lightweight custom ANSI terminal renderer.
-// Renders into a <pre> element, captures input via a hidden <textarea>.
-
-function TerminalRenderer(container, cols, rows) {
-  var _lines = [[]];           // scrollback buffer: arrays of {char, fg, bg, bold}
-  var _cursorRow = 0;
-  var _cursorCol = 0;
-  var _attrs = { fg: 37, bg: -1, bold: false };
-  var _maxScrollback = 5000;
-  var _cols = cols || 80;
-  var _rows = rows || 24;
-  var _onDataCb = null;
-  var _savedCursor = { row: 0, col: 0 };
-  var _csiMode = false;
-  var _csiParams = '';
-  var _escMode = false;
-  var _charWidth = 8.4;
-  var _charHeight = 16;
-  var _disposed = false;
-  var _composing = false;
-  var _renderPending = false;
-
-  // Path detection regex for clickable file/directory paths in terminal output
-  // Matches: absolute Windows paths (C:\foo\bar), absolute Unix paths (/home/user/...),
-  // and common relative paths with extensions (src/foo.py, ./bar.js, ../lib/utils.ts)
-  var _PATH_REGEX = /(?:[A-Z]:\\(?:[^\s<>|"*?>]+\\)*[^\s<>|"*?>]+)|(?:\/(?:[\w.-]+\/)*[\w.-]+(?:\.[\w]+)?)|(?:(?:\.{0,2}\/[\w.-]+)+\.[\w]+)/gi;
-
-  function _escapeAttr(text) {
-    return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
-  // DOM: wrapper div (focusable) > pre.terminal-output
-  var _wrapper = document.createElement('div');
-  _wrapper.style.cssText =
-    'width:100%;height:100%;position:relative;overflow:hidden;outline:none;';
-  _wrapper.tabIndex = 0;
-
-  var _pre = document.createElement('pre');
-  _pre.className = 'terminal-output';
-  _pre.style.cssText =
-    'margin:0;padding:4px 8px;overflow:hidden;' +
-    'font-family:"Cascadia Code","Fira Code","JetBrains Mono",Menlo,Monaco,monospace;' +
-    'font-size:14px;line-height:16px;background:#1e1e1e;color:#d4d4d4;' +
-    'white-space:pre;user-select:text;-webkit-user-select:text;' +
-    'width:100%;height:100%;box-sizing:border-box;pointer-events:none;';
-
-  _wrapper.appendChild(_pre);
-  container.appendChild(_wrapper);
-
-  // --- Document-level keyboard capture ---
-  // Captures ALL keydown events when this terminal is the active tab,
-  // regardless of which element has focus. Skips events targeting other
-  // input elements (text inputs, selects, etc.)
-
-  function _handleKeydown(e) {
-    // Only capture when this terminal's tab panel is visible
-    var panel = _wrapper.closest('.tab-panel');
-    if (!panel || panel.classList.contains('hidden')) return;
-
-    // Don't steal input from other form elements on the page
-    var active = document.activeElement;
-    if (active && active !== _wrapper && active !== document.body) {
-      var tag = active.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-    }
-
-    // Ctrl+key (A-Z)
-    if (e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
-      var c = e.key.toLowerCase();
-      var code = c.charCodeAt(0);
-      if (code >= 97 && code <= 122 && c !== 'c' && c !== 'v') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (_onDataCb) _onDataCb(String.fromCharCode(code - 96));
-        return;
-      }
-    }
-    // Alt+key
-    if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (_onDataCb) _onDataCb('\x1b' + e.key);
-      return;
-    }
-
-    switch (e.key) {
-      case 'Enter':
-        e.preventDefault(); e.stopPropagation();
-        if (_onDataCb) _onDataCb('\r');
-        return;
-      case 'Backspace':
-        e.preventDefault(); e.stopPropagation();
-        if (e.ctrlKey) {
-          if (_onDataCb) _onDataCb('\x17');
-        } else {
-          if (_onDataCb) _onDataCb('\x7f');
-        }
-        return;
-      case 'Tab':
-        e.preventDefault(); e.stopPropagation();
-        if (_onDataCb) _onDataCb('\t');
-        return;
-      case 'Escape':
-        e.preventDefault(); e.stopPropagation();
-        if (_onDataCb) _onDataCb('\x1b');
-        return;
-      case 'ArrowUp':    e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[A'); return;
-      case 'ArrowDown':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[B'); return;
-      case 'ArrowRight': e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[C'); return;
-      case 'ArrowLeft':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[D'); return;
-      case 'Home':    e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[H'); return;
-      case 'End':     e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[F'); return;
-      case 'Insert':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[2~'); return;
-      case 'Delete':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[3~'); return;
-      case 'PageUp':  e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[5~'); return;
-      case 'PageDown': e.preventDefault(); e.stopPropagation(); if (_onDataCb) _onDataCb('\x1b[6~'); return;
-    }
-
-    // Regular printable character
-    if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (_onDataCb) _onDataCb(e.key);
-      return;
-    }
-  }
-
-  document.addEventListener('keydown', _handleKeydown, true);
-
-  // Focus management — click anywhere in terminal area to focus wrapper
-  _wrapper.addEventListener('mousedown', function (e) {
-    _wrapper.focus();
-  });
-
-  // Click handler for detected file paths -- DISABLED for plain-text terminal output.
-  // Path hyperlinking is turned off; paths render as normal text with no click action.
-  // To re-enable: remove the early-return below and ensure _renderLine emits .term-path spans.
-  _wrapper.addEventListener('click', function (e) {
-    return; // path-click navigation disabled
-    var pathEl = e.target.closest('.term-path');
-    if (!pathEl) return;
-    e.preventDefault();
-    e.stopPropagation();
-    var rawPath = pathEl.getAttribute('data-path');
-    if (!rawPath) return;
-    // Normalize path: convert Windows backslashes to forward slashes for file manager
-    var normalized = rawPath.replace(/\\/g, '/');
-    if (typeof switchTab === 'function') {
-      switchTab('files');
-    }
-    if (typeof FileManager !== 'undefined') {
-      FileManager.createTab(normalized);
-    }
-  });
-
-  // --- Public API ---
-
-  this.write = function (data) {
-    if (_disposed) return;
-    _parseAnsi(data);
-    _scheduleRender();
-  };
-
-  this.resize = function (cols, rows) {
-    _cols = cols;
-    _rows = rows;
-    _scheduleRender();
-  };
-
-  this.getCols = function () { return _cols; };
-  this.getRows = function () { return _rows; };
-
-  this.getDimensions = function () {
-    _measureChar();
-    var w = _wrapper.clientWidth || _wrapper.parentElement.clientWidth;
-    var h = _wrapper.clientHeight || _wrapper.parentElement.clientHeight;
-    var cols = Math.max(10, Math.floor((w - 16) / _charWidth));
-    var rows = Math.max(3, Math.floor((h - 8) / _charHeight));
-    _cols = cols;
-    _rows = rows;
-    return { cols: cols, rows: rows };
-  };
-
-  this.onData = function (cb) { _onDataCb = cb; };
-  this.focus = function () { _wrapper.focus(); };
-
-  this.clear = function () {
-    _lines = [[]];
-    _cursorRow = 0;
-    _cursorCol = 0;
-    _scheduleRender();
-  };
-
-  this.writeln = function (text) {
-    this.write(text + '\r\n');
-  };
-
-  this.dispose = function () {
-    _disposed = true;
-    document.removeEventListener('keydown', _handleKeydown, true);
-    if (_wrapper.parentNode) _wrapper.parentNode.removeChild(_wrapper);
-  };
-
-  // --- Internal: character metrics ---
-
-  function _measureChar() {
-    if (_wrapper.clientWidth < 10) return; // not visible yet
-    var span = document.createElement('span');
-    span.style.cssText =
-      'visibility:hidden;position:absolute;white-space:pre;' +
-      'font-family:"Cascadia Code","Fira Code","JetBrains Mono",Menlo,Monaco,monospace;' +
-      'font-size:14px;line-height:16px;';
-    span.textContent = 'MMMMMMMMMM'; // 10 M characters
-    document.body.appendChild(span);
-    var rect = span.getBoundingClientRect();
-    _charWidth = rect.width / 10;
-    _charHeight = rect.height || 16;
-    document.body.removeChild(span);
-  }
-
-  // --- Internal: ANSI parser state machine ---
-
-  function _parseAnsi(data) {
-    for (var i = 0; i < data.length; i++) {
-      var ch = data[i];
-      var code = data.charCodeAt(i);
-
-      // CSI sequence collection mode
-      if (_csiMode) {
-        if ((code >= 0x30 && code <= 0x3F) || ch === ';') {
-          // Parameter bytes: 0-9, :, ;, <, =, >, ?
-          _csiParams += ch;
-        } else if (code >= 0x40 && code <= 0x7E) {
-          // Final byte -- execute the CSI sequence
-          _handleCSI(_csiParams, ch);
-          _csiMode = false;
-          _csiParams = '';
-        } else {
-          // Unexpected byte, abort CSI
-          _csiMode = false;
-          _csiParams = '';
-        }
-        continue;
-      }
-
-      // ESC was seen, check next character
-      if (_escMode) {
-        _escMode = false;
-        if (ch === '[') {
-          _csiMode = true;
-          _csiParams = '';
-        } else if (ch === 's') {
-          _savedCursor.row = _cursorRow;
-          _savedCursor.col = _cursorCol;
-        } else if (ch === 'u') {
-          _cursorRow = _savedCursor.row;
-          _cursorCol = _savedCursor.col;
-        } else if (ch === 'c') {
-          // Full reset
-          _lines = [[]];
-          _cursorRow = 0;
-          _cursorCol = 0;
-          _attrs = { fg: 37, bg: -1, bold: false };
-        }
-        // Other ESC sequences (ESC (, ESC ), etc.) are silently ignored
-        continue;
-      }
-
-      // ESC starts escape mode
-      if (code === 0x1b) {
-        _escMode = true;
-        continue;
-      }
-
-      // Control characters
-      if (code === 0x0d) { // CR
-        _cursorCol = 0;
-        continue;
-      }
-      if (code === 0x0a || code === 0x0b || code === 0x0c) { // LF, VT, FF
-        _cursorRow++;
-        _ensureLine(_cursorRow);
-        if (_cursorRow >= _lines.length + _maxScrollback) {
-          _lines.shift();
-          _cursorRow--;
-        }
-        continue;
-      }
-      if (code === 0x08) { // BS
-        if (_cursorCol > 0) _cursorCol--;
-        continue;
-      }
-      if (code === 0x09) { // TAB
-        var nextTab = Math.min(_cols, _cursorCol + (8 - (_cursorCol % 8)));
-        _ensureLine(_cursorRow);
-        while (_cursorCol < nextTab) {
-          _setChar(_cursorRow, _cursorCol, ' ');
-          _cursorCol++;
-        }
-        continue;
-      }
-      if (code === 0x07) { // BEL -- ignore
-        continue;
-      }
-      if (code < 0x20) {
-        // Other C0 control characters -- skip
-        continue;
-      }
-
-      // DEL -- ignore
-      if (code === 0x7f) continue;
-
-      // Printable character
-      _ensureLine(_cursorRow);
-      _setChar(_cursorRow, _cursorCol, ch);
-      _cursorCol++;
-      if (_cursorCol >= _cols) {
-        _cursorCol = 0;
-        _cursorRow++;
-        _ensureLine(_cursorRow);
-      }
-    }
-  }
-
-  // --- Internal: CSI sequence handler ---
-
-  function _handleCSI(params, cmd) {
-    var args = params.split(';').map(function (p) {
-      return p === '' ? 0 : parseInt(p, 10);
-    });
-    if (isNaN(args[0])) args[0] = 0;
-
-    switch (cmd) {
-      case 'm': // SGR -- set graphics rendition
-        _handleSGR(args);
-        break;
-
-      case 'H': case 'f': // Cursor position
-        var r = (args[0] || 1) - 1;
-        var c = (args[1] || 1) - 1;
-        _cursorRow = Math.max(0, r);
-        _cursorCol = Math.max(0, Math.min(c, _cols - 1));
-        _ensureLine(_cursorRow);
-        break;
-
-      case 'J': // Erase in display
-        _eraseDisplay(args[0] || 0);
-        break;
-
-      case 'K': // Erase in line
-        _eraseLine(args[0] || 0);
-        break;
-
-      case 'A': // Cursor up
-        _cursorRow = Math.max(0, _cursorRow - (args[0] || 1));
-        break;
-
-      case 'B': // Cursor down
-        _cursorRow += (args[0] || 1);
-        _ensureLine(_cursorRow);
-        break;
-
-      case 'C': // Cursor forward
-        _cursorCol = Math.min(_cols - 1, _cursorCol + (args[0] || 1));
-        break;
-
-      case 'D': // Cursor back
-        _cursorCol = Math.max(0, _cursorCol - (args[0] || 1));
-        break;
-
-      case 'E': // Cursor next line
-        _cursorRow += (args[0] || 1);
-        _cursorCol = 0;
-        _ensureLine(_cursorRow);
-        break;
-
-      case 'F': // Cursor previous line
-        _cursorRow = Math.max(0, _cursorRow - (args[0] || 1));
-        _cursorCol = 0;
-        break;
-
-      case 'G': // Cursor horizontal absolute
-        _cursorCol = Math.max(0, Math.min((args[0] || 1) - 1, _cols - 1));
-        break;
-
-      case 'd': // Cursor vertical absolute
-        _cursorRow = Math.max(0, (args[0] || 1) - 1);
-        _ensureLine(_cursorRow);
-        break;
-
-      case 's': // Save cursor (CSI variant)
-        _savedCursor.row = _cursorRow;
-        _savedCursor.col = _cursorCol;
-        break;
-
-      case 'u': // Restore cursor (CSI variant)
-        _cursorRow = _savedCursor.row;
-        _cursorCol = _savedCursor.col;
-        break;
-
-      case 'r': // Set scrolling region -- partially handled (ignored for now)
-        break;
-
-      case 'l': case 'h': // Set/reset mode (e.g., cursor visibility)
-        break;
-
-      case 'P': // Delete characters
-        _deleteChars(args[0] || 1);
-        break;
-
-      case '@': // Insert blank characters
-        _insertChars(args[0] || 1);
-        break;
-
-      case 'X': // Erase characters
-        _eraseChars(args[0] || 1);
-        break;
-
-      // n (device status report), c (device attributes), etc. -- ignored
-    }
-  }
-
-  // --- Internal: SGR (Select Graphic Rendition) ---
-
-  function _handleSGR(args) {
-    for (var i = 0; i < args.length; i++) {
-      var p = args[i];
-      if (p === 0) {
-        _attrs = { fg: 37, bg: -1, bold: false };
-      } else if (p === 1) {
-        _attrs.bold = true;
-      } else if (p === 22) {
-        _attrs.bold = false;
-      } else if (p >= 30 && p <= 37) {
-        _attrs.fg = p;
-      } else if (p === 38) {
-        // Extended foreground
-        if (args[i + 1] === 5) {
-          // 256-color: 38;5;N
-          _attrs.fg = 'fg-' + (args[i + 2] || 0);
-          i += 2;
-        } else if (args[i + 1] === 2) {
-          // RGB: 38;2;R;G;B -- fall back to default
-          i += 4;
-        }
-      } else if (p === 39) {
-        _attrs.fg = 37; // default fg
-      } else if (p >= 40 && p <= 47) {
-        _attrs.bg = p;
-      } else if (p === 48) {
-        // Extended background
-        if (args[i + 1] === 5) {
-          _attrs.bg = 'bg-' + (args[i + 2] || 0);
-          i += 2;
-        } else if (args[i + 1] === 2) {
-          i += 4;
-        }
-      } else if (p === 49) {
-        _attrs.bg = -1; // default bg
-      } else if (p >= 90 && p <= 97) {
-        _attrs.fg = p; // bright foreground
-      } else if (p >= 100 && p <= 107) {
-        _attrs.bg = p; // bright background
-      }
-    }
-  }
-
-  // --- Internal: buffer helpers ---
-
-  function _ensureLine(row) {
-    while (_lines.length <= row) {
-      _lines.push([]);
-    }
-    if (_lines.length > _maxScrollback) {
-      var excess = _lines.length - _maxScrollback;
-      _lines.splice(0, excess);
-      _cursorRow = Math.max(0, _cursorRow - excess);
-      row -= excess;
-    }
-  }
-
-  function _setChar(row, col, ch) {
-    if (!_lines[row]) _lines[row] = [];
-    _lines[row][col] = {
-      char: ch,
-      fg: _attrs.fg,
-      bg: _attrs.bg,
-      bold: _attrs.bold
-    };
-  }
-
-  function _eraseDisplay(mode) {
-    if (mode === 2) {
-      // Clear entire screen
-      _lines = [];
-      for (var i = 0; i < _rows; i++) _lines.push([]);
-      _cursorRow = 0;
-      _cursorCol = 0;
-      return;
-    }
-    if (mode === 0) {
-      // Erase from cursor to end of display
-      _eraseLine(0);
-      for (var i = _cursorRow + 1; i < _lines.length; i++) _lines[i] = [];
-    } else if (mode === 1) {
-      // Erase from start of display to cursor
-      for (var i = 0; i < _cursorRow; i++) _lines[i] = [];
-      _eraseLine(1);
-    } else if (mode === 3) {
-      // Erase scrollback
-      var visible = _lines.slice(-_rows);
-      _lines = visible;
-      _cursorRow = Math.min(_cursorRow, _lines.length - 1);
-    }
-  }
-
-  function _eraseLine(mode) {
-    _ensureLine(_cursorRow);
-    var line = _lines[_cursorRow];
-    if (mode === 0) {
-      // Erase from cursor to end of line
-      line.length = Math.min(line.length, _cursorCol);
-    } else if (mode === 1) {
-      // Erase from start of line to cursor
-      for (var i = 0; i <= Math.min(_cursorCol, line.length - 1); i++) {
-        delete line[i];
-      }
-    } else if (mode === 2) {
-      // Erase entire line
-      _lines[_cursorRow] = [];
-    }
-  }
-
-  function _deleteChars(n) {
-    _ensureLine(_cursorRow);
-    var line = _lines[_cursorRow];
-    if (_cursorCol < line.length) {
-      line.splice(_cursorCol, n);
-    }
-  }
-
-  function _insertChars(n) {
-    _ensureLine(_cursorRow);
-    var line = _lines[_cursorRow];
-    for (var i = 0; i < n; i++) {
-      line.splice(_cursorCol, 0, undefined);
-    }
-    if (line.length > _cols) line.length = _cols;
-  }
-
-  function _eraseChars(n) {
-    _ensureLine(_cursorRow);
-    var line = _lines[_cursorRow];
-    for (var i = _cursorCol; i < Math.min(_cursorCol + n, line.length); i++) {
-      delete line[i];
-    }
-  }
-
-  // --- Internal: rendering ---
-
-  function _scheduleRender() {
-    if (_renderPending) return;
-    _renderPending = true;
-    requestAnimationFrame(function () {
-      _renderPending = false;
-      if (!_disposed) _render();
-    });
-  }
-
-  function _render() {
-    var visibleStart = Math.max(0, _lines.length - _rows);
-    var html = [];
-
-    for (var vr = 0; vr < _rows; vr++) {
-      var lineIdx = visibleStart + vr;
-      var line = (lineIdx < _lines.length) ? _lines[lineIdx] : null;
-      var absRow = lineIdx;
-
-      // Render characters for this visible row
-      var lineHtml = _renderLine(line, _cols);
-
-      // Overlay the block cursor on this row if it belongs here
-      if (absRow === _cursorRow) {
-        var cCol = Math.min(_cursorCol, _cols - 1);
-        var cursorCh = ' ';
-        if (line && line[cCol] && line[cCol].char) {
-          cursorCh = line[cCol].char;
-        }
-        // Build cursor span and inject at correct position
-        lineHtml = _injectCursor(lineHtml, line, cCol, cursorCh);
-      }
-
-      html.push('<div class="term-line">' + lineHtml + '</div>');
-    }
-
-    _pre.innerHTML = html.join('');
-  }
-
-  function _renderLine(line, cols) {
-    if (!line || line.length === 0) {
-      return '<span class="term-space"> </span>';
-    }
-
-    // Path detection disabled for plain-text terminal output.
-    // _PATH_REGEX and .term-path CSS are preserved for potential future re-enable.
-    // Previously: extracted plainText, matched _PATH_REGEX, wrapped matches in .term-path spans.
-
-    var parts = [];
-    var curFg = -1, curBg = -1, curBold = false;
-    var buf = '';
-
-    for (var i = 0; i < cols; i++) {
-      var cell = line[i];
-      var fg = 37, bg = -1, bold = false, ch = ' ';
-
-      if (cell) {
-        fg = cell.fg;
-        bg = cell.bg;
-        bold = cell.bold || false;
-        ch = cell.char || ' ';
-      }
-
-      if (fg !== curFg || bg !== curBg || bold !== curBold) {
-        if (buf) {
-          parts.push(_wrapSpan(buf, curFg, curBg, curBold));
-        }
-        buf = ch;
-        curFg = fg;
-        curBg = bg;
-        curBold = bold;
-      } else {
-        buf += ch;
-      }
-    }
-
-    if (buf) {
-      parts.push(_wrapSpan(buf, curFg, curBg, curBold));
-    }
-
-    return parts.join('') || '<span class="term-space"> </span>';
-  }
-
-  function _injectCursor(lineHtml, line, cCol, cursorCh) {
-    // Render the line up to the cursor column, then the cursor span, then the rest
-    var before = '';
-    var curFg = -1, curBg = -1, curBold = false;
-    var buf = '';
-
-    for (var i = 0; i < cCol; i++) {
-      var cell = (line && line[i]) ? line[i] : null;
-      var fg = cell ? (cell.fg || 37) : 37;
-      var bg = cell ? (cell.bg != null ? cell.bg : -1) : -1;
-      var bold = cell ? (cell.bold || false) : false;
-      var ch = (cell && cell.char) ? cell.char : ' ';
-
-      if (fg !== curFg || bg !== curBg || bold !== curBold) {
-        if (buf) before += _wrapSpan(buf, curFg, curBg, curBold);
-        buf = ch;
-        curFg = fg; curBg = bg; curBold = bold;
-      } else {
-        buf += ch;
-      }
-    }
-    if (buf) before += _wrapSpan(buf, curFg, curBg, curBold);
-
-    // Cursor block character
-    var cursorSpan =
-      '<span class="term-cursor">' + _escapeChar(cursorCh) + '</span>';
-
-    // After cursor
-    var afterParts = [];
-    curFg = -1; curBg = -1; curBold = false;
-    buf = '';
-    for (var i = cCol + 1; i < _cols; i++) {
-      var cell = (line && line[i]) ? line[i] : null;
-      var fg = cell ? (cell.fg || 37) : 37;
-      var bg = cell ? (cell.bg != null ? cell.bg : -1) : -1;
-      var bold = cell ? (cell.bold || false) : false;
-      var ch = (cell && cell.char) ? cell.char : ' ';
-
-      if (fg !== curFg || bg !== curBg || bold !== curBold) {
-        if (buf) afterParts.push(_wrapSpan(buf, curFg, curBg, curBold));
-        buf = ch;
-        curFg = fg; curBg = bg; curBold = bold;
-      } else {
-        buf += ch;
-      }
-    }
-    if (buf) afterParts.push(_wrapSpan(buf, curFg, curBg, curBold));
-
-    var result = before + cursorSpan + afterParts.join('');
-    return result || '<span class="term-space"> </span>';
-  }
-
-  function _wrapSpan(text, fg, bg, bold) {
-    var cls = [];
-    if (typeof fg === 'string') {
-      cls.push('term-' + fg);
-    } else if (fg !== 37) {
-      cls.push('term-fg-' + fg);
-    }
-    if (typeof bg === 'string') {
-      cls.push('term-' + bg);
-    } else if (bg >= 0) {
-      cls.push('term-bg-' + bg);
-    }
-    if (bold) cls.push('term-bold');
-    if (cls.length === 0) {
-      return _escapeChar(text);
-    }
-    return '<span class="' + cls.join(' ') + '">' + _escapeChar(text) + '</span>';
-  }
-
-  function _escapeChar(text) {
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-  }
-}
-
 
 // ========================= TerminalManager =========================
 
@@ -760,11 +42,11 @@ var TerminalManager = (function () {
 
     if (!_container || !_tabBar || !_body) return;
 
-    // Click on terminal body to focus the active terminal
+    // Click on terminal body to focus the active xterm instance
     _body.addEventListener('click', function () {
       var tab = _getActiveTab();
-      if (tab && tab.renderer) {
-        tab.renderer.focus();
+      if (tab && tab.xterm) {
+        tab.xterm.focus();
       }
     });
 
@@ -786,16 +68,19 @@ var TerminalManager = (function () {
     // Load saved connections
     _loadSavedConnections();
 
-    // Shared window resize handler for all terminal tabs
+    // Window resize: trigger fit on active terminal.
+    // Per-tab ResizeObservers handle their own pane sizing,
+    // but window resize may not fire ResizeObserver on hidden panes.
     var _resizeTimer = null;
     window.addEventListener('resize', function () {
       if (_resizeTimer) clearTimeout(_resizeTimer);
       _resizeTimer = setTimeout(function () {
         var tab = _getActiveTab();
-        if (tab && tab.renderer) {
-          var dims = tab.renderer.getDimensions();
-          tab.renderer.resize(dims.cols, dims.rows);
-          _sendResize(tab);
+        if (tab && tab.fitAddon) {
+          try {
+            tab.fitAddon.fit();
+            _sendResize(tab);
+          } catch (e) { /* ignore fit errors during layout transitions */ }
         }
       }, 150);
     });
@@ -812,11 +97,13 @@ var TerminalManager = (function () {
   function _onActivate() {
     // Fit the active terminal when tab becomes visible
     var tab = _getActiveTab();
-    if (tab && tab.renderer) {
+    if (tab && tab.fitAddon) {
       setTimeout(function () {
-        var dims = tab.renderer.getDimensions();
-        tab.renderer.resize(dims.cols, dims.rows);
-        _sendResize(tab);
+        try {
+          tab.fitAddon.fit();
+          _sendResize(tab);
+        } catch (e) { /* ignore */ }
+        if (tab.xterm) tab.xterm.focus();
       }, 100);
     }
   }
@@ -830,8 +117,7 @@ var TerminalManager = (function () {
   function createTab(kind, options) {
     options = options || {};
 
-    // Ensure the terminal sidebar tab is active so the panel is visible
-    // (renderer needs visible container for proper dimension calculation)
+    // Ensure the terminal sidebar tab is visible so the pane has dimensions
     if (typeof switchTab === 'function') {
       switchTab('terminal');
     }
@@ -845,10 +131,13 @@ var TerminalManager = (function () {
       kind: kind,
       name: name,
       status: 'connecting',
-      renderer: null,
+      xterm: null,
+      fitAddon: null,
       ws: null,
       sessionId: null,
       options: options,
+      _resizeObserver: null,
+      _container: null,
     };
 
     _tabs.push(tab);
@@ -859,121 +148,84 @@ var TerminalManager = (function () {
   }
 
   function _initTerminal(tab) {
-    // Create terminal pane container
+    // Create xterm.js container div inside the terminal pane
     var termDiv = document.createElement('div');
     termDiv.className = 'terminal-pane';
     termDiv.id = 'terminal-pane-' + tab.id;
     termDiv.style.cssText = 'width:100%;height:100%;display:none;';
     _body.appendChild(termDiv);
 
-    // Create custom renderer (initial size will be recalculated once visible)
-    var renderer = new TerminalRenderer(termDiv, 80, 24);
+    var xtermContainer = document.createElement('div');
+    xtermContainer.className = 'xterm-container';
+    termDiv.appendChild(xtermContainer);
 
-    tab.renderer = renderer;
+    tab._container = xtermContainer;
 
-    // Small delay to let DOM settle, then measure and fit
-    setTimeout(function () {
-      var dims = renderer.getDimensions();
-      renderer.resize(dims.cols, dims.rows);
-    }, 50);
+    // Verify xterm.js loaded from CDN
+    if (typeof Terminal === 'undefined') {
+      xtermContainer.innerHTML =
+        '<div style="color:#f44747;padding:16px;font-family:monospace;">' +
+        'xterm.js \u52A0\u8F7D\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u8FDE\u63A5\u540E\u5237\u65B0\u9875\u9762\u3002</div>';
+      tab.status = 'disconnected';
+      _renderTabBar();
+      return;
+    }
 
-    // Local echo: frontend renders typed characters immediately (no network latency).
-    // cmd.exe with PIPE I/O does NOT echo individual typed characters back to stdout.
-    // After Enter, cmd.exe echoes the whole command line as a one-shot (not per-char).
-    // We strip that line-echo from backend output using _pendingLine below.
-    // Under ConPTY, the PTY handles its own echo, so tab.LOCAL_ECHO is disabled.
-    // The backend sends a {type:'mode'} message at connect time to set this.
-    tab.LOCAL_ECHO = true;  // safe default; overridden to false when mode=conpty
+    // Create xterm.js Terminal instance
+    var xterm = new Terminal({
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontFamily: '"Cascadia Code","Fira Code","JetBrains Mono",Menlo,Monaco,monospace',
+      fontSize: 14,
+      lineHeight: 1.15,
+      scrollback: 5000,
+      allowProposedApi: true,
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#d4d4d4',
+        cursor: '#d4d4d4',
+        selectionBackground: '#264f78',
+      },
+    });
 
-    // Tracks characters typed on the current input line.
-    // Used to gate Backspace so it cannot erase the shell prompt,
-    // and snapshot to _pendingLine on Enter for line-echo stripping.
-    var _currentLine = '';
+    // Create and load FitAddon
+    var fitAddon = new FitAddon.FitAddon();
+    xterm.loadAddon(fitAddon);
 
-    // Text of the last submitted command (set on Enter press).
-    // Used by ws.onmessage to strip cmd.exe's one-shot line echo from output.
-    // Stored on tab object so _connectWebSocket's onmessage handler can access it.
-    tab._pendingLine = '';
+    // Open terminal in the container
+    xterm.open(xtermContainer);
 
-    // Input handler — forwards keystrokes to the backend via WebSocket.
-    // Local echo is ON (tab.LOCAL_ECHO=true): frontend renders typed chars immediately.
-    // On Enter, _pendingLine snapshots the command text so ws.onmessage can strip
-    // cmd.exe's one-shot line echo from backend output.
-    // Handles printable chars, Enter, Backspace, arrows, Ctrl keys, Tab.
-    renderer.onData(function (data) {
-      // Helper: send data string to the backend via WebSocket
-      function _send(s) {
-        if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
-          tab.ws.send(JSON.stringify({ type: 'input', data: s }));
-        }
+    // Fit to container dimensions
+    try { fitAddon.fit(); } catch (e) { /* ignore initial fit errors */ }
+
+    tab.xterm = xterm;
+    tab.fitAddon = fitAddon;
+
+    // ResizeObserver: detect container size changes and propagate to backend.
+    // Fires when the pane becomes visible, when the window is resized,
+    // or when the sidebar/layout changes.
+    var ro = new ResizeObserver(function () {
+      if (!tab.xterm || !tab.fitAddon) return;
+      try {
+        tab.fitAddon.fit();
+      } catch (e) { return; }
+      if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+        _sendResize(tab);
       }
+    });
+    ro.observe(termDiv);
+    tab._resizeObserver = ro;
 
-      var code = data.charCodeAt(0);
-
-      // --- Enter (\r from _handleKeydown, or \r\n from paste) ---
-      if (data === '\r' || data === '\r\n') {
-        if (tab.LOCAL_ECHO) renderer.write('\r\n');
-        _send('\r\n');  // cmd.exe PIPE I/O requires \r\n as line terminator
-        tab._pendingLine = _currentLine;  // snapshot for line-echo stripping
-        _currentLine = '';
-        return;
+    // Keyboard input -> WebSocket.
+    // xterm.js captures all keystrokes via its internal <textarea> and
+    // fires onData with the properly encoded terminal input string.
+    // The backend PTY (ConPTY or pipe) handles character echo;
+    // xterm.js renders whatever the backend sends back via {type:'output'}.
+    // No local echo is needed on the frontend.
+    xterm.onData(function (data) {
+      if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+        tab.ws.send(JSON.stringify({ type: 'input', data: data }));
       }
-
-      // --- Backspace (DEL \x7f or BS \x08) ---
-      if (code === 0x7f || code === 0x08) {
-        if (_currentLine.length > 0) {
-          _currentLine = _currentLine.slice(0, -1);
-          if (tab.LOCAL_ECHO) renderer.write('\x08 \x08');  // BS space BS: erase char visually
-        }
-        // Send \x08 to backend (BS works with both cmd.exe PIPE and PTY)
-        _send('\x08');
-        return;
-      }
-
-      // --- Ctrl+W (word delete, from Ctrl+Backspace) ---
-      if (code === 0x17) {
-        // Erase all tracked line chars locally (best-effort visual cleanup)
-        if (tab.LOCAL_ECHO) {
-          for (var w = 0; w < _currentLine.length; w++) {
-            renderer.write('\x08 \x08');
-          }
-        }
-        _currentLine = '';
-        _send(data);
-        return;
-      }
-
-      // --- Arrow keys (Up/Down/Left/Right), Home, End, etc. ---
-      // Forward to backend for shell history/cursor movement, no local echo.
-      if (code === 0x1b && data.length > 1) {
-        _send(data);
-        return;
-      }
-
-      // --- Tab (\x09) — forward for backend completion, no local echo ---
-      if (code === 0x09) {
-        _send(data);
-        return;
-      }
-
-      // --- Ctrl+C (ETX, code 3) — cancel current input line ---
-      if (code === 0x03) {
-        _currentLine = '';  // discard partial input
-        _send(data);
-        return;
-      }
-
-      // --- Other control characters (Ctrl+A–Z, \x00–\x1a) ---
-      // Forward to backend, no local echo.
-      if (code < 0x20) {
-        _send(data);
-        return;
-      }
-
-      // --- Printable character (code >= 0x20, not DEL) ---
-      _currentLine += data;
-      if (tab.LOCAL_ECHO) renderer.write(data);
-      _send(data);
     });
 
     // Connect WebSocket
@@ -981,6 +233,14 @@ var TerminalManager = (function () {
 
     // Show this terminal pane
     _showTabPane(tab.id);
+
+    // Send initial dimensions once WebSocket is ready
+    setTimeout(function () {
+      try { fitAddon.fit(); } catch (e) { /* ignore */ }
+      if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+        _sendResize(tab);
+      }
+    }, 100);
   }
 
   function _connectWebSocket(tab) {
@@ -992,11 +252,9 @@ var TerminalManager = (function () {
     tab.ws = ws;
 
     ws.onopen = function () {
-      // Clear any stale line-echo state from a previous connection
-      tab._pendingLine = '';
-      // Send init message
-      var cols = tab.renderer ? tab.renderer.getCols() : 80;
-      var rows = tab.renderer ? tab.renderer.getRows() : 24;
+      // Send init message with terminal dimensions and connection parameters
+      var cols = tab.xterm ? tab.xterm.cols : 80;
+      var rows = tab.xterm ? tab.xterm.rows : 24;
       var initMsg = {
         type: 'init',
         kind: tab.kind,
@@ -1022,61 +280,36 @@ var TerminalManager = (function () {
           tab.sessionId = msg.session_id;
           tab.status = 'connected';
           _renderTabBar();
-          // Send initial size
+          // Send initial dimensions after backend is ready
           _sendResize(tab);
         } else if (msg.type === 'mode') {
-          // Backend signals whether it uses ConPTY (real PTY) or pipe fallback.
-          // ConPTY echoes typed chars via the pseudo-console, so disable local echo.
-          // Pipe fallback has no echo, so keep local echo enabled.
-          tab.LOCAL_ECHO = (msg.mode !== 'conpty');
+          // Backend signals ConPTY (real PTY) or pipe fallback.
+          // With xterm.js, both modes work the same way on the frontend:
+          // all input is forwarded, all output is rendered.
+          // The PTY/pipe echo behavior is handled entirely by the backend.
+          tab._mode = msg.mode;
         } else if (msg.type === 'output') {
-          var data = msg.data;
-          // Strip one-shot command-line echo from cmd.exe.
-          // After we send <command>\r\n, cmd.exe writes \r<command>\r\n before output.
-          // We already echoed the command locally, so strip the backend's copy.
-          // Only applies in pipe mode (LOCAL_ECHO=true); ConPTY doesn't produce this pattern.
-          if (tab.LOCAL_ECHO && tab._pendingLine && typeof data === 'string') {
-            var needle1 = '\r' + tab._pendingLine + '\r\n';
-            var needle2 = '\r' + tab._pendingLine + '\n';
-            var idx = data.indexOf(needle1);
-            if (idx !== -1) {
-              data = data.slice(0, idx) + data.slice(idx + needle1.length);
-              tab._pendingLine = '';
-            } else {
-              idx = data.indexOf(needle2);
-              if (idx !== -1) {
-                data = data.slice(0, idx) + data.slice(idx + needle2.length);
-                tab._pendingLine = '';
-              }
-            }
+          if (tab.xterm) {
+            tab.xterm.write(msg.data);
           }
-          // Fallback: cmd.exe sends \r<command> at start of chunk (no trailing newline yet)
-          if (tab.LOCAL_ECHO && tab._pendingLine && data.indexOf('\r' + tab._pendingLine) === 0) {
-            var after = data.length - tab._pendingLine.length - 1;
-            if (after > 0 && after < 500) {
-              var rest = data.slice(tab._pendingLine.length + 1);
-              var nlIdx = rest.indexOf('\n');
-              if (nlIdx !== -1 && nlIdx < 20) {
-                data = rest.slice(nlIdx + 1);
-                tab._pendingLine = '';
-              }
-            }
-          }
-          tab.renderer.write(data);
         } else if (msg.type === 'error') {
-          tab.renderer.writeln('\r\n\x1b[31m\u9519\u8BEF: ' + msg.message + '\x1b[0m');
+          if (tab.xterm) {
+            tab.xterm.write('\r\n\x1b[31m\u9519\u8BEF: ' + msg.message + '\x1b[0m');
+          }
           tab.status = 'disconnected';
           _renderTabBar();
         } else if (msg.type === 'exit') {
-          tab.renderer.writeln(
-            '\r\n\x1b[33m[\u8FDB\u7A0B\u5DF2\u9000\u51FA\uFF0C\u9000\u51FA\u7801 ' +
-            msg.code + ']\x1b[0m'
-          );
+          if (tab.xterm) {
+            tab.xterm.write(
+              '\r\n\x1b[33m[\u8FDB\u7A0B\u5DF2\u9000\u51FA\uFF0C\u9000\u51FA\u7801 ' +
+              msg.code + ']\x1b[0m'
+            );
+          }
           tab.status = 'disconnected';
           _renderTabBar();
         }
       } catch (e) {
-        // ignore
+        // ignore JSON parse errors
       }
     };
 
@@ -1088,18 +321,18 @@ var TerminalManager = (function () {
     ws.onerror = function () {
       tab.status = 'disconnected';
       _renderTabBar();
-      if (tab.renderer) {
-        tab.renderer.writeln('\r\n\x1b[31m[WebSocket \u8FDE\u63A5\u9519\u8BEF]\x1b[0m');
+      if (tab.xterm) {
+        tab.xterm.write('\r\n\x1b[31m[WebSocket \u8FDE\u63A5\u9519\u8BEF]\x1b[0m');
       }
     };
   }
 
   function _sendResize(tab) {
-    if (tab.ws && tab.ws.readyState === WebSocket.OPEN && tab.renderer) {
+    if (tab.ws && tab.ws.readyState === WebSocket.OPEN && tab.xterm) {
       tab.ws.send(JSON.stringify({
         type: 'resize',
-        cols: tab.renderer.getCols(),
-        rows: tab.renderer.getRows(),
+        cols: tab.xterm.cols,
+        rows: tab.xterm.rows,
       }));
     }
   }
@@ -1109,14 +342,15 @@ var TerminalManager = (function () {
     _renderTabBar();
     _showTabPane(tabId);
 
-    // Measure and fit the active terminal
+    // Fit the active terminal and send resize to backend
     var tab = _getActiveTab();
-    if (tab && tab.renderer) {
+    if (tab && tab.fitAddon) {
       setTimeout(function () {
-        var dims = tab.renderer.getDimensions();
-        tab.renderer.resize(dims.cols, dims.rows);
-        _sendResize(tab);
-        tab.renderer.focus();
+        try {
+          tab.fitAddon.fit();
+          _sendResize(tab);
+        } catch (e) { /* ignore fit errors during transitions */ }
+        if (tab.xterm) tab.xterm.focus();
       }, 50);
     }
   }
@@ -1149,9 +383,14 @@ var TerminalManager = (function () {
       try { tab.ws.close(); } catch (e) {}
     }
 
-    // Dispose renderer
-    if (tab.renderer) {
-      try { tab.renderer.dispose(); } catch (e) {}
+    // Disconnect ResizeObserver
+    if (tab._resizeObserver) {
+      try { tab._resizeObserver.disconnect(); } catch (e) {}
+    }
+
+    // Dispose xterm.js instance
+    if (tab.xterm) {
+      try { tab.xterm.dispose(); } catch (e) {}
     }
 
     // Remove DOM
@@ -1366,13 +605,76 @@ var TerminalManager = (function () {
     var tab = _getTabById(tabId);
     if (!tab) return;
 
-    // Close old WebSocket and reconnect
+    // Close old WebSocket
     if (tab.ws) {
       try { tab.ws.close(); } catch (e) {}
     }
+
+    // Dispose old xterm.js instance and observer
+    if (tab._resizeObserver) {
+      try { tab._resizeObserver.disconnect(); } catch (e) {}
+    }
+    if (tab.xterm) {
+      try { tab.xterm.dispose(); } catch (e) {}
+    }
+
     tab.status = 'connecting';
-    tab.renderer.clear();
-    tab.renderer.writeln('\x1b[33m[\u91CD\u65B0\u8FDE\u63A5\u4E2D...]\x1b[0m\r\n');
+
+    // Create fresh xterm.js instance in the existing pane
+    var pane = document.getElementById('terminal-pane-' + tabId);
+    if (pane) {
+      pane.innerHTML = '';
+      var xtermContainer = document.createElement('div');
+      xtermContainer.className = 'xterm-container';
+      pane.appendChild(xtermContainer);
+      tab._container = xtermContainer;
+
+      if (typeof Terminal !== 'undefined') {
+        var xterm = new Terminal({
+          cursorBlink: true,
+          cursorStyle: 'block',
+          fontFamily: '"Cascadia Code","Fira Code","JetBrains Mono",Menlo,Monaco,monospace',
+          fontSize: 14,
+          lineHeight: 1.15,
+          scrollback: 5000,
+          allowProposedApi: true,
+          theme: {
+            background: '#1e1e1e',
+            foreground: '#d4d4d4',
+            cursor: '#d4d4d4',
+            selectionBackground: '#264f78',
+          },
+        });
+        var fitAddon = new FitAddon.FitAddon();
+        xterm.loadAddon(fitAddon);
+        xterm.open(xtermContainer);
+        try { fitAddon.fit(); } catch (e) { /* ignore */ }
+
+        tab.xterm = xterm;
+        tab.fitAddon = fitAddon;
+
+        // Re-attach ResizeObserver
+        var ro = new ResizeObserver(function () {
+          if (!tab.xterm || !tab.fitAddon) return;
+          try { tab.fitAddon.fit(); } catch (e) { return; }
+          if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+            _sendResize(tab);
+          }
+        });
+        ro.observe(pane);
+        tab._resizeObserver = ro;
+
+        // Re-attach input handler
+        xterm.onData(function (data) {
+          if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+            tab.ws.send(JSON.stringify({ type: 'input', data: data }));
+          }
+        });
+
+        xterm.write('\x1b[33m[\u91CD\u65B0\u8FDE\u63A5\u4E2D...]\x1b[0m\r\n');
+      }
+    }
+
     _renderTabBar();
     _connectWebSocket(tab);
   }

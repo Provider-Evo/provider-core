@@ -2329,3 +2329,15 @@ pytest: 跳过（仅前端变更，Python 不受影响）
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.167 -> 2.2.168
 py_compile: terminal.py 通过
 pytest: 11 passed, 3 failed（预存问题，非本次修改引入）, 549 deselected
+
+2026-06-20 09:30:00
+
+[src/webui/static/core/lazy.js] TAB_RESOURCES.terminal 新增 xterm.css/xterm.js/addon-fit.js 三个 CDN 资源
+[src/webui/static/terminal/terminal.css] 删除 32 个 ANSI 颜色类与 .term-path/.term-cursor/.term-bold；新增 .xterm-container 容器规则
+[src/webui/static/terminal/terminal.js] 全量重写 1745 -> 1046 行，迁移到 @xterm/xterm 5.5.0 + @xterm/addon-fit 0.10.0；删除自写 TerminalRenderer 类、LOCAL_ECHO、_pendingLine、_PATH_REGEX、document 级 keydown 捕获；保留标签管理/WS 生命周期/SSH 对话/右键菜单
+[template/template_config.toml] 版本 2.2.168 -> 2.2.169
+[config.toml] 版本跟随模板 2.2.169
+[README.md] 版本徽章和路线图更新为 2.2.169
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.168 -> 2.2.169
+py_compile: 跳过（仅前端变更）
+pytest: 0 passed, 549 deselected, 1 collection error（test_xml_protocol.py 预存 import 错误，非本次修改引入；无 terminal/webui 匹配用例）
