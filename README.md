@@ -18,11 +18,11 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.182-blue)
-![Version](https://img.shields.io/badge/version-2.2.182-blue)
+![Status](https://img.shields.io/badge/status-v2.2.183-blue)
+![Version](https://img.shields.io/badge/version-2.2.183-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Platforms](https://img.shields.io/badge/platforms-16+-orange)
+![Platforms](https://img.shields.io/badge/platforms-17+-orange)
 
 [![GitHub stars](https://img.shields.io/github/stars/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/issues)
@@ -154,6 +154,7 @@
 | CodeBuddy | ✅ | chat |
 | NVIDIA | ✅ | chat |
 | NoobKeys | ✅ | chat |
+| OpenCode | ✅ | chat, tools, vision, native_tools |
 | 更多平台 | 🚧 | 持续开发中 |
 
 ---
@@ -1257,7 +1258,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.182
+### 当前版本：v2.2.183
+
+✅ 已完成（v2.2.183）：
+- 新增 opencode 平台适配器 — proxy-pool 架构，无需 API Key，TAS 式代理评分选择器，6 个 free 模型，native_tools 支持
 
 ✅ 已完成（v2.2.182）：
 - 终端 WebSocket 修复：本地/SSH 终端启动失败时向客户端发送明确错误信息
