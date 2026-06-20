@@ -203,12 +203,31 @@ class OpencodeClient:
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """Execute chat completion with retry (up to MAX_RETRIES attempts).
 
-        Retries on transient errors (timeouts, HTTP 5xx, generic network errors)
-        with a fixed 1-second delay.  Stops immediately and re-raises when the
-        remote side actively disconnects or truncates the response.
+        Each retry selects a different proxy via TAS scoring.  The first
+        attempt uses the gateway-provided candidate.  On failure the proxy
+        is recorded, a new proxy (or direct) is chosen, and the candidate
+        meta is updated before the next attempt.
+
+        Stops immediately when the remote side actively disconnects or
+        truncates the response.
         """
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES):
+            # After the first failure, rotate to a new proxy via TAS
+            if attempt > 0:
+                pool_addrs = self._pool.to_address_list()
+                selector_addrs = [
+                    a for a in pool_addrs
+                    if a != candidate.meta.get("proxy_addr", "")
+                ]
+                chosen = self._selector.select(selector_addrs)
+                if chosen == DIRECT or chosen is None:
+                    new_addr = ""
+                else:
+                    new_addr = chosen
+                candidate.meta["proxy_addr"] = new_addr
+                candidate.meta["proxy_protocol"] = "proxy" if new_addr else "direct"
+
             try:
                 async for chunk in self._do_request(
                     candidate, messages, model, stream, **kw
@@ -217,14 +236,12 @@ class OpencodeClient:
                 return  # success
             except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError,
                     aiohttp.ServerDisconnectedError) as e:
-                # Remote side actively disconnected -- do NOT retry
                 proxy_addr = candidate.meta.get("proxy_addr", "")
                 selector_key = proxy_addr if proxy_addr else DIRECT
                 self._selector.record_failure(selector_key)
                 logger.warning("opencode: remote disconnected, aborting retries: %s", e)
                 raise PlatformError("opencode: remote connection aborted") from e
             except aiohttp.ClientPayloadError as e:
-                # Response truncated mid-transfer -- do NOT retry
                 proxy_addr = candidate.meta.get("proxy_addr", "")
                 selector_key = proxy_addr if proxy_addr else DIRECT
                 self._selector.record_failure(selector_key)
@@ -236,7 +253,8 @@ class OpencodeClient:
                 selector_key = proxy_addr if proxy_addr else DIRECT
                 self._selector.record_failure(selector_key)
                 logger.warning(
-                    "opencode retry %d/%d: %s", attempt + 1, MAX_RETRIES, e
+                    "opencode retry %d/%d (proxy=%s failed): %s",
+                    attempt + 1, MAX_RETRIES, selector_key, e,
                 )
                 if attempt < MAX_RETRIES - 1:
                     await asyncio.sleep(1.0)
