@@ -278,8 +278,10 @@ class _TerminalSession:
                         "type": "session_closed",
                         "session_id": self.session_id,
                     })
-            except Exception:
+            except (ConnectionError, RuntimeError):
                 logger.debug("Failed to notify client of session close", exc_info=True)
+            except Exception:
+                logger.warning("Unexpected error notifying client of session close", exc_info=True)
         self._clients.clear()
 
         _sessions.pop(self.session_id, None)
@@ -382,8 +384,10 @@ async def terminal_ws(request: aiohttp.web.Request) -> aiohttp.web.WebSocketResp
                     "type": "existing_sessions",
                     "sessions": existing,
                 })
-            except Exception:
+            except (ConnectionError, RuntimeError):
                 logger.debug("Failed to send existing sessions list", exc_info=True)
+            except Exception:
+                logger.warning("Unexpected error sending existing sessions list", exc_info=True)
 
         async for msg in ws:
             if msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):

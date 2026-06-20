@@ -74,8 +74,11 @@ class TerminalSessionStore:
         if meta_path.exists():
             try:
                 data = json.loads(meta_path.read_text(encoding="utf-8"))
-            except Exception:
+            except (OSError, json.JSONDecodeError):
                 logger.debug("Failed to read existing session metadata: %s", meta_path, exc_info=True)
+                data = {}
+            except Exception:
+                logger.warning("Unexpected error reading session metadata: %s", meta_path, exc_info=True)
                 data = {}
 
         data.update(
@@ -107,8 +110,10 @@ class TerminalSessionStore:
                 json.dumps(data, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
-        except Exception:
+        except OSError:
             logger.debug("Failed to save session metadata", exc_info=True)
+        except Exception:
+            logger.warning("Unexpected error saving session metadata", exc_info=True)
 
     def load(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Load session metadata.  Returns ``None`` if not found."""
@@ -117,8 +122,11 @@ class TerminalSessionStore:
             return None
         try:
             return json.loads(meta_path.read_text(encoding="utf-8"))
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             logger.debug("Failed to load session metadata: %s", session_id, exc_info=True)
+            return None
+        except Exception:
+            logger.warning("Unexpected error loading session metadata: %s", session_id, exc_info=True)
             return None
 
     def delete(self, session_id: str) -> None:
@@ -127,8 +135,10 @@ class TerminalSessionStore:
             try:
                 if path.exists():
                     path.unlink()
-            except Exception:
+            except OSError:
                 logger.debug("Failed to delete %s", path, exc_info=True)
+            except Exception:
+                logger.warning("Unexpected error deleting %s", path, exc_info=True)
 
     def list_all(self) -> List[Dict[str, Any]]:
         """List all persisted session metadata."""
@@ -137,8 +147,10 @@ class TerminalSessionStore:
             try:
                 data = json.loads(meta_path.read_text(encoding="utf-8"))
                 results.append(data)
-            except Exception:
+            except (OSError, json.JSONDecodeError):
                 logger.debug("Failed to read %s", meta_path, exc_info=True)
+            except Exception:
+                logger.warning("Unexpected error reading %s", meta_path, exc_info=True)
         return results
 
     # ------------------------------------------------------------------
@@ -161,8 +173,10 @@ class TerminalSessionStore:
                 size = output_path.stat().st_size
                 if size > self.max_output_bytes:
                     self._trim_output(output_path, size)
-        except Exception:
+        except OSError:
             logger.debug("Failed to append offline output", exc_info=True)
+        except Exception:
+            logger.warning("Unexpected error appending offline output", exc_info=True)
 
     def get_offline_output(self, session_id: str) -> str:
         """Read the full offline output buffer."""
@@ -171,8 +185,11 @@ class TerminalSessionStore:
             return ""
         try:
             return output_path.read_text(encoding="utf-8", errors="replace")
-        except Exception:
+        except OSError:
             logger.debug("Failed to read offline output: %s", session_id, exc_info=True)
+            return ""
+        except Exception:
+            logger.warning("Unexpected error reading offline output: %s", session_id, exc_info=True)
             return ""
 
     def clear_offline_output(self, session_id: str) -> None:
@@ -181,8 +198,10 @@ class TerminalSessionStore:
         try:
             if output_path.exists():
                 output_path.unlink()
-        except Exception:
+        except OSError:
             logger.debug("Failed to clear offline output", exc_info=True)
+        except Exception:
+            logger.warning("Unexpected error clearing offline output", exc_info=True)
 
     # ------------------------------------------------------------------
     # Cleanup
@@ -226,8 +245,10 @@ class TerminalSessionStore:
                 tail = f.read()
             with open(path, "wb") as f:
                 f.write(tail)
-        except Exception:
+        except OSError:
             logger.debug("Failed to trim output file", exc_info=True)
+        except Exception:
+            logger.warning("Unexpected error trimming output file", exc_info=True)
 
 
 # ------------------------------------------------------------------

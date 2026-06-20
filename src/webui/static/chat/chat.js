@@ -36,6 +36,7 @@ document.addEventListener("click", function(e) {
   var trigger = e.target.closest(".chat-tool-dropdown-trigger");
   if (!trigger) return;
   var targetId = trigger.getAttribute("data-target");
+  if (!targetId || !targetId.startsWith("tool-")) return;
   var argsEl = document.getElementById(targetId);
   var chevron = trigger.querySelector(".chat-tool-chevron");
   var label = trigger.querySelector(".chat-tool-dropdown-label");
@@ -208,6 +209,34 @@ function buildFileCardsHtml(files) {
 
 // ========================= Chat Message Rendering =========================
 var _userMsgCount = 0;
+var _toolIdCounter = 0;
+
+function _buildToolCallsHtml(toolCalls) {
+  var msgUid = ++_toolIdCounter;
+  var html = '<div class="chat-tools-container">';
+  for (var i = 0; i < toolCalls.length; i++) {
+    var tc = toolCalls[i];
+    var name = (tc.function && tc.function.name) || "unknown";
+    var args = (tc.function && tc.function.arguments) || "";
+    var toolId = "tool-" + msgUid + "-" + i;
+    var formattedArgs = "";
+    try {
+      formattedArgs = JSON.stringify(JSON.parse(args), null, 2);
+    } catch(e) {
+      formattedArgs = args || "{}";
+    }
+    html += '<div class="chat-tool-dropdown">';
+    html += '<div class="chat-tool-dropdown-trigger" data-target="' + toolId + '">';
+    html += '<span class="chat-tool-btn">' + escapeHtml(name) + '</span> ';
+    html += '<span class="chat-tool-dropdown-label">查看参数</span>';
+    html += '<svg class="chat-tool-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+    html += '</div>';
+    html += '<pre class="chat-tool-args" id="' + toolId + '" style="display:none;">' + escapeHtml(formattedArgs) + '</pre>';
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
 
 function appendChatMessage(role, content, options) {
   options = options || {};
@@ -216,29 +245,7 @@ function appendChatMessage(role, content, options) {
   var msg = document.createElement("div");
   msg.className = "chat-message chat-message-" + role;
   if (options.toolCalls && options.toolCalls.length > 0) {
-    var msgUid = ++_toolIdCounter;
-    var toolHtml = '<div class="chat-tools-container">';
-    for (var i = 0; i < options.toolCalls.length; i++) {
-      var tc = options.toolCalls[i];
-      var name = (tc.function && tc.function.name) || "unknown";
-      var args = (tc.function && tc.function.arguments) || "";
-      var toolId = "tool-" + msgUid + "-" + i;
-      var formattedArgs = "";
-      try {
-        formattedArgs = JSON.stringify(JSON.parse(args), null, 2);
-      } catch(e) {
-        formattedArgs = args || "{}";
-      }
-      toolHtml += '<div class="chat-tool-dropdown">';
-      toolHtml += '<div class="chat-tool-dropdown-trigger" data-target="' + toolId + '">';
-      toolHtml += '<span class="chat-tool-btn">' + escapeHtml(name) + '</span> ';
-      toolHtml += '<span class="chat-tool-dropdown-label">查看参数</span>';
-      toolHtml += '<svg class="chat-tool-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
-      toolHtml += '</div>';
-      toolHtml += '<pre class="chat-tool-args" id="' + toolId + '" style="display:none;">' + escapeHtml(formattedArgs) + '</pre>';
-      toolHtml += '</div>';
-    }
-    toolHtml += '</div>';
+    var toolHtml = _buildToolCallsHtml(options.toolCalls);
     msg.innerHTML = toolHtml + '<div class="chat-assistant-text">' + renderWithCodeBlocks(content) + '</div>';
   } else if (role === "assistant") {
     msg.setAttribute("data-raw", content);
@@ -333,8 +340,6 @@ function updateStreamingMessage(content) {
   if (container) container.scrollTop = container.scrollHeight;
 }
 
-var _toolIdCounter = 0;
-
 function finalizeStreamingMessage(toolCalls) {
   var msg = document.getElementById("chatStreamingMessage");
   // If no message element exists but there are tool calls, create one
@@ -348,31 +353,7 @@ function finalizeStreamingMessage(toolCalls) {
   var content = msg.getAttribute("data-raw") || "";
 
   if (toolCalls && toolCalls.length > 0) {
-    var msgUid = ++_toolIdCounter;
-    var toolHtml = '<div class="chat-tools-container">';
-    for (var i = 0; i < toolCalls.length; i++) {
-      var tc = toolCalls[i];
-      var name = (tc.function && tc.function.name) || "unknown";
-      var args = (tc.function && tc.function.arguments) || "";
-      var toolId = "tool-" + msgUid + "-" + i;
-      // 尝试解析参数为格式化 JSON
-      var formattedArgs = "";
-      try {
-        formattedArgs = JSON.stringify(JSON.parse(args), null, 2);
-      } catch(e) {
-        formattedArgs = args || "{}";
-      }
-      // 使用下拉框样式
-      toolHtml += '<div class="chat-tool-dropdown">';
-      toolHtml += '<div class="chat-tool-dropdown-trigger" data-target="' + toolId + '">';
-      toolHtml += '<span class="chat-tool-btn">' + escapeHtml(name) + '</span> ';
-      toolHtml += '<span class="chat-tool-dropdown-label">查看参数</span>';
-      toolHtml += '<svg class="chat-tool-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
-      toolHtml += '</div>';
-      toolHtml += '<pre class="chat-tool-args" id="' + toolId + '" style="display:none;">' + escapeHtml(formattedArgs) + '</pre>';
-      toolHtml += '</div>';
-    }
-    toolHtml += '</div>';
+    var toolHtml = _buildToolCallsHtml(toolCalls);
     msg.innerHTML = toolHtml + '<div class="chat-assistant-text">' + renderWithCodeBlocks(content) + '</div>';
     msg.setAttribute("data-raw", content);
   } else if (!content) {
@@ -717,11 +698,26 @@ function saveChatState() {
         protocol: savedProtocol
       });
     }
-  } catch (e) { /* quota exceeded or private mode */ }
+  } catch (e) { console.debug("saveChatState failed:", e); }
+}
+
+function _saveModelProtocol() {
+  var modelSelect = document.getElementById("chatModelSelect");
+  var protocolSelect = document.getElementById("chatProtocolSelect");
+  var m = modelSelect ? modelSelect.value : "";
+  var p = protocolSelect ? protocolSelect.value : "xml";
+  try {
+    localStorage.setItem("provider.webui.chatModel", m);
+    localStorage.setItem("provider.webui.chatProtocol", p);
+    if (typeof persistSave === 'function') {
+      persistSave('chat_model.json', { model: m, protocol: p });
+    }
+  } catch (e) { console.debug("_saveModelProtocol failed:", e); }
 }
 
 async function loadChatState() {
   _chatStateLoaded = (async function() {
+  try {
   try {
     // Try loading from backend persist first
     if (typeof persistLoad === 'function') {
@@ -733,8 +729,7 @@ async function loadChatState() {
           // Restore model and protocol selections
           if (persisted.model) {
             _savedChatModel = persisted.model;
-            var dd = window._dropdowns && window._dropdowns["chatModelSelect"];
-            if (dd) dd.setValue(persisted.model);
+            await loadModelsList();
           }
           if (persisted.protocol) {
             var protocolSelect = document.getElementById("chatProtocolSelect");
@@ -758,10 +753,9 @@ async function loadChatState() {
               }
             }
           }
-          _chatStateReady = true;
           return;
         }
-      } catch (e) { /* ignore, fall back to localStorage */ }
+      } catch (e) { console.debug("loadChatState backend path failed, falling back to localStorage:", e); chatConversationHistory = []; }
     }
     // Fallback to localStorage for model/protocol
     var savedModel = localStorage.getItem("provider.webui.chatModel");
@@ -785,7 +779,7 @@ async function loadChatState() {
         if (Array.isArray(parsed) && parsed.length > 0) {
           chatConversationHistory = parsed;
         }
-      } catch (e) { /* corrupt JSON */ }
+      } catch (e) { console.debug("loadChatState: failed to parse chat history from localStorage:", e); }
     }
     if (count) _userMsgCount = parseInt(count, 10) || 0;
     if (dom) {
@@ -794,8 +788,10 @@ async function loadChatState() {
         container.innerHTML = dom;
       }
     }
-  } catch (e) { /* corrupt data */ }
-  _chatStateReady = true;
+  } catch (e) { console.debug("loadChatState: unexpected error during state restoration:", e); }
+  } finally {
+    _chatStateReady = true;
+  }
   })();
   return _chatStateLoaded;
 }
@@ -804,7 +800,7 @@ async function sendChatMessage(text, files) {
   if (!text && (!files || files.length === 0)) return;
   // Ensure chat history is loaded before sending
   if (_chatStateLoaded) {
-    try { await _chatStateLoaded; } catch (e) {}
+    try { await _chatStateLoaded; } catch (e) { console.debug("sendChatMessage: error awaiting chat state load:", e); }
     _chatStateLoaded = null;
   }
 
@@ -1425,7 +1421,7 @@ function getToolsDefinition() {
 (function() {
   var modelEl = document.getElementById("chatModelSelect");
   var protocolEl = document.getElementById("chatProtocolSelect");
-  if (modelEl) modelEl.addEventListener("change", function() { if (_chatStateReady) saveChatState(); });
-  if (protocolEl) protocolEl.addEventListener("change", function() { if (_chatStateReady) saveChatState(); });
+  if (modelEl) modelEl.addEventListener("change", function() { if (_chatStateReady) _saveModelProtocol(); });
+  if (protocolEl) protocolEl.addEventListener("change", function() { if (_chatStateReady) _saveModelProtocol(); });
 })();
 

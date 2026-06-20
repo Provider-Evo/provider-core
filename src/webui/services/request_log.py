@@ -48,8 +48,10 @@ def _persist_loop() -> None:
     global _persist_timer
     try:
         save_requests()
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         _log.debug("Failed in request persist loop", exc_info=True)
+    except Exception:
+        _log.warning("Unexpected error in request persist loop", exc_info=True)
     _persist_timer = threading.Timer(_PERSIST_INTERVAL, _persist_loop)
     _persist_timer.daemon = True
     _persist_timer.start()

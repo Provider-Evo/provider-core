@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.179-blue)
-![Version](https://img.shields.io/badge/version-2.2.179-blue)
+![Status](https://img.shields.io/badge/status-v2.2.180-blue)
+![Version](https://img.shields.io/badge/version-2.2.180-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,10 +1257,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.179
+### 当前版本：v2.2.180
 
-✅ 已完成（v2.2.179）：
+✅ 已完成（v2.2.180）：
 - 架构审计修复：裸 except 块添加 debug 日志 + 创建 PROJECT_DECISIONS.md（5 条 ADR）
+- 异常处理加固：terminal_sessions/terminal router/request_log 共 12 处裸 except 块缩窄为具体异常类型，Unexpected 兜底升为 WARNING
+- 聊天面板 JS 重构：工具调用 HTML 提取为 _buildToolCallsHtml、模型协议选择独立持久化、loadChatState try/finally 守卫
 
 ✅ 已完成（v2.2.178）：
 - echotools 升级到 1.0.29：终端会话生命周期日志降级为 debug（ConPTY started/attached/killed）
