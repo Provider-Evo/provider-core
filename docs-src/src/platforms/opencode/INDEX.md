@@ -9,7 +9,7 @@
 ## 平台简介
 
 opencode 平台适配 OpenCode.ai API，使用 proxy-pool 架构（无需 API Key），通过 proxy.scdn.io 免费代理池实现匿名访问。
-核心特性包括 TAS 式 4 维代理评分选择器（ProxyPoolSelector）、代理池定时刷新（24 小时周期）、ModelsCache 自动模型获取、以及完善的重试逻辑（指数退避，最多 3 次重试）。
+核心特性包括 TAS 式 4 维代理评分选择器（ProxyPoolSelector）、代理池定时刷新（24 小时周期）、ModelsCache 自动模型获取、以及完善的重试逻辑（50 次重试、1 秒固定延迟、远程断开/负载截断时立即中止）。
 
 ## 文件结构
 
