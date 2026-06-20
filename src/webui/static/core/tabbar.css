@@ -206,33 +206,34 @@
 }
 
 /* ========================= Sidebar Toggle Button ========================= */
+/* Matches pre-migration original: full-width button at top of sidebar */
 
-.unified-sidebar-toggle {
+.tab-sidebar-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  font-size: 10px;
-  line-height: 1;
+  width: 100%;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  font-size: 14px;
   cursor: pointer;
   color: var(--muted);
-  border-radius: 6px;
+  background: transparent;
   border: 1px solid var(--border);
-  background: var(--panel);
   flex-shrink: 0;
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  transition: background 0.12s ease, color 0.12s ease;
-  z-index: 2;
+  transition: background 0.15s, color 0.15s;
 }
 
-.unified-sidebar-toggle:hover {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--accent);
+.tab-sidebar-toggle:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+/* Compressed mode: reduce toggle padding and font */
+.tabbar-compressed .tab-sidebar-toggle {
+  padding: 4px;
+  font-size: 12px;
 }
 
 /* ========================= Close-All Floating Button ========================= */
@@ -263,9 +264,9 @@
   right: 5px;
 }
 
-/* Vertical: bottom area of sidebar (above toggle) */
+/* Vertical: bottom area of sidebar */
 .vertical .unified-close-all-btn {
-  bottom: 40px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
 }
@@ -374,7 +375,14 @@
   max-width: 100px;
 }
 
-/* Bottom padding in vertical mode to make room for toggle button */
+/* Add button: sticky at bottom in vertical mode, matching original */
 .vertical .unified-tabbar-add {
-  margin-bottom: 36px;
+  width: 100%;
+  position: sticky;
+  bottom: 0;
+  background: var(--panel);
+  z-index: 1;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  margin-bottom: 0;
 }

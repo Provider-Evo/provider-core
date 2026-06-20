@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.171-blue)
-![Version](https://img.shields.io/badge/version-2.2.171-blue)
+![Status](https://img.shields.io/badge/status-v2.2.172-blue)
+![Version](https://img.shields.io/badge/version-2.2.172-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-16+-orange)
@@ -1257,7 +1257,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.171
+### 当前版本：v2.2.172
+
+✅ 已完成（v2.2.172）：
+- 修复终端字符交错双写与 CSI 响应泄漏：删除 terminal.py 重复回调，过滤 DEC private mode 响应
+- 恢复侧边栏压缩按钮为迁移前原始设计：全宽按钮置顶，替换 24x24 绝对定位小方块
+- 终端与文件侧边栏联动压缩：onToggleCollapsed 回调同步 window._tabBars 所有实例
 
 ✅ 已完成（v2.2.171）：
 - 终端会话持久化与进程保活（Phase 0）：WS 断连不杀进程，主动关闭才终止；多客户端同时挂载；重启自动恢复存活会话

@@ -139,6 +139,15 @@ var FileManager = (function () {
         onToggleCollapsed: function (collapsed) {
           if (typeof _tabLayoutConfig !== 'undefined') {
             _tabLayoutConfig.sidebarCompressed = collapsed;
+            // Propagate collapsed state to ALL registered TabBar instances
+            // so both terminal and files sidebars expand/compress together.
+            var bars = window._tabBars || {};
+            var keys = Object.keys(bars);
+            for (var i = 0; i < keys.length; i++) {
+              if (bars[keys[i]] !== _bar && bars[keys[i]] && typeof bars[keys[i]].setCollapsed === 'function') {
+                bars[keys[i]].setCollapsed(collapsed);
+              }
+            }
             (async function () {
               var existing = await persistLoad('config.toml') || {};
               existing.layout = _tabLayoutConfig.layout;

@@ -198,7 +198,8 @@ var TabBar = (function () {
 
     /**
      * Create or update the sidebar collapse/expand toggle button.
-     * Only visible in vertical mode. Positioned absolutely at the bottom of the tab bar.
+     * Only visible in vertical mode. Inserted at the TOP of the tab bar (first child),
+     * matching the pre-migration original design.
      */
     instance._renderToggleBtn = function () {
       if (this._layout !== 'vertical') {
@@ -210,10 +211,11 @@ var TabBar = (function () {
         return;
       }
 
-      // Create if not yet existing
+      // Create if not yet existing -- use <button> to match original
       if (!this._toggleBtn) {
-        this._toggleBtn = document.createElement('div');
-        this._toggleBtn.className = 'unified-sidebar-toggle';
+        this._toggleBtn = document.createElement('button');
+        this._toggleBtn.type = 'button';
+        this._toggleBtn.className = 'tab-sidebar-toggle';
         var self = this;
         this._toggleBtn.addEventListener('click', function (e) {
           e.stopPropagation();
@@ -225,13 +227,14 @@ var TabBar = (function () {
         });
       }
 
-      // Update icon based on collapsed state
-      this._toggleBtn.innerHTML = this._collapsed ? '&#9654;' : '&#9664;'; // ▶ or ◀
+      // Update icon based on collapsed state (textContent, matching original)
+      this._toggleBtn.textContent = this._collapsed ? '\u25B6' : '\u25C0'; // ▶ or ◀
       this._toggleBtn.title = this._collapsed
         ? '\u5C55\u5F00\u4FA7\u8FB9\u680F'  // 展开侧边栏
         : '\u538B\u7F29\u4FA7\u8FB9\u680F';  // 压缩侧边栏
 
-      this._tabBarEl.appendChild(this._toggleBtn);
+      // Insert at the START of the tab bar (matching original _ensureSidebarToggle)
+      this._tabBarEl.insertBefore(this._toggleBtn, this._tabBarEl.firstChild);
     };
 
     // ========================= Close-All Button =========================

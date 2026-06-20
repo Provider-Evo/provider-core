@@ -63,13 +63,12 @@ class _TerminalSession:
     # ------------------------------------------------------------------
 
     async def start_local(self, cols: int = 80, rows: int = 24) -> bool:
-        """Create and start a ``LocalTerminal`` session."""
-        callback = TerminalCallback(
-            on_output=self._broadcast_output,
-            on_error=self._broadcast_error,
-            on_exit=self._broadcast_exit,
-        )
-        self._terminal = LocalTerminal(self.session_id, callback)
+        """Create and start a ``LocalTerminal`` session.
+
+        No callback is passed to the constructor -- callbacks are added
+        later via ``attach_client()`` to prevent duplicate writers.
+        """
+        self._terminal = LocalTerminal(self.session_id)
         ok = await self._terminal.start(cols, rows)
         if ok:
             self.alive = True
@@ -96,12 +95,11 @@ class _TerminalSession:
         cols: int = 80,
         rows: int = 24,
     ) -> bool:
-        """Create and start an ``SSHTerminal`` session."""
-        callback = TerminalCallback(
-            on_output=self._broadcast_output,
-            on_error=self._broadcast_error,
-            on_exit=self._broadcast_exit,
-        )
+        """Create and start an ``SSHTerminal`` session.
+
+        No callback is passed to the constructor -- callbacks are added
+        later via ``attach_client()`` to prevent duplicate writers.
+        """
         self._terminal = SSHTerminal(
             self.session_id,
             host=host,
@@ -109,7 +107,6 @@ class _TerminalSession:
             username=username,
             password=password or None,
             key_data=key_data or None,
-            callback=callback,
         )
         ok = await self._terminal.start(cols, rows)
         if ok:

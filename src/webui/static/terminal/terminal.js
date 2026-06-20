@@ -60,11 +60,23 @@ var TerminalManager = (function () {
         onAdd: function (e) { _showAddMenu(e); },
         onCloseAll: function () { closeAllTabs(); },
         onToggleCollapsed: function (collapsed) {
-          // Persist collapsed state
-          _tabLayoutConfig.sidebarCompressed = collapsed;
+          // Update shared layout config
+          if (typeof _tabLayoutConfig !== 'undefined') {
+            _tabLayoutConfig.sidebarCompressed = collapsed;
+          }
+          // Propagate collapsed state to ALL registered TabBar instances
+          // so both terminal and files sidebars expand/compress together.
+          var bars = window._tabBars || {};
+          var keys = Object.keys(bars);
+          for (var i = 0; i < keys.length; i++) {
+            if (bars[keys[i]] !== _bar && bars[keys[i]] && typeof bars[keys[i]].setCollapsed === 'function') {
+              bars[keys[i]].setCollapsed(collapsed);
+            }
+          }
+          // Persist the state
           (async function () {
             var existing = await persistLoad('config.toml') || {};
-            existing.layout = _tabLayoutConfig.layout;
+            existing.layout = (typeof _tabLayoutConfig !== 'undefined') ? _tabLayoutConfig.layout : 'horizontal';
             existing.sidebarCompressed = collapsed;
             persistSave('config.toml', existing);
           })();
@@ -336,7 +348,13 @@ var TerminalManager = (function () {
           tab._mode = msg.mode;
         } else if (msg.type === 'output') {
           if (tab.xterm) {
-            tab.xterm.write(msg.data);
+            // Filter out DEC private mode responses that leak through ConPTY
+            // (e.g. ^[[?1;2c device-attributes response).  xterm.js handles
+            // these internally; they should not appear as visible text.
+            var filtered = msg.data.replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '');
+            if (filtered) {
+              tab.xterm.write(filtered);
+            }
           }
         } else if (msg.type === 'error') {
           if (tab.xterm) {
