@@ -220,19 +220,8 @@ class OpencodeClient:
                 ):
                     yield chunk
                 return  # success
-            except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError,
-                    aiohttp.ServerDisconnectedError) as e:
-                proxy_addr = candidate.meta.get("proxy_addr", "")
-                selector_key = proxy_addr if proxy_addr else DIRECT
-                self._selector.record_failure(selector_key)
-                logger.warning("opencode: remote disconnected, aborting retries: %s", e)
-                raise PlatformError("opencode: remote connection aborted") from e
-            except aiohttp.ClientPayloadError as e:
-                proxy_addr = candidate.meta.get("proxy_addr", "")
-                selector_key = proxy_addr if proxy_addr else DIRECT
-                self._selector.record_failure(selector_key)
-                logger.warning("opencode: payload error (remote abort), stopping: %s", e)
-                raise PlatformError("opencode: remote interrupted the response") from e
+            except PlatformError:
+                raise
             except Exception as e:
                 last_exc = e
                 proxy_addr = candidate.meta.get("proxy_addr", "")
@@ -349,17 +338,11 @@ class OpencodeClient:
                     latency_ms = (time.time() - t0) * 1000.0
                     self._selector.record_success(selector_key, latency_ms)
 
-        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError,
-                aiohttp.ServerDisconnectedError, aiohttp.ClientPayloadError):
-            # Let these propagate to complete() for abort detection
-            raise
         except PlatformError:
             raise
         except Exception as e:
             self._selector.record_failure(selector_key)
-            raise PlatformError(
-                "opencode request failed: {}".format(e)
-            ) from e
+            raise
 
     # ------------------------------------------------------------------
     # Remote models

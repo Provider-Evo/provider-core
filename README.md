@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.186-blue)
-![Version](https://img.shields.io/badge/version-2.2.186-blue)
+![Status](https://img.shields.io/badge/status-v2.2.187-blue)
+![Version](https://img.shields.io/badge/version-2.2.187-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1258,7 +1258,11 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.186
+### 当前版本：v2.2.187
+
+✅ 已完成（v2.2.187）：
+- opencode 连接重试修复：连接断开/负载截断时不再中止，所有连接错误均触发 TAS 选择新代理重试；仅 PlatformError 为不可重试异常
+- echotools 升级到 1.0.30：自动更新合并冲突自修复（merge abort 检测）、hard reset 回退、暂存恢复（stash pop）、祖先检查（ancestry check）
 
 ✅ 已完成（v2.2.186）：
 - opencode 平台改为单候选项模式，代理选择完全由平台内部 TAS 处理（包括首次尝试）
