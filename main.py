@@ -42,19 +42,20 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 # ---------------------------------------------------------------------------
-# 导入——core/ 在 src/ 下，所以路径是 src.core.xxx
+# 导入
 # ---------------------------------------------------------------------------
 
-# config 仍在 src.core.config
 from src.core.config import get_config, start_config_watcher
+from src.core.dispatch.registry import Registry
+from src.core.server import (   # server 已合并为单文件，所有符号从此处导入
+    AutoUpdater,
+    FileWatcher,
+    create_app,
+    ensure_port_available,
+)
 
-# 以下通过 src.core.__init__ 的导出访问（__init__ 已将子模块符号提升）
-from src.core.dispatch.registry import Registry    # 来自 src.core.dispatch.registry
-from src.core.server import create_app           # 来自 src.core.server.server
-from src.core.server.watcher import FileWatcher    # 来自 src.core.server.watcher
-
-# 导入 proxy 模块以触发必要的 monkey-patch
-import src.core.server.proxy  # noqa: F401          # 来自 src.core.server.proxy
+# 导入 server 模块触发 proxy monkey-patch（_init_proxy 在模块级自动执行）
+import src.core.server  # noqa: F401
 
 from src.logger import get_logger
 
@@ -162,7 +163,6 @@ async def _run() -> None:
     )
 
     # 检查并释放端口占用
-    from src.core.process import ensure_port_available
     port_result = ensure_port_available(port, cfg.server.startup_force_kill_port)
     if port_result.occupied and not port_result.released:
         if cfg.server.startup_force_kill_port:
@@ -217,7 +217,6 @@ async def _run() -> None:
         await watcher.start(registry, session)
 
     async def _autoupdate_task() -> None:
-        from src.core.autoupdate import AutoUpdater
         updater = AutoUpdater(
             root=_ROOT,
             branch=cfg.autoupdate.branch,
@@ -302,7 +301,9 @@ async def _run_idle_watcher() -> None:
 def _run_worker() -> None:
     """Worker 进程入口——配置事件循环策略并启动异步主流程。"""
     if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        if sys.version_info < (3, 12):
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        # Python 3.12+ on Windows: 默认 ProactorEventLoop 已足够
     else:
         try:
             import uvloop  # type: ignore[import]

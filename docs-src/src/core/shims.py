@@ -66,19 +66,19 @@ from __future__ import annotations
     from core.shims import some_function
 
     # 方式 3：从原始路径导入（绕过 shim，直接访问实现）
-    from src.core.server.http import some_function
+    from src.core.server import some_function
 """
 
 # ==============================================================================
 # 服务器相关
 # ==============================================================================
 
-from src.core.server.autoupdate import *  # noqa: F401, F403
-from src.core.server.http import *  # noqa: F401, F403
-from src.core.server.process import *  # noqa: F401, F403
-from src.core.server.proxy import *  # noqa: F401, F403
-from src.core.server.server import *  # noqa: F401, F403
-from src.core.server.watcher import *  # noqa: F401, F403
+from src.core.server import *  # noqa: F401, F403
+from src.core.server import *  # noqa: F401, F403
+from src.core.server import *  # noqa: F401, F403
+from src.core.server import *  # noqa: F401, F403
+from src.core.server import *  # noqa: F401, F403
+from src.core.server import *  # noqa: F401, F403
 
 # ==============================================================================
 # 调度相关

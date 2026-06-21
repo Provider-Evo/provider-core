@@ -14,7 +14,7 @@ import aiohttp
 
 from echotools.translate import extract_text_from_messages, split_text_chunks
 
-from src.core.candidate import Candidate, make_id
+from src.core.dispatch.candidate import Candidate, make_id
 from src.core.errors import PlatformError
 from .constants import (
     API_KEY,

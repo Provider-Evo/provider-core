@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict
 
-from src.core.io_utils import atomic_write_text, read_text_if_exists
+from src.core.utils.io_utils import atomic_write_text, read_text_if_exists
 from src.logger import get_logger
 
 from ..accounts import Account

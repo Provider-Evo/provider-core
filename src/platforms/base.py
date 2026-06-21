@@ -7,7 +7,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.candidate import Candidate
+from src.core import Candidate
 from src.logger import get_logger
 
 __all__ = ["PlatformAdapter"]

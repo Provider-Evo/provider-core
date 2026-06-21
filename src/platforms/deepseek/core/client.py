@@ -31,7 +31,7 @@ from src.platforms.deepseek.core.pow import WasmPow, download_wasm, get_pow_resp
 from src.platforms.deepseek.core.sessionapi import create_session
 from src.platforms.deepseek.core.streamparser import StreamParser
 from src.platforms.deepseek.core.userapi import login
-from src.core.candidate import Candidate, make_id
+from src.core.dispatch.candidate import Candidate, make_id
 
 logger = get_logger(__name__)
 
@@ -161,7 +161,7 @@ class DeepseekClient:
     def _get_proxy_kwarg(self) -> Optional[str]:
         """获取应传递给 session.request 的 proxy 值。"""
         if self._proxy_override is True:
-            from src.core.proxy import get_proxy_server
+            from src.core.server import get_proxy_server
             return get_proxy_server()
         return None
 

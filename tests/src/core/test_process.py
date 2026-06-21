@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.core.process import PortReleaseResult
+from src.core.server import PortReleaseResult
 
 
 def test_port_release_result_fields() -> None:

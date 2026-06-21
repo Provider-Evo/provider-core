@@ -8,7 +8,7 @@ from typing import Any, Optional, Sequence
 
 import aiohttp.web
 
-from src.core.process import ensure_port_available
+from src.core.server import ensure_port_available
 from src.logger import get_logger
 from src.webui.app import create_app
 

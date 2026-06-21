@@ -16,7 +16,7 @@ from typing import Any, AsyncGenerator, Dict, List, Union
 
 import aiohttp
 
-from src.core.candidate import Candidate
+from src.core.dispatch.candidate import Candidate
 from src.logger import get_logger
 from src.platforms.base import PlatformAdapter
 from src.platforms.qwen.core.constants import CAPS, MODELS, MODELS_PERSIST_PATH

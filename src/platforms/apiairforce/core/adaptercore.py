@@ -6,7 +6,7 @@ from typing import Any, AsyncGenerator, Dict, List, Union
 
 import aiohttp
 
-from src.core.candidate import Candidate
+from src.core.dispatch.candidate import Candidate
 from src.platforms.base import PlatformAdapter
 from .client import Client
 from .constants import CAPS, MODELS

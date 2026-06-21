@@ -13,7 +13,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 
-from src.core.candidate import Candidate, make_id
+from src.core.dispatch.candidate import Candidate, make_id
 from src.core.models_cache import ModelsCache
 from src.core.proxy_selector import ProxySelector
 from src.logger import get_logger
@@ -182,7 +182,7 @@ class QwenClient:
         if self._proxy_override is True:
             if not cfg.platforms_proxy.is_platform_enabled("qwen"):
                 return None
-            from src.core.proxy import get_proxy_server
+            from src.core.server import get_proxy_server
             return get_proxy_server()
 
         if self._proxy_override is False:
@@ -191,7 +191,7 @@ class QwenClient:
         # _proxy_override is None: smart selector or fallback to monkey-patch
         if SMART_PROXY_ENABLED:
             if self._proxy_selector.select():
-                from src.core.proxy import get_proxy_server
+                from src.core.server import get_proxy_server
                 return get_proxy_server()
             return None
 

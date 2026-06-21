@@ -12,7 +12,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.candidate import Candidate, make_id
+from src.core.dispatch.candidate import Candidate, make_id
 from src.core.errors import PlatformError
 from src.logger import get_logger
 from .constants import (
@@ -380,26 +380,19 @@ class OpencodeClient:
     # ------------------------------------------------------------------
 
     async def fetch_remote_models(self) -> List[str]:
-        """Fetch available models from the remote API.
-
-        Uses the first proxy in the pool for the request.
+        """Fetch available models from the remote API (direct connection).
 
         Returns:
             Model ID list, empty on failure.
         """
-        if not self._session or self._pool.count == 0:
+        if not self._session:
             return []
 
-        proxy_addr = self._pool.proxies[0].address
-        headers = build_headers(proxy_addr)
         url = "{}{}".format(BASE_URL, MODELS_PATH)
-        proxy_url = "http://{}".format(proxy_addr)
 
         try:
             async with self._session.get(
                 url,
-                headers=headers,
-                proxy=proxy_url,
                 ssl=False,
                 timeout=aiohttp.ClientTimeout(connect=10, total=30),
             ) as resp:

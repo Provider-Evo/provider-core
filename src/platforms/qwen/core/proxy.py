@@ -53,7 +53,7 @@ class ProxyState:
     def get_proxy_url(self) -> Optional[str]:
         """如启用代理，返回应传给 ``session.request`` 的 ``proxy``。"""
         if self.override is True:
-            from src.core.proxy import get_proxy_server  # noqa: PLC0415
+            from src.core.server import get_proxy_server  # noqa: PLC0415
 
             return get_proxy_server()
         return None

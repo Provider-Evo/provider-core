@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 
-from src.core.candidate import Candidate
+from src.core.dispatch.candidate import Candidate
 from .constants import (
     GTTS_DEFAULT_LANG,
     GTTS_MAX_CHARS,

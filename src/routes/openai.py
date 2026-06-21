@@ -14,13 +14,13 @@ import aiohttp.web
 
 from src.core.config.resolver import resolve_model
 from src.core.errors import NoCandidateError, NotSupportedError, ProviderError
-from src.core.http import (
+from src.core.server import (
     clean_fncall as _clean_fncall,
 )
-from src.core.http import (
+from src.core.server import (
     get_json as _get_json,
 )
-from src.core.http import (
+from src.core.server import (
     safe_flush as _safe_flush,
 )
 from src.core.server import REGISTRY_KEY, SESSION_KEY, json_response

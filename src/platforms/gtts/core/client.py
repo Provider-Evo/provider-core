@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 
-from src.core.candidate import Candidate, make_id
+from src.core.dispatch.candidate import Candidate, make_id
 from ..accounts import API_KEYS
 from .constants import CAPS, MODELS
 from .tts import TtsService

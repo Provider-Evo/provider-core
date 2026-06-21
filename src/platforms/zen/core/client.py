@@ -8,7 +8,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.candidate import Candidate, make_id
+from src.core.dispatch.candidate import Candidate, make_id
 from src.core.errors import PlatformError
 from src.logger import get_logger
 from ..accounts import API_KEYS

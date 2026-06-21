@@ -6,7 +6,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.candidate import Candidate, make_id
+from src.core.dispatch.candidate import Candidate, make_id
 from src.core.errors import NotSupportedError
 from .constants import BASE_URL, CAPS, GENERATE_PATH, MODELS, VOICES
 from .headers import build_headers

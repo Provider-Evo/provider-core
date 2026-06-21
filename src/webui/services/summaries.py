@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from src.core.runtime_view import build_runtime_summary
+from src.core.dispatch.runtime_view import build_runtime_summary
 from src.webui.config_schema import SummaryExportPayload
 
 __all__ = ["build_summary_payload", "build_export_payload"]

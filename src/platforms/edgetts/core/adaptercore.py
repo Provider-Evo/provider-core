@@ -8,7 +8,7 @@ from typing import Any, AsyncGenerator, Dict, List
 
 import aiohttp
 
-from src.core.candidate import Candidate
+from src.core.dispatch.candidate import Candidate
 from src.core.errors import NotSupportedError
 from src.platforms.base import PlatformAdapter
 from .client import Client

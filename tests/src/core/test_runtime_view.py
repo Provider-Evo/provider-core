@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from src.core.runtime_view import build_runtime_summary
+from src.core.dispatch.runtime_view import build_runtime_summary
 
 
 class _FakeCandidate:

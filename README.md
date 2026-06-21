@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.193-blue)
-![Version](https://img.shields.io/badge/version-2.2.193-blue)
+![Status](https://img.shields.io/badge/status-v2.2.195-blue)
+![Version](https://img.shields.io/badge/version-2.2.195-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1258,7 +1258,15 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.193
+### 当前版本：v2.2.195
+
+✅ 已完成（v2.2.195）：
+- refactor(core): 将 `server/` 子包合并为单个 `server.py` 文件，更新全部导入路径
+- fix(main): asyncio WindowsSelectorEventLoopPolicy 添加 Python 版本守卫，兼容 3.8-3.14
+- fix(opencode): `fetch_remote_models` 改为直连，不再通过代理获取模型列表
+
+✅ 已完成（v2.2.194）：
+- fix(core): 在 `__init__.py` 中添加 sys.modules 向后兼容别名，修复旧模块路径导入失败
 
 ✅ 已完成（v2.2.193）：
 - fix(core): 更新 `__init__.py` 导入 — `http_request/stream_request` 替换为 `clean_fncall/safe_flush`，`with_retry` 替换为 `retry_with_backoff`

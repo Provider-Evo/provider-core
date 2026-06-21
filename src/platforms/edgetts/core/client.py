@@ -21,7 +21,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
 import certifi
 
-from src.core.candidate import Candidate, make_id
+from src.core.dispatch.candidate import Candidate, make_id
 from src.core.errors import NotSupportedError
 from ..accounts import ACCOUNTS
 from .constants import (

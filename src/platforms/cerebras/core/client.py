@@ -8,7 +8,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from src.core.candidate import Candidate, make_id
+from src.core.dispatch.candidate import Candidate, make_id
 from ..accounts import API_KEYS
 from .extract import (
     extract_delta_content,

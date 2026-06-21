@@ -12,7 +12,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.candidate import Candidate
+from src.core.dispatch.candidate import Candidate
 from src.core.models_cache import ModelsCache
 from src.platforms.base import PlatformAdapter
 from .client import CodebuddyClient

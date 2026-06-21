@@ -12,7 +12,7 @@ import aiohttp.web
 from src.core.server import REGISTRY_KEY, json_response
 from src.core.errors import NoCandidateError, ProviderError
 from src.core.tools import normalize_content, parse_fncall_xml
-from src.core.http import (
+from src.core.server import (
     clean_fncall as _clean_fncall,
     get_json as _get_json,
     safe_flush as _safe_flush,

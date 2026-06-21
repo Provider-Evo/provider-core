@@ -2676,3 +2676,33 @@ pytest: pre-existing failures; exit code 42 (test suite interrupted at ~55%, all
 [docs-src/src/core/shims.py] 新增 docs-src 镜像
 [docs-src/src/core/terminal_sessions.py] 同步 docs-src 镜像
 [docs-src/src/core/tools.py] 同步 docs-src 镜像
+
+2026-06-21 12:42:46
+
+[src/core/__init__.py] 更新导入：http_request/stream_request 替换为 clean_fncall/safe_flush，with_retry 替换为 retry_with_backoff；__all__ 列表同步更新
+[template/template_config.toml] 版本升至 2.2.193
+[config.toml] 版本跟随模板 2.2.193
+[README.md] 版本徽章和路线图更新为 2.2.193
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.192 -> 2.2.193
+[docs-src/src/core/__init__.py] 同步 docs-src 镜像
+
+2026-06-21 13:27:35
+
+[main.py] asyncio WindowsSelectorEventLoopPolicy 添加 Python 版本守卫，兼容 3.8-3.14；更新导入路径指向新的 server.py 模块
+[src/core/__init__.py] 重构导入结构：适配 server.py 单文件模块，更新模块对象导出和符号提升
+[src/core/candidate.py] 删除冗余 shim 文件，导入路径已直接指向 dispatch.candidate
+[src/core/runtime_view.py] 删除冗余 shim 文件，导入路径已直接指向 dispatch.runtime_view
+[src/core/server.py] 新增：将 server/ 子包合并为单个文件，整合 autoupdate/http/process/proxy/server/watcher 全部功能
+[src/core/server/__init__.py] 删除：server/ 子包已整合为 server.py 单文件
+[src/core/server/autoupdate.py] 删除：内容合并至 server.py
+[src/core/server/http.py] 删除：内容合并至 server.py
+[src/core/server/process.py] 删除：内容合并至 server.py
+[src/core/server/proxy.py] 删除：内容合并至 server.py
+[src/core/server/server.py] 删除：内容合并至 server.py
+[src/core/server/watcher.py] 删除：内容合并至 server.py
+[src/core/shims.py] 更新服务器相关导入，从 server 子包路径改为 server.py 单文件模块
+[template/template_config.toml] 版本升至 2.2.195
+[config.toml] 版本跟随模板 2.2.195
+[README.md] 版本徽章和路线图更新为 2.2.195
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.194 -> 2.2.195
+[docs-src/src/core/__init__.py] 同步 docs-src 镜像
