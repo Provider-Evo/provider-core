@@ -150,12 +150,13 @@ def _verify_server(ip: str) -> Optional[Dict[str, Any]]:
         if not name:
             continue
         detail = _show_model(base, name)
+        _det = m.get("details") or {}
         infos.append({
             "name": name,
             "size": m.get("size", 0),
             "capabilities": detect_capabilities(detail),
-            "family": m.get("details", {}).get("family", ""),
-            "parameter_size": m.get("details", {}).get("parameter_size", ""),
+            "family": _det.get("family") or "",
+            "parameter_size": _det.get("parameter_size") or "",
         })
 
     return {

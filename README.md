@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.197-blue)
-![Version](https://img.shields.io/badge/version-2.2.197-blue)
+![Status](https://img.shields.io/badge/status-v2.2.198-blue)
+![Version](https://img.shields.io/badge/version-2.2.198-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,7 +1264,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.197
+### 当前版本：v2.2.198
+
+✅ 已完成（v2.2.198）：
+- fix(ollama): 修复 `detect_capabilities()` 和 `_verify_server()` 中 `.get()` 返回 `None` 导致 `'NoneType' object is not iterable` 的问题
 
 ✅ 已完成（v2.2.197）：
 - refactor(routes): 拆分 `routes/openai.py`（2153 行）为 5 个聚焦子模块

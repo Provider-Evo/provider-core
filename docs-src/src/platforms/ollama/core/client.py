@@ -318,26 +318,27 @@ def detect_capabilities(detail: Optional[Dict[str, Any]]) -> Dict[str, bool]:
     if not detail:
         return caps
 
-    model_info = detail.get("model_info", {})
+    model_info = detail.get("model_info") or {}
     for k in model_info:
         kl = k.lower()
         if any(x in kl for x in ("vision", "projector", "mmproj", "clip")):
             caps["vision"] = True
             break
 
-    tpl = detail.get("template", "")
+    tpl = detail.get("template") or ""
     if "tools" in tpl.lower() or ".Tools" in tpl:
         caps["tools"] = True
 
-    det = detail.get("details", {})
-    for fam in det.get("families", []):
+    det = detail.get("details") or {}
+    for fam in (det.get("families") or []):
         if any(x in fam.lower() for x in ("clip", "vision")):
             caps["vision"] = True
 
-    if "embedding" in detail.get("parameters", "").lower():
+    params = detail.get("parameters") or ""
+    if "embedding" in params.lower():
         caps["embedding"] = True
     if not caps["embedding"]:
-        _name = detail.get("name", "").lower()
+        _name = (detail.get("name") or "").lower()
         _embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
         if any(kw in _name for kw in _embed_kw):
             caps["embedding"] = True
@@ -383,12 +384,13 @@ def _verify_server(ip: str) -> Optional[Dict[str, Any]]:
         if FILTER_CLOUD_MODELS and name.endswith(":cloud"):
             continue
         detail = _show_model(base, name)
+        _det = m.get("details") or {}
         infos.append({
             "name": name,
             "size": m.get("size", 0),
             "capabilities": detect_capabilities(detail),
-            "family": m.get("details", {}).get("family", ""),
-            "parameter_size": m.get("details", {}).get("parameter_size", ""),
+            "family": _det.get("family") or "",
+            "parameter_size": _det.get("parameter_size") or "",
         })
 
     return {

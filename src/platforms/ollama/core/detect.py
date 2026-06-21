@@ -23,23 +23,24 @@ def detect_capabilities(detail: Dict[str, Any]) -> Dict[str, bool]:
     if not detail:
         return caps
 
-    model_info = detail.get("model_info", {})
+    model_info = detail.get("model_info") or {}
     for k in model_info:
         kl = k.lower()
         if any(x in kl for x in ("vision", "projector", "mmproj", "clip")):
             caps["vision"] = True
             break
 
-    tpl = detail.get("template", "")
+    tpl = detail.get("template") or ""
     if "tools" in tpl.lower() or ".Tools" in tpl:
         caps["tools"] = True
 
-    det = detail.get("details", {})
-    for fam in det.get("families", []):
+    det = detail.get("details") or {}
+    for fam in (det.get("families") or []):
         if any(x in fam.lower() for x in ("clip", "vision")):
             caps["vision"] = True
 
-    if "embedding" in detail.get("parameters", "").lower():
+    params = detail.get("parameters") or ""
+    if "embedding" in params.lower():
         caps["embedding"] = True
 
     return caps
