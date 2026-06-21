@@ -13,6 +13,18 @@ docs-src/platforms/guide.md
 docs-src/platforms/ollama/core/ollama.md
 docs-src/platforms/qwen/core/qwen.md
 docs-src/src/agents.md
+docs-src/src/core/ARCHITECTURE.md
+docs-src/src/core/INDEX.md
+docs-src/src/core/__init__.py
+docs-src/src/core/errors.py
+docs-src/src/core/fncall/protocols/dsml.py
+docs-src/src/core/models_cache.py
+docs-src/src/core/proxy_selector.py
+docs-src/src/core/proxy.md
+docs-src/src/core/runtime_view.md
+docs-src/src/core/shims.py
+docs-src/src/core/terminal_sessions.py
+docs-src/src/core/tools.py
 docs-src/src/platforms/agents.md
 docs-src/src/platforms/apiairforce/INDEX.md
 docs-src/src/platforms/caiyuesbk/INDEX.md
@@ -32,6 +44,7 @@ docs-src/src/platforms/nvidia/INDEX.md
 docs-src/src/platforms/ollama/INDEX.md
 docs-src/src/platforms/ollama/core/ollama.md
 docs-src/src/platforms/openaifm/INDEX.md
+docs-src/src/platforms/opencode/INDEX.md
 docs-src/src/platforms/openrouter/INDEX.md
 docs-src/src/platforms/perplexity/INDEX.md
 docs-src/src/platforms/qwen/INDEX.md
@@ -154,6 +167,7 @@ src/core/fncall/protocols/__init__.py
 src/core/fncall/protocols/antml.py
 src/core/fncall/protocols/bracket.py
 src/core/fncall/protocols/custom.py
+src/core/fncall/protocols/dsml.py
 src/core/fncall/protocols/nous.py
 src/core/fncall/protocols/original.py
 src/core/fncall/protocols/xml.py
@@ -185,6 +199,7 @@ src/core/server/process.py
 src/core/server/proxy.py
 src/core/server/server.py
 src/core/server/watcher.py
+src/core/shims.py
 src/core/terminal_sessions.py
 src/core/tools.py
 src/core/utils/__init__.py
@@ -329,6 +344,18 @@ src/platforms/openaifm/core/constants.py
 src/platforms/openaifm/core/headers.py
 src/platforms/openaifm/core/tts.py
 src/platforms/openaifm/util.py
+src/platforms/opencode/__init__.py
+src/platforms/opencode/adapter.py
+src/platforms/opencode/core/__init__.py
+src/platforms/opencode/core/adaptercore.py
+src/platforms/opencode/core/client.py
+src/platforms/opencode/core/constants.py
+src/platforms/opencode/core/headers.py
+src/platforms/opencode/core/payloads.py
+src/platforms/opencode/core/proxypool.py
+src/platforms/opencode/core/proxyscore.py
+src/platforms/opencode/core/sse.py
+src/platforms/opencode/util.py
 src/platforms/openrouter/__init__.py
 src/platforms/openrouter/adapter.py
 src/platforms/openrouter/client.py
@@ -440,6 +467,7 @@ tests/src/core/fncall/shared/test_shared.py
 tests/src/core/fncall/test_base.py
 tests/src/core/fncall/test_nous_protocol.py
 tests/src/core/fncall/test_original_protocol.py
+tests/src/core/fncall/test_dsml_protocol.py
 tests/src/core/test_autoupdate.py
 tests/src/core/test_tools.py
 tests/src/core/test_webui.py
@@ -454,6 +482,8 @@ tests/src/core/utils/test_retry.py
 tests/src/core/utils/test_scheduler.py
 tests/src/platforms/noobkeys/__init__.py
 tests/src/platforms/noobkeys/test_noobkeys_mvp.py
+tests/src/platforms/opencode/__init__.py
+tests/src/platforms/opencode/test_opencode_mvp.py
 tests/src/platforms/ollama/test_ollama_embedding.py
 tests/src/platforms/ollama/test_ollama_mvp.py
 tests/src/platforms/ollama/test_ollama_servers.py
@@ -2509,3 +2539,140 @@ pytest: pre-existing failures; exit code 42 (1 test hung at ~56%, killed by time
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.181 -> 2.2.182
 py_compile: 1 file OK
 pytest: pre-existing failures; exit code 42 (test suite interrupted at ~55%, all failures pre-existing and unrelated to terminal changes)
+
+2026-06-20 22:00:00
+
+[src/platforms/opencode/__init__.py] 新增 opencode 平台包：导出 OpencodeAdapter / Adapter
+[src/platforms/opencode/adapter.py] 平台门面：从 util 重导出 Adapter 类
+[src/platforms/opencode/util.py] 懒加载门面：__getattr__ 延迟导入 core.adaptercore，re-export 常量与纯函数
+[src/platforms/opencode/core/__init__.py] core 子包初始化
+[src/platforms/opencode/core/adaptercore.py] OpencodeAdapter 实现：proxy-pool 架构，ModelsCache 自动模型获取，native_tools 支持
+[src/platforms/opencode/core/client.py] OpencodeClient HTTP 客户端：proxy-pool 架构，SSE 流式，重试逻辑，代理池定时刷新
+[src/platforms/opencode/core/constants.py] 平台常量：BASE_URL、MODELS（6 个 free 模型）、CAPS、PROXY_REFRESH_INTERVAL 等
+[src/platforms/opencode/core/headers.py] 请求头构建模块
+[src/platforms/opencode/core/payloads.py] 请求体构建模块：model/messages/stream + tools/tool_choice 参数
+[src/platforms/opencode/core/proxypool.py] 代理池获取器：从 proxy.scdn.io 抓取免费代理（JSON API + HTML 表格 + 文本端点），ProxyInfo/ProxyPool 数据类
+[src/platforms/opencode/core/proxyscore.py] ProxyPoolSelector TAS 式 4 维评分选择器（失败次数/最近成功/EMA 延迟/总调用数），持久化到 persist/opencode/
+[src/platforms/opencode/core/sse.py] SSE 流式解析：reasoning/reasoning_content 字段映射为 thinking
+[docs-src/src/platforms/opencode/INDEX.md] 新增 opencode 平台文档：架构特点、文件结构、维护提示
+[docs-src/src/platforms/INDEX.md] 新增 opencode 条目
+[tests/src/platforms/opencode/__init__.py] 新增 opencode 测试包
+[tests/src/platforms/opencode/test_opencode_mvp.py] 新增 opencode MVP 契约测试 + ProxyInfo/ProxyPool/ProxyPoolSelector 单元测试
+[template/template_config.toml] 版本 2.2.182 -> 2.2.183
+[config.toml] 版本跟随模板 2.2.183
+[README.md] 版本徽章和路线图更新为 2.2.183
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.182 -> 2.2.183
+
+2026-06-20 18:39:46
+
+[src/platforms/opencode/core/constants.py] 新增 MAX_RETRIES=50 常量，控制聊天补全最大重试次数
+[src/platforms/opencode/core/client.py] 重构重试逻辑：50次重试、1秒固定延迟、远程断开/负载截断时立即中止
+[template/template_config.toml] 版本 2.2.183 -> 2.2.184
+[config.toml] 版本跟随模板 2.2.184
+[README.md] 版本徽章和路线图更新为 2.2.184
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.183 -> 2.2.184
+
+2026-06-20 18:45:00
+
+[src/platforms/opencode/core/client.py] 重试逻辑改为每次重试用TAS选择不同代理，排除上次失败的代理
+[docs-src/src/platforms/opencode/core/client.py] 同步镜像
+[template/template_config.toml] 版本 2.2.184 -> 2.2.185
+[config.toml] 版本跟随模板 2.2.185
+[README.md] 版本徽章和路线图更新为 2.2.185
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.184 -> 2.2.185
+
+2026-06-21 00:00:00
+
+[src/platforms/opencode/core/client.py] 改为单候选项模式，代理选择完全由平台内部TAS处理；代理池日志降为DEBUG
+[src/platforms/opencode/core/proxypool.py] 所有抓取日志从INFO降为DEBUG
+[tests/src/platforms/opencode/test_opencode_mvp.py] 更新测试适配单候选项模型
+[template/template_config.toml] 版本 2.2.185 -> 2.2.186
+[config.toml] 版本跟随模板 2.2.186
+[README.md] 版本徽章和路线图更新为 2.2.186
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.185 -> 2.2.186
+
+2026-06-21 12:00:00
+
+[requirements.txt] echotools 最低版本升至 1.0.30，引入自动更新合并冲突自修复、hard reset 回退、暂存恢复等健壮性改进
+[template/template_config.toml] 版本 2.2.186 -> 2.2.187
+[config.toml] 版本跟随模板 2.2.187
+[README.md] 版本徽章和路线图更新为 2.2.187
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.186 -> 2.2.187
+[src/platforms/opencode/core/client.py] 修复连接断开/负载截断时不重试的bug，所有连接错误均触发TAS选择新代理重试
+
+2026-06-21 13:00:00
+
+[src/platforms/opencode/core/client.py] 支持从 accounts.py 注入本地代理(LOCAL_PROXIES)，启动和每次刷新时合并到代理池参与TAS选择
+[template/template_config.toml] 版本 2.2.187 -> 2.2.188
+[config.toml] 版本跟随模板 2.2.188
+[README.md] 版本徽章和路线图更新为 2.2.188
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.187 -> 2.2.188
+
+2026-06-21 18:00:00
+
+[src/platforms/opencode/core/client.py] HTTP 429改为可重试(RuntimeError)，触发TAS代理切换重试而非直接报错
+[template/template_config.toml] 版本 2.2.188 -> 2.2.189
+[config.toml] 版本跟随模板 2.2.189
+[README.md] 版本徽章和路线图更新为 2.2.189
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.188 -> 2.2.189
+
+2026-06-22 10:00:00
+
+[src/webui/routers/files.py] 文件面板API添加offset/limit分页，使用os.scandir提升大目录性能
+[src/webui/static/files/files.js] 文件面板前端实现滚动懒加载，按批次加载目录内容
+[src/webui/static/files/files.css] 新增加载指示器CSS动画
+[template/template_config.toml] 版本 2.2.189 -> 2.2.190
+[config.toml] 版本跟随模板 2.2.190
+[README.md] 版本徽章和路线图更新为 2.2.190
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.189 -> 2.2.190
+
+2026-06-20 20:00:00
+
+[src/platforms/ollama/core/constants.py] 新增 FILTER_CLOUD_MODELS 常量，控制是否过滤 :cloud 后缀模型
+[src/platforms/ollama/core/client.py] 服务器扫描时按 FILTER_CLOUD_MODELS 过滤 :cloud 后缀的付费云端模型
+[template/template_config.toml] 版本 2.2.190 -> 2.2.191
+[config.toml] 版本跟随模板 2.2.191
+[README.md] 版本徽章和路线图更新为 2.2.191
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.190 -> 2.2.191
+
+2026-06-21 12:31:02
+
+[requirements.txt] 升级 echotools 最低版本至 1.0.32（DSML 协议支持）
+[src/core/__init__.py] 扩展包初始化：提升符号导出、新增模块级文档
+[src/core/autoupdate.py] 删除：内容合并至 shims.py
+[src/core/candidate.py] 删除：内容合并至 shims.py
+[src/core/errors.py] 扩展错误层级文档和导出说明
+[src/core/files.py] 删除：内容合并至 shims.py
+[src/core/fncall/protocols/dsml.py] 新增 DSML 协议重导出模块
+[src/core/gateway.py] 删除：内容合并至 shims.py
+[src/core/http.py] 删除：内容合并至 shims.py
+[src/core/ids.py] 删除：内容合并至 shims.py
+[src/core/io_utils.py] 删除：内容合并至 shims.py
+[src/core/models_cache.py] 扩展文档、增加日志输出和路径解析健壮性
+[src/core/process.py] 删除：内容合并至 shims.py
+[src/core/proxy.py] 删除：内容合并至 shims.py
+[src/core/proxy_selector.py] 扩展文档和使用示例
+[src/core/registry.py] 删除：内容合并至 shims.py
+[src/core/retry.py] 删除：内容合并至 shims.py
+[src/core/runtime_view.py] 删除：内容合并至 shims.py
+[src/core/scheduler.py] 删除：内容合并至 shims.py
+[src/core/selector.py] 删除：内容合并至 shims.py
+[src/core/server.py] 删除：内容合并至 shims.py
+[src/core/shims.py] 新增统一兼容 shim 模块，整合 16 个旧 shim 文件
+[src/core/terminal_sessions.py] 扩展文档、增加日志、优化清理逻辑
+[src/core/tools.py] 扩展文档和符号分类说明
+[src/core/watcher.py] 删除：内容合并至 shims.py
+[template/template_config.toml] fncall 协议列表新增 dsml 选项，版本升至 2.2.192
+[tests/src/core/fncall/test_dsml_protocol.py] 新增 DSML 协议测试（15 个用例）
+[config.toml] 版本跟随模板 2.2.192
+[README.md] 版本徽章和路线图更新为 2.2.192，目录树和协议列表同步更新
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.191 -> 2.2.192
+[docs-src/src/core/INDEX.md] 更新索引：反映 shim 合并和 DSML 协议新增
+[docs-src/src/core/__init__.py] 同步 docs-src 镜像
+[docs-src/src/core/errors.py] 同步 docs-src 镜像
+[docs-src/src/core/fncall/protocols/dsml.py] 新增 docs-src 镜像
+[docs-src/src/core/models_cache.py] 同步 docs-src 镜像
+[docs-src/src/core/proxy_selector.py] 同步 docs-src 镜像
+[docs-src/src/core/shims.py] 新增 docs-src 镜像
+[docs-src/src/core/terminal_sessions.py] 同步 docs-src 镜像
+[docs-src/src/core/tools.py] 同步 docs-src 镜像

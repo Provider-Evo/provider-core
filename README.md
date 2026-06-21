@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.191-blue)
-![Version](https://img.shields.io/badge/version-2.2.191-blue)
+![Status](https://img.shields.io/badge/status-v2.2.192-blue)
+![Version](https://img.shields.io/badge/version-2.2.192-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -72,7 +72,7 @@
 - 🔌 **多平台聚合**：统一接入 Qwen、DeepSeek、GLM、Cerebras、Ollama、ChatMoe、Cursor、CodeBuddy、NVIDIA 等 11+ 平台
 - 🔄 **API 兼容性**：同时兼容 OpenAI 和 Anthropic API 规范，无缝迁移现有项目
 - ⚡ **并发竞速**：智能选择最快响应的候选项，显著降低延迟
-- 🛠️ **工具调用支持**：完整的 function calling 功能，通过 XML 标签注入工具描述，支持中英文模板自定义
+- 🛠️ **工具调用支持**：完整的 function calling 功能，支持 7 种协议（xml/original/antml/bracket/custom/nous/dsml），中英文模板自定义
 - 🧠 **推理增强**：支持 thinking 和 search 参数增强推理能力
 - 📡 **流式响应**：完整支持 SSE 流式输出，实时展示生成内容
 - 🔐 **鉴权中间件**：可配置的 API Key 鉴权机制，保障服务安全
@@ -118,7 +118,7 @@
 | **OpenAI 兼容 API** | ✅ | 完整支持 `/v1/chat/completions`、`/v1/models` 等接口 |
 | **Anthropic 兼容 API** | ✅ | 完整支持 `/v1/messages`、`/v1/models` 等接口 |
 | **并发竞速模式** | ✅ | 同时请求多个候选项，选择最快响应 |
-| **工具调用（fncall）** | ✅ | XML 标签注入，中英文模板，支持多行参数 |
+| **工具调用（fncall）** | ✅ | 7 种协议（xml/original/antml/bracket/custom/nous/dsml），中英文模板，支持多行参数 |
 | **推理增强** | ✅ | 支持 thinking 和 search 参数增强 |
 | **流式响应** | ✅ | 完整支持 SSE 流式输出 |
 | **鉴权中间件** | ✅ | 可配置的 API Key 鉴权 |
@@ -672,18 +672,18 @@ provider-v2/
 │   └── 📁 qwen/               # Qwen 账号状态
 ├── 📁 src/                     # 源代码目录
 │   ├── 📁 core/               # 核心模块
-│   │   ├── 📄 candidate.py    # 候选项定义
-│   │   ├── 📄 config.py       # 配置管理
-│   │   ├── 📄 errors.py       # 异常定义
-│   │   ├── 📄 gateway.py      # 网关核心逻辑
+│   │   ├── 📁 config/         # 配置管理（base/manager/resolver/sections）
+│   │   ├── 📁 dispatch/       # 请求分发（candidate/gateway/registry/selector/runtime_view）
+│   │   ├── 📁 errors/         # 异常层级（base/platform/business）
+│   │   ├── 📁 fncall/         # 工具调用（protocols: xml/original/antml/bracket/custom/nous/dsml）
+│   │   ├── 📁 server/         # 服务器管理（http/process/proxy/server/autoupdate/watcher）
+│   │   ├── 📁 utils/          # 工具函数（files/ids/io_utils/retry/scheduler）
+│   │   ├── 📄 __init__.py     # 统一导出入口
+│   │   ├── 📄 shims.py        # 兼容 shim 集合（整合 16 个旧模块）
 │   │   ├── 📄 models_cache.py # 模型缓存
-│   │   ├── 📄 proxy.py        # 代理配置
-│   │   ├── 📄 registry.py     # 平台注册表
-│   │   ├── 📄 retry.py        # 重试机制
-│   │   ├── 📄 selector.py     # TAS 候选项选择器
-│   │   ├── 📄 server.py       # 服务器创建
-│   │   ├── 📄 tools.py        # 工具调用处理
-│   │   └── 📄 watcher.py      # 文件监视器（热重载）
+│   │   ├── 📄 proxy_selector.py # 代理选择器
+│   │   ├── 📄 terminal_sessions.py # 终端会话持久化
+│   │   └── 📄 tools.py        # 工具调用统一接口
 │   ├── 📁 platforms/          # 平台适配器
 │   │   ├── 📄 base.py         # 适配器基类
 │   │   ├── 📁 qwen/           # Qwen 平台
@@ -1258,7 +1258,11 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.191
+### 当前版本：v2.2.192
+
+✅ 已完成（v2.2.192）：
+- feat(fncall): 新增 DSML 工具调用协议支持（echotools 升级至 1.0.32）
+- refactor(core): 合并 16 个兼容 shim 文件至 shims.py 模块，减少 59% 文件数量
 
 ✅ 已完成（v2.2.191）：
 - Ollama 平台新增 FILTER_CLOUD_MODELS 常量（默认 True），服务器扫描时过滤 :cloud 后缀的付费云端模型，过滤发生在注册表构建前
