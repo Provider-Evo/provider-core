@@ -2883,3 +2883,15 @@ pytest: pre-existing failures; exit code 42 (test suite interrupted at ~55%, all
 [py_compile] 2 个修改的 Python 文件全部通过编译验证（0 失败）
 [pytest] 513 passed, 57 failed, 16 skipped, 4 errors（排除 test_xml_protocol.py 导入错误和 test_autoupdate.py exit(42)）
 [pytest] 57 个失败和 4 个错误均为已有问题（config manager、dispatch registry/selector、nous protocol、webui static assets、terminal WS），与本次变更无关
+
+2026-06-22 00:30:00
+
+[src/platforms/opencode/core/constants.py] MAX_RETRIES从50降至3，避免opencode平台无效重试消耗资源
+[template/template_config.toml] 版本升至 2.2.201
+[config.toml] 版本跟随模板 2.2.201
+[README.md] 版本徽章和路线图更新为 2.2.201
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.200 -> 2.2.201
+[docs-src/src/platforms/opencode/core/constants.py] 同步 docs-src 镜像（MAX_RETRIES 50 -> 3）
+[py_compile] 1 个修改的 Python 文件通过编译验证（0 失败）
+[pytest] 512 passed, 57 failed, 16 skipped, 4 errors（排除 test_xml_protocol.py 导入错误和 autoupdate exit(42)）
+[pytest] 57 个失败和 4 个错误均为已有问题（config manager、dispatch registry/selector、nous protocol、webui static assets、terminal WS），与本次变更无关

@@ -8,7 +8,7 @@ BASE_URL: str = "https://opencode.ai/zen/v1"
 CHAT_PATH: str = "/chat/completions"
 MODELS_PATH: str = "/models"
 
-MAX_RETRIES: int = 50
+MAX_RETRIES: int = 3
 RATE_LIMIT_COOLDOWN: int = 30
 RECOVERY_INTERVAL: int = 60
 
