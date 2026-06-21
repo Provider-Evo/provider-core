@@ -24,7 +24,7 @@ _RACE_CHUNK_TIMEOUT: float = 120.0
 
 
 async def _wait_for_candidates(
-    registry: Any, model: str, timeout: float = 15.0
+    registry: Any, model: str, timeout: float = 15.0, platform: str = ""
 ) -> List[Candidate]:
     """等待候选项就绪。
 
@@ -32,6 +32,7 @@ async def _wait_for_candidates(
         registry: 注册表实例。
         model: 模型名。
         timeout: 最大等待秒数。
+        platform: 平台名，非空时过滤候选项。
 
     Returns:
         可用候选项列表。
@@ -40,6 +41,8 @@ async def _wait_for_candidates(
     cfg = get_config()
     while time.monotonic() < deadline:
         cands = await registry.get_candidates(model)
+        if platform:
+            cands = [c for c in cands if c.platform == platform]
         if cands:
             return cands
         await registry.ensure_candidates(
@@ -63,6 +66,7 @@ async def dispatch(
     max_tokens: Optional[int] = None,
     stop: Optional[List[str]] = None,
     upload_files: Optional[List[Any]] = None,
+    platform: str = "",
     **kw: Any,
 ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
     """核心分发——选择候选项并执行请求。
@@ -80,6 +84,7 @@ async def dispatch(
         max_tokens: 最大 token 数。
         stop: 停止序列。
         upload_files: 待上传文件列表 [(file_data, filename), ...]。
+        platform: 平台名，非空时过滤候选项。
         **kw: 额外参数透传。
 
     Yields:
@@ -121,7 +126,7 @@ async def dispatch(
     if tools:
         thinking = False
 
-    cands = await _wait_for_candidates(registry, model, timeout=15.0)
+    cands = await _wait_for_candidates(registry, model, timeout=15.0, platform=platform)
     if not cands:
         raise NoCandidateError("无候选项: {}".format(model))
 

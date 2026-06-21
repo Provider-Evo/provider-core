@@ -344,6 +344,8 @@ src/platforms/ollama/core/__init__.py
 src/platforms/ollama/core/adaptercore.py
 src/platforms/ollama/core/client.py
 src/platforms/ollama/core/constants.py
+src/platforms/ollama/core/detect.py
+src/platforms/ollama/core/discover.py
 src/platforms/ollama/util.py
 src/platforms/openai_fm/__init__.py
 src/platforms/openai_fm/adapter.py
@@ -518,6 +520,7 @@ tests/src/routes/test_openai.py
 tests/src/test_logger.py
 docs-src/src/platforms/ollama/core/client.py
 docs-src/src/platforms/opencode/core/client.py
+docs-src/src/platforms/opencode/core/constants.py
 src/platforms/apiairforce/core/client.py
 src/platforms/caiyuesbk/core/client.py
 src/platforms/cerebras/core/client.py
@@ -2837,5 +2840,46 @@ pytest: pre-existing failures; exit code 42 (test suite interrupted at ~55%, all
 [config.toml] 版本 2.2.197（已同步）
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.197（已同步）
 [py_compile] 64 个修改的 Python 文件全部通过编译验证（0 失败）
+[pytest] 513 passed, 57 failed, 16 skipped, 4 errors（排除 test_xml_protocol.py 导入错误和 test_autoupdate.py exit(42)）
+[pytest] 57 个失败和 4 个错误均为已有问题（config manager、dispatch registry/selector、nous protocol、webui static assets、terminal WS），与本次变更无关
+
+2026-06-21 23:00:00
+
+[src/platforms/ollama/core/client.py] 修复detect_capabilities()中.get()返回None导致'NoneType'不可迭代的问题，改用.get() or default模式
+[src/platforms/ollama/core/detect.py] 同上修复detect_capabilities()中的.get()默认值模式
+[src/platforms/ollama/core/discover.py] 同上修复_verify_server()中的.get()默认值模式
+[template/template_config.toml] 版本升至 2.2.198
+[config.toml] 版本跟随模板 2.2.198
+[README.md] 版本徽章和路线图更新为 2.2.198
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.197 -> 2.2.198
+[docs-src/src/platforms/ollama/core/client.py] 同步 docs-src 镜像（NoneType 修复）
+[py_compile] 3 个修改的 Python 文件全部通过编译验证（0 失败）
+[pytest] 513 passed, 57 failed, 16 skipped, 4 errors（排除 test_xml_protocol.py 导入错误和 test_autoupdate.py exit(42)）
+[pytest] 57 个失败和 4 个错误均为已有问题（config manager、dispatch registry/selector、nous protocol、webui static assets、terminal WS），与本次变更无关
+
+2026-06-21 23:30:00
+
+[src/platforms/opencode/core/client.py] 修复_do_request()中record_success在异步生成器中断时不执行的问题，改用_request_ok标志+finally块确保评分记录
+[src/platforms/opencode/core/constants.py] 新增PROXY_FETCH_ENABLED常量，控制代理列表定时获取功能的启用与禁用
+[template/template_config.toml] 版本升至 2.2.199
+[config.toml] 版本跟随模板 2.2.199
+[README.md] 版本徽章和路线图更新为 2.2.199
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.198 -> 2.2.199
+[docs-src/src/platforms/opencode/core/client.py] 同步 docs-src 镜像（评分修复）
+[docs-src/src/platforms/opencode/core/constants.py] 同步 docs-src 镜像（PROXY_FETCH_ENABLED 常量）
+[py_compile] 2 个修改的 Python 文件全部通过编译验证（0 失败）
+[pytest] 513 passed, 57 failed, 16 skipped, 4 errors（排除 test_xml_protocol.py 导入错误和 test_autoupdate.py exit(42)）
+[pytest] 57 个失败和 4 个错误均为已有问题（config manager、dispatch registry/selector、nous protocol、webui static assets、terminal WS），与本次变更无关
+
+2026-06-22 00:00:00
+
+[src/core/dispatch/gateway.py] _wait_for_candidates()和dispatch()新增platform参数，支持按平台名过滤候选项
+[src/routes/openai_chat.py] _stream_chat和chat_completions将extra_body.platform透传至gateway.dispatch()，实现请求级平台路由
+[template/template_config.toml] 版本升至 2.2.200
+[config.toml] 版本跟随模板 2.2.200
+[README.md] 版本徽章和路线图更新为 2.2.200
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.199 -> 2.2.200
+[docs-src/src/routes/openai_chat.py] 同步 docs-src 镜像（platform 参数透传）
+[py_compile] 2 个修改的 Python 文件全部通过编译验证（0 失败）
 [pytest] 513 passed, 57 failed, 16 skipped, 4 errors（排除 test_xml_protocol.py 导入错误和 test_autoupdate.py exit(42)）
 [pytest] 57 个失败和 4 个错误均为已有问题（config manager、dispatch registry/selector、nous protocol、webui static assets、terminal WS），与本次变更无关
