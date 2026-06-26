@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 """WebUI 应用工厂。"""
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Optional

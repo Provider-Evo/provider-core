@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.201-blue)
-![Version](https://img.shields.io/badge/version-2.2.201-blue)
+![Status](https://img.shields.io/badge/status-v2.2.202-blue)
+![Version](https://img.shields.io/badge/version-2.2.202-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,7 +1264,13 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.201
+### 当前版本：v2.2.202
+
+✅ 已完成（v2.2.202）：
+- refactor(main): Extract _setup_signal_handlers, _create_background_tasks, _shutdown from _run()
+- refactor(main): Narrow broad except Exception to specific exception types
+- refactor(base): Extract DEFAULT_CONTEXT_LENGTH, MODERATION_CATEGORIES, MODERATION_CATEGORY_SCORES constants
+- fix(webui): Fix import order (from __future__ import annotations after docstring)
 
 ✅ 已完成（v2.2.201）：
 - fix(opencode): MAX_RETRIES 从 50 降至 3，避免无效重试消耗

@@ -2895,3 +2895,16 @@ pytest: pre-existing failures; exit code 42 (test suite interrupted at ~55%, all
 [py_compile] 1 个修改的 Python 文件通过编译验证（0 失败）
 [pytest] 512 passed, 57 failed, 16 skipped, 4 errors（排除 test_xml_protocol.py 导入错误和 autoupdate exit(42)）
 [pytest] 57 个失败和 4 个错误均为已有问题（config manager、dispatch registry/selector、nous protocol、webui static assets、terminal WS），与本次变更无关
+
+2026-06-26 00:00:00
+
+[main.py] 重构 _run()，提取 _setup_signal_handlers/_create_background_tasks/_shutdown 三个辅助函数，narrow exception handling 从 broad Exception 到具体异常类型
+[src/platforms/base.py] 提取 DEFAULT_CONTEXT_LENGTH、MODERATION_CATEGORIES、MODERATION_CATEGORY_SCORES 模块级常量
+[src/webui/__init__.py] 修复 import order：from __future__ import annotations 移到 docstring 之后
+[src/webui/app.py] 修复 import order
+[src/webui/config_schema.py] 修复 import order
+[template/template_config.toml] 版本 2.2.201 -> 2.2.202
+[config.toml] 版本 2.2.201 -> 2.2.202
+[README.md] 版本徽章和路线图更新为 2.2.202
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.201 -> 2.2.202
+py_compile: main.py, base.py, __init__.py, app.py, config_schema.py 全部通过

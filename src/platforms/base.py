@@ -13,6 +13,37 @@ from src.logger import get_logger
 __all__ = ["PlatformAdapter"]
 logger = get_logger(__name__)
 
+DEFAULT_CONTEXT_LENGTH = 131072
+
+# Moderation category constants
+MODERATION_CATEGORIES = {
+    "sexual": False,
+    "hate": False,
+    "harassment": False,
+    "self-harm": False,
+    "sexual/minors": False,
+    "hate/threatening": False,
+    "violence/graphic": False,
+    "self-harm/intent": False,
+    "self-harm/instructions": False,
+    "harassment/threatening": False,
+    "violence": False,
+}
+
+MODERATION_CATEGORY_SCORES = {
+    "sexual": 0.0,
+    "hate": 0.0,
+    "harassment": 0.0,
+    "self-harm": 0.0,
+    "sexual/minors": 0.0,
+    "hate/threatening": 0.0,
+    "violence/graphic": 0.0,
+    "self-harm/intent": 0.0,
+    "self-harm/instructions": 0.0,
+    "harassment/threatening": 0.0,
+    "violence": 0.0,
+}
+
 
 class PlatformAdapter(ABC):
     """所有平台适配器的抽象基类。
@@ -59,7 +90,7 @@ class PlatformAdapter(ABC):
         Returns:
             最大上下文 token 数或 None。
         """
-        return 131072
+        return DEFAULT_CONTEXT_LENGTH
 
     @abstractmethod
     async def init(self, session: aiohttp.ClientSession) -> None:

@@ -111,7 +111,7 @@ def _read_color_config() -> bool:
             with open(cfg_path, "rb") as fh:
                 raw = tomllib.load(fh)
             return bool(raw.get("debug", {}).get("color", True))
-        except Exception:
+        except (tomllib.TOMLDecodeError, OSError):
             return True
 
     try:
@@ -122,7 +122,7 @@ def _read_color_config() -> bool:
     except ImportError:
         logger.debug("tomli 未安装，跳过 color 配置读取，默认启用颜色")
         return True
-    except Exception:
+    except (Exception,):  # tomli.TOMLDecodeError or OSError
         return True
 
 
@@ -141,6 +141,102 @@ def _make_connector() -> aiohttp.TCPConnector:
 # ---------------------------------------------------------------------------
 # Worker：异步主流程
 # ---------------------------------------------------------------------------
+
+
+def _setup_signal_handlers(stop_event: asyncio.Event) -> None:
+    """配置进程退出信号处理器（仅 Unix 平台）。
+
+    在 Windows 上不注册信号处理器，通过 KeyboardInterrupt 捕获退出。
+
+    Args:
+        stop_event: 用于通知主流程退出的异步事件。
+    """
+
+    def _on_signal() -> None:
+        logger.info("收到退出信号，准备优雅退出...")
+        stop_event.set()
+
+    if sys.platform != "win32":
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, _on_signal)
+    else:
+        logger.debug("Windows 平台：信号处理器通过 KeyboardInterrupt 捕获")
+
+
+async def _create_background_tasks(
+    cfg: object,
+    registry: Registry,
+    session: aiohttp.ClientSession,
+) -> List[asyncio.Task]:
+    """创建并启动后台异步任务。
+
+    Args:
+        cfg: 全局配置对象。
+        registry: 路由注册表。
+        session: aiohttp 客户端会话。
+
+    Returns:
+        已启动的后台任务列表。
+    """
+
+    async def _config_watcher_task() -> None:
+        await start_config_watcher(interval=2.0)
+
+    async def _file_watcher_task() -> None:
+        watcher = FileWatcher(_ROOT)
+        await watcher.start(registry, session)
+
+    async def _autoupdate_task() -> None:
+        updater = AutoUpdater(
+            root=_ROOT,
+            branch=cfg.autoupdate.branch,
+            interval=cfg.autoupdate.interval,
+        )
+        await updater.run()
+
+    tasks: List[asyncio.Task] = [
+        asyncio.ensure_future(_config_watcher_task()),
+    ]
+
+    is_idle_env = _is_idle()
+    if not is_idle_env:
+        tasks.append(asyncio.ensure_future(_file_watcher_task()))
+    if cfg.autoupdate.enabled and not is_idle_env:
+        tasks.append(asyncio.ensure_future(_autoupdate_task()))
+
+    return tasks
+
+
+async def _shutdown(
+    tasks: List[asyncio.Task],
+    registry: Registry,
+    session: aiohttp.ClientSession,
+    runner: aiohttp.web.AppRunner,
+) -> None:
+    """优雅关闭所有后台任务和资源。
+
+    Args:
+        tasks: 需要取消的后台任务列表。
+        registry: 路由注册表。
+        session: aiohttp 客户端会话。
+        runner: aiohttp 应用运行器。
+    """
+    logger.info("取消后台任务...")
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+    logger.info("正在关闭注册表...")
+    await registry.close()
+
+    logger.info("正在关闭 HTTP Session...")
+    await session.close()
+
+    logger.info("正在停止 Web 服务器...")
+    await runner.cleanup()
+
+    logger.info("Provider-V2 已完全退出")
 
 
 async def _run() -> None:
@@ -185,58 +281,9 @@ async def _run() -> None:
 
     logger.info("Provider-V2 已启动: http://%s:%d", host, port)
 
-    # ------------------------------------------------------------------
-    # 信号处理
-    # ------------------------------------------------------------------
-
     stop_event = asyncio.Event()
-
-    def _on_signal() -> None:
-        logger.info("收到退出信号，准备优雅退出...")
-        stop_event.set()
-
-    loop = asyncio.get_event_loop()
-
-    if sys.platform != "win32":
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, _on_signal)
-    else:
-        logger.debug("Windows 平台：信号处理器通过 KeyboardInterrupt 捕获")
-
-    # ------------------------------------------------------------------
-    # 后台任务
-    # ------------------------------------------------------------------
-
-    is_idle_env = _is_idle()
-
-    async def _config_watcher_task() -> None:
-        await start_config_watcher(interval=2.0)
-
-    async def _file_watcher_task() -> None:
-        watcher = FileWatcher(_ROOT)
-        await watcher.start(registry, session)
-
-    async def _autoupdate_task() -> None:
-        updater = AutoUpdater(
-            root=_ROOT,
-            branch=cfg.autoupdate.branch,
-            interval=cfg.autoupdate.interval,
-        )
-        await updater.run()
-
-    tasks: List[asyncio.Future] = [
-        asyncio.ensure_future(_config_watcher_task()),
-    ]
-
-    if not is_idle_env:
-        tasks.append(asyncio.ensure_future(_file_watcher_task()))
-
-    if cfg.autoupdate.enabled and not is_idle_env:
-        tasks.append(asyncio.ensure_future(_autoupdate_task()))
-
-    # ------------------------------------------------------------------
-    # 等待退出信号
-    # ------------------------------------------------------------------
+    _setup_signal_handlers(stop_event)
+    tasks = await _create_background_tasks(cfg, registry, session)
 
     try:
         if sys.platform == "win32":
@@ -247,21 +294,7 @@ async def _run() -> None:
     except (KeyboardInterrupt, SystemExit):
         logger.info("收到键盘中断，正在退出...")
     finally:
-        logger.info("取消后台任务...")
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
-
-        logger.info("正在关闭注册表...")
-        await registry.close()
-
-        logger.info("正在关闭 HTTP Session...")
-        await session.close()
-
-        logger.info("正在停止 Web 服务器...")
-        await runner.cleanup()
-
-        logger.info("Provider-V2 已完全退出")
+        await _shutdown(tasks, registry, session, runner)
 
 
 async def _run_idle_watcher() -> None:
@@ -289,7 +322,7 @@ async def _run_idle_watcher() -> None:
                     "请手动重启服务 (python main.py) ***\n",
                     flush=True,
                 )
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             logger.warning("文件监视检查失败: %s", exc)
 
 
@@ -312,9 +345,7 @@ def _run_worker() -> None:
             else:
                 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
             logger.debug("uvloop 已启用")
-        except ImportError:
-            logger.debug("uvloop 未安装，使用默认事件循环")
-        except Exception as exc:
+        except (ImportError, OSError) as exc:
             logger.debug("uvloop 初始化失败（%s），使用默认事件循环", exc)
 
     try:
@@ -344,7 +375,7 @@ def _pipe_reader(stream: IO[bytes]) -> None:
         try:
             sys.stdout.write(line.decode("utf-8", errors="replace"))
             sys.stdout.flush()
-        except Exception:
+        except (OSError, ValueError):
             pass
 
 
