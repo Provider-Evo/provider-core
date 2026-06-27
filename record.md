@@ -3039,3 +3039,14 @@ py_compile: constants.py 通过
 [README.md] 版本徽章和路线图更新为 2.2.208
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.207 -> 2.2.208
 py_compile: src/core/__init__.py 通过
+
+2026-06-27 09:28:36
+
+[src/platforms/qwen/core/client.py] mirrored to docs-src
+[src/platforms/qwen/core/sse.py] mirrored to docs-src
+[src/platforms/qwen/core/stream.py] mirrored to docs-src
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.209 -> 2.2.210
+[docs-src/src/platforms/qwen/core/client.py] 同步 docs-src 镜像
+[docs-src/src/platforms/qwen/core/sse.py] 同步 docs-src 镜像
+[docs-src/src/platforms/qwen/core/stream.py] 同步 docs-src 镜像
+py_compile: client.py, sse.py, stream.py, openai_chat.py 通过

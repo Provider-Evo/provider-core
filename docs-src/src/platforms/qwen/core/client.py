@@ -795,7 +795,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
             thinking_enabled = True
             auto_thinking = False
             thinking_mode = "Thinking"
-            thinking_format = "summary"
+            thinking_format = "raw"
         else:
             thinking_enabled = False
             auto_thinking = False
