@@ -78,6 +78,7 @@ from src.platforms.qwen.core.crypto import (
     hash_password,
     lzw_compress,
 )
+from src.platforms.qwen.core.mimes import EXTENSION_TO_MIME
 
 # =============================================================================
 # Re-export header builders
