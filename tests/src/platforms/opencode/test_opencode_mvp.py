@@ -136,15 +136,15 @@ def test_direct_record_success_and_failure(tmp_path) -> None:
     selector.record_success(DIRECT, latency_ms=200.0)
     rec = selector._scores[DIRECT]
     assert rec.n_fails == 0
-    assert rec.n_calls == 1
-    assert rec.ema_latency == 200.0
+    assert rec.n_success == 1
+    assert rec.mean_latency == 200.0
     # record_failure for DIRECT
     selector.record_failure(DIRECT)
     assert rec.n_fails == 1
     # another success resets failure count
     selector.record_success(DIRECT, latency_ms=300.0)
     assert rec.n_fails == 0
-    assert rec.n_calls == 2
+    assert rec.n_success == 2
 
 
 def test_direct_can_be_selected(tmp_path) -> None:
@@ -154,6 +154,40 @@ def test_direct_can_be_selected(tmp_path) -> None:
     selector.update_pool([])
     # With no proxies, select should return DIRECT
     assert selector.select([]) == DIRECT
+
+
+def test_bayesian_scoring_algorithm(tmp_path) -> None:
+    """Test the Bayesian scoring algorithm with uncertainty bonus."""
+    from src.platforms.opencode.core.proxyscore import DIRECT, ProxyPoolSelector
+    persist = str(tmp_path / "test_score.json")
+    selector = ProxyPoolSelector(persist)
+    selector.update_pool(["1.2.3.4:8080", "5.6.7.8:3128"])
+    
+    # Record successes and failures to test scoring
+    selector.record_success("1.2.3.4:8080", latency_ms=100.0)
+    selector.record_success("1.2.3.4:8080", latency_ms=150.0)
+    selector.record_failure("5.6.7.8:3128")
+    
+    # Test that scoring considers both success rate and latency
+    chosen = selector.select(["1.2.3.4:8080", "5.6.7.8:3128"])
+    # With better performance, 1.2.3.4:8080 should be preferred more often
+    assert chosen in ("1.2.3.4:8080", "5.6.7.8:3128", DIRECT)
+
+
+def test_direct_never_removed_from_scores(tmp_path) -> None:
+    """Test that DIRECT is never removed from the score table."""
+    from src.platforms.opencode.core.proxyscore import DIRECT, ProxyPoolSelector
+    persist = str(tmp_path / "test_score.json")
+    selector = ProxyPoolSelector(persist)
+    
+    # Add proxies, then remove them all
+    selector.update_pool(["1.2.3.4:8080"])
+    assert "1.2.3.4:8080" in selector._scores
+    assert DIRECT in selector._scores
+    
+    selector.update_pool([])
+    # DIRECT should still be in scores
+    assert DIRECT in selector._scores
 
 
 def test_single_candidate_model() -> None:

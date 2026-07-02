@@ -1,142 +1,108 @@
 from __future__ import annotations
 
-# Qwen HTTP header builders
+"""HTTP header builders aligned with the current Qwen web flow."""
 
-import time
 import uuid
+from datetime import datetime
 from typing import Any, Dict, Optional
 
-from src.platforms.qwen.core.crypto import generate_bxua, generate_cookies, generate_fingerprint
-from src.platforms.qwen.core.endpoints import (
+from .crypto import get_baxia_tokens
+from .endpoints import (
+    APP_VERSION,
     BASE_URL,
-    BAXIA_SDK_VERSION,
-    FRONTEND_VERSION,
+    CHAT_ORIGIN,
     SEC_CH_UA,
-    USE_LOCAL_MODE,
+    SEC_CH_UA_PLATFORM,
     USER_AGENT,
-    USER_AGENT_MOBILE,
+    WEB_VERSION,
 )
+
+
+def make_request_id() -> str:
+    """Return a new request identifier."""
+    return str(uuid.uuid4())
+
+
+def make_timezone() -> str:
+    """Return the browser-like timezone header value."""
+    now = datetime.now().astimezone()
+    offset = now.utcoffset()
+    if offset is None:
+        suffix = "+0000"
+    else:
+        total_seconds = int(offset.total_seconds())
+        sign = "+" if total_seconds >= 0 else "-"
+        total_seconds = abs(total_seconds)
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        suffix = f"{sign}{hours:02d}{minutes:02d}"
+    return now.strftime(f"%a %b %d %Y %H:%M:%S GMT{suffix}")
+
+
+def build_cookie_string(cookies: Optional[Dict[str, Any]]) -> str:
+    """Convert a cookie mapping into a request header string."""
+    if not cookies:
+        return ""
+    return "; ".join(f"{key}={value}" for key, value in cookies.items() if value not in {None, ""})
+
+
+def _base_headers() -> Dict[str, str]:
+    return {
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Connection": "keep-alive",
+        "Content-Type": "application/json",
+        "User-Agent": USER_AGENT,
+        "Origin": CHAT_ORIGIN,
+        "Referer": f"{CHAT_ORIGIN}/",
+        "Source": "web",
+        "X-Request-Id": make_request_id(),
+        "Timezone": make_timezone(),
+        "Sec-Ch-Ua": SEC_CH_UA,
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": SEC_CH_UA_PLATFORM,
+    }
+
+
+def build_login_headers() -> Dict[str, str]:
+    """Build headers for the v2 sign-in endpoint."""
+    headers = _base_headers()
+    headers["Version"] = APP_VERSION
+    headers["x-request-origin"] = BASE_URL
+    return headers
 
 
 def build_headers(
     token: str,
     *,
-    chat_id: Optional[str] = None,
+    chat_id: str = "",
     include_sse: bool = False,
-    fingerprint: Optional[str] = None,
+    include_version: bool = True,
+    fingerprint: str = "",
     cookies: Optional[Dict[str, Any]] = None,
+    extra_headers: Optional[Dict[str, str]] = None,
 ) -> Dict[str, str]:
-    """构建通用请求头。
-
-    Args:
-        token: Bearer 令牌。
-        chat_id: 对话 ID，用于 Referer。
-        include_sse: 是否包含 SSE 相关头。
-        fingerprint: 指纹字符串，为 None 则自动生成。
-        cookies: Cookie 字典，为 None 则自动生成。
-
-    Returns:
-        请求头字典。
-    """
-    if USE_LOCAL_MODE or chat_id is None:
-        referer = "{}/c/local".format(BASE_URL)
-    else:
-        referer = "{}/c/{}".format(BASE_URL, chat_id)
-
-    fp = fingerprint or generate_fingerprint()
-    if cookies is None:
-        cookies = generate_cookies(fp)
-
-    h: Dict[str, str] = {
-        "Accept": "application/json",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Accept-Language": "zh-CN,zh;q=0.9",
-        "Connection": "keep-alive",
-        "Content-Type": "application/json",
-        "Cookie": build_cookie_string(token, cookies),
-        "Host": "chat.qwen.ai",
-        "Origin": BASE_URL,
-        "Referer": referer,
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
-        "Timezone": time.strftime("%a %b %d %Y %H:%M:%S GMT%z"),
-        "User-Agent": USER_AGENT,
-        "Version": FRONTEND_VERSION,
-        "X-Request-Id": str(uuid.uuid4()),
-        "authorization": "Bearer {}".format(token),
-        "bx-ua": generate_bxua(fp),
-        "bx-v": BAXIA_SDK_VERSION,
-        "sec-ch-ua": SEC_CH_UA,
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
-        "source": "web",
-    }
+    """Build authenticated headers for Qwen chat APIs."""
+    headers = _base_headers()
+    headers["Authorization"] = f"Bearer {token}"
+    baxia = get_baxia_tokens()
+    headers["bx-v"] = baxia["bxV"]
+    headers["bx-ua"] = baxia["bxUa"]
+    headers["bx-umidtoken"] = baxia["bxUmidToken"]
+    if include_version:
+        headers["version"] = WEB_VERSION
+    if chat_id:
+        headers["Referer"] = f"{CHAT_ORIGIN}/c/{chat_id}"
     if include_sse:
-        h["X-Accel-Buffering"] = "no"
-    return h
-
-
-def build_login_headers() -> Dict[str, str]:
-    """构建登录请求头。
-
-    Returns:
-        登录专用请求头字典。
-    """
-    return {
-        "Host": "chat.qwen.ai",
-        "Content-Type": "application/json;charset=UTF-8",
-        "User-Agent": USER_AGENT_MOBILE,
-        "Accept": "*/*",
-        "Origin": BASE_URL,
-        "Referer": "{}/auth?action=signin".format(BASE_URL),
-    }
+        headers["X-Accel-Buffering"] = "no"
+    cookie_string = build_cookie_string(cookies)
+    if cookie_string:
+        headers["Cookie"] = cookie_string
+    if extra_headers:
+        headers.update(extra_headers)
+    return headers
 
 
 def build_stop_headers(token: str) -> Dict[str, str]:
-    """构建停止生成请求头。
-
-    Args:
-        token: Bearer 令牌。
-
-    Returns:
-        停止生成专用请求头字典。
-    """
-    return {
-        "Accept": "application/json",
-        "Accept-Language": "zh-CN,zh;q=0.9",
-        "Connection": "keep-alive",
-        "Content-Type": "application/json",
-        "Host": "chat.qwen.ai",
-        "Origin": BASE_URL,
-        "Referer": "{}/c/local".format(BASE_URL),
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
-        "User-Agent": USER_AGENT,
-        "X-Request-Id": str(uuid.uuid4()),
-        "authorization": "Bearer {}".format(token),
-        "source": "web",
-    }
-
-
-def build_cookie_string(
-    token: str,
-    cookies: Optional[Dict[str, Any]] = None,
-) -> str:
-    """构建 Cookie 请求头字符串。
-
-    Args:
-        token: Bearer 令牌。
-        cookies: Cookie 字典，为 None 则自动生成。
-
-    Returns:
-        分号分隔的 Cookie 字符串。
-    """
-    if cookies is None:
-        cookies = generate_cookies()
-    return "; ".join([
-        "token={}".format(token),
-        "ssxmod_itna={}".format(cookies.get("ssxmod_itna", "")),
-        "ssxmod_itna2={}".format(cookies.get("ssxmod_itna2", "")),
-    ])
+    """Build headers for the stop-generation endpoint."""
+    return build_headers(token, include_version=False)

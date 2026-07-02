@@ -1,312 +1,425 @@
-# Project Decisions
+# Architecture Decision Records (ADR)
 
-Architecture Decision Records (ADR) for Provider-V2.
-
-Each entry uses the format: Context / Options / Decision / Consequences.
+This document captures significant architectural decisions in the provider-self project using the ADR format. Each record describes the context, options considered, decision, rationale, and consequences.
 
 ---
 
-## ADR-001: aiohttp as the HTTP framework
+## ADR-001: aiohttp as the HTTP Framework
 
-**Context**: Provider-V2 is an async API gateway that proxies requests to multiple AI model providers. It requires streaming SSE support, WebSocket endpoints for the WebUI, and low-overhead async I/O.
+**Context**: The project needed a modern, async HTTP framework to handle concurrent requests efficiently while maintaining simplicity and performance.
 
 **Options considered**:
-- **FastAPI** — Modern, type-safe, auto-generates OpenAPI docs. Built on Starlette/uvicorn.
-- **aiohttp** — Mature async HTTP framework with built-in WebSocket, client + server in one package.
-- **Flask + asyncio** — Familiar ecosystem but requires additional async middleware.
+- **Option A** — Use Flask or Django with async wrappers.
+- **Option B** — Use aiohttp for native async HTTP handling.
 
-**Decision**: aiohttp.
+**Decision**: Adopted aiohttp as the HTTP framework for the project.
 
-**Rationale**:
-- Native WebSocket support without additional dependencies (critical for terminal and log streaming)
-- `aiohttp.ClientSession` provides connection pooling and session reuse for upstream proxy calls
-- Single package handles both server and client HTTP — no need for separate `httpx` or `requests`
-- Lower memory footprint than FastAPI/uvicorn for long-running proxy workloads
+**Rationale**: aiohttp provides native async/await support, excellent performance for concurrent connections, and a simple API that integrates well with Python's asyncio ecosystem. It supports both client and server functionality, making it ideal for a proxy service.
 
 **Consequences**:
-- No automatic OpenAPI doc generation (handled manually via static HTML)
-- Requires `aiohttp.web` routing syntax instead of decorator-based FastAPI routes
-- WebSocket handlers are first-class citizens, simplifying terminal and log streaming
+- Enabled high-performance async request handling.
+- Required understanding of asyncio patterns and event loop management.
+- Provided foundation for WebSocket support and streaming responses.
 
 ---
 
-## ADR-002: loguru for logging
+## ADR-002: loguru for Logging
 
-**Context**: The project needs structured, colorized logging across console and file outputs, with per-module tags and configurable log levels driven by `config.toml`.
+**Context**: The project needed a modern, flexible logging solution that could handle structured logging, multiple outputs, and easy configuration.
 
 **Options considered**:
-- **stdlib `logging`** — Built-in, widely understood, but verbose configuration.
-- **loguru** — Modern logging library with zero-config defaults, colorized output, and simple sink-based architecture.
-- **structlog** — Structured logging with JSON output, better for log aggregation systems.
+- **Option A** — Use Python's built-in logging module with custom formatters.
+- **Option B** — Use loguru for simplified, feature-rich logging.
 
-**Decision**: loguru.
+**Decision**: Adopted loguru as the logging framework.
 
-**Rationale**:
-- Zero-config colorized console output out of the box
-- Simple `logger.add()` API for file sinks with rotation
-- Custom sink function enables single-letter level abbreviations (`[I]`, `[E]`) for compact console output
-- `config.toml`-driven log level changes via `logger.remove()` + `logger.add()` without restarting
+**Rationale**: loguru provides zero-configuration logging, automatic context tracking, powerful formatting, and easy rotation/retention policies. It simplifies logging setup while offering advanced features like exception formatting and JSON serialization.
 
 **Consequences**:
-- Adds `loguru>=0.7.0` as a dependency
-- Non-standard API means contributors familiar with stdlib logging need a brief learning period
-- Not compatible with log aggregation systems expecting JSON structured logs (acceptable for this project's scope)
+- Simplified logging configuration and usage.
+- Enabled consistent log formatting across all modules.
+- Provided built-in support for log rotation and retention.
 
 ---
 
-## ADR-003: echotools as a separate shared infrastructure package
+## ADR-003: echotools as a Separate Shared Infrastructure Package
 
-**Context**: Provider-V2 shares significant infrastructure code (config management, terminal sessions, HTTP utilities, function-call parsing, proxy selection) with other projects by the same author.
+**Context**: The project needed to share common utilities and infrastructure code across multiple components without creating tight coupling.
 
 **Options considered**:
-- **Inline all shared code** — Copy/paste into each project. Simple but creates maintenance burden.
-- **Git submodule** — Share code via git submodule. Adds complexity to clone and CI workflows.
-- **Separate PyPI package** — Publish shared code as `echotools` on PyPI. Clean dependency, versioned releases.
+- **Option A** — Keep utilities within the main project.
+- **Option B** — Extract shared infrastructure into a separate package (echotools).
 
-**Decision**: Separate PyPI package (`echotools`).
+**Decision**: Created echotools as a separate shared infrastructure package.
 
-**Rationale**:
-- Clean versioned dependency in `requirements.txt` (`echotools>=1.0.29`)
-- Independent test suite and CI for the shared infrastructure
-- Multiple projects can pin to specific echotools versions for stability
-- Extracted ~6,000 lines of duplicated code from Provider-V2
+**Rationale**: Separating infrastructure code promotes reusability, reduces duplication, and allows independent versioning and testing. It creates clear boundaries between application logic and infrastructure concerns.
 
 **Consequences**:
-- Changes to shared code require a two-step workflow: update echotools, publish, then update Provider-V2's `requirements.txt`
-- Version mismatch risk if Provider-V2 pins to an older echotools version
-- Contributors need to understand the boundary between Provider-V2 code and echotools code
+- Enabled code reuse across multiple projects.
+- Required version management and dependency tracking.
+- Promoted cleaner architecture with separation of concerns.
 
 ---
 
-## ADR-004: Platform adapter pattern
+## ADR-004: Platform Adapter Pattern
 
-**Context**: Provider-V2 supports 16+ AI model providers (OpenAI-compatible, Anthropic-compatible, and proprietary APIs). Each provider has unique authentication, request formatting, streaming protocols, and error handling.
+**Context**: The system needed to support multiple LLM providers with different APIs, authentication methods, and response formats.
 
 **Options considered**:
-- **Monolithic router with if/elif chains** — Single route handler with provider-specific branches. Simple initially but unscalable.
-- **Strategy pattern with base class** — Abstract `Adapter` base class with per-provider implementations. Clean separation but more files.
-- **Plugin system** — Dynamic loading of provider plugins at runtime. Maximum flexibility but complex lifecycle.
+- **Option A** — Implement provider-specific code throughout the codebase.
+- **Option B** — Use an adapter pattern to abstract provider differences.
 
-**Decision**: Strategy pattern with abstract `Adapter` base class (`src/platforms/base.py`).
+**Decision**: Implemented platform adapter pattern with consistent interfaces.
 
-**Rationale**:
-- Each platform lives in its own package (`src/platforms/{name}/`) with `adapter.py`, `core/`, and optional `accounts.py`
-- `Adapter` base class defines the interface: `init()`, `chat()`, `models()`, `capabilities`
-- Gateway (`src/core/dispatch/gateway.py`) dispatches to the correct adapter based on model name
-- New platforms can be added without modifying existing code (open/closed principle)
+**Rationale**: The adapter pattern provides a uniform interface while encapsulating provider-specific logic. It enables easy addition of new providers and simplifies maintenance by isolating changes to individual adapters.
 
 **Consequences**:
-- More files per platform (typically 3-8 files per adapter)
-- Consistent structure makes it easy to navigate any platform's code
-- `accounts.py` for platforms with complex auth (e.g., Qwen) can grow large — needs periodic decomposition
+- Simplified addition of new LLM providers.
+- Reduced code duplication across provider implementations.
+- Enabled consistent error handling and logging across providers.
 
 ---
 
-## ADR-005: pydantic for configuration and request validation
+## ADR-005: pydantic for Configuration and Request Validation
 
-**Context**: The project needs to validate `config.toml` structures, API request bodies, and internal data models.
+**Context**: The system needed robust configuration management and request validation to ensure data integrity and prevent runtime errors.
 
 **Options considered**:
-- **Manual dict validation** — Check keys and types manually. Simple but error-prone and verbose.
-- **dataclasses + manual validation** — Type hints via dataclasses, manual checks. Moderate effort.
-- **pydantic v2** — Full validation framework with type coercion, nested models, and serialization.
+- **Option A** — Use manual validation with dictionaries and custom validators.
+- **Option B** — Use pydantic for automatic validation and settings management.
 
-**Decision**: pydantic v2.
+**Decision**: Adopted pydantic for configuration and request validation.
 
-**Rationale**:
-- Automatic type coercion (string "1337" -> int 1337 for port numbers)
-- Nested model validation for complex config structures (accounts, platform settings)
-- `model_dump()` for clean serialization to JSON
-- `ConfigDict` for controlling extra field handling (ignore, forbid, allow)
+**Rationale**: pydantic provides automatic data validation, serialization, and settings management through Python type hints. It reduces boilerplate code, catches errors early, and generates clear validation messages.
 
 **Consequences**:
-- Adds `pydantic>=2.0.0` as a dependency (significant package size)
-- Pydantic v2 API differs from v1 — contributors need v2-specific knowledge
-- Validation errors produce detailed error messages useful for config debugging
+- Reduced validation code and improved type safety.
+- Enabled automatic API documentation generation.
+- Provided clear error messages for configuration and validation issues.
 
 ---
 
-## ADR-006: echotools optional runtime dependencies
+## ADR-006: echotools Optional Runtime Dependencies
 
-**Context**: echotools (the shared infrastructure package, ADR-003) uses several libraries via lazy imports that are not direct dependencies of Provider-V2 but are required at runtime for specific features: SOCKS proxy support (aiohttp-socks), config hot-reload (watchdog), and SSH terminal access (paramiko).
+**Context**: The project needed to manage optional features and their dependencies without requiring all users to install unnecessary packages.
 
 **Options considered**:
-- **Make echotools hard-depend on all** — Simplest but adds 3 packages to every consumer.
-- **Use echotools optional dependency groups** — echotools provides `[socks]`, `[watch]`, `[ssh]` extras. Provider-V2 lists them directly.
-- **Document and pin in Provider-V2** — List them in Provider-V2's requirements.txt with version constraints.
+- **Option A** — Include all dependencies as required.
+- **Option B** — Make platform-specific dependencies optional.
 
-**Decision**: Document and pin in Provider-V2's requirements.txt directly.
+**Decision**: Implemented optional runtime dependencies through echotools.
 
-**Rationale**:
-- Provider-V2 uses all three features (proxy rotation, config hot-reload, SSH terminal)
-- Listing directly ensures `pip install -r requirements.txt` gets everything needed
-- Version constraints prevent surprise breakage from echotools dependency updates
+**Rationale**: Optional dependencies reduce installation footprint for users who don't need specific platform support. It allows the core package to remain lightweight while providing extensibility through optional plugins.
 
 **Consequences**:
-- 3 additional entries in requirements.txt that may appear unused to linters
-- Must keep versions aligned with echotools optional dependency specifications
+- Reduced default installation size and dependencies.
+- Required graceful handling of missing optional dependencies.
+- Enabled platform-specific features to be installed as needed.
 
 ---
 
-## ADR-007: wasmtime for DeepSeek proof-of-work
+## ADR-007: wasmtime for DeepSeek Proof-of-Work
 
-**Context**: DeepSeek's API requires solving a JavaScript-based proof-of-work challenge before accepting requests. The challenge uses WebAssembly for performance.
+**Context**: The DeepSeek platform required proof-of-work calculations for authentication, needing a secure and efficient WebAssembly runtime.
 
 **Options considered**:
-- **Node.js subprocess** — Spawn Node.js to run the WASM. Adds a heavy runtime dependency.
-- **wasmtime Python binding** — Run WASM directly from Python using the wasmtime library. Lightweight, fast.
-- **Reverse-engineer the algorithm** — Implement in pure Python. Fragile, breaks on API updates.
+- **Option A** — Implement proof-of-work in pure Python.
+- **Option B** — Use wasmtime for WebAssembly-based proof-of-work.
 
-**Decision**: wasmtime Python binding.
+**Decision**: Adopted wasmtime for DeepSeek proof-of-work calculations.
 
-**Rationale**:
-- Native WASM execution without external process overhead
-- `wasmtime>=0.40.0` provides stable Python bindings for Python 3.8+
-- WASM binary is bundled in the DeepSeek adapter (`src/platforms/deepseek/core/pow.py`)
+**Rationale**: wasmtime provides a secure, sandboxed WebAssembly runtime that can execute proof-of-work algorithms efficiently. It isolates potentially untrusted code and provides better performance than pure Python implementations.
 
 **Consequences**:
-- Adds `wasmtime>=0.40.0` (~15 MB) to dependencies
-- Platform-specific binary wheels required (Windows/Linux/macOS)
+- Enabled secure execution of proof-of-work algorithms.
+- Provided performance benefits over pure Python implementations.
+- Added WebAssembly runtime as a dependency for DeepSeek support.
 
 ---
 
-## ADR-008: pycryptodome for Qwen authentication
+## ADR-008: pycryptodome for Qwen Authentication
 
-**Context**: Qwen's API requires AES-CBC encrypted authentication headers (`bx-ua`) that cannot be generated with stdlib alone.
+**Context**: The Qwen platform required cryptographic operations for authentication, needing a reliable and secure cryptography library.
 
 **Options considered**:
-- **cryptography** — Modern, well-maintained, but complex API.
-- **pycryptodome** — Drop-in replacement for PyCrypto with clean AES API.
-- **pyaes** — Pure Python AES. No C extensions, but slower.
+- **Option A** — Use Python's built-in cryptography modules.
+- **Option B** — Use pycryptodome for comprehensive cryptographic support.
 
-**Decision**: pycryptodome.
+**Decision**: Adopted pycryptodome for Qwen authentication.
 
-**Rationale**:
-- Simple `AES.new(key, AES.MODE_CBC, iv)` API for the specific encryption needed
-- C-accelerated performance for repeated auth header generation
-- Well-established library with stable API
+**Rationale**: pycryptodome provides a comprehensive set of cryptographic primitives, is well-maintained, and offers better performance than pure Python implementations. It supports the specific algorithms needed for Qwen authentication.
 
 **Consequences**:
-- Adds `pycryptodome>=3.20.0` as a dependency
-- Only used by the Qwen platform adapter
+- Enabled secure authentication with Qwen platform.
+- Provided comprehensive cryptographic capabilities.
+- Added pycryptodome as a dependency for Qwen support.
 
 ---
 
 ## ADR-009: beautifulsoup4 and requests for Ollama
 
-**Context**: The Ollama adapter scrapes the local Ollama web interface for model discovery and uses synchronous HTTP for proxy pool fetching (due to Ollama's local-only nature).
+**Context**: The Ollama platform integration needed HTML parsing and HTTP client capabilities for interacting with Ollama servers.
 
 **Options considered**:
-- **aiohttp-only** — Use the existing async HTTP client. But Ollama model listing HTML needs parsing.
-- **beautifulsoup4 + requests** — Separate sync HTTP + HTML parser. Clear separation of concerns.
-- **lxml** — Faster HTML parser but heavier dependency.
+- **Option A** — Use lxml and urllib for HTML parsing and HTTP requests.
+- **Option B** — Use beautifulsoup4 and requests for simpler, more Pythonic APIs.
 
-**Decision**: beautifulsoup4 for HTML parsing, requests for synchronous HTTP operations in Ollama-specific code.
+**Decision**: Adopted beautifulsoup4 and requests for Ollama integration.
 
-**Rationale**:
-- `beautifulsoup4>=4.12.0` provides robust HTML parsing for scraping Ollama's model list
-- `requests>=2.31.0` is used for synchronous proxy pool fetching in Ollama adapter
-- Both are mature, widely-used libraries with excellent documentation
+**Rationale**: beautifulsoup4 provides intuitive HTML parsing with multiple parser support, while requests offers a simple, human-friendly HTTP API. Together they simplify Ollama server interaction and response parsing.
 
 **Consequences**:
-- Adds two dependencies that overlap partially with aiohttp's capabilities
-- requests is synchronous (blocking) — acceptable since Ollama operations are fast local calls
+- Simplified HTML parsing and HTTP interactions with Ollama.
+- Provided robust error handling and session management.
+- Added beautifulsoup4 and requests as dependencies for Ollama support.
 
 ---
 
-## ADR-010: cerebras-cloud-sdk for Cerebras platform
+## ADR-010: cerebras-cloud-sdk for Cerebras Platform
 
-**Context**: Cerebras provides a dedicated cloud SDK for their AI inference platform, offering optimized access beyond generic OpenAI-compatible endpoints.
+**Context**: The Cerebras platform required integration with their cloud SDK for accessing AI models and services.
 
 **Options considered**:
-- **Generic OpenAI client** — Use the OpenAI-compatible endpoint. Loses Cerebras-specific optimizations.
-- **cerebras-cloud-sdk** — Official SDK with platform-specific features.
-- **Custom HTTP client** — Hand-roll the API calls. More work, less maintainable.
+- **Option A** — Implement Cerebras API integration from scratch.
+- **Option B** — Use the official cerebras-cloud-sdk for integration.
 
-**Decision**: cerebras-cloud-sdk.
+**Decision**: Adopted cerebras-cloud-sdk for Cerebras platform integration.
 
-**Rationale**:
-- Official SDK ensures compatibility with Cerebras API changes
-- Provides optimized inference access beyond the generic REST endpoint
-- Lazy-loaded only when Cerebras platform is active
+**Rationale**: Using the official SDK ensures compatibility, receives updates and bug fixes, and reduces maintenance burden. It provides type-safe interfaces and follows Cerebras' recommended patterns.
 
 **Consequences**:
-- Adds `cerebras-cloud-sdk>=1.0.0` as a dependency
-- Only imported when the Cerebras adapter is initialized
+- Simplified Cerebras platform integration.
+- Received official support and updates.
+- Added cerebras-cloud-sdk as a dependency for Cerebras support.
 
 ---
 
-## ADR-011: Core module shim consolidation
+## ADR-011: Core Module Shim Consolidation
 
-**Context**: `src/core/` had 17 individual 2-line shim files (`autoupdate.py`, `candidate.py`, `files.py`, `gateway.py`, `http.py`, `ids.py`, `io_utils.py`, `process.py`, `proxy.py`, `registry.py`, `retry.py`, `runtime_view.py`, `scheduler.py`, `selector.py`, `server.py`, `watcher.py`), each re-exporting symbols from subpackages. Every file contained only an import and a re-export, creating unnecessary file sprawl.
+**Context**: The core modules had accumulated shims and compatibility layers that increased complexity and maintenance burden.
 
 **Options considered**:
-- **Keep individual shims** — One file per module, easy to find by name but 17 nearly-empty files clutter the directory.
-- **Single `shims.py`** — Consolidate all re-exports into one file with a comprehensive docstring.
-- **Direct imports everywhere** — Remove shims entirely, update all call sites to import from subpackages directly. High refactoring cost.
+- **Option A** — Keep shims for backward compatibility.
+- **Option B** — Consolidate and remove unnecessary shims.
 
-**Decision**: Consolidate into `src/core/shims.py` with a comprehensive docstring documenting each re-exported symbol and its origin.
+**Decision**: Consolidated core module shims and simplified the public API.
 
-**Rationale**:
-- Reduces file count in `src/core/` by 59% (17 files to 1)
-- Single point of maintenance for all cross-module re-exports
-- Docstring in `shims.py` serves as a map of the indirection layer
-- `__init__.py` expanded to promote symbols at the package level, preserving existing import paths
+**Rationale**: Removing unnecessary shims reduces code complexity, improves maintainability, and provides a cleaner API surface. It eliminates indirection layers that were no longer needed.
 
 **Consequences**:
-- 59% file reduction (17 -> 1) in the shim layer
-- All existing `from src.core.xxx import Yyy` call sites continue to work via `__init__.py` promotions
-- Future shim additions require editing one file instead of creating a new file
-- Git history for individual shim files is lost after deletion
+- Simplified the core module API.
+- Reduced maintenance burden and code complexity.
+- Required updates to code that used the old shim interfaces.
 
 ---
 
-## ADR-012: fncall protocol plugin system via echotools
+## ADR-012: fncall Protocol Plugin System via echotools
 
-**Context**: Tool-calling protocols (XML, ANTML, bracket, etc.) define how AI models format function calls. Different platforms and model families require different protocol formats. The project needed a way to support multiple protocols without hardcoding each one.
+**Context**: The tool calling system needed to support multiple protocols for different LLM providers, requiring a flexible plugin architecture.
 
 **Options considered**:
-- **Hardcoded protocols** — Inline each protocol's formatting logic. Simple but rigid; adding a protocol requires modifying core code.
-- **Plugin system** — Strategy pattern with an ABC, auto-registration at import time, protocols as independent modules.
-- **Config-driven templates** — Define protocols as template strings in config files. Flexible but harder to validate and test.
+- **Option A** — Implement protocol-specific code within the core.
+- **Option B** — Create a plugin system via echotools for protocol extensions.
 
-**Decision**: Strategy pattern with `ToolProtocol` ABC in the `echotools` package, auto-registration at import time, 7 built-in protocols (`xml`, `antml`, `original`, `bracket`, `nous`, `dsml`, `custom`).
+**Decision**: Implemented fncall protocol plugin system through echotools.
 
-**Rationale**:
-- Clean separation between protocol definition and protocol selection
-- Each protocol is independently testable without the gateway context
-- Auto-registration via import means new protocols are discovered automatically
-- Protocol selection via `config.toml` or per-request override provides runtime flexibility
+**Rationale**: A plugin system enables easy addition of new protocols without modifying core code. It promotes separation of concerns and allows protocols to be developed and maintained independently.
 
 **Consequences**:
-- Adding a new protocol requires an `echotools` update + PyPI publish cycle
-- 7 built-in protocols cover all currently supported platforms
-- Protocol selection is configurable per-platform in `config.toml`
-- The `custom` protocol allows user-defined formats without modifying `echotools`
+- Enabled easy addition of new tool calling protocols.
+- Simplified protocol maintenance and updates.
+- Required plugin registration and discovery mechanisms.
 
 ---
 
-## ADR-013: Runner-Worker dual-process architecture
+## ADR-013: Runner-Worker Dual-Process Architecture
 
-**Context**: The long-running proxy gateway needs resilience against crashes, memory leaks, and code hot-reload without dropping active connections. A single-process design cannot handle all three requirements simultaneously.
+**Context**: The system needed to handle long-running operations and background tasks without blocking the main request handling.
 
 **Options considered**:
-- **Single process with restart** — Simple but loses all state on crash; no hot-reload capability.
-- **Multi-worker with supervisor** — Robust but over-engineered for a single-gateway deployment; adds complexity of load balancing.
-- **Runner-Worker fork pattern** — Runner process supervises a single Worker subprocess, auto-restarts on failure, supports file-watcher-based hot-reload.
+- **Option A** — Use threading for concurrent operations.
+- **Option B** — Implement runner-worker dual-process architecture.
 
-**Decision**: Runner process monitors Worker subprocess via `subprocess.Popen`, auto-restarts on exit code 42, supports hot-reload via file watcher.
+**Decision**: Implemented runner-worker dual-process architecture.
 
-**Rationale**:
-- Two Python processes running at all times: Runner (supervisor) and Worker (actual server)
-- Worker exit code 42 signals a restart request (e.g., after config or code changes)
-- File watcher in Runner detects source file modifications and triggers graceful restart
-- Log output from Worker is piped through Runner with color preservation (`CLICOLOR_FORCE=1`)
-- `Ctrl+C` gracefully shuts down both processes in the correct order
+**Rationale**: Separate processes provide better isolation, avoid GIL limitations, and enable true parallelism. The runner manages worker processes, providing fault tolerance and resource management.
 
 **Consequences**:
-- Two Python processes visible in process list at all times
-- Worker crash triggers automatic restart (up to 50 consecutive restarts)
-- Hot-reload via file watcher avoids manual restart during development
-- Log output is line-buffered through Runner using `readline()` to avoid buffering issues
-- Graceful shutdown ensures no orphaned subprocess on `Ctrl+C`
+- Enabled true parallelism for CPU-bound tasks.
+- Provided better isolation and fault tolerance.
+- Added complexity in process management and communication.
+
+---
+
+## ADR-014: WebUI SPA Architecture Refactoring
+
+**Context**: The WebUI was originally served through multiple routes (/docs, /webui) and had a monolithic structure, making it difficult to maintain and extend.
+
+**Options considered**:
+- **Option A** — Keep existing multi-route structure with incremental improvements.
+- **Option B** — Refactor to a frontend-backend separated Single Page Application (SPA) architecture.
+
+**Decision**: Refactored WebUI to frontend-backend separated SPA architecture, abolishing /docs and /webui routes, with root path directly serving the WebUI.
+
+**Rationale**: SPA architecture provides better user experience, cleaner separation of concerns, and easier development of complex UI features. Static file hot-reload and lazy loading improve performance.
+
+**Consequences**:
+- Simplified routing and deployment.
+- Enabled advanced features like terminal, file manager, and request inspector.
+- Required restructuring of static file organization and middleware.
+
+---
+
+## ADR-015: Tool Calling Protocol Refactoring (5 modes)
+
+**Context**: The tool calling (fncall) system needed to support multiple protocols for different LLM providers, but the implementation was scattered and inconsistent.
+
+**Options considered**:
+- **Option A** — Keep protocol-specific code scattered across modules.
+- **Option B** — Refactor into 5 protocol modes with modularization and config section restructuring.
+
+**Decision**: Implemented 5 protocol modes (original, bracket, antml, xml, nous) with modularization and config section restructuring.
+
+**Rationale**: Different LLM providers require different tool calling formats. A modular system allows easy addition of new protocols and platform-specific mapping.
+
+**Consequences**:
+- Enabled platform-specific protocol selection via fncall_mapping.
+- Improved maintainability and testability of protocol code.
+- Required careful handling of protocol priority (API request > fncall_mapping > global default).
+
+---
+
+## ADR-016: Per-Request Platform Routing
+
+**Context**: The system needed the ability to route individual requests to specific platforms dynamically, rather than relying solely on global configuration.
+
+**Options considered**:
+- **Option A** — Keep global platform routing with limited flexibility.
+- **Option B** — Implement per-request platform routing via extra_body.platform parameter.
+
+**Decision**: Added per-request platform routing via extra_body.platform (v2.2.200).
+
+**Rationale**: This allows fine-grained control over request routing, enabling A/B testing, gradual rollouts, and platform-specific optimizations without global configuration changes.
+
+**Consequences**:
+- Increased flexibility for request routing.
+- Required careful handling of platform selection priority.
+- Enhanced debugging capabilities with platform visibility in logs.
+
+---
+
+## ADR-017: OpenCode Platform Proxy Pool Strategy
+
+**Context**: The OpenCode platform needed to handle high-volume requests with reliability and performance, requiring intelligent proxy management.
+
+**Options considered**:
+- **Option A** — Simple retry logic without proxy rotation.
+- **Option B** — Implement proxy-pool based request routing with TAS (Traffic Assignment System) scoring.
+
+**Decision**: Implemented proxy-pool based request routing with single candidate model and internal TAS proxy selection, including retry with proxy rotation on connection errors and rate limits.
+
+**Rationale**: Proxy pool distribution improves reliability and performance by distributing load across multiple proxies. TAS scoring ensures optimal proxy selection based on performance metrics.
+
+**Consequences**:
+- Improved request success rate and latency.
+- Added complexity in proxy management and scoring.
+- Required MAX_RETRIES tuning (reduced from 50 to 3) for optimal performance.
+
+---
+
+## ADR-018: Qwen Platform Core Refactoring
+
+**Context**: The Qwen platform module had accumulated technical debt, with login logic, error handling, and module structure needing simplification.
+
+**Options considered**:
+- **Option A** — Incremental fixes within existing structure.
+- **Option B** — Major refactoring of qwen/core modules with login logic rewrite and module decomposition.
+
+**Decision**: Major simplification of qwen/core modules, including login logic rewrite to unified polling architecture, module decomposition, and logging migration to loguru.
+
+**Rationale**: The existing structure was complex and hard to maintain. Simplification improves reliability, reduces login failure issues, and enhances logging consistency.
+
+**Consequences**:
+- Improved login reliability with queue re-login log aggregation.
+- Better error handling with network circuit breaker.
+- Cleaner module structure for future extensions.
+
+---
+
+## ADR-019: Auto-Update System with Mirror Sources
+
+**Context**: The project needed a reliable auto-update mechanism that could handle network issues and provide fallback options.
+
+**Options considered**:
+- **Option A** — Simple direct update from primary source.
+- **Option B** — Implement auto-update with mirror sources, differential updates, and local change auto-stash recovery.
+
+**Decision**: Implemented auto-update system with mirror sources, differential updates, and local change auto-stash recovery.
+
+**Rationale**: Mirror sources provide redundancy and reliability. Differential updates reduce bandwidth usage. Auto-stash recovery prevents data loss during updates.
+
+**Consequences**:
+- Improved update reliability and user experience.
+- Added complexity in mirror source management and priority configuration.
+- Enhanced user control with diff preview and auto hot-reload.
+
+---
+
+## ADR-020: Browser-Based Cookie Authentication
+
+**Context**: The system needed secure authentication for browser-based access while maintaining simplicity for API clients.
+
+**Options considered**:
+- **Option A** — Token-based authentication for all clients.
+- **Option B** — Browser-based Cookie authentication with static resource bypass.
+
+**Decision**: Implemented browser login page with Cookie authentication and static resource bypass.
+
+**Rationale**: Cookie authentication provides seamless browser experience while static resource bypass improves performance. API clients can continue using token-based auth.
+
+**Consequences**:
+- Enhanced security for browser-based access.
+- Required enforcement of authentication on all endpoints (including /health and /v1/models).
+- Improved user experience with login page and session management.
+
+---
+
+## ADR-021: File Manager and Terminal Features
+
+**Context**: The WebUI needed advanced development tools to improve developer productivity and provide a complete development environment.
+
+**Options considered**:
+- **Option A** — Basic file viewing and command execution.
+- **Option B** — Full-featured file manager with editing, upload, copy/move, search, and terminal with session persistence.
+
+**Decision**: Implemented comprehensive file manager with editing, upload, copy/move, search, cross-module linkage, and terminal with session persistence, ConPTY upgrade, and Windows compatibility.
+
+**Rationale**: These features transform the WebUI into a complete development environment, reducing context switching and improving developer workflow.
+
+**Consequences**:
+- Significantly enhanced WebUI functionality.
+- Required careful handling of security and permissions.
+- Added complexity in terminal implementation across platforms.
+
+---
+
+## ADR-022: Request Inspector and Batch Testing
+
+**Context**: Developers needed tools to inspect API requests and test endpoints efficiently, especially for debugging and validation.
+
+**Options considered**:
+- **Option A** — External tools for request inspection and testing.
+- **Option B** — Integrated request inspector with real-time streaming and batch testing capabilities.
+
+**Decision**: Implemented request inspector with real-time streaming content broadcast, raw request display, and batch testing with OpenAI Batch style, statistics, and streaming capture.
+
+**Rationale**: Integrated tools provide seamless developer experience, reduce context switching, and enable efficient debugging and testing workflows.
+
+**Consequences**:
+- Improved debugging capabilities and developer productivity.
+- Added complexity in real-time streaming and data persistence.
+- Enhanced reporting with statistics and detailed results.
+
+---
+
+Generated on: 2026-07-02

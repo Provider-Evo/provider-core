@@ -1,5 +1,5 @@
 [server]
-version = "2.2.210"
+version = "2.2.211"
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -36,7 +36,7 @@ group_list_type = "whitelist"
 
 [platforms]
 platform_list_type = "blacklist"
-platform_list = ["caiyuesbk", "cerebras", "chutes", "codebuddy", "n1n", "nvidia", "openrouter", "perplexity", "deepseek", "cursor", "aitianhu2", "apiairforce", "azuretranslate", "yandextranslate", "noobkeys", "deepl", "googletranslate"]
+platform_list = ["caiyuesbk", "cerebras", "chutes", "codebuddy", "n1n", "nvidia", "openrouter", "perplexity", "deepseek", "cursor", "aitianhu2", "apiairforce", "azuretranslate", "yandextranslate", "noobkeys", "deepl", "googletranslate", "zen"]
 
 [fncall]
 protocol = "antml"

@@ -3050,3 +3050,75 @@ py_compile: src/core/__init__.py 通过
 [docs-src/src/platforms/qwen/core/sse.py] 同步 docs-src 镜像
 [docs-src/src/platforms/qwen/core/stream.py] 同步 docs-src 镜像
 py_compile: client.py, sse.py, stream.py, openai_chat.py 通过
+
+2026-07-02 12:50:00
+
+[.gitignore] modified
+[PROJECT_DECISIONS.md] modified - updated with new ADRs
+[README.md] modified - version 2.2.209 -> 2.2.210
+[config.toml] modified - version 2.2.209 -> 2.2.210
+[requirements.txt] modified - removed brotli
+[src/platforms/opencode/core/client.py] modified
+[src/platforms/opencode/core/proxypool.py] modified
+[src/platforms/opencode/core/proxyscore.py] modified - removed debug logs
+[src/platforms/qwen/adapter.py] deleted
+[src/platforms/qwen/core/__init__.py] modified
+[src/platforms/qwen/core/adaptercore.py] modified
+[src/platforms/qwen/core/auth.py] modified
+[src/platforms/qwen/core/bxua.py] deleted
+[src/platforms/qwen/core/cdn.py] modified
+[src/platforms/qwen/core/chat.py] deleted
+[src/platforms/qwen/core/client.py] modified
+[src/platforms/qwen/core/constants.py] modified
+[src/platforms/qwen/core/cookies.py] modified
+[src/platforms/qwen/core/crypto.py] modified
+[src/platforms/qwen/core/endpoints.py] modified
+[src/platforms/qwen/core/errors.py] modified
+[src/platforms/qwen/core/file_objects.py] deleted
+[src/platforms/qwen/core/files.py] modified
+[src/platforms/qwen/core/fp.py] deleted
+[src/platforms/qwen/core/headers.py] modified
+[src/platforms/qwen/core/io_utils.py] deleted
+[src/platforms/qwen/core/logs.py] modified
+[src/platforms/qwen/core/lzw.py] deleted
+[src/platforms/qwen/core/media.py] modified
+[src/platforms/qwen/core/mimes.py] modified
+[src/platforms/qwen/core/models.py] modified
+[src/platforms/qwen/core/oss.py] modified
+[src/platforms/qwen/core/password.py] modified
+[src/platforms/qwen/core/payloads.py] modified
+[src/platforms/qwen/core/persistence.py] modified
+[src/platforms/qwen/core/proxy.py] modified
+[src/platforms/qwen/core/settings.py] modified
+[src/platforms/qwen/core/shared.py] modified
+[src/platforms/qwen/core/sse.py] modified
+[src/platforms/qwen/core/storage.py] modified
+[src/platforms/qwen/core/stream.py] modified
+[src/platforms/qwen/core/tts.py] modified
+[src/platforms/qwen/core/upload.py] modified
+[src/platforms/qwen/core/video.py] modified
+[src/platforms/qwen/core/bxumid.py] new
+[src/platforms/qwen/core/chat_session.py] new
+[src/platforms/qwen/core/runtime.py] new
+[src/platforms/qwen/mvp/] new directory
+[template/template_config.toml] 版本 2.2.209 -> 2.2.210
+[docs-src/src/platforms/qwen/] updated
+[docs-src/src/platforms/opencode/] updated
+[tests/src/platforms/qwen/] updated
+[tests/src/platforms/opencode/] updated
+
+2026-07-02 13:29:08
+
+[template/template_config.toml] 版本 2.2.210 -> 2.2.211
+[config.toml] 版本 2.2.210 -> 2.2.211
+[README.md] 版本徽章和路线图更新为 2.2.211
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.210 -> 2.2.211
+[src/platforms/qwen/core/auth.py] 修复 qwen 登录代理回退：代理失败时自动直连重试，登录结果记录到代理选择器
+py_compile: auth.py 通过
+
+2026-07-02 12:55:00
+
+py_compile: 34 files passed
+pytest: 447 passed, 35 failed (pre-existing), 20 errors (pre-existing)
+
+pytest: 0 passed, 0 failed, 0 skipped, 1 collection error (test_xml_protocol.py import error, pre-existing)

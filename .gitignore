@@ -12,6 +12,7 @@
 .svn
 .vscode
 .zed
+.opencode
 __pycache__
 data
 env

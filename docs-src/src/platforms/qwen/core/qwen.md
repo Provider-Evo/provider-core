@@ -20,11 +20,30 @@ QwenAdapter (adaptercore.py)
       ├── UploadMixin (upload.py) -- 文件上传 (OSS STS PUT)
       ├── MediaMixin (media.py) -- 视频生成 (i2v)、TTS 语音合成
       ├── LogsMixin (logs.py) -- 缓冲日志聚合
+      ├── ChatSession (chat_session.py) -- 聊天生命周期操作
       ├── 账号管理 (_account_states, _rebuild_candidates)
       ├── 模型刷新 (_models_cache, ModelsCache)
       ├── 持久化 (_bg_persist, 60s 间隔)
       └── 请求处理 (_do_request, SSE 解析)
 ```
+
+### 新增模块
+
+1. **ChatSession (chat_session.py)**: 聊天生命周期操作
+   - `create()`: 创建新对话
+   - `stop()`: 停止生成
+   - `delete()`: 删除对话
+   - `cleanup()`: 清理对话（抑制传输故障）
+   - `download_image()`: 下载图片资源
+   - `send_placeholder_message()`: 发送占位符消息
+
+2. **Runtime (runtime.py)**: 运行时兼容性垫片
+   - 用于独立适配器执行（无需宿主项目）
+   - 提供 Candidate、PlatformAdapter、ModelsCache、ProxySelector 等兼容类
+   - 支持独立 MVP 测试
+
+3. **bxumid.py**: Token 验证
+   - `validate_bxumidtoken()`: 验证 bx-umidtoken 格式
 
 ## 关键文件
 
@@ -35,6 +54,9 @@ QwenAdapter (adaptercore.py)
 | `upload.py` | UploadMixin -- 文件上传 (OSS STS PUT) |
 | `media.py` | MediaMixin -- 视频生成 (i2v)、TTS 语音合成 |
 | `logs.py` | LogsMixin -- 缓冲日志聚合 |
+| `chat_session.py` | ChatSession -- 聊天生命周期操作 |
+| `bxumid.py` | bx-umidtoken 值验证辅助函数 |
+| `runtime.py` | 运行时兼容性垫片（独立适配器执行） |
 | `accounts.py` | Account 数据类 + 账号列表（758KB，含大量数据） |
 | `shared.py` | 共享常量和辅助函数 |
 | `adaptercore.py` | 适配器实现，委托给 QwenClient |
