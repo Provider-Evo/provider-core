@@ -3160,3 +3160,12 @@ py_compile: auth.py 通过
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.214 -> 2.2.215
 [src/core/server/watcher.py] 新增依赖包版本检测：每30秒检查echotools/aiohttp/pydantic修改时间，变化时自动重启
 py_compile: watcher.py 通过
+
+2026-07-04 06:15:05
+
+[template/template_config.toml] 版本 2.2.215 -> 2.2.216
+[config.toml] 版本 2.2.215 -> 2.2.216
+[README.md] 版本徽章和路线图更新为 2.2.216
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.215 -> 2.2.216
+[src/platforms/opencode/core/client.py] opencode fetch models 异常日志从 warning 降为 debug
+py_compile: client.py 通过

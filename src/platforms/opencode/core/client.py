@@ -772,7 +772,7 @@ class OpencodeClient:
                     return all_models
                 return []
         except Exception as e:
-            logger.warning("opencode fetch models exception: %s", e)
+            logger.debug("opencode fetch models exception: %s", e)
             return []
 
     # ------------------------------------------------------------------
