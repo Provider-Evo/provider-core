@@ -3133,3 +3133,12 @@ pytest: 0 passed, 0 failed, 0 skipped, 1 collection error (test_xml_protocol.py 
 [src/platforms/qwen/__init__.py] 修正导入路径指向 core.adaptercore（旧 adapter 模块已删除）
 [PROJECT_DECISIONS.md] 新增 ADR-029 到 ADR-032 架构决策记录
 py_compile: adaptercore.py, __init__.py 通过
+
+2026-07-03 23:35:08
+
+[template/template_config.toml] 版本 2.2.212 -> 2.2.213
+[config.toml] 版本 2.2.212 -> 2.2.213
+[README.md] 版本徽章和路线图更新为 2.2.213
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.212 -> 2.2.213
+[src/platforms/qwen/core/auth.py] 修复 qwen 账号配置代理回退：_fetch_user_profile/_fetch_user_settings/_save_default_settings 代理失败时自动回退直连
+py_compile: auth.py 通过
