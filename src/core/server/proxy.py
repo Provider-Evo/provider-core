@@ -25,7 +25,7 @@ _mgr = ProxyManager()
 
 
 def _load_from_config() -> None:
-    """Load proxy configuration from config.toml."""
+    """Load proxy configuration from config/main_config.toml."""
     try:
         cfg = get_config().proxy
         _mgr.configure(

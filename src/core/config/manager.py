@@ -35,7 +35,13 @@ class ConfigManager:
         if config_path:
             self._center.load(config_path)
         else:
-            self._center.init_from_template(exit_after_create=True, exit_after_merge=False)
+            # 默认使用 config/main_config.toml
+            from pathlib import Path
+            default_config_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "main_config.toml"
+            if default_config_path.exists():
+                self._center.load(str(default_config_path))
+            else:
+                self._center.init_from_template(exit_after_create=True, exit_after_merge=False)
         self._config = self._center.bind_proxy(AppConfig)
         self._apply_color()
         logger.debug("Config loaded: %s", self._center.path)

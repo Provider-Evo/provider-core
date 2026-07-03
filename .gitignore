@@ -37,6 +37,7 @@ config.toml
 # File names
 SELF.cmd
 .DS_Store
+NOTE.md
 PROJECT_DECISIONS.md
 RAW.md
 raw.md

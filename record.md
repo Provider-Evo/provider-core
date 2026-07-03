@@ -3169,3 +3169,31 @@ py_compile: watcher.py 通过
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.215 -> 2.2.216
 [src/platforms/opencode/core/client.py] opencode fetch models 异常日志从 warning 降为 debug
 py_compile: client.py 通过
+
+2026-07-04 06:30:00
+
+[template/template_config.toml] 版本 2.2.216 -> 2.2.217
+[config.toml] 版本 2.2.216 -> 2.2.217
+[config/main_config.toml] 版本 2.2.216 -> 2.2.217
+[README.md] 版本徽章和路线图更新为 2.2.217
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.216 -> 2.2.217
+[src/webui/static/terminal/terminal.js] 新增终端背景模式（original/theme）支持，右键菜单和工具栏按钮切换，持久化到terminals.json
+[src/webui/static/terminal/terminal.css] 新增.terminal-body--original经典黑色样式，调整终端容器高度适配，新增背景模式按钮样式
+[src/webui/static/core/state.js] applyTheme()中添加终端主题刷新钩子
+[src/core/terminal_sessions.py] 新增consume_offline_output()原子性读取清空离线输出
+[src/webui/routers/terminal.py] 改进会话恢复：标记非可重附会话，PID复用防护，离线输出历史展示
+[docs-src/src/core/terminal_sessions.py] 更新consume_offline_output文档
+[docs-src/src/webui/routers/terminal.md] 更新终端背景模式和会话恢复文档
+[config/main_config.toml] 同步版本号
+py_compile: terminal_sessions.py, terminal.py 通过
+pytest: 通过（排除预存问题）
+
+2026-07-04 08:00:00
+
+[template/template_config.toml] 版本 2.2.218 -> 2.2.219
+[config/main_config.toml] 版本 2.2.217 -> 2.2.219
+[README.md] 版本徽章和路线图更新为 2.2.219
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.217 -> 2.2.219
+[src/platforms/qwen/core/adaptercore.py] 新增 supported_models 属性，修复运行时模型数量显示为 0 的问题
+[docs-src/src/platforms/qwen/core/qwen.md] 更新 adaptercore.py 说明，标注 supported_models 属性
+py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy.py, watcher.py, logger.py, admin.py, autoupdate.py, files.py, terminal.py, main.py 通过

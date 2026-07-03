@@ -97,6 +97,15 @@ class QwenAdapter(PlatformAdapter):
         await self.ensure_initialized()
         return await self._client.stop_candidate_generation(candidate)
 
+    @property
+    def supported_models(self) -> List[str]:
+        """返回当前支持的模型列表。
+
+        Returns:
+            模型 ID 列表。
+        """
+        return self._client.get_models()
+
     async def get_models(self) -> List[str]:
         """Return the current model list."""
         await self.ensure_initialized()

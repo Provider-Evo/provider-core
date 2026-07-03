@@ -60,6 +60,9 @@ from __future__ import annotations
     # 读取离线输出
     output = store.get_offline_output("sess-001")
 
+    # 原子性地读取并清空离线输出（用于恢复后一次性消费）
+    output = store.consume_offline_output("sess-001")
+
     # 标记会话为已销毁
     store.save("sess-001", status="destroyed")
 

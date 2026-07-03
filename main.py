@@ -93,7 +93,7 @@ def _is_idle() -> bool:
 
 
 def _read_color_config() -> bool:
-    """从 config.toml 读取 debug.color 配置项。
+    """从 config/main_config.toml 读取 debug.color 配置项。
 
     在 Python 3.11+ 使用标准库 tomllib；低版本尝试第三方 tomli；
     均不可用或文件不存在时默认返回 True（启用颜色）。
@@ -101,7 +101,7 @@ def _read_color_config() -> bool:
     Returns:
         color 配置值，默认 True。
     """
-    cfg_path = _ROOT / "config.toml"
+    cfg_path = _ROOT / "config" / "main_config.toml"
     if not cfg_path.exists():
         return True
 

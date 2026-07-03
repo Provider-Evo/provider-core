@@ -1317,3 +1317,19 @@ section.tab-panel > * {
   font-size: 11px;
   line-height: 1.6;
 }
+
+/* ========== Terminal Tab Layout ========== */
+#tab-terminal {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+}
+
+#tab-terminal .terminal-container {
+  flex: 1;
+  min-height: 0;
+}
+
+#tab-terminal .terminal-bg-mode-btn {
+  flex-shrink: 0;
+}

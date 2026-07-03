@@ -29,6 +29,7 @@ var TerminalManager = (function () {
   var _savedConnections = [];
   var _contextMenu = null;
   var _discoveryProcessed = false; // guard against double-processing existing sessions
+  var _terminalBgMode = 'theme'; // 'theme' | 'original'
 
   /**
    * Strip DEC private mode responses (e.g. ^[[?1;2c, ^[[?6c) that leak
@@ -39,6 +40,177 @@ var TerminalManager = (function () {
   function _stripDecResponses(data) {
     if (typeof data !== 'string') return data;
     return data.replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '');
+  }
+
+  /**
+   * Return xterm.js theme colors based on background mode and current UI theme.
+   * @param {string} bgMode - 'theme' (follow provider-v2 UI) or 'original' (classic black)
+   */
+  function _getTerminalTheme(bgMode) {
+    bgMode = bgMode || _terminalBgMode;
+
+    if (bgMode === 'original') {
+      // Classic dark terminal theme (VS Code style)
+      return {
+        background: '#1e1e1e',
+        foreground: '#cccccc',
+        cursor: '#ffffff',
+        selectionBackground: '#264f78',
+        black: '#1e1e1e',
+        red: '#f44747',
+        green: '#6a9955',
+        yellow: '#dcdcaa',
+        blue: '#569cd6',
+        magenta: '#c586c0',
+        cyan: '#4ec9b0',
+        white: '#cccccc',
+        brightBlack: '#808080',
+        brightRed: '#f44747',
+        brightGreen: '#6a9955',
+        brightYellow: '#dcdcaa',
+        brightBlue: '#569cd6',
+        brightMagenta: '#c586c0',
+        brightCyan: '#4ec9b0',
+        brightWhite: '#ffffff',
+      };
+    }
+
+    // Theme mode: follow provider-v2 global light/dark theme
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      return {
+        background: '#0d1420',
+        foreground: '#edf3ff',
+        cursor: '#edf3ff',
+        selectionBackground: '#2a3a5c',
+        black: '#172131',
+        red: '#ff7b7b',
+        green: '#37ca7e',
+        yellow: '#ffb454',
+        blue: '#8aa4ff',
+        magenta: '#c084fc',
+        cyan: '#22d3ee',
+        white: '#edf3ff',
+        brightBlack: '#9eabc2',
+        brightRed: '#ff9b9b',
+        brightGreen: '#5ee6a0',
+        brightYellow: '#ffc97a',
+        brightBlue: '#a8bbff',
+        brightMagenta: '#d4a5ff',
+        brightCyan: '#5ee9f5',
+        brightWhite: '#ffffff',
+      };
+    }
+    return {
+      background: '#ffffff',
+      foreground: '#162033',
+      cursor: '#162033',
+      selectionBackground: '#dbe3ff',
+      black: '#172131',
+      red: '#d94848',
+      green: '#1f9d61',
+      yellow: '#d17b17',
+      blue: '#4263eb',
+      magenta: '#9333ea',
+      cyan: '#0891b2',
+      white: '#f3f6fb',
+      brightBlack: '#5d6980',
+      brightRed: '#ef4444',
+      brightGreen: '#22c55e',
+      brightYellow: '#f59e0b',
+      brightBlue: '#6366f1',
+      brightMagenta: '#a855f7',
+      brightCyan: '#06b6d4',
+      brightWhite: '#ffffff',
+    };
+  }
+
+  /**
+   * Apply terminal background mode to all open tabs and persist the setting.
+   * @param {string} mode - 'theme' or 'original'
+   */
+  function _applyTerminalBgMode(mode) {
+    _terminalBgMode = mode;
+    document.documentElement.setAttribute('data-terminal-bg', mode);
+
+    // Toggle CSS class on terminal body
+    if (_body) {
+      if (mode === 'original') {
+        _body.classList.add('terminal-body--original');
+      } else {
+        _body.classList.remove('terminal-body--original');
+      }
+    }
+
+    // Update all open xterm instances
+    var theme = _getTerminalTheme(mode);
+    for (var i = 0; i < _tabs.length; i++) {
+      var tab = _tabs[i];
+      if (tab.xterm) {
+        tab.xterm.options.theme = theme;
+      }
+    }
+
+    _saveTerminalBgMode();
+    _updateBgModeButton();
+  }
+
+  /**
+   * Toggle between 'theme' and 'original' background modes.
+   */
+  function _toggleTerminalBgMode() {
+    var next = _terminalBgMode === 'theme' ? 'original' : 'theme';
+    _applyTerminalBgMode(next);
+  }
+
+  /**
+   * Get display label for current background mode.
+   */
+  function _getBgModeLabel() {
+    return _terminalBgMode === 'original' ? '\u7ECF\u5178\u9ED1\u8272' : 'Provider \u4E3B\u9898';
+  }
+
+  /**
+   * Update the background mode button display.
+   */
+  function _updateBgModeButton() {
+    var iconEl = document.getElementById('terminalBgModeIcon');
+    var labelEl = document.getElementById('terminalBgModeLabel');
+    if (iconEl) {
+      iconEl.textContent = _terminalBgMode === 'original' ? '\u263E' : '\u2600';
+    }
+    if (labelEl) {
+      labelEl.textContent = _getBgModeLabel();
+    }
+  }
+
+  /**
+   * Save terminal background mode to持久化 storage.
+   */
+  async function _saveTerminalBgMode() {
+    try {
+      if (typeof persistSave === 'function') {
+        var existing = await persistLoad('terminals.json') || {};
+        existing.bgMode = _terminalBgMode;
+        await persistSave('terminals.json', existing);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * Load terminal background mode from持久化 storage.
+   */
+  async function _loadTerminalBgMode() {
+    try {
+      if (typeof persistLoad === 'function') {
+        var data = await persistLoad('terminals.json');
+        if (data && data.bgMode) {
+          _terminalBgMode = data.bgMode;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    // Apply the loaded mode
+    _applyTerminalBgMode(_terminalBgMode);
   }
 
   // DOM references (set in init)
@@ -99,10 +271,10 @@ var TerminalManager = (function () {
           }
           // Persist the state
           (async function () {
-            var existing = await persistLoad('config.toml') || {};
+            var existing = await persistLoad('terminals.json') || {};
             existing.layout = (typeof _tabLayoutConfig !== 'undefined') ? _tabLayoutConfig.layout : 'horizontal';
             existing.sidebarCompressed = collapsed;
-            persistSave('config.toml', existing);
+            persistSave('terminals.json', existing);
           })();
         },
       });
@@ -133,6 +305,19 @@ var TerminalManager = (function () {
 
     // Load saved connections
     _loadSavedConnections();
+
+    // Load terminal background mode preference
+    _loadTerminalBgMode();
+
+    // Background mode button click handler
+    var bgModeBtn = document.getElementById('terminalBgModeBtn');
+    if (bgModeBtn) {
+      bgModeBtn.addEventListener('click', function () {
+        _toggleTerminalBgMode();
+        _updateBgModeButton();
+      });
+    }
+    _updateBgModeButton();
 
     // Window resize: trigger fit on active terminal.
     // Per-tab ResizeObservers handle their own pane sizing,
@@ -218,6 +403,7 @@ var TerminalManager = (function () {
       options: options,
       _resizeObserver: null,
       _container: null,
+      _readOnly: false,
     };
 
     _tabs.push(tab);
@@ -297,12 +483,7 @@ var TerminalManager = (function () {
       lineHeight: 1.15,
       scrollback: 5000,
       allowProposedApi: true,
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-        selectionBackground: '#264f78',
-      },
+      theme: _getTerminalTheme(),
     });
 
     // Create and load FitAddon
@@ -343,6 +524,20 @@ var TerminalManager = (function () {
       if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
         tab.ws.send(JSON.stringify({ type: 'input', data: data }));
       }
+    });
+
+    // Binary input handler for mouse events (TUI apps like htop, vim, mc).
+    // xterm.js emits binary mouse protocol data via onBinary when the
+    // application enables mouse tracking (DECSET 1000/1002/1003).
+    xterm.onBinary(function (data) {
+      if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+        tab.ws.send(JSON.stringify({ type: 'input', data: data }));
+      }
+    });
+
+    // Ensure xterm gets focus on click inside its container.
+    xtermContainer.addEventListener('click', function () {
+      xterm.focus();
     });
 
     // Connect WebSocket
@@ -424,10 +619,19 @@ var TerminalManager = (function () {
           if (_bar) _bar.setStatus(tab.id, 'disconnected');
         } else if (msg.type === 'exit') {
           if (tab.xterm) {
-            tab.xterm.write(_stripDecResponses(
-              '\r\n\x1b[33m[\u8FDB\u7A0B\u5DF2\u9000\u51FA\uFF0C\u9000\u51FA\u7801 ' +
-              msg.code + ']\x1b[0m'
-            ));
+            if (msg.code === -1) {
+              // Non-reattachable session (recovered after server restart)
+              tab.xterm.write(_stripDecResponses(
+                '\r\n\x1b[33m[\u6B64\u4F1A\u8BDD\u4E3A\u5386\u53F2\u8BB0\u5F55\uFF0C\u8FDB\u7A0B\u5DF2\u4E0D\u53EF\u4EA4\u4E92]\x1b[0m\r\n'
+              ));
+              tab._readOnly = true;
+              if (_bar) _bar.setTitle(tab.id, tab.name + ' [\u5386\u53F2]');
+            } else {
+              tab.xterm.write(_stripDecResponses(
+                '\r\n\x1b[33m[\u8FDB\u7A0B\u5DF2\u9000\u51FA\uFF0C\u9000\u51FA\u7801 ' +
+                msg.code + ']\x1b[0m'
+              ));
+            }
           }
           tab.status = 'disconnected';
           if (_bar) _bar.setStatus(tab.id, 'disconnected');
@@ -510,6 +714,7 @@ var TerminalManager = (function () {
         options: {},
         _resizeObserver: null,
         _container: null,
+        _readOnly: false,
       };
 
       _tabs.push(tab);
@@ -773,6 +978,8 @@ var TerminalManager = (function () {
       { label: '\u6E05\u9664\u5386\u53F2', action: function () { _clearHistory(tabId); } },
       { label: '\u91CD\u542F\u7EC8\u7AEF', action: function () { _restartTerminal(tabId); } },
       { separator: true },
+      { label: '\u80CC\u666F\u6A21\u5F0F: ' + _getBgModeLabel(), action: function () { _toggleTerminalBgMode(); } },
+      { separator: true },
       { label: '\u5173\u95ED', action: function () { closeTab(tabId); } },
       { label: '\u5173\u95ED\u5176\u4ED6', action: function () { closeOtherTabs(tabId); } },
       { label: '\u5173\u95ED\u5168\u90E8', action: function () { closeAllTabs(); }, danger: true },
@@ -869,12 +1076,7 @@ var TerminalManager = (function () {
           lineHeight: 1.15,
           scrollback: 5000,
           allowProposedApi: true,
-          theme: {
-            background: '#1e1e1e',
-            foreground: '#d4d4d4',
-            cursor: '#d4d4d4',
-            selectionBackground: '#264f78',
-          },
+          theme: _getTerminalTheme(),
         });
         var fitAddon = new FitAddon.FitAddon();
         xterm.loadAddon(fitAddon);
@@ -900,6 +1102,18 @@ var TerminalManager = (function () {
           if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
             tab.ws.send(JSON.stringify({ type: 'input', data: data }));
           }
+        });
+
+        // Re-attach binary input handler for mouse events (TUI apps)
+        xterm.onBinary(function (data) {
+          if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+            tab.ws.send(JSON.stringify({ type: 'input', data: data }));
+          }
+        });
+
+        // Re-attach click-to-focus
+        xtermContainer.addEventListener('click', function () {
+          xterm.focus();
         });
 
         xterm.write(_stripDecResponses('\x1b[33m[\u91CD\u65B0\u8FDE\u63A5\u4E2D...]\x1b[0m\r\n'));
@@ -1368,7 +1582,9 @@ var TerminalManager = (function () {
   async function _saveSavedConnections() {
     try {
       if (typeof persistSave === 'function') {
-        await persistSave('terminals.json', { connections: _savedConnections });
+        var existing = await persistLoad('terminals.json') || {};
+        existing.connections = _savedConnections;
+        await persistSave('terminals.json', existing);
       }
     } catch (e) {
       // ignore
@@ -1393,6 +1609,16 @@ var TerminalManager = (function () {
     closeOtherTabs: closeOtherTabs,
     renameTab: renameTab,
     showSSHDialog: _showSSHDialog,
+    refreshTheme: function () {
+      if (_terminalBgMode === 'theme') {
+        var theme = _getTerminalTheme('theme');
+        for (var i = 0; i < _tabs.length; i++) {
+          if (_tabs[i].xterm) {
+            _tabs[i].xterm.options.theme = theme;
+          }
+        }
+      }
+    },
   };
 })();
 

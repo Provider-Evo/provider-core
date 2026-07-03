@@ -164,9 +164,9 @@ async def autoupdate_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         body = await request.json()
         import tomlkit
 
-        config_path = _project_root() / "config.toml"
+        config_path = _project_root() / "config" / "main_config.toml"
         if not config_path.exists():
-            return aiohttp.web.json_response({"success": False, "error": "config.toml not found"}, status=404)
+            return aiohttp.web.json_response({"success": False, "error": "config/main_config.toml not found"}, status=404)
 
         with open(str(config_path), "r", encoding="utf-8") as f:
             doc = tomlkit.load(f)

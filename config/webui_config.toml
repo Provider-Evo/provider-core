@@ -1,0 +1,7 @@
+recordingDeviceId = ""
+layout = "vertical"
+sidebarCompressed = true
+theme = "auto"
+refreshInterval = 0
+timeoutMs = 30000
+compact = "1"

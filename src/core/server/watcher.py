@@ -42,7 +42,7 @@ def _classify(changed: Set[str]) -> Tuple[bool, Set[str]]:
         p = Path(fp)
         parts = p.parts
 
-        if p.name in ("config.toml", "main.py"):
+        if p.name in ("main_config.toml", "main.py"):
             needs_restart = True
             continue
 
@@ -92,7 +92,7 @@ class FileWatcher:
     """File change watcher — reuses echotools.FileWatcher + project classification logic.
 
     Watch logic:
-    - Core files (``core/``, ``routes/``, ``config.toml``, ``main.py``) changed
+    - Core files (``core/``, ``routes/``, ``config/main_config.toml``, ``main.py``) changed
       -> exit code 42 restart
     - Platform files (``src/platforms/<name>/``) changed
       -> hot-reload the platform, refresh candidates
@@ -116,7 +116,7 @@ class FileWatcher:
         src = root / "src"
         if src.is_dir():
             paths.append(src)
-        for f in (root / "config.toml", root / "main.py"):
+        for f in (root / "config" / "main_config.toml", root / "main.py"):
             if f.is_file():
                 paths.append(f)
 

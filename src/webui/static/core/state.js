@@ -268,6 +268,10 @@ function applyTheme() {
   themeState.textContent = 'theme: ' + state.settings.theme;
   document.getElementById('themeSelect').value = state.settings.theme;
   updateThemeIcon();
+  // Notify terminal module to refresh theme when in 'theme' mode
+  if (typeof TerminalManager !== 'undefined' && TerminalManager.refreshTheme) {
+    TerminalManager.refreshTheme();
+  }
 }
 
 function updateThemeIcon() {

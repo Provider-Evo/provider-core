@@ -60,7 +60,7 @@ _BINARY_EXTENSIONS = frozenset({
 # Path components that are forbidden for write operations
 _SENSITIVE_PATH_PARTS = frozenset({
     ".git", ".env", ".htaccess", ".gitignore",
-    "config.toml", "RECORD.md",
+    "config.toml", "main_config.toml", "RECORD.md",
 })
 
 

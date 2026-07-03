@@ -8,8 +8,9 @@
 .terminal-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 260px);
-  min-height: 400px;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -28,7 +29,39 @@
   flex: 1;
   position: relative;
   overflow: hidden;
+  background: var(--bg);
+}
+
+/* Classic black terminal background mode */
+.terminal-body.terminal-body--original {
   background: #1e1e1e;
+}
+
+/* ========================= Background Mode Button ========================= */
+
+.terminal-bg-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.terminal-bg-mode-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.terminal-bg-mode-btn .terminal-bg-mode-icon {
+  font-size: 14px;
 }
 
 .terminal-container.tab-layout-vertical .terminal-body {

@@ -59,7 +59,7 @@ QwenAdapter (adaptercore.py)
 | `runtime.py` | 运行时兼容性垫片（独立适配器执行） |
 | `accounts.py` | Account 数据类 + 账号列表（758KB，含大量数据） |
 | `shared.py` | 共享常量和辅助函数 |
-| `adaptercore.py` | 适配器实现，委托给 QwenClient |
+| `adaptercore.py` | 适配器实现，委托给 QwenClient（含 `supported_models` 属性） |
 
 ## 账号系统
 
