@@ -3151,3 +3151,12 @@ py_compile: adaptercore.py, __init__.py 通过
 [src/platforms/qwen/core/auth.py] 代理冷却机制：代理失败后跳过5分钟，避免重复尝试产生无意义WARNING
 py_compile: auth.py 通过
 py_compile: auth.py 通过
+
+2026-07-04 06:10:21
+
+[template/template_config.toml] 版本 2.2.214 -> 2.2.215
+[config.toml] 版本 2.2.214 -> 2.2.215
+[README.md] 版本徽章和路线图更新为 2.2.215
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.214 -> 2.2.215
+[src/core/server/watcher.py] 新增依赖包版本检测：每30秒检查echotools/aiohttp/pydantic修改时间，变化时自动重启
+py_compile: watcher.py 通过

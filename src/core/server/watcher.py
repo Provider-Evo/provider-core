@@ -3,9 +3,10 @@ from __future__ import annotations
 """File watcher — hot-reload platforms, detect core changes for restart."""
 
 import asyncio
+import importlib
 import os
 from pathlib import Path
-from typing import Any, Optional, Set, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 
 from echotools.logger.manager import get_logger
 from echotools.watcher.file_watcher import FileWatcher as _BaseWatcher
@@ -17,6 +18,10 @@ logger = get_logger(__name__)
 
 _CORE_DIRS = {"core", "routes"}
 _PLATFORM_DIR = "platforms"
+
+# Key packages to monitor for version changes
+_WATCHED_PACKAGES = ("echotools", "aiohttp", "pydantic")
+_PACKAGE_CHECK_INTERVAL = 30.0  # seconds
 
 
 def _classify(changed: Set[str]) -> Tuple[bool, Set[str]]:
@@ -91,6 +96,8 @@ class FileWatcher:
       -> exit code 42 restart
     - Platform files (``src/platforms/<name>/``) changed
       -> hot-reload the platform, refresh candidates
+    - Key package files (echotools, aiohttp, pydantic) changed
+      -> exit code 42 restart
     """
 
     def __init__(self, root: Path) -> None:
@@ -102,6 +109,8 @@ class FileWatcher:
         self._root = root
         self._registry: Optional[Any] = None
         self._session: Optional[Any] = None
+        self._package_mtimes: Dict[str, float] = {}
+        self._package_check_task: Optional[asyncio.Task] = None
 
         paths = []
         src = root / "src"
@@ -116,6 +125,36 @@ class FileWatcher:
             extensions={".py", ".toml"},
             interval=2.0,
         )
+
+    def _snapshot_package_mtimes(self) -> None:
+        """Record modification times of key package __init__.py files."""
+        for pkg_name in _WATCHED_PACKAGES:
+            try:
+                spec = importlib.util.find_spec(pkg_name)
+                if spec and spec.origin:
+                    mtime = os.path.getmtime(spec.origin)
+                    self._package_mtimes[pkg_name] = mtime
+            except Exception:
+                pass
+
+    async def _check_package_versions(self) -> None:
+        """Periodically check if key packages have been updated."""
+        while True:
+            await asyncio.sleep(_PACKAGE_CHECK_INTERVAL)
+            for pkg_name, old_mtime in list(self._package_mtimes.items()):
+                try:
+                    spec = importlib.util.find_spec(pkg_name)
+                    if spec and spec.origin:
+                        new_mtime = os.path.getmtime(spec.origin)
+                        if new_mtime != old_mtime:
+                            logger.info(
+                                "Package [%s] version changed, triggering restart",
+                                pkg_name,
+                            )
+                            _trigger_restart(self._session, self._registry)
+                            return
+                except Exception:
+                    pass
 
     async def _on_change(self, changed: Set[str]) -> None:
         """File change callback — classify and handle restart or hot-reload.
@@ -160,10 +199,14 @@ class FileWatcher:
         """
         self._registry = registry
         self._session = session
+        self._snapshot_package_mtimes()
+        self._package_check_task = asyncio.create_task(self._check_package_versions())
         await self._watcher.start(self._on_change)
         logger.info("File watcher started: %s", self._root)
 
     def stop(self) -> None:
         """Stop file watcher."""
+        if self._package_check_task and not self._package_check_task.done():
+            self._package_check_task.cancel()
         self._watcher.stop()
         logger.info("File watcher stopped")
