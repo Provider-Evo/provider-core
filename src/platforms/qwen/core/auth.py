@@ -33,8 +33,21 @@ from .crypto import generate_cookies, generate_fingerprint
 logger = logging.getLogger(__name__)
 
 
+_PROXY_COOLDOWN_SECONDS: float = 300.0  # skip proxy for 5 minutes after failure
+
+
 class AuthMixin:
     """Mixin implementing Qwen account authentication workflows."""
+
+    def _is_proxy_available(self) -> bool:
+        """Check if proxy should be tried (respects cooldown after failure)."""
+        if not hasattr(self, "_proxy_cooldown_until"):
+            self._proxy_cooldown_until = 0.0
+        return time.time() >= self._proxy_cooldown_until
+
+    def _mark_proxy_failed(self) -> None:
+        """Set cooldown after proxy failure."""
+        self._proxy_cooldown_until = time.time() + _PROXY_COOLDOWN_SECONDS
 
     @staticmethod
     def _is_proxy_error(exc: Exception) -> bool:
@@ -84,8 +97,8 @@ class AuthMixin:
                 account.last_login = time.time()
                 account.token_expires = time.time() + 24 * 60 * 60
 
-        # Try with proxy first if available
-        if use_proxy:
+        # Try with proxy first if available and not in cooldown
+        if use_proxy and self._is_proxy_available():
             try:
                 await _attempt(proxy_kwarg)
                 if SMART_PROXY_ENABLED:
@@ -93,11 +106,7 @@ class AuthMixin:
                 return True
             except Exception as exc:
                 if self._is_proxy_error(exc):
-                    logger.warning(
-                        "Qwen 代理登录失败 %s, 回退直连: %s",
-                        account.username[:6],
-                        exc,
-                    )
+                    self._mark_proxy_failed()
                     if SMART_PROXY_ENABLED:
                         self._proxy_selector.record(True, False)
                 else:
@@ -120,7 +129,7 @@ class AuthMixin:
         headers = build_headers(account.token, cookies=self._cookies)
         timeout = aiohttp.ClientTimeout(total=30)
 
-        if proxy_kwarg:
+        if proxy_kwarg and self._is_proxy_available():
             try:
                 async with self._session.get(
                     url, headers=headers, ssl=False, timeout=timeout, proxy=proxy_kwarg,
@@ -131,7 +140,7 @@ class AuthMixin:
             except Exception as exc:
                 if not self._is_proxy_error(exc):
                     raise
-                logger.warning("Qwen 代理请求失败 %s, 回退直连: %s", account.username[:6], exc)
+                self._mark_proxy_failed()
 
         async with self._session.get(
             url, headers=headers, ssl=False, timeout=timeout, proxy=None,
@@ -176,7 +185,7 @@ class AuthMixin:
             ) as response:
                 await response.read()
 
-        if proxy_kwarg:
+        if proxy_kwarg and self._is_proxy_available():
             try:
                 await _put(proxy_kwarg)
                 return
@@ -184,7 +193,7 @@ class AuthMixin:
                 if not self._is_proxy_error(exc):
                     logger.debug("Qwen 默认设置下发失败 %s: %s", account.username[:6], exc)
                     return
-                logger.debug("Qwen 代理设置下发失败 %s, 回退直连: %s", account.username[:6], exc)
+                self._mark_proxy_failed()
         try:
             await _put(None)
         except Exception as exc:

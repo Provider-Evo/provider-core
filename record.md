@@ -3141,4 +3141,13 @@ py_compile: adaptercore.py, __init__.py 通过
 [README.md] 版本徽章和路线图更新为 2.2.213
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.212 -> 2.2.213
 [src/platforms/qwen/core/auth.py] 修复 qwen 账号配置代理回退：_fetch_user_profile/_fetch_user_settings/_save_default_settings 代理失败时自动回退直连
+
+2026-07-04 05:59:29
+
+[template/template_config.toml] 版本 2.2.213 -> 2.2.214
+[config.toml] 版本 2.2.213 -> 2.2.214
+[README.md] 版本徽章和路线图更新为 2.2.214
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.213 -> 2.2.214
+[src/platforms/qwen/core/auth.py] 代理冷却机制：代理失败后跳过5分钟，避免重复尝试产生无意义WARNING
+py_compile: auth.py 通过
 py_compile: auth.py 通过

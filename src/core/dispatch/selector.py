@@ -4,11 +4,11 @@ from __future__ import annotations
 import time
 
 from echotools.dispatch.selector import AdaptiveSelector as _BaseSelector
-from echotools.dispatch.selector import TASRecord, TASWeights
+from echotools.dispatch.selector import TASRecord
 
 from src.logger import get_logger
 
-__all__ = ["Selector", "TASRecord", "TASWeights"]
+__all__ = ["Selector", "TASRecord"]
 
 logger = get_logger(__name__)
 

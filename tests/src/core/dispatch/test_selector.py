@@ -6,7 +6,7 @@ import tempfile
 import time
 from unittest.mock import patch
 
-from src.core.dispatch.selector import Selector, TASRecord, TASWeights
+from src.core.dispatch.selector import Selector, TASRecord
 from src.core.dispatch.candidate import Candidate
 
 
@@ -39,21 +39,6 @@ class TestTASRecord:
         r = TASRecord(error_time=time.time(), n_fails=0)
         d = r.to_dict()
         assert d["cooling"] is False
-
-
-class TestTASWeights:
-    def test_default_values(self):
-        w = TASWeights()
-        assert abs(w.w_err - 0.2) < 0.001
-        assert abs(w.w_call - 0.2) < 0.001
-        assert abs(w.w_speed - 0.2) < 0.001
-        assert abs(w.w_lat - 0.2) < 0.001
-        assert abs(w.w_fails - 0.2) < 0.001
-
-    def test_sum_is_one(self):
-        w = TASWeights()
-        total = w.w_err + w.w_call + w.w_speed + w.w_lat + w.w_fails
-        assert abs(total - 1.0) < 0.001
 
 
 @pytest.fixture
