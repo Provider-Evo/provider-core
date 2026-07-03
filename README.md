@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.219-blue)
-![Version](https://img.shields.io/badge/version-2.2.219-blue)
+![Status](https://img.shields.io/badge/status-v2.2.220-blue)
+![Version](https://img.shields.io/badge/version-2.2.220-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,9 +1264,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.219
+### 当前版本：v2.2.220
 
-✅ 已完成（v2.2.219）：
+✅ 已完成（v2.2.220）：
+- fix(terminal): resolve terminal height overflow with precise flex layout and viewport-constrained sizing
 - fix(qwen): add `supported_models` property to QwenAdapter for runtime model count reporting
 - feat(terminal): improve session recovery with read-only reattach and offline output consumption
 - feat(terminal): add background mode toggle button for terminal UI

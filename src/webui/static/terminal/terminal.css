@@ -10,7 +10,6 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  height: 100%;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -27,6 +26,7 @@
 
 .terminal-body {
   flex: 1;
+  min-height: 0;
   position: relative;
   overflow: hidden;
   background: var(--bg);
