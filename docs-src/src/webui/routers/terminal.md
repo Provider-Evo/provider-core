@@ -17,6 +17,8 @@
 | `input` | 用户键盘输入 |
 | `resize` | 终端窗口尺寸变化 |
 | `close_session` | 用户关闭标签页 |
+| `clear` | 清除终端历史 |
+| `restart` | 重启终端会话 |
 | `ping` | 心跳 |
 
 ### 服务器 -> 客户端
@@ -30,6 +32,9 @@
 | `exit` | 进程退出，返回退出码 |
 | `session_closed` | 会话已销毁 |
 | `existing_sessions` | 当前已有会话列表（用于前端恢复） |
+| `history_cleared` | 历史已清除（响应 `clear` 消息） |
+| `snapshot` | 终端快照（响应 `restart` 消息） |
+| `metadata` | 子进程监控元数据（`has_running_subprocess`、`child_command_label`） |
 
 ## 会话生命周期
 

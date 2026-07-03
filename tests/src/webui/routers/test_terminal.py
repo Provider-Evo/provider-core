@@ -75,8 +75,9 @@ class TestTerminalWSErrorPath:
         request = MagicMock()
         request.match_info = {"session_id": "test-local-err"}
 
-        with patch.object(
-            terminal_module, "WebSocketResponse", return_value=ws,
+        with patch(
+            "aiohttp.web.WebSocketResponse",
+            return_value=ws,
         ), patch(
             "src.webui.routers.terminal.get_terminal_store",
             return_value=MagicMock(),
@@ -110,8 +111,9 @@ class TestTerminalWSErrorPath:
         request = MagicMock()
         request.match_info = {"session_id": "test-ssh-err"}
 
-        with patch.object(
-            terminal_module, "WebSocketResponse", return_value=ws,
+        with patch(
+            "aiohttp.web.WebSocketResponse",
+            return_value=ws,
         ), patch(
             "src.webui.routers.terminal.get_terminal_store",
             return_value=MagicMock(),
@@ -145,8 +147,9 @@ class TestTerminalWSErrorPath:
 
         sessions: Dict[str, Any] = {}
 
-        with patch.object(
-            terminal_module, "WebSocketResponse", return_value=ws,
+        with patch(
+            "aiohttp.web.WebSocketResponse",
+            return_value=ws,
         ), patch(
             "src.webui.routers.terminal.get_terminal_store",
             return_value=MagicMock(),
@@ -180,8 +183,9 @@ class TestTerminalWSErrorPath:
         existing_sess.alive = True
         existing_sess.name = "tab1"
 
-        with patch.object(
-            terminal_module, "WebSocketResponse", return_value=ws,
+        with patch(
+            "aiohttp.web.WebSocketResponse",
+            return_value=ws,
         ), patch(
             "src.webui.routers.terminal.get_terminal_store",
             return_value=MagicMock(),
@@ -297,3 +301,62 @@ class TestTerminalSession:
             ssh_config={"host": "192.0.2.1", "port": 22, "username": "user"},
             name=None, status="alive",
         )
+
+    @pytest.mark.asyncio
+    async def test_clear_history(self):
+        """Test clear_history sends history_cleared to all clients."""
+        session = _TerminalSession("s5", "local")
+        session._terminal = MagicMock()
+        session._terminal.clear_history = AsyncMock()
+        client = MagicMock()
+        client.closed = False
+        session._clients = {client}
+
+        await session.clear()
+
+        session._terminal.clear_history.assert_called_once()
+        client.send_json.assert_called_once_with({"type": "history_cleared"})
+
+    @pytest.mark.asyncio
+    async def test_restart_terminal(self):
+        """Test restart kills old terminal and starts new one."""
+        session = _TerminalSession("s6", "local")
+        old_terminal = MagicMock()
+        old_terminal.kill = AsyncMock()
+        session._terminal = old_terminal
+        session._clients = set()
+
+        with patch(
+            "src.webui.routers.terminal.LocalTerminal",
+        ) as MockLT:
+            mock_terminal = MagicMock()
+            mock_terminal.start = AsyncMock(return_value=True)
+            mock_terminal.history = "test history"
+            MockLT.return_value = mock_terminal
+
+            result = await session.restart(cols=80, rows=24)
+
+        assert result is True
+        old_terminal.kill.assert_called_once()
+        MockLT.assert_called_once_with("s6")
+        mock_terminal.start.assert_called_once_with(80, 24)
+
+    @pytest.mark.asyncio
+    async def test_metadata_broadcast(self):
+        """Test metadata is broadcast to all clients."""
+        session = _TerminalSession("s7", "local")
+        client1 = MagicMock()
+        client1.closed = False
+        client2 = MagicMock()
+        client2.closed = False
+        session._clients = {client1, client2}
+
+        metadata = {"has_running_subprocess": True, "child_command_label": "python"}
+        await session._broadcast_metadata(metadata)
+
+        for client in [client1, client2]:
+            client.send_json.assert_called_once_with({
+                "type": "metadata",
+                "has_running_subprocess": True,
+                "child_command_label": "python",
+            })

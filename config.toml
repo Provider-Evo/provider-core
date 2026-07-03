@@ -1,5 +1,5 @@
 [server]
-version = "2.2.212"
+version = "2.2.213"
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -57,3 +57,8 @@ branch = "dev"
 interval = 300
 diff_update = false
 mirrors = ["https://99z.top/https://github.com/", "https://github.com/"]
+
+[terminal]
+max_history_lines = 5000
+subprocess_monitor_interval = 1
+enable_subprocess_monitoring = true

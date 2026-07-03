@@ -615,3 +615,29 @@ Generated on: 2026-07-02
 - Established echotools.web as the standard location for shared web logic.
 
 ---
+
+## ADR-033: Terminal System Migration to T3 Code Architecture
+
+**Context**: The existing terminal system in provider-v2 had limited functionality compared to T3 Code's implementation. T3 Code provided a more complete terminal experience with shell fallback chains, output sanitization, subprocess monitoring, history management, and multi-client support.
+
+**Options considered**:
+- **Option A** — Keep existing terminal implementation and add features incrementally.
+- **Option B** — Migrate to T3 Code's architecture while maintaining backward compatibility.
+
+**Decision**: Migrated provider-v2's terminal system to match T3 Code's architecture, updating both echotools and provider-v2 while keeping existing WebUI functional.
+
+**Rationale**: T3 Code's terminal implementation provided a more robust and feature-complete solution with:
+1. Shell fallback chains for cross-platform compatibility
+2. Output sanitization for clean history management
+3. Subprocess monitoring with metadata events
+4. History management with 5000-line limit
+5. Multi-client support with process keep-alive
+6. Clear and restart operations
+
+**Consequences**:
+- Enhanced terminal functionality with clear history, restart, and subprocess monitoring.
+- Improved cross-platform compatibility with shell fallback chains.
+- Added metadata events for real-time subprocess status updates.
+- Maintained backward compatibility with existing WebUI.
+- Required version coordination between echotools and provider-v2.
+- Established pattern for future terminal feature development.

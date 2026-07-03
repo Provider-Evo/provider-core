@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.212-blue)
-![Version](https://img.shields.io/badge/version-2.2.212-blue)
+![Status](https://img.shields.io/badge/status-v2.2.213-blue)
+![Version](https://img.shields.io/badge/version-2.2.213-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,7 +1264,20 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.212
+### 当前版本：v2.2.213
+
+✅ 已完成（v2.2.213）：
+- feat(terminal): migrate terminal system to T3 Code architecture
+  - Added shell fallback chains for cross-platform compatibility (Windows: pwsh.exe → PowerShell → cmd.exe; POSIX: $SHELL → zsh → bash → sh)
+  - Added output sanitization for clean history management
+  - Added subprocess monitoring with metadata events
+  - Added history management with 5000-line limit
+  - Added clear history and restart terminal operations
+  - Added subprocess indicator showing running command name in tab title
+  - Added terminal configuration options (max_history_lines, subprocess_monitor_interval, enable_subprocess_monitoring)
+  - Updated frontend with Clear History and Restart buttons in context menu
+  - Updated WebSocket protocol with clear, restart, and metadata messages
+  - All tests passing, documentation updated
 
 ✅ 已完成（v2.2.209）：
 - fix(routes): accept enable_thinking from extra_body for thinking mode

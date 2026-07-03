@@ -163,6 +163,17 @@ var TerminalManager = (function () {
     // of init(), which uses a WebSocket to receive existing_sessions.
   }
 
+  function _updateTabTitle(tab) {
+    if (!tab || !_bar) return;
+
+    var title = tab.name;
+    if (tab._hasRunningSubprocess && tab._childCommandLabel) {
+      title += ' [' + tab._childCommandLabel + ']';
+    }
+
+    _bar.setTitle(tab.id, title);
+  }
+
   function _onActivate() {
     // Fit the active terminal when tab becomes visible
     var tab = _getActiveTab();
@@ -423,6 +434,13 @@ var TerminalManager = (function () {
         } else if (msg.type === 'session_closed') {
           // Backend confirms the session was killed (response to close_session)
           // Tab is already being cleaned up by closeTab()
+        } else if (msg.type === 'metadata') {
+          // Subprocess monitoring metadata
+          if (msg.has_running_subprocess !== undefined) {
+            tab._hasRunningSubprocess = msg.has_running_subprocess;
+            tab._childCommandLabel = msg.child_command_label || null;
+            _updateTabTitle(tab);
+          }
         } else if (msg.type === 'existing_sessions') {
           // Backend advertises surviving sessions from a previous connection.
           // Recreate tab UI and reconnect WebSocket for each alive session.
@@ -752,6 +770,9 @@ var TerminalManager = (function () {
       { label: '\u91CD\u547D\u540D', action: function () { _promptRename(tabId); } },
       { label: '\u91CD\u65B0\u8FDE\u63A5', action: function () { _reconnectTab(tabId); } },
       { separator: true },
+      { label: '\u6E05\u9664\u5386\u53F2', action: function () { _clearHistory(tabId); } },
+      { label: '\u91CD\u542F\u7EC8\u7AEF', action: function () { _restartTerminal(tabId); } },
+      { separator: true },
       { label: '\u5173\u95ED', action: function () { closeTab(tabId); } },
       { label: '\u5173\u95ED\u5176\u4ED6', action: function () { closeOtherTabs(tabId); } },
       { label: '\u5173\u95ED\u5168\u90E8', action: function () { closeAllTabs(); }, danger: true },
@@ -886,6 +907,42 @@ var TerminalManager = (function () {
     }
 
     _connectWebSocket(tab);
+  }
+
+  function _clearHistory(tabId) {
+    var tab = _getTabById(tabId);
+    if (!tab || !tab.ws || tab.ws.readyState !== WebSocket.OPEN) return;
+
+    try {
+      tab.ws.send(JSON.stringify({ type: 'clear' }));
+      if (tab.xterm) {
+        tab.xterm.clear();
+        tab.xterm.write('\x1b[33m[\u5386\u53F2\u5DF2\u6E05\u9664]\x1b[0m\r\n');
+      }
+    } catch (e) {
+      console.error('Failed to send clear command:', e);
+    }
+  }
+
+  function _restartTerminal(tabId) {
+    var tab = _getTabById(tabId);
+    if (!tab || !tab.ws || tab.ws.readyState !== WebSocket.OPEN) return;
+
+    if (!confirm('\u786E\u5B9A\u8981\u91CD\u542F\u7EC8\u7AEF\u5417\uFF1F\u5F53\u524D\u8FDB\u7A0B\u5C06\u88AB\u7EC8\u6B62\u3002')) {
+      return;
+    }
+
+    try {
+      var cols = tab.xterm ? tab.xterm.cols : 80;
+      var rows = tab.xterm ? tab.xterm.rows : 24;
+      tab.ws.send(JSON.stringify({ type: 'restart', cols: cols, rows: rows }));
+      if (tab.xterm) {
+        tab.xterm.clear();
+        tab.xterm.write('\x1b[33m[\u91CD\u542F\u4E2D...]\x1b[0m\r\n');
+      }
+    } catch (e) {
+      console.error('Failed to send restart command:', e);
+    }
   }
 
   // ========================= Chooser Tab (New Tab Page) =========================

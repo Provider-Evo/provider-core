@@ -114,29 +114,37 @@ class AuthMixin:
                 self._proxy_selector.record(False, False)
             raise
 
-    async def _fetch_user_settings(self, account: Account) -> Dict[str, Any]:
+    async def _fetch_with_proxy_fallback(self, url: str, account: Account) -> Dict[str, Any]:
+        """GET request with proxy fallback — try proxy first, fall back to direct on proxy error."""
+        proxy_kwarg = self._get_proxy_kwarg()
+        headers = build_headers(account.token, cookies=self._cookies)
+        timeout = aiohttp.ClientTimeout(total=30)
+
+        if proxy_kwarg:
+            try:
+                async with self._session.get(
+                    url, headers=headers, ssl=False, timeout=timeout, proxy=proxy_kwarg,
+                ) as response:
+                    if response.status != 200:
+                        return {}
+                    return await response.json(content_type=None)
+            except Exception as exc:
+                if not self._is_proxy_error(exc):
+                    raise
+                logger.warning("Qwen 代理请求失败 %s, 回退直连: %s", account.username[:6], exc)
+
         async with self._session.get(
-            f"{BASE_URL}{SETTINGS_PATH}",
-            headers=build_headers(account.token, cookies=self._cookies),
-            ssl=False,
-            timeout=aiohttp.ClientTimeout(total=30),
-            proxy=self._get_proxy_kwarg(),
+            url, headers=headers, ssl=False, timeout=timeout, proxy=None,
         ) as response:
             if response.status != 200:
                 return {}
             return await response.json(content_type=None)
 
+    async def _fetch_user_settings(self, account: Account) -> Dict[str, Any]:
+        return await self._fetch_with_proxy_fallback(f"{BASE_URL}{SETTINGS_PATH}", account)
+
     async def _fetch_user_profile(self, account: Account) -> Dict[str, Any]:
-        async with self._session.get(
-            f"{AUTH_BASE_URL}/api/v2/user",
-            headers=build_headers(account.token, cookies=self._cookies),
-            ssl=False,
-            timeout=aiohttp.ClientTimeout(total=30),
-            proxy=self._get_proxy_kwarg(),
-        ) as response:
-            if response.status != 200:
-                return {}
-            return await response.json(content_type=None)
+        return await self._fetch_with_proxy_fallback(f"{AUTH_BASE_URL}/api/v2/user", account)
 
     async def _configure_account(self, account: Account) -> None:
         profile = await self._fetch_user_profile(account)
@@ -153,16 +161,32 @@ class AuthMixin:
             account.context_length = context_length
 
     async def _save_default_settings(self, account: Account) -> None:
-        try:
+        proxy_kwarg = self._get_proxy_kwarg()
+        headers = build_headers(account.token, cookies=self._cookies)
+        timeout = aiohttp.ClientTimeout(total=30)
+
+        async def _put(proxy: Optional[str]) -> None:
             async with self._session.put(
                 f"{BASE_URL}{SETTINGS_PATH}",
                 json=DEFAULT_FULL_SETTINGS,
-                headers=build_headers(account.token, cookies=self._cookies),
+                headers=headers,
                 ssl=False,
-                timeout=aiohttp.ClientTimeout(total=30),
-                proxy=self._get_proxy_kwarg(),
+                timeout=timeout,
+                proxy=proxy,
             ) as response:
                 await response.read()
+
+        if proxy_kwarg:
+            try:
+                await _put(proxy_kwarg)
+                return
+            except Exception as exc:
+                if not self._is_proxy_error(exc):
+                    logger.debug("Qwen 默认设置下发失败 %s: %s", account.username[:6], exc)
+                    return
+                logger.debug("Qwen 代理设置下发失败 %s, 回退直连: %s", account.username[:6], exc)
+        try:
+            await _put(None)
         except Exception as exc:
             logger.debug("Qwen 默认设置下发失败 %s: %s", account.username[:6], exc)
 
