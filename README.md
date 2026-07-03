@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.211-blue)
-![Version](https://img.shields.io/badge/version-2.2.211-blue)
+![Status](https://img.shields.io/badge/status-v2.2.212-blue)
+![Version](https://img.shields.io/badge/version-2.2.212-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,7 +1264,7 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.211
+### 当前版本：v2.2.212
 
 ✅ 已完成（v2.2.209）：
 - fix(routes): accept enable_thinking from extra_body for thinking mode

@@ -423,3 +423,195 @@ This document captures significant architectural decisions in the provider-self 
 ---
 
 Generated on: 2026-07-02
+
+---
+
+## ADR-023: DSML Tool-Calling Protocol Addition
+
+**Context**: The tool calling (fncall) system needed to support the DSML protocol for specific LLM providers that use a different tool invocation format, requiring extension of the existing 5-protocol architecture.
+
+**Options considered**:
+- **Option A** — Extend existing bracket/antml protocols to accommodate DSML format.
+- **Option B** — Add DSML as a new standalone protocol mode alongside existing ones.
+
+**Decision**: Added DSML as a 6th protocol mode with dedicated parser and renderer (v2.2.192).
+
+**Rationale**: DSML has a distinct syntax and semantics that cannot be cleanly mapped to existing protocols without significant complexity. A standalone protocol keeps each implementation focused and maintainable.
+
+**Consequences**:
+- Increased protocol count from 5 to 6, expanding fncall_mapping options.
+- Required new protocol-specific tests and documentation.
+- Maintained backward compatibility with existing protocol configurations.
+
+---
+
+## ADR-024: native_tools Platform Capability Declaration
+
+**Context**: Some LLM platforms natively support tool calling in their API, bypassing the need for fncall protocol rendering. The system needed a way for platforms to declare this capability.
+
+**Options considered**:
+- **Option A** — Keep tool calling always routed through the fncall plugin system.
+- **Option B** — Allow platforms to declare native tool calling support, bypassing fncall.
+
+**Decision**: Added `native_tools` capability flag that platforms can set to indicate native tool calling support, allowing the gateway to skip fncall processing for those platforms.
+
+**Rationale**: For platforms that natively support tool calling, forcing requests through the fncall protocol layer adds unnecessary complexity and can degrade tool calling quality. Native support is simpler and more reliable.
+
+**Consequences**:
+- Platforms can now opt out of fncall processing.
+- Gateway routing logic became more complex with capability-based branching.
+- Required careful handling of the transition path for platforms that partially support native tools.
+
+---
+
+## ADR-025: ProxySelector Smart Proxy Selection
+
+**Context**: The system needed intelligent proxy selection across multiple proxy sources, replacing the previous static candidate model with dynamic scoring-based selection.
+
+**Options considered**:
+- **Option A** — Continue using static candidate lists with round-robin selection.
+- **Option B** — Implement a ProxySelector with dynamic scoring and performance-based selection.
+
+**Decision**: Implemented ProxySelector that evaluates proxies based on latency, success rate, and availability, selecting the optimal proxy for each request.
+
+**Rationale**: Static proxy selection does not account for real-time proxy performance. Dynamic selection based on actual metrics improves request success rate and reduces latency.
+
+**Consequences**:
+- Improved request routing based on real-time proxy performance.
+- Added scoring overhead per request, though minimal.
+- Required proxy metric collection and persistence infrastructure.
+
+---
+
+## ADR-026: 5-Dimensional Adaptive TAS Scoring
+
+**Context**: The OpenCode platform's Traffic Assignment System (TAS) used simple scoring that did not adequately capture proxy performance across multiple dimensions.
+
+**Options considered**:
+- **Option A** — Keep the existing simple scoring model.
+- **Option B** — Refactor to a 5-dimensional adaptive scoring system with persistence.
+
+**Decision**: Refactored TAS to use 5 scoring dimensions (latency, success rate, error rate, availability, throughput) with adaptive weighting and persistent score storage.
+
+**Rationale**: A multi-dimensional scoring model provides a more accurate proxy quality assessment. Adaptive weighting allows the system to adjust to changing conditions, and persistence prevents score loss on restart.
+
+**Consequences**:
+- Improved proxy selection accuracy and request success rate.
+- Added complexity in scoring calculation and weight management.
+- Score persistence required storage infrastructure and periodic refresh logic.
+
+---
+
+## ADR-027: Platform Compliance Audit and Standardization
+
+**Context**: Platform adapters had accumulated inconsistencies in naming conventions, interface patterns, and code organization, making maintenance and extension difficult.
+
+**Options considered**:
+- **Option A** — Keep existing platform interfaces with incremental fixes.
+- **Option B** — Conduct a full compliance audit with standardized naming and patterns.
+
+**Decision**: Conducted a platform-wide compliance audit, renaming internal modules (impl to adaptercore), extracting constants, and standardizing facade patterns.
+
+**Rationale**: Consistent patterns across platform adapters reduce cognitive load for developers, make the codebase more predictable, and simplify adding new platforms.
+
+**Consequences**:
+- Improved code consistency across all platform adapters.
+- Required updates to all platform import paths.
+- Established a reference pattern for future platform implementations.
+
+---
+
+## ADR-028: Platform-Specific Config Sub-sections
+
+**Context**: Platform configuration was limited to top-level settings, making it difficult to configure platform-specific options like base_url without polluting the global namespace.
+
+**Options considered**:
+- **Option A** — Keep all platform config at the top level of config.toml.
+- **Option B** — Introduce `[platforms.<name>]` sub-sections for platform-specific settings.
+
+**Decision**: Added `[platforms.<name>]` config sub-sections to expose platform-specific settings like base_url while keeping the global config clean.
+
+**Rationale**: Platform-specific settings logically belong to their respective platforms. Sub-sections provide clear organization and prevent naming conflicts between platforms.
+
+**Consequences**:
+- Cleaner config.toml structure with better separation of concerns.
+- Required config migration for existing platform-specific settings.
+- Enabled per-platform base_url configuration without global overrides.
+
+---
+
+## ADR-029: Qwen Network Circuit Breaker
+
+**Context**: Qwen platform login operations were failing silently under network instability, causing cascading failures and poor user experience.
+
+**Options considered**:
+- **Option A** — Keep simple retry logic with exponential backoff.
+- **Option B** — Implement a network circuit breaker that stops attempts after repeated failures and periodically tests recovery.
+
+**Decision**: Implemented a network circuit breaker for Qwen login operations with failure counting, open/closed/half-open states, and automatic recovery probing.
+
+**Rationale**: A circuit breaker prevents wasted resources on doomed requests and provides faster recovery detection than simple retries. It isolates network issues from application logic.
+
+**Consequences**:
+- Reduced resource waste during network outages.
+- Improved login reliability with automatic recovery detection.
+- Added complexity in circuit breaker state management and configuration.
+
+---
+
+## ADR-030: Qwen Periodic Token Validation and Auto-Relogin
+
+**Context**: Qwen session tokens expired silently, causing request failures that were not caught until actual API calls were made.
+
+**Options considered**:
+- **Option A** — Rely on API error responses to trigger token refresh.
+- **Option B** — Implement periodic background token validation with proactive relogin.
+
+**Decision**: Added a background task that periodically validates Qwen tokens and triggers automatic relogin when tokens are detected as invalid.
+
+**Rationale**: Proactive token validation prevents user-facing errors by refreshing tokens before they expire. Background validation is invisible to users and maintains session continuity.
+
+**Consequences**:
+- Reduced token expiration-related request failures.
+- Added background task management and scheduling complexity.
+- Required careful interval tuning to balance freshness vs API call overhead.
+
+---
+
+## ADR-031: Future Annotations Adoption
+
+**Context**: The codebase was inconsistent in using Python type hints, with some modules using string annotations and others using direct type references, causing potential circular import issues.
+
+**Options considered**:
+- **Option A** — Keep the existing mixed annotation style.
+- **Option B** — Adopt `from __future__ import annotations` across all core and platform modules.
+
+**Decision**: Adopted `from __future__ import annotations` in core and Qwen modules to enable PEP 563 postponed evaluation of annotations.
+
+**Rationale**: Future annotations prevent circular import issues, enable forward references, and allow cleaner type hint syntax. They also improve runtime performance by avoiding annotation evaluation at import time.
+
+**Consequences**:
+- Eliminated potential circular import issues in type hints.
+- Enabled cleaner type hint syntax with forward references.
+- Required validation that runtime annotation inspection still works where needed.
+
+---
+
+## ADR-032: echotools.web Shared Web Logic Extraction
+
+**Context**: Common web-related utilities (static file serving, middleware, WebSocket helpers) were duplicated across the provider-self project and other projects using echotools.
+
+**Options considered**:
+- **Option A** — Keep web utilities within each project.
+- **Option B** — Extract common web logic into echotools.web as a shared module.
+
+**Decision**: Extracted common web-related utilities into `echotools.web` as a shared module, reducing duplication across projects.
+
+**Rationale**: Web utilities like static file middleware, WebSocket helpers, and request processing patterns are common across projects. Centralizing them in echotools.web promotes reuse and consistency.
+
+**Consequences**:
+- Reduced code duplication for web utilities across projects.
+- Required version coordination between provider-self and echotools.
+- Established echotools.web as the standard location for shared web logic.
+
+---

@@ -3122,3 +3122,14 @@ py_compile: 34 files passed
 pytest: 447 passed, 35 failed (pre-existing), 20 errors (pre-existing)
 
 pytest: 0 passed, 0 failed, 0 skipped, 1 collection error (test_xml_protocol.py import error, pre-existing)
+
+2026-07-03 00:00:00
+
+[template/template_config.toml] 版本 2.2.211 -> 2.2.212
+[config.toml] 版本 2.2.211 -> 2.2.212
+[README.md] 版本徽章和路线图更新为 2.2.212
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.211 -> 2.2.212
+[src/platforms/qwen/core/adaptercore.py] 修复 qwen 适配器注册失败：添加 name/init/close 抽象方法实现，移除无效的 super().__init__(platform) 调用
+[src/platforms/qwen/__init__.py] 修正导入路径指向 core.adaptercore（旧 adapter 模块已删除）
+[PROJECT_DECISIONS.md] 新增 ADR-029 到 ADR-032 架构决策记录
+py_compile: adaptercore.py, __init__.py 通过

@@ -9,6 +9,7 @@ from typing import Any, Optional, Set, Tuple
 
 from echotools.logger.manager import get_logger
 from echotools.watcher.file_watcher import FileWatcher as _BaseWatcher
+from loguru import logger as _loguru_logger
 
 __all__ = ["FileWatcher"]
 

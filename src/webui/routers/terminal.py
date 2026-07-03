@@ -143,6 +143,7 @@ class _TerminalSession:
                 on_output=self._broadcast_output,
                 on_error=self._broadcast_error,
                 on_exit=self._broadcast_exit,
+                on_metadata=self._broadcast_metadata,
             )
             buffered = self._terminal.attach(callback)
 
@@ -236,6 +237,86 @@ class _TerminalSession:
                 dead_clients.append(ws)
         for ws in dead_clients:
             self._clients.discard(ws)
+
+    async def _broadcast_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Forward metadata events to all attached WebSocket clients."""
+        dead_clients = []
+        for ws in list(self._clients):
+            try:
+                if not ws.closed:
+                    await ws.send_json({"type": "metadata", **metadata})
+            except Exception:
+                dead_clients.append(ws)
+        for ws in dead_clients:
+            self._clients.discard(ws)
+
+    # ------------------------------------------------------------------
+    # New operations (same as T3 Code)
+    # ------------------------------------------------------------------
+
+    async def clear(self) -> None:
+        """Clear terminal history and notify all clients."""
+        if self._terminal:
+            await self._terminal.clear_history()
+
+        # Notify all clients
+        dead_clients = []
+        for ws in list(self._clients):
+            try:
+                if not ws.closed:
+                    await ws.send_json({"type": "history_cleared"})
+            except Exception:
+                dead_clients.append(ws)
+        for ws in dead_clients:
+            self._clients.discard(ws)
+
+    async def restart(self, cols: int = 80, rows: int = 24) -> bool:
+        """Restart the terminal session (keep same tab).
+
+        Kills the current process and starts a new one.
+        Returns True if restart was successful.
+        """
+        if self._terminal:
+            # Kill existing terminal
+            await self._terminal.kill()
+
+            # Start new terminal
+            if self.kind == "ssh":
+                # For SSH, we need the original connection params
+                # For now, just return False as SSH restart requires storing params
+                return False
+            else:
+                self._terminal = LocalTerminal(self.session_id)
+                ok = await self._terminal.start(cols, rows)
+
+                if ok:
+                    # Re-attach all clients
+                    for ws in list(self._clients):
+                        callback = TerminalCallback(
+                            on_output=self._broadcast_output,
+                            on_error=self._broadcast_error,
+                            on_exit=self._broadcast_exit,
+                            on_metadata=self._broadcast_metadata,
+                        )
+                        self._terminal.attach(callback)
+
+                    # Send snapshot to all clients
+                    snapshot = self._terminal.history
+                    dead_clients = []
+                    for ws in list(self._clients):
+                        try:
+                            if not ws.closed:
+                                await ws.send_json({
+                                    "type": "snapshot",
+                                    "history": snapshot,
+                                })
+                        except Exception:
+                            dead_clients.append(ws)
+                    for ws in dead_clients:
+                        self._clients.discard(ws)
+
+                    return True
+        return False
 
     # ------------------------------------------------------------------
     # Client -> session delegation
@@ -511,6 +592,21 @@ async def terminal_ws(request: aiohttp.web.Request) -> aiohttp.web.WebSocketResp
                     await session.kill()
                     session = None
                     initialized = False
+
+            elif msg_type == "clear" and session:
+                # Clear terminal history
+                await session.clear()
+
+            elif msg_type == "restart" and session:
+                # Restart terminal session
+                cols = int(payload.get("cols", 80))
+                rows = int(payload.get("rows", 24))
+                ok = await session.restart(cols, rows)
+                if not ok:
+                    await ws.send_json({
+                        "type": "error",
+                        "message": "Failed to restart terminal",
+                    })
 
             elif msg_type == "ping":
                 await ws.send_json({"type": "pong"})

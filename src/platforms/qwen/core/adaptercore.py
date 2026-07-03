@@ -23,12 +23,23 @@ from .client import QwenClient
 class QwenAdapter(PlatformAdapter):
     """Expose the Qwen client through the platform adapter interface."""
 
+    @property
+    def name(self) -> str:
+        return "qwen"
+
     def __init__(self) -> None:
-        super().__init__(platform="qwen")
         self._client = QwenClient()
         self._session: Optional[aiohttp.ClientSession] = None
         self._init_lock = asyncio.Lock()
         self._initialized = False
+
+    async def init(self, session: aiohttp.ClientSession) -> None:
+        """Initialize the adapter (session parameter ignored; manages own session)."""
+        await self.ensure_initialized()
+
+    async def close(self) -> None:
+        """Shut down the client and the shared HTTP session."""
+        await self.shutdown()
 
     async def ensure_initialized(self) -> None:
         """Initialize the underlying HTTP client once."""
@@ -69,11 +80,16 @@ class QwenAdapter(PlatformAdapter):
         messages: List[Dict[str, Any]],
         model: str,
         stream: bool,
-        **kwargs: Any,
+        *,
+        thinking: bool = False,
+        search: bool = False,
+        **kw: Any,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """Proxy chat completion calls to the underlying Qwen client."""
         await self.ensure_initialized()
-        async for chunk in self._client.complete(candidate, messages, model, stream, **kwargs):
+        async for chunk in self._client.complete(
+            candidate, messages, model, stream, thinking=thinking, search=search, **kw,
+        ):
             yield chunk
 
     async def stop(self, candidate: Candidate) -> bool:
