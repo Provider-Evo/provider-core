@@ -8,7 +8,7 @@ from typing import Dict, Optional, Union
 
 from src.logger import get_logger
 
-LOCAL_STORE_FILE_PATH = "data/local_store.json"
+LOCAL_STORE_FILE_PATH = "persist/webui/local_store.json"
 logger = get_logger(__name__)
 StoreValue = Union[str, list, dict, int, float, bool]
 

@@ -3233,3 +3233,15 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 
 [src/webui/static/terminal/terminal.js] 增强 _stripDecResponses 函数处理跨消息 DEC 序列拆分，添加 _pendingDecStrip 状态跟踪
 [src/webui/static/ui/styles.css] 修复终端面板切换位置异常：移除 display:flex !important，改为 #tab-terminal.active 时应用 flex 布局
+
+2026-07-04 20:00:00
+
+[src/webui/static/terminal/terminal.js] 实现终端自定义背景图片功能：三态模式切换（theme/original/custom）、图片选择器、透明度控制、填充模式选择、持久化存储
+[src/webui/static/terminal/terminal.css] 添加自定义背景图片样式和控制面板样式
+[src/webui/static/index.html] 添加自定义背景控制组件：图片选择按钮、透明度滑块、填充模式按钮
+
+2026-07-04 19:15:36
+
+[src/webui/core/local_store.py] 本地存储路径从 data/local_store.json 迁移到 persist/webui/local_store.json
+[src/webui/static/chat/chat.js] 修复清空对话按钮：在 clearChatMessages 中清空 chatConversationHistory 数组
+[src/webui/static/ui/bootstrap.js] 移除清空对话事件处理中重复的 chatConversationHistory 赋值

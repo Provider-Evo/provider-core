@@ -1337,16 +1337,12 @@ section.tab-panel > * {
 }
 
 /* ========== Terminal Tab Layout ========== */
-#tab-terminal {
-  display: flex !important;
+#tab-terminal.active {
+  display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
   gap: 0;
-}
-
-#tab-terminal.active {
-  display: flex;
 }
 
 #tab-terminal > .flex {

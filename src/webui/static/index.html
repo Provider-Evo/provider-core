@@ -394,6 +394,15 @@
               <span id="terminalBgModeIcon">&#9788;</span>
               <span id="terminalBgModeLabel">Provider 主题</span>
             </button>
+            <div id="terminalCustomBgControls" class="terminal-custom-bg-controls" style="display:none;">
+              <button type="button" id="terminalBgImageBtn" class="terminal-bg-mode-btn" title="选择背景图片">
+                <span>&#128444;</span>
+              </button>
+              <input type="range" id="terminalBgOpacityRange" min="10" max="90" value="30" class="terminal-bg-opacity-range" title="调整透明度">
+              <button type="button" id="terminalBgSizeBtn" class="terminal-bg-mode-btn" title="切换填充模式">
+                <span id="terminalBgSizeLabel">cover</span>
+              </button>
+            </div>
           </div>
         </div>
         <div class="terminal-container" id="terminalContainer">

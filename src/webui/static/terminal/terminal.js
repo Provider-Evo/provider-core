@@ -29,8 +29,11 @@ var TerminalManager = (function () {
   var _savedConnections = [];
   var _contextMenu = null;
   var _discoveryProcessed = false; // guard against double-processing existing sessions
-  var _terminalBgMode = 'theme'; // 'theme' | 'original'
+  var _terminalBgMode = 'theme'; // 'theme' | 'original' | 'custom'
   var _pendingDecStrip = ''; // pending incomplete escape sequence for cross-message handling
+  var _customBgImage = ''; // custom background image data URL
+  var _customBgOpacity = 0.3; // custom background opacity (0-1)
+  var _customBgSize = 'cover'; // background-size: cover | contain | stretch
 
   /**
    * Strip DEC private mode responses (e.g. ^[[?1;2c, ^[[?6c) that leak
@@ -67,7 +70,7 @@ var TerminalManager = (function () {
 
   /**
    * Return xterm.js theme colors based on background mode and current UI theme.
-   * @param {string} bgMode - 'theme' (follow provider-v2 UI) or 'original' (classic black)
+   * @param {string} bgMode - 'theme', 'original', or 'custom'
    */
   function _getTerminalTheme(bgMode) {
     bgMode = bgMode || _terminalBgMode;
@@ -94,6 +97,33 @@ var TerminalManager = (function () {
         brightBlue: '#569cd6',
         brightMagenta: '#c586c0',
         brightCyan: '#4ec9b0',
+        brightWhite: '#ffffff',
+      };
+    }
+
+    if (bgMode === 'custom') {
+      // Custom image mode: transparent background to let CSS background show through
+      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      return {
+        background: 'rgba(0,0,0,0)',
+        foreground: isDark ? '#edf3ff' : '#162033',
+        cursor: isDark ? '#edf3ff' : '#162033',
+        selectionBackground: isDark ? 'rgba(42,58,92,0.8)' : 'rgba(219,227,255,0.8)',
+        black: isDark ? '#172131' : '#172131',
+        red: isDark ? '#ff7b7b' : '#d94848',
+        green: isDark ? '#37ca7e' : '#1f9d61',
+        yellow: isDark ? '#ffb454' : '#d17b17',
+        blue: isDark ? '#8aa4ff' : '#4263eb',
+        magenta: isDark ? '#c084fc' : '#9333ea',
+        cyan: isDark ? '#22d3ee' : '#0891b2',
+        white: isDark ? '#edf3ff' : '#f3f6fb',
+        brightBlack: isDark ? '#9eabc2' : '#5d6980',
+        brightRed: isDark ? '#ff9b9b' : '#ef4444',
+        brightGreen: isDark ? '#5ee6a0' : '#22c55e',
+        brightYellow: isDark ? '#ffc97a' : '#f59e0b',
+        brightBlue: isDark ? '#a8bbff' : '#6366f1',
+        brightMagenta: isDark ? '#d4a5ff' : '#a855f7',
+        brightCyan: isDark ? '#5ee9f5' : '#06b6d4',
         brightWhite: '#ffffff',
       };
     }
@@ -150,7 +180,7 @@ var TerminalManager = (function () {
 
   /**
    * Apply terminal background mode to all open tabs and persist the setting.
-   * @param {string} mode - 'theme' or 'original'
+   * @param {string} mode - 'theme', 'original', or 'custom'
    */
   function _applyTerminalBgMode(mode) {
     _terminalBgMode = mode;
@@ -158,10 +188,12 @@ var TerminalManager = (function () {
 
     // Toggle CSS class on terminal body
     if (_body) {
+      _body.classList.remove('terminal-body--original', 'terminal-body--custom');
       if (mode === 'original') {
         _body.classList.add('terminal-body--original');
-      } else {
-        _body.classList.remove('terminal-body--original');
+      } else if (mode === 'custom') {
+        _body.classList.add('terminal-body--custom');
+        _applyCustomBgImage();
       }
     }
 
@@ -176,13 +208,86 @@ var TerminalManager = (function () {
 
     _saveTerminalBgMode();
     _updateBgModeButton();
+    _updateCustomBgControls();
   }
 
   /**
-   * Toggle between 'theme' and 'original' background modes.
+   * Apply custom background image to terminal body.
+   */
+  function _applyCustomBgImage() {
+    if (!_body) return;
+    if (_customBgImage) {
+      _body.style.backgroundImage = 'url(' + _customBgImage + ')';
+      _body.style.backgroundSize = _customBgSize;
+      _body.style.backgroundPosition = 'center';
+      _body.style.backgroundRepeat = 'no-repeat';
+      _body.style.opacity = _customBgOpacity;
+    } else {
+      _body.style.backgroundImage = '';
+      _body.style.backgroundSize = '';
+      _body.style.backgroundPosition = '';
+      _body.style.backgroundRepeat = '';
+      _body.style.opacity = '';
+    }
+  }
+
+  /**
+   * Set custom background image from file input.
+   * @param {File} file - Image file
+   */
+  function _setCustomBgImage(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      _customBgImage = e.target.result;
+      _applyCustomBgImage();
+      _saveTerminalBgMode();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  /**
+   * Clear custom background image.
+   */
+  function _clearCustomBgImage() {
+    _customBgImage = '';
+    _customBgOpacity = 0.3;
+    _customBgSize = 'cover';
+    _applyCustomBgImage();
+    _saveTerminalBgMode();
+  }
+
+  /**
+   * Set custom background opacity.
+   * @param {number} opacity - Value between 0 and 1
+   */
+  function _setCustomBgOpacity(opacity) {
+    _customBgOpacity = Math.max(0, Math.min(1, opacity));
+    if (_body) {
+      _body.style.opacity = _customBgOpacity;
+    }
+    _saveTerminalBgMode();
+  }
+
+  /**
+   * Set custom background size mode.
+   * @param {string} size - 'cover', 'contain', or 'stretch'
+   */
+  function _setCustomBgSize(size) {
+    _customBgSize = size;
+    if (_body) {
+      _body.style.backgroundSize = size;
+    }
+    _saveTerminalBgMode();
+  }
+
+  /**
+   * Toggle between background modes: theme -> original -> custom -> theme
    */
   function _toggleTerminalBgMode() {
-    var next = _terminalBgMode === 'theme' ? 'original' : 'theme';
+    var modes = ['theme', 'original', 'custom'];
+    var idx = modes.indexOf(_terminalBgMode);
+    var next = modes[(idx + 1) % modes.length];
     _applyTerminalBgMode(next);
   }
 
@@ -190,7 +295,12 @@ var TerminalManager = (function () {
    * Get display label for current background mode.
    */
   function _getBgModeLabel() {
-    return _terminalBgMode === 'original' ? '\u7ECF\u5178\u9ED1\u8272' : 'Provider \u4E3B\u9898';
+    var labels = {
+      'original': '\u7ECF\u5178\u9ED1\u8272',
+      'custom': '\u81EA\u5B9A\u4E49\u56FE\u7247',
+      'theme': 'Provider \u4E3B\u9898'
+    };
+    return labels[_terminalBgMode] || 'Provider \u4E3B\u9898';
   }
 
   /**
@@ -199,11 +309,37 @@ var TerminalManager = (function () {
   function _updateBgModeButton() {
     var iconEl = document.getElementById('terminalBgModeIcon');
     var labelEl = document.getElementById('terminalBgModeLabel');
+    var icons = {
+      'original': '\u263E', // ☾ moon
+      'custom': '\u25A3',   // ▣ image
+      'theme': '\u2600'     // ☀ sun
+    };
     if (iconEl) {
-      iconEl.textContent = _terminalBgMode === 'original' ? '\u263E' : '\u2600';
+      iconEl.textContent = icons[_terminalBgMode] || '\u2600';
     }
     if (labelEl) {
       labelEl.textContent = _getBgModeLabel();
+    }
+  }
+
+  /**
+   * Update custom background controls visibility and state.
+   */
+  function _updateCustomBgControls() {
+    var controls = document.getElementById('terminalCustomBgControls');
+    var opacityRange = document.getElementById('terminalBgOpacityRange');
+    var sizeLabel = document.getElementById('terminalBgSizeLabel');
+
+    if (controls) {
+      controls.style.display = _terminalBgMode === 'custom' ? 'flex' : 'none';
+    }
+
+    if (opacityRange) {
+      opacityRange.value = Math.round(_customBgOpacity * 100);
+    }
+
+    if (sizeLabel) {
+      sizeLabel.textContent = _customBgSize;
     }
   }
 
@@ -215,6 +351,16 @@ var TerminalManager = (function () {
       if (typeof persistSave === 'function') {
         var existing = await persistLoad('terminals.json') || {};
         existing.bgMode = _terminalBgMode;
+        if (_terminalBgMode === 'custom') {
+          existing.bgImage = _customBgImage;
+          existing.bgOpacity = _customBgOpacity;
+          existing.bgSize = _customBgSize;
+        } else {
+          // Clear custom settings when not in custom mode
+          delete existing.bgImage;
+          delete existing.bgOpacity;
+          delete existing.bgSize;
+        }
         await persistSave('terminals.json', existing);
       }
     } catch (e) { /* ignore */ }
@@ -229,6 +375,15 @@ var TerminalManager = (function () {
         var data = await persistLoad('terminals.json');
         if (data && data.bgMode) {
           _terminalBgMode = data.bgMode;
+        }
+        if (data && data.bgImage) {
+          _customBgImage = data.bgImage;
+        }
+        if (data && typeof data.bgOpacity === 'number') {
+          _customBgOpacity = data.bgOpacity;
+        }
+        if (data && data.bgSize) {
+          _customBgSize = data.bgSize;
         }
       }
     } catch (e) { /* ignore */ }
@@ -338,9 +493,35 @@ var TerminalManager = (function () {
       bgModeBtn.addEventListener('click', function () {
         _toggleTerminalBgMode();
         _updateBgModeButton();
+        _updateCustomBgControls();
       });
     }
     _updateBgModeButton();
+
+    // Custom background controls
+    var bgImageBtn = document.getElementById('terminalBgImageBtn');
+    if (bgImageBtn) {
+      bgImageBtn.addEventListener('click', function () {
+        _showImagePicker();
+      });
+    }
+
+    var bgOpacityRange = document.getElementById('terminalBgOpacityRange');
+    if (bgOpacityRange) {
+      bgOpacityRange.addEventListener('input', function(e) {
+        _setCustomBgOpacity(parseInt(e.target.value) / 100);
+      });
+    }
+
+    var bgSizeBtn = document.getElementById('terminalBgSizeBtn');
+    if (bgSizeBtn) {
+      bgSizeBtn.addEventListener('click', function () {
+        _cycleCustomBgSize();
+        _updateCustomBgControls();
+      });
+    }
+
+    _updateCustomBgControls();
 
     // Window resize: trigger fit on active terminal.
     // Per-tab ResizeObservers handle their own pane sizing,
@@ -1005,11 +1186,23 @@ var TerminalManager = (function () {
       { label: '\u91CD\u542F\u7EC8\u7AEF', action: function () { _restartTerminal(tabId); } },
       { separator: true },
       { label: '\u80CC\u666F\u6A21\u5F0F: ' + _getBgModeLabel(), action: function () { _toggleTerminalBgMode(); } },
-      { separator: true },
-      { label: '\u5173\u95ED', action: function () { closeTab(tabId); } },
-      { label: '\u5173\u95ED\u5176\u4ED6', action: function () { closeOtherTabs(tabId); } },
-      { label: '\u5173\u95ED\u5168\u90E8', action: function () { closeAllTabs(); }, danger: true },
     ];
+
+    // Add custom background options if in custom mode
+    if (_terminalBgMode === 'custom') {
+      items.push({ separator: true });
+      items.push({ label: '\u9009\u62E9\u80CC\u666F\u56FE\u7247', action: function () { _showImagePicker(); } });
+      if (_customBgImage) {
+        items.push({ label: '\u6E05\u9664\u80CC\u666F\u56FE\u7247', action: function () { _clearCustomBgImage(); } });
+        items.push({ label: '\u900F\u660E\u5EA6: ' + Math.round(_customBgOpacity * 100) + '%', action: function () { _cycleCustomBgOpacity(); } });
+        items.push({ label: '\u586B\u5145\u6A21\u5F0F: ' + _customBgSize, action: function () { _cycleCustomBgSize(); } });
+      }
+    }
+
+    items.push({ separator: true });
+    items.push({ label: '\u5173\u95ED', action: function () { closeTab(tabId); } });
+    items.push({ label: '\u5173\u95ED\u5176\u4ED6', action: function () { closeOtherTabs(tabId); } });
+    items.push({ label: '\u5173\u95ED\u5168\u90E8', action: function () { closeAllTabs(); }, danger: true });
 
     for (var i = 0; i < items.length; i++) {
       if (items[i].separator) {
@@ -1062,6 +1255,44 @@ var TerminalManager = (function () {
         renameTab(tabId, newName.trim());
       }
     });
+  }
+
+  /**
+   * Show image picker dialog for custom background.
+   */
+  function _showImagePicker() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    input.addEventListener('change', function(e) {
+      if (e.target.files && e.target.files[0]) {
+        _setCustomBgImage(e.target.files[0]);
+      }
+      document.body.removeChild(input);
+    });
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  /**
+   * Cycle custom background opacity: 0.1 -> 0.3 -> 0.5 -> 0.7 -> 0.9 -> 0.1
+   */
+  function _cycleCustomBgOpacity() {
+    var steps = [0.1, 0.3, 0.5, 0.7, 0.9];
+    var idx = steps.indexOf(_customBgOpacity);
+    var next = steps[(idx + 1) % steps.length];
+    _setCustomBgOpacity(next);
+  }
+
+  /**
+   * Cycle custom background size: cover -> contain -> stretch -> cover
+   */
+  function _cycleCustomBgSize() {
+    var sizes = ['cover', 'contain', 'stretch'];
+    var idx = sizes.indexOf(_customBgSize);
+    var next = sizes[(idx + 1) % sizes.length];
+    _setCustomBgSize(next);
   }
 
   function _reconnectTab(tabId) {

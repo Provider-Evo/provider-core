@@ -334,7 +334,6 @@ function _initChatTab() {
   if (chatClearBtn) {
     chatClearBtn.addEventListener('click', function() {
       clearChatMessages();
-      chatConversationHistory = [];
       toast('对话已清空', 'ok');
     });
   }
