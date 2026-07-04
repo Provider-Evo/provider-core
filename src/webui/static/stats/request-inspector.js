@@ -47,12 +47,7 @@ var RequestInspector = (function () {
     if (!panel) return;
     connect();
     bindFilters();
-    setInterval(function () {
-      var tab = document.getElementById('tab-stats');
-      if (tab && tab.classList.contains('active')) {
-        renderList();
-      }
-    }, 2000);
+    // No polling needed — WebSocket messages trigger renderList() via handleMessage()
   }
 
   function bindFilters() {
