@@ -3306,3 +3306,14 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 2026-07-04 22:45:00
 
 [src/webui/static/ui/styles.css] 调整侧边栏导航按钮样式：移除间距和圆角，按钮紧密排列靠左对齐
+
+2026-07-04 23:40:00
+
+[src/webui/static/ui/styles.css] 侧边栏导航按钮改为 flex 布局，移除间距和圆角，按钮紧密排列靠左对齐
+
+2026-07-04 23:50:00
+
+[src/core/dispatch/selector.py] 迁移存储层从 12704 个 JSON 文件到单个 SQLite 数据库 gateway.db，覆盖 _load/_save_record，新增批量刷新和自动迁移
+[docs-src/src/core/dispatch/selector.py] 更新文档反映 SQLite 存储架构、TASRecord 字段说明和数据库 schema
+[tests/src/core/dispatch/test_selector.py] 适配新 TASRecord 字段，新增 SQLite 持久化和批量刷新测试
+py_compile: selector.py; pytest tests/src/core/dispatch/test_selector.py: 27 passed
