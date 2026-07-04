@@ -93,3 +93,7 @@ config/webui_config.toml
 [src/logger.py] 日志文件名格式从下划线改为连字符
 [src/webui/static/index.html] 添加正则表达式搜索切换按钮
 [src/webui/static/ui/bootstrap.js] 绑定正则搜索按钮点击事件
+
+2026-07-04 25:15:00
+[.gitignore] 允许跟踪 config/main_config.toml 和 .agents/provider-guide/SKILL.md
+[src/webui/static/ui/bootstrap.js] 日志级别/模块筛选器迁移至 CustomDropdown 组件
