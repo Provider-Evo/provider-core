@@ -3197,3 +3197,20 @@ pytest: 通过（排除预存问题）
 [src/platforms/qwen/core/adaptercore.py] 新增 supported_models 属性，修复运行时模型数量显示为 0 的问题
 [docs-src/src/platforms/qwen/core/qwen.md] 更新 adaptercore.py 说明，标注 supported_models 属性
 py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy.py, watcher.py, logger.py, admin.py, autoupdate.py, files.py, terminal.py, main.py 通过
+
+2026-07-04 08:30:00
+
+[src/webui/static/terminal/terminal.css] 移除 terminal-container 高度100%限制，为 terminal-body 添加 min-height:0 防止 flex 溢出
+[src/webui/static/ui/styles.css] 重构 #tab-terminal 布局：display:flex !important 覆盖 grid，精确 calc(100vh-230px) 高度，max-height+overflow:hidden 约束，header区域 flex-shrink:0
+
+2026-07-04 09:00:00
+
+[template/template_config.toml] 版本 2.2.219 -> 2.2.220
+[config/main_config.toml] 版本 2.2.219 -> 2.2.220
+[README.md] 版本徽章和路线图更新为 2.2.220
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.219 -> 2.2.220
+
+2026-07-04 19:04:04
+
+[src/core/server/watcher.py] 添加前端文件监控，检测到前端文件变更时通过WebSocket广播reload消息
+[src/webui/static/config/actions.js] 添加reload消息处理，收到后自动刷新页面

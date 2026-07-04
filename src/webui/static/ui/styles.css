@@ -1095,6 +1095,24 @@ section.tab-panel > * {
   opacity: 0.9;
 }
 
+.input-dialog-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  margin-bottom: 16px;
+  transition: border-color 0.15s ease;
+}
+
+.input-dialog-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ========== Stats: Timeline Chart ========== */
 .timeline-chart {
   display: flex;
@@ -1320,13 +1338,16 @@ section.tab-panel > * {
 
 /* ========== Terminal Tab Layout ========== */
 #tab-terminal {
-  display: flex !important;
   flex-direction: column;
   height: calc(100vh - 230px);
   max-height: calc(100vh - 230px);
   overflow: hidden;
   contain: layout;
   gap: 0;
+}
+
+#tab-terminal.active {
+  display: flex;
 }
 
 #tab-terminal > .flex {

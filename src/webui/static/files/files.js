@@ -1626,16 +1626,20 @@ var FileManager = (function () {
   }
 
   function _promptNewFolder(tab) {
-    var name = prompt('新文件夹名称:');
-    if (!name || !name.trim()) return;
+    showInputDialog('输入新文件夹名称:', {
+      title: '新建文件夹',
+      placeholder: '文件夹名称'
+    }).then(function(name) {
+      if (!name || !name.trim()) return;
 
-    var newPath = _pathJoin(tab.path, name.trim());
+      var newPath = _pathJoin(tab.path, name.trim());
 
-    Api.post('/v1/webui/files/mkdir', { path: newPath }).then(function () {
-      if (typeof toast === 'function') toast('文件夹已创建', 'ok');
-      _loadDirectory(tab, tab.path);
-    }).catch(function (e) {
-      if (typeof toast === 'function') toast('失败: ' + e.message, 'error');
+      Api.post('/v1/webui/files/mkdir', { path: newPath }).then(function () {
+        if (typeof toast === 'function') toast('文件夹已创建', 'ok');
+        _loadDirectory(tab, tab.path);
+      }).catch(function (e) {
+        if (typeof toast === 'function') toast('失败: ' + e.message, 'error');
+      });
     });
   }
 

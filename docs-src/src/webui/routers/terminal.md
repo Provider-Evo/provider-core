@@ -75,3 +75,27 @@ xterm.js 终端支持两种背景模式，通过右键上下文菜单切换：
 ## 错误处理
 
 终端启动失败时（本地或 SSH），WebSocket 处理器直接向客户端发送 `{"type": "error", "message": "..."}` JSON 消息，而非静默失败。此前因 `_broadcast_error` 回调仅在 `attach_client` 时绑定，启动失败路径不会触发。
+
+## 前端交互
+
+### 终端标签重命名
+
+终端标签支持重命名功能，通过右键上下文菜单触发。重命名使用自定义输入对话框（`showInputDialog`）替代原生 `prompt()` 对话框，提供更好的用户体验和视觉一致性。
+
+**实现细节：**
+- 函数 `_promptRename(tabId)` 调用 `showInputDialog` 组件
+- 对话框标题："重命名终端标签"
+- 默认值：当前标签名称
+- 支持 Enter 键确认，Escape 键取消
+- 重命名后自动更新标签显示
+
+### 终端重启确认
+
+终端重启操作使用自定义确认对话框（`showConfirmDialog`）替代原生 `confirm()` 对话框，提供更好的用户体验和视觉一致性。
+
+**实现细节：**
+- 函数 `_restartTerminal(tabId)` 调用 `showConfirmDialog` 组件
+- 对话框标题："重启终端"
+- 确认按钮文本："重启"
+- 取消按钮文本："取消"
+- 确认后发送重启命令并清空终端显示

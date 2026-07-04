@@ -105,6 +105,11 @@ function connectLogsSocket() {
       if (payload.type === 'pong') {
         // 心跳响应不显示
       }
+      if (payload.type === 'reload') {
+        // Frontend files changed, reload the page
+        console.log('Frontend reload requested, refreshing page...');
+        setTimeout(function() { location.reload(); }, 100);
+      }
     } catch (error) {
       // Ignore parse errors
     }

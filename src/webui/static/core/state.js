@@ -166,6 +166,63 @@ function showConfirmDialog(message, options) {
   });
 }
 
+function showInputDialog(message, options) {
+  options = options || {};
+  var title = options.title || '输入';
+  var defaultValue = options.defaultValue || '';
+  var confirmText = options.confirmText || '确定';
+  var cancelText = options.cancelText || '取消';
+  var placeholder = options.placeholder || '';
+
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-dialog">' +
+      '<div class="confirm-dialog-title">' + title + '</div>' +
+      '<div class="confirm-dialog-message">' + message + '</div>' +
+      '<input type="text" class="input-dialog-input" value="' + _escapeAttr(defaultValue) + '" placeholder="' + _escapeAttr(placeholder) + '">' +
+      '<div class="confirm-dialog-actions">' +
+      '<button class="confirm-dialog-btn confirm-dialog-cancel" type="button">' + cancelText + '</button>' +
+      '<button class="confirm-dialog-btn confirm-dialog-ok" type="button">' + confirmText + '</button>' +
+      '</div></div>';
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function() { overlay.classList.add('is-visible'); });
+
+    var input = overlay.querySelector('.input-dialog-input');
+    input.focus();
+    input.select();
+
+    function close(result) {
+      overlay.classList.remove('is-visible');
+      setTimeout(function() { overlay.remove(); resolve(result); }, 180);
+    }
+
+    function confirm() {
+      var value = input.value.trim();
+      close(value || null);
+    }
+
+    overlay.querySelector('.confirm-dialog-ok').addEventListener('click', confirm);
+    overlay.querySelector('.confirm-dialog-cancel').addEventListener('click', function() { close(null); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(null); });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); confirm(); }
+      if (e.key === 'Escape') close(null);
+    });
+  });
+}
+
+function _escapeAttr(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function loadSettings() {
   try {
     return Object.assign({}, defaultSettings, JSON.parse(localStorage.getItem('provider.webui.settings') || '{}'));

@@ -12,6 +12,8 @@ from echotools.logger.manager import get_logger
 from echotools.watcher.file_watcher import FileWatcher as _BaseWatcher
 from loguru import logger as _loguru_logger
 
+from src.webui.logs_ws import log_broker
+
 __all__ = ["FileWatcher"]
 
 logger = get_logger(__name__)
@@ -24,19 +26,21 @@ _WATCHED_PACKAGES = ("echotools", "aiohttp", "pydantic")
 _PACKAGE_CHECK_INTERVAL = 30.0  # seconds
 
 
-def _classify(changed: Set[str]) -> Tuple[bool, Set[str]]:
-    """Classify changed files as core (restart) or platform (hot-reload).
+def _classify(changed: Set[str]) -> Tuple[bool, Set[str], bool]:
+    """Classify changed files as core (restart), platform (hot-reload), or frontend (browser refresh).
 
     Args:
         changed: Set of absolute file paths that changed.
 
     Returns:
-        (needs_restart, platform_names):
+        (needs_restart, platform_names, needs_frontend_reload):
             - needs_restart: whether a restart is required
             - platform_names: set of platform names that were changed
+            - needs_frontend_reload: whether frontend files changed (browser refresh needed)
     """
     needs_restart = False
     platform_names: Set[str] = set()
+    needs_frontend_reload = False
 
     for fp in changed:
         p = Path(fp)
@@ -63,10 +67,13 @@ def _classify(changed: Set[str]) -> Tuple[bool, Set[str]]:
             needs_restart = True
         elif first == _PLATFORM_DIR and len(sub_parts) >= 2:
             platform_names.add(sub_parts[1])
+        elif first == "webui" and len(sub_parts) >= 3 and sub_parts[1] == "static":
+            # Frontend static files: src/webui/static/...
+            needs_frontend_reload = True
         else:
             needs_restart = True
 
-    return needs_restart, platform_names
+    return needs_restart, platform_names, needs_frontend_reload
 
 
 def _trigger_restart(session: Any, registry: Any) -> None:
@@ -157,14 +164,14 @@ class FileWatcher:
                     pass
 
     async def _on_change(self, changed: Set[str]) -> None:
-        """File change callback — classify and handle restart or hot-reload.
+        """File change callback — classify and handle restart, hot-reload, or frontend refresh.
 
         Args:
             changed: Set of absolute file paths that changed.
         """
         logger.info("File change detected: %s", [Path(f).name for f in changed])
 
-        needs_restart, platform_names = _classify(changed)
+        needs_restart, platform_names, needs_frontend_reload = _classify(changed)
 
         if needs_restart:
             await asyncio.sleep(1.0)
@@ -189,6 +196,13 @@ class FileWatcher:
                             logger.warning("Candidate refresh failed: %s", exc)
                 else:
                     logger.warning("Platform [%s] hot-reload failed", name)
+
+        if needs_frontend_reload:
+            logger.info("Frontend files changed, broadcasting reload to browsers")
+            try:
+                await log_broker.broadcast({"type": "reload"})
+            except Exception as exc:
+                logger.warning("Failed to broadcast reload: %s", exc)
 
     async def start(self, registry: Any, session: Any) -> None:
         """Start file watcher.

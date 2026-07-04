@@ -1027,10 +1027,15 @@ var TerminalManager = (function () {
   function _promptRename(tabId) {
     var tab = _getTabById(tabId);
     if (!tab) return;
-    var newName = prompt('\u91CD\u547D\u540D\u7EC8\u7AEF\u6807\u7B7E:', tab.name);
-    if (newName && newName.trim()) {
-      renameTab(tabId, newName.trim());
-    }
+    showInputDialog('输入新的终端标签名称:', {
+      title: '重命名终端标签',
+      defaultValue: tab.name,
+      placeholder: '终端标签名称'
+    }).then(function(newName) {
+      if (newName && newName.trim()) {
+        renameTab(tabId, newName.trim());
+      }
+    });
   }
 
   function _reconnectTab(tabId) {
@@ -1142,21 +1147,25 @@ var TerminalManager = (function () {
     var tab = _getTabById(tabId);
     if (!tab || !tab.ws || tab.ws.readyState !== WebSocket.OPEN) return;
 
-    if (!confirm('\u786E\u5B9A\u8981\u91CD\u542F\u7EC8\u7AEF\u5417\uFF1F\u5F53\u524D\u8FDB\u7A0B\u5C06\u88AB\u7EC8\u6B62\u3002')) {
-      return;
-    }
+    showConfirmDialog('确定要重启终端吗？当前进程将被终止。', {
+      title: '重启终端',
+      confirmText: '重启',
+      cancelText: '取消'
+    }).then(function(confirmed) {
+      if (!confirmed) return;
 
-    try {
-      var cols = tab.xterm ? tab.xterm.cols : 80;
-      var rows = tab.xterm ? tab.xterm.rows : 24;
-      tab.ws.send(JSON.stringify({ type: 'restart', cols: cols, rows: rows }));
-      if (tab.xterm) {
-        tab.xterm.clear();
-        tab.xterm.write('\x1b[33m[\u91CD\u542F\u4E2D...]\x1b[0m\r\n');
+      try {
+        var cols = tab.xterm ? tab.xterm.cols : 80;
+        var rows = tab.xterm ? tab.xterm.rows : 24;
+        tab.ws.send(JSON.stringify({ type: 'restart', cols: cols, rows: rows }));
+        if (tab.xterm) {
+          tab.xterm.clear();
+          tab.xterm.write('\x1b[33m[\u91CD\u542F\u4E2D...]\x1b[0m\r\n');
+        }
+      } catch (e) {
+        console.error('Failed to send restart command:', e);
       }
-    } catch (e) {
-      console.error('Failed to send restart command:', e);
-    }
+    });
   }
 
   // ========================= Chooser Tab (New Tab Page) =========================
