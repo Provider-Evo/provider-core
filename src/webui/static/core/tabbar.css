@@ -300,8 +300,9 @@
 /* Center tab content and reduce padding in compressed mode */
 .unified-tabbar.tabbar-compressed .unified-tab {
   justify-content: center;
-  padding: 8px 4px;
+  padding: 6px 4px;
   gap: 0;
+  min-height: 30px;
 }
 
 /* Status dot visible in compressed mode */
