@@ -16,6 +16,9 @@ main.py
 src/platforms/apiairforce/core/sse.py
 src/platforms/caiyuesbk/core/sse.py
 src/webui/static/ui/styles.css
+src/webui/core/auth.py
+src/webui/core/security.py
+src/webui/routers/pages.py
 
 2026-07-04 22:30:00
 [src/logger.py] 日志文件命名分隔符从下划线改为连字符
@@ -58,3 +61,15 @@ src/webui/static/ui/styles.css
 [src/platforms/apiairforce/core/sse.py] 重构为使用共享 SSE 解析模块
 [src/platforms/caiyuesbk/core/sse.py] 重构为使用共享 SSE 解析模块
 [src/webui/static/ui/styles.css] 更新 WebUI 样式
+
+2026-07-04 24:00:00
+[src/webui/core/auth.py] 重构 WebUI 认证模块
+[src/webui/core/security.py] 重构 WebUI 安全模块
+[src/webui/routers/pages.py] 更新 WebUI 路由
+
+2026-07-04 24:15:00
+[src/webui/core/security.py] 新增 WebUI token 管理器，支持 token 生成、验证和更新
+[src/webui/core/auth.py] 新增 WebUI cookie 辅助函数，支持会话 cookie 设置和验证
+[docs-src/src/webui/core/security.md] 新增 security 模块文档
+[docs-src/src/webui/core/auth.md] 新增 auth 模块文档
+[docs-src/src/webui/core/INDEX.md] 更新索引，添加 security.md 和 auth.md 引用
