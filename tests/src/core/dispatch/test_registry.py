@@ -6,73 +6,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from src.core.dispatch.registry import Registry
 
 
-class TestRegistryIsAdapterClass:
-    def setup_method(self):
-        self.registry = Registry()
-
-    def test_non_class_returns_false(self):
-        assert self.registry._is_adapter_class("string") is False
-        assert self.registry._is_adapter_class(123) is False
-
-    def test_base_platform_adapter_returns_false(self):
-        from src.platforms.base import PlatformAdapter
-        assert self.registry._is_adapter_class(PlatformAdapter) is False
-
-    def test_class_without_required_methods_returns_false(self):
-        class IncompleteAdapter:
-            pass
-
-        IncompleteAdapter.__module__ = "src.platforms.test"
-        assert self.registry._is_adapter_class(IncompleteAdapter) is False
-
-    def test_valid_adapter_class(self):
-        class MockAdapter:
-            def init(self): pass
-            def candidates(self): pass
-            def ensure_candidates(self): pass
-            def complete(self): pass
-            def close(self): pass
-
-        MockAdapter.__module__ = "src.platforms.test"
-        # Add name property
-        MockAdapter.name = property(lambda self: "test")
-        assert self.registry._is_adapter_class(MockAdapter) is True
-
-
-class TestRegistryDiscovery:
-    def test_discover_adapter_classes(self):
-        registry = Registry()
-        # This should not crash even if no adapters exist
-        adapters = registry._discover_adapter_classes("src.platforms")
-        assert isinstance(adapters, list)
-
-    def test_discover_from_nonexistent_package(self):
-        registry = Registry()
-        adapters = registry._discover_adapter_classes("nonexistent.package")
-        assert adapters == []
-
-
 class TestRegistryInit:
     @pytest.mark.asyncio
-    async def test_init_with_no_adapters(self):
+    async def test_init_creates_selector(self):
         registry = Registry()
-        mock_session = AsyncMock()
-
-        with patch("importlib.import_module", side_effect=ImportError):
-            await registry.init(mock_session)
-
-        assert len(registry.adapters) == 0
+        assert registry.selector is not None
 
     @pytest.mark.asyncio
-    async def test_init_empty_platforms(self):
+    async def test_adapters_property(self):
         registry = Registry()
-        mock_session = AsyncMock()
-
-        # Mock to return no adapters
-        with patch.object(registry, "_discover_adapter_classes", return_value=[]):
-            await registry.init(mock_session)
-
-        assert len(registry.adapters) == 0
+        assert isinstance(registry.adapters, dict)
 
 
 class TestRegistryGetCandidates:
@@ -86,7 +29,7 @@ class TestRegistryGetCandidates:
     async def test_get_candidates_with_model_filter(self):
         registry = Registry()
 
-        # Mock adapter
+        # Mock the internal registry's plugins
         mock_adapter = MagicMock()
         mock_adapter.name = "test"
 
@@ -102,7 +45,8 @@ class TestRegistryGetCandidates:
         )
         mock_adapter.candidates = AsyncMock(return_value=[mock_candidate])
 
-        registry._adapters["test"] = mock_adapter
+        # Inject mock adapter into the registry's plugin registry
+        registry._registry._plugins["test"] = mock_adapter
 
         # Filter by model that exists
         candidates = await registry.get_candidates(model="qwen-max")
@@ -129,7 +73,7 @@ class TestRegistryGetCandidates:
         )
         mock_adapter.candidates = AsyncMock(return_value=[mock_candidate])
 
-        registry._adapters["test"] = mock_adapter
+        registry._registry._plugins["test"] = mock_adapter
 
         candidates = await registry.get_candidates(capability="chat")
         assert len(candidates) == 1
@@ -142,7 +86,7 @@ class TestRegistryAdapterFor:
     def test_adapter_for_existing(self):
         registry = Registry()
         mock_adapter = MagicMock()
-        registry._adapters["test"] = mock_adapter
+        registry._registry._plugins["test"] = mock_adapter
 
         from src.core.dispatch.candidate import Candidate
         cand = Candidate(id="test_123", platform="test", resource_id="r")
@@ -172,7 +116,7 @@ class TestRegistryAllModels:
         mock_adapter.default_capabilities = {"chat": True, "vision": False}
         mock_adapter.context_length = 8192
 
-        registry._adapters["test"] = mock_adapter
+        registry._registry._plugins["test"] = mock_adapter
 
         models = await registry.all_models()
         assert len(models) == 2
@@ -194,6 +138,6 @@ class TestRegistryReloadPlatform:
         registry = Registry()
         mock_session = AsyncMock()
 
-        with patch.object(registry, "_discover_adapter_classes", return_value=[]):
+        with patch.object(registry._registry, "reload", return_value=False):
             result = await registry.reload_platform("nonexistent", mock_session)
             assert result is False

@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.231-blue)
-![Version](https://img.shields.io/badge/version-v2.2.231-blue)
+![Status](https://img.shields.io/badge/status-v2.2.232-blue)
+![Version](https://img.shields.io/badge/version-v2.2.232-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,7 +1264,12 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.231
+### 当前版本：v2.2.232
+
+✅ 已完成（v2.2.232）：
+- fix(terminal): add legacy base64 data URL to server-side file migration
+- test(core): fix ModelsCache test to match ListCache init behavior (fallback only, explicit load required)
+- refactor(dispatch): update Registry tests to match new plugin-based API
 
 ✅ 已完成（v2.2.231）：
 - refactor(webui): migrate request logs from JSON to SQLite persistence

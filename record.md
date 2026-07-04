@@ -3433,3 +3433,11 @@ pytest tests/src/core/dispatch/test_selector.py: 27 passed
 2026-07-05 00:50:00
 
 [src/webui/static/ui/styles.css] 移动端侧边栏添加 flex-direction: row 确保水平布局
+
+2026-07-05 21:10:00
+
+[src/webui/static/terminal/terminal.js] 新增 _migrateBgImageToServer 函数，将遗留 base64 data URL 迁移为服务器端文件上传
+[tests/src/core/test_models_cache.py] 修复 ModelsCache 测试：拆分 test_cache_file_loading_with_fetch_enabled 为两个测试，验证 ListCache.__init__ 不读取缓存文件（需显式 load()）
+[tests/src/core/dispatch/test_registry.py] 更新 Registry 测试适配新 plugin-based API（_registry.plugins 替代 _adapters）
+
+验证结果：py_compile 通过，pytest tests/src/core/test_models_cache.py: 22 passed，pytest tests/src/core/dispatch/test_registry.py: 11 passed

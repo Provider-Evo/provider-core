@@ -226,6 +226,40 @@ var TerminalManager = (function () {
   }
 
   /**
+   * Migrate legacy base64 data URL to server-side file.
+   * Converts the data URL to a Blob, uploads it, and updates stored URL.
+   * @param {string} dataUrl - Legacy base64 data URL
+   */
+  function _migrateBgImageToServer(dataUrl) {
+    // Convert data URL to Blob
+    var parts = dataUrl.split(',');
+    if (parts.length !== 2) return;
+    var mime = parts[0].match(/:(.*?);/);
+    if (!mime) return;
+    var bstr = atob(parts[1]);
+    var n = bstr.length;
+    var u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    var blob = new Blob([u8arr], { type: mime[1] });
+    var ext = (mime[1].split('/')[1] || 'png').split(';')[0];
+    var filename = 'terminal-bg-migrated.' + ext;
+    var formData = new FormData();
+    formData.append('file', blob, filename);
+    fetch('/v1/webui/bg-image', { method: 'POST', body: formData })
+      .then(function(resp) { return resp.json(); })
+      .then(function(data) {
+        if (data && data.url) {
+          _customBgImage = data.url;
+          _applyCustomBgImage();
+          _saveTerminalBgMode();
+        }
+      })
+      .catch(function() {});
+  }
+
+  /**
    * Set custom background image from file input.
    * Uploads the image to the server and stores the URL path.
    * @param {File} file - Image file

@@ -52,8 +52,8 @@ class TestModelsCache:
             assert "fallback-1" in cache.models
             assert "fallback-2" in cache.models
 
-    def test_cache_file_loading_with_fetch_enabled(self, tmp_path):
-        """Models are loaded from cache file when fetch_enabled=True."""
+    def test_init_starts_with_fallback_even_with_cache_file(self, tmp_path):
+        """ListCache.__init__ does NOT read cache file — always starts with fallback."""
         from src.core.models_cache import ModelsCache
 
         cache_dir = tmp_path / "cached_platform"
@@ -70,6 +70,33 @@ class TestModelsCache:
                 fallback_models=["fallback"],
                 fetch_enabled=True,
             )
+            # ListCache.__init__ only uses fallback; cache file requires explicit load()
+            assert "fallback" in cache.models
+            assert "cached-1" not in cache.models
+
+    @pytest.mark.asyncio
+    async def test_load_reads_cache_file(self, tmp_path):
+        """Explicit load() reads models from cache file."""
+        from src.core.models_cache import ModelsCache
+
+        cache_dir = tmp_path / "load_platform"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "models.json"
+        cache_file.write_text(
+            json.dumps({"models": ["cached-1", "cached-2", "cached-3"]}),
+            encoding="utf-8",
+        )
+
+        with patch("src.core.models_cache._PERSIST_ROOT", tmp_path):
+            cache = ModelsCache(
+                platform="load_platform",
+                fallback_models=["fallback"],
+                fetch_enabled=True,
+            )
+            # Before load: fallback
+            assert "fallback" in cache.models
+            # After load: cache file content
+            await cache.load()
             assert "cached-1" in cache.models
             assert "cached-2" in cache.models
             assert "cached-3" in cache.models
