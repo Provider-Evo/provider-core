@@ -64,7 +64,7 @@ def _classify(changed: Set[str]) -> Tuple[bool, Set[str], bool]:
         if first in _CORE_DIRS or first == "__init__.py":
             needs_restart = True
         elif first == _PLATFORM_DIR and len(sub_parts) >= 2:
-            platform_names.add(sub_parts[1])
+            platform_names.add(sub_parts[1].split(".")[0])
         elif first == "webui" and len(sub_parts) >= 3 and sub_parts[1] == "static":
             # Frontend static files: src/webui/static/...
             needs_frontend_reload = True

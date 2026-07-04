@@ -19,6 +19,8 @@ src/webui/static/ui/styles.css
 src/webui/core/auth.py
 src/webui/core/security.py
 src/webui/routers/pages.py
+src/core/server/watcher.py
+config/webui_config.toml
 
 2026-07-04 22:30:00
 [src/logger.py] 日志文件命名分隔符从下划线改为连字符
@@ -73,3 +75,8 @@ src/webui/routers/pages.py
 [docs-src/src/webui/core/security.md] 新增 security 模块文档
 [docs-src/src/webui/core/auth.md] 新增 auth 模块文档
 [docs-src/src/webui/core/INDEX.md] 更新索引，添加 security.md 和 auth.md 引用
+
+2026-07-04 24:30:00
+[main.py] Runner 新增错误退出重启逻辑，支持 max_restarts 配置限制最大重启次数
+[src/core/server/watcher.py] 修复平台目录变更检测时文件扩展名干扰问题
+[config/webui_config.toml] WebUI 主题从 dark 切换为 light

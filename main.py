@@ -523,7 +523,8 @@ def _run_runner() -> None:
     - MainWorker 以退出码 42 退出时触发重启，冷却 1 秒后再启动新 MainWorker。
     - 若在 ``_RAPID_RESTART_THRESHOLD`` 秒内连续快速重启超过
       ``_MAX_RAPID_RESTARTS`` 次，Runner 放弃重启并退出。
-    - Worker 以其他退出码退出时，Runner 直接退出（不重启）。
+    - Worker 以其他退出码退出时（错误退出），等待 10 秒后重启，
+      但最多重启 ``max_restarts`` 次（默认 3 次）。
     - Runner 收到 Ctrl+C 时，立即终止 Worker 并退出。
     """
     color_enabled = _read_color_config()
@@ -532,7 +533,17 @@ def _run_runner() -> None:
     python = sys.executable
     main_args = [python, "-u", str(_ROOT / "main.py")]
 
+    # 读取 max_restarts 配置项
+    max_error_restarts = _DEFAULT_MAX_ERROR_RESTARTS
+    try:
+        from src.core.config import get_config
+        cfg = get_config()
+        max_error_restarts = getattr(cfg.server, "max_restarts", _DEFAULT_MAX_ERROR_RESTARTS)
+    except Exception:
+        pass
+
     rapid_restart_count = 0
+    error_restart_count = 0
     last_start_time: float = 0.0
 
     main_proc: Optional[subprocess.Popen] = None
@@ -613,12 +624,44 @@ def _run_runner() -> None:
         # 根据退出码决策
         # ------------------------------------------------------------------
         if exit_code == _RESTART_EXIT_CODE:
+            # 热重载请求：冷却 1 秒后重启
             logger.info(
                 "触发自动重启（退出码 %d），冷却 %.1f 秒后重启...",
                 exit_code,
                 _RESTART_COOLDOWN,
             )
             time.sleep(_RESTART_COOLDOWN)
+
+            # 重启 MainWorker
+            main_proc = _restart_worker(main_proc, main_args, main_worker_env)
+
+            # 重新启动管道读取线程
+            assert main_proc is not None and main_proc.stdout is not None
+            main_reader = threading.Thread(
+                target=_pipe_reader,
+                args=(main_proc.stdout,),
+                daemon=True,
+                name=f"pipe-reader-main-{main_proc.pid}",
+            )
+            main_reader.start()
+        elif exit_code != 0:
+            # 错误退出：等待 10 秒后重启，但限制最大重启次数
+            error_restart_count += 1
+            if error_restart_count > max_error_restarts:
+                logger.error(
+                    "Worker 因错误退出 %d 次（最大 %d 次），Runner 放弃重启并退出",
+                    error_restart_count - 1,
+                    max_error_restarts,
+                )
+                break
+            logger.warning(
+                "Worker 因错误退出（退出码 %d），等待 %.1f 秒后重启（第 %d/%d 次）...",
+                exit_code,
+                _ERROR_RESTART_DELAY,
+                error_restart_count,
+                max_error_restarts,
+            )
+            time.sleep(_ERROR_RESTART_DELAY)
 
             # 重启 MainWorker
             main_proc = _restart_worker(main_proc, main_args, main_worker_env)

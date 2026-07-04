@@ -127,6 +127,8 @@ document.getElementById('logClearDateBtn').addEventListener('click', function() 
   if (dateFrom && _logDateFrom) dateFrom.value = _logDateFrom;
   if (dateTo && _logDateTo) dateTo.value = _logDateTo;
   _updateLogClearDateBtn();
+  // Restore regex search state
+  _updateRegexBtn();
 })();
 // Font size buttons
 (function() {

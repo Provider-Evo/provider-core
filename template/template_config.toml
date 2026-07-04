@@ -2,7 +2,7 @@
 # 复制此文件到 config/ 目录并重命名为 main_config.toml
 
 [server]
-version = "2.2.244"
+version = "2.2.246"
 host = "0.0.0.0"
 port = 1337
 webui_port = 8001

@@ -360,6 +360,22 @@ function _updateAutoScrollBtn() {
   localStorage.setItem('provider.logAutoScroll', String(_logAutoScroll));
 }
 
+function toggleLogRegex() {
+  _logSearchRegex = !_logSearchRegex;
+  _updateRegexBtn();
+  _invalidateLogFilterCache();
+  _renderVisibleLogs();
+}
+
+function _updateRegexBtn() {
+  var btn = document.getElementById('logRegexBtn');
+  if (btn) {
+    btn.classList.toggle('active', _logSearchRegex);
+    btn.title = _logSearchRegex ? '正则表达式搜索已开启' : '正则表达式搜索已关闭';
+  }
+  localStorage.setItem('provider.logSearchRegex', String(_logSearchRegex));
+}
+
 // ========================= Log Auto-Scroll Detection =========================
 
 (function _setupLogScrollDetection() {
