@@ -74,7 +74,7 @@ def _classify(changed: Set[str]) -> Tuple[bool, Set[str], bool]:
     return needs_restart, platform_names, needs_frontend_reload
 
 
-def _trigger_restart(session: Any, registry: Any) -> None:
+async def _trigger_restart(session: Any, registry: Any) -> None:
     """Trigger Worker process restart (exit code 42).
 
     Args:
@@ -85,9 +85,7 @@ def _trigger_restart(session: Any, registry: Any) -> None:
     for resource in (session, registry):
         if resource:
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    loop.create_task(resource.close())
+                await resource.close()
             except Exception as exc:
                 logger.warning("Failed to close resource: %s", exc)
     os._exit(42)
@@ -156,7 +154,7 @@ class FileWatcher:
                                 "Package [%s] version changed, triggering restart",
                                 pkg_name,
                             )
-                            _trigger_restart(self._session, self._registry)
+                            await _trigger_restart(self._session, self._registry)
                             return
                 except Exception:
                     pass
@@ -177,7 +175,7 @@ class FileWatcher:
             # MainWorker：处理重启和平台热重载
             if needs_restart:
                 await asyncio.sleep(1.0)
-                _trigger_restart(self._session, self._registry)
+                await _trigger_restart(self._session, self._registry)
                 return
 
             for name in platform_names:

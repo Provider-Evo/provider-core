@@ -298,7 +298,9 @@ async def _run() -> None:
                 port,
                 port_result.pids,
             )
-        # 退出非零码，让 Runner 处理错误重启
+        # 关闭已创建的资源后再退出
+        await session.close()
+        await registry.close()
         raise SystemExit(1)
 
     runner = aiohttp.web.AppRunner(app, access_log=_access_log)
