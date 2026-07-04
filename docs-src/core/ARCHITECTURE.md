@@ -46,9 +46,10 @@
 main.py
   ├── Runner 进程（父进程）
   │   └── 启动并守护 MainWorker 和 WebUIWorker
-  │       · exit code 42 → MainWorker 请求重启
+  │       · exit code 42 → MainWorker 请求重启（冷却1秒）
   │       · exit code 43 → WebUIWorker 请求重启
   │       · exit code 44 → 两者都需要重启
+  │       · 其他非零退出码 → 错误重启（等待10秒，最多max_restarts次）
   │       · Ctrl+C → 终止所有 Worker
   │
   ├── MainWorker 进程（子进程，WORKER_PROCESS=1, WORKER_TYPE=main）
@@ -66,6 +67,14 @@ main.py
           · 文件监视（仅刷新）
           · 端口 8001
 ```
+
+## Worker 重启配置
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `server.max_restarts` | 3 | Worker 因错误退出时的最大重启次数 |
+| `_ERROR_RESTART_DELAY` | 10.0 | Worker 错误重启等待时间（秒） |
+| `_RESTART_COOLDOWN` | 1.0 | 热重载重启冷却时间（秒） |
 
 ## 核心模块
 

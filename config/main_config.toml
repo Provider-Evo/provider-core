@@ -1,5 +1,5 @@
 [server]
-version = "2.2.247"
+version = "2.2.248"
 host = "0.0.0.0"
 port = 1337
 webui_port = 8001
