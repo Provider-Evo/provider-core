@@ -85,7 +85,7 @@ async def config_reload(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def persist_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """GET /v1/webui/persist/{filename} — read a JSON/TOML file from config/ or persist/webui/."""
+    """GET /v1/webui/persist/{filename} — read a JSON/TOML file from config/ or persist/webui/json/."""
     import json
     from pathlib import Path
 
@@ -97,8 +97,8 @@ async def persist_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
         config_dir = Path(__file__).resolve().parent.parent.parent.parent / "config"
         filepath = config_dir / "webui_config.toml"
     else:
-        persist_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui"
-        filepath = persist_dir / filename
+        json_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui" / "json"
+        filepath = json_dir / filename
     try:
         if filename.endswith(".toml"):
             import tomllib
@@ -115,7 +115,7 @@ async def persist_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def persist_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """POST /v1/webui/persist/{filename} — write JSON/TOML to config/ or persist/webui/."""
+    """POST /v1/webui/persist/{filename} — write JSON/TOML to config/ or persist/webui/json/."""
     import json
     from pathlib import Path
 
@@ -128,9 +128,9 @@ async def persist_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         config_dir.mkdir(parents=True, exist_ok=True)
         filepath = config_dir / "webui_config.toml"
     else:
-        persist_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui"
-        persist_dir.mkdir(parents=True, exist_ok=True)
-        filepath = persist_dir / filename
+        json_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui" / "json"
+        json_dir.mkdir(parents=True, exist_ok=True)
+        filepath = json_dir / filename
     try:
         body = await request.json()
         if filename.endswith(".toml"):

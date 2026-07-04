@@ -3393,3 +3393,9 @@ py_compile: request_log.py
 [docs-src/src/core/dispatch/registry.md] 新增平台注册表文档
 [docs-src/src/core/dispatch/runtime_view.md] 新增运行时视图工具文档
 [docs-src/src/core/dispatch/INDEX.md] 更新调度模块索引，添加所有组件描述
+
+2026-07-05 00:20:00
+
+[src/webui/services/request_log.py] 修复旧 JSON 文件迁移路径，兼容新旧目录结构
+[src/webui/services/stats.py] 统计数据持久化目录从 persist/webui/ 迁移至 persist/webui/json/
+py_compile: request_log.py, stats.py

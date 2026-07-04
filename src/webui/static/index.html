@@ -60,7 +60,6 @@
         </div>
       </div>
       <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(130px,1fr))]">
-        <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] bg-accent text-white border border-transparent hover:opacity-90 transition" id="refreshButton" type="button">刷新状态</button>
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-border bg-panel text-text hover:bg-panel-alt transition" id="refreshModelsButton" type="button">刷新模型缓存</button>
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-border bg-panel text-text hover:bg-panel-alt transition" id="portableButton" type="button">便携设置</button>
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-warn text-warn bg-panel hover:bg-warn hover:text-white transition" id="reloadServerButton" type="button">重启服务</button>
@@ -74,7 +73,6 @@
         <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">服务状态</div><div class="text-2xl font-bold" id="healthValue">-</div></div>
       </div>
       <div class="flex flex-wrap gap-2 items-center">
-        <div class="px-3 py-2.5 bg-accent-soft rounded-xl leading-relaxed text-[14px]">该页面优先使用只读摘要接口，单个接口失败时会自动降级，不会导致整页失效。</div>
         <div class="px-3 py-2.5 bg-accent-soft rounded-xl leading-relaxed text-[14px]" id="socketNotice">日志 WebSocket: /v1/webui/ws/logs</div>
       </div>
     </section>

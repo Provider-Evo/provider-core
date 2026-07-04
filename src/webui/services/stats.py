@@ -14,7 +14,8 @@ __all__ = ["RequestStats", "get_stats", "save_stats", "load_stats", "start_persi
 _log = get_logger(__name__)
 
 _PERSIST_DIR = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui"
-_PERSIST_FILE = _PERSIST_DIR / "stats.json"
+_JSON_DIR = _PERSIST_DIR / "json"
+_PERSIST_FILE = _JSON_DIR / "stats.json"
 _persist_timer: threading.Timer | None = None
 _PERSIST_INTERVAL = 30  # seconds
 
@@ -22,7 +23,7 @@ _PERSIST_INTERVAL = 30  # seconds
 def save_stats() -> None:
     """Persist current stats snapshot to disk."""
     try:
-        _PERSIST_DIR.mkdir(parents=True, exist_ok=True)
+        _JSON_DIR.mkdir(parents=True, exist_ok=True)
         data = get_stats().to_dict()
         _PERSIST_FILE.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     except Exception:

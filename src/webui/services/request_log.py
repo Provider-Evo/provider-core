@@ -248,7 +248,9 @@ def start_request_persist() -> None:
     _init_db()
 
     # 清理旧 JSON 文件（迁移遗留）
-    old_json = _PERSIST_DIR / "requests.json"
+    old_json = _JSON_DIR / "requests.json"
+    if not old_json.exists():
+        old_json = _PERSIST_DIR / "requests.json"  # 兼容旧路径
     if old_json.exists():
         try:
             _migrate_json(old_json)
