@@ -141,15 +141,13 @@ def _read_color_config() -> bool:
 
 
 def _make_connector() -> aiohttp.TCPConnector:
-    """创建忽略 SSL 证书验证的 TCP 连接器。
+    """创建忽略 SSL 证书验证的 TCP 连接器（从配置读取连接池参数）。
 
     Returns:
         配置好的 TCPConnector 实例。
     """
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return aiohttp.TCPConnector(ssl=ctx, limit=200, force_close=False)
+    from src.core.server.connector import make_connector
+    return make_connector()
 
 
 # ---------------------------------------------------------------------------

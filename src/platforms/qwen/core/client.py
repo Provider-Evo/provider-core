@@ -385,14 +385,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
                 if response.status != 200:
                     body = await response.text()
                     if response.status == 401 or "Token has expired" in body or "unauthorized" in body.lower():
-                        email = str(candidate.meta.get("email", ""))
-                        if email in self._account_states:
-                            account = self._account_states[email]
-                            account.is_login = False
-                            account.token = ""
-                            self._rebuild_candidates()
-                            self._save_persist()
-                        raise RuntimeError(f"token expired: {body[:200]}")
+                        raise TokenExpiredError(f"token expired: {body[:200]}")
                     raise RuntimeError(f"chat HTTP {response.status}: {body[:300]}")
                 content_type = response.headers.get("Content-Type", "")
                 if "text/html" in content_type:

@@ -13,6 +13,7 @@ __all__ = [
     "AnthCfg",
     "AuthCfg",
     "GatewayCfg",
+    "HttpPoolCfg",
     "ProxyCfg",
     "FncallCfg",
     "DebugCfg",
@@ -110,6 +111,15 @@ class FncallCfg(ConfigBase):
 
 
 @dataclass
+class HttpPoolCfg(ConfigBase):
+    """HTTP 连接池配置：控制 aiohttp TCPConnector 的连接复用行为。"""
+    limit: int = 200              # 总连接数上限
+    limit_per_host: int = 20      # 单主机连接数上限
+    keepalive_timeout: int = 30   # keepalive 超时（秒）
+    connect_timeout: int = 10     # 连接建立超时（秒）
+
+
+@dataclass
 class DebugCfg(ConfigBase):
     """调试日志级别配置。"""
     level: str = "INFO"
@@ -182,6 +192,7 @@ class AppConfig(ConfigBase):
     anthropic: AnthCfg = field(default_factory=AnthCfg)
     auth: AuthCfg = field(default_factory=AuthCfg)
     gateway: GatewayCfg = field(default_factory=GatewayCfg)
+    http_pool: HttpPoolCfg = field(default_factory=HttpPoolCfg)
     proxy: ProxyCfg = field(default_factory=ProxyCfg)
     platforms_proxy: PlatformsProxyCfg = field(default_factory=PlatformsProxyCfg)
     fncall: FncallCfg = field(default_factory=FncallCfg)

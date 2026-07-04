@@ -2,7 +2,7 @@
 # 复制此文件到 config/ 目录并重命名为 main_config.toml
 
 [server]
-version = "2.2.255"
+version = "2.2.256"
 host = "0.0.0.0"
 port = 1337
 webui_port = 8001
@@ -48,6 +48,12 @@ min_tokens = 10
 # group_list 为空时视为"未配置"，所有平台均可竞速（向后兼容）。
 group_list_type = "whitelist"
 group_list = []
+
+[http_pool]
+limit = 200
+limit_per_host = 20
+keepalive_timeout = 30
+connect_timeout = 10
 
 [proxy]
 proxy_server = ""
