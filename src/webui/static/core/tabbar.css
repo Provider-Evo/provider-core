@@ -306,6 +306,16 @@
 
 /* Status dot visible in compressed mode */
 
+/* Hide icon in compressed mode (status dot is the indicator) */
+.unified-tabbar.tabbar-compressed .unified-tab-icon {
+  display: none;
+}
+
+/* Center status dot in compressed mode */
+.unified-tabbar.tabbar-compressed .unified-tab-status {
+  margin: 0 auto;
+}
+
 /* Tooltip on hover for compressed tabs */
 .unified-tabbar.tabbar-compressed .unified-tab {
   position: relative;

@@ -35,15 +35,19 @@ showInputDialog('请输入名称:', {
 
 ### addLogEntry(entry)
 
-结构化日志渲染入口。接收包含 timestamp/level/module/message 字段的对象，渲染为结构化 DOM 行并追加到日志容器。自动裁剪超过 5000 条的旧条目。
+结构化日志渲染入口。接收包含 timestamp/level/module/message 字段的对象，渲染为结构化 DOM 行并追加到日志容器。自动裁剪超过 5000 条的旧条目。支持按 entry.id 去重。
 
 ### filterLogs()
 
-根据当前级别过滤和搜索关键词重新渲染日志容器。级别过滤使用优先级模型（选 INFO 显示 INFO 及以上）。搜索对 message 和 module 做大小写不敏感子串匹配。
+根据当前过滤条件重新渲染日志容器。过滤维度：
+- **级别过滤**：优先级模型（选 INFO 显示 INFO 及以上）
+- **模块过滤**：精确匹配 module 字段
+- **搜索**：对 message 和 module 做大小写不敏感子串匹配
+- **日期范围**：按 timestamp 的 YYYY-MM-DD 部分做字符串比较
 
 ### clearLogs()
 
-清空内存中的日志条目数组和 DOM 容器。
+清空内存中的日志条目数组和 DOM 容器。不清除过滤器状态。
 
 ### exportLogs()
 
@@ -51,4 +55,22 @@ showInputDialog('请输入名称:', {
 
 ### toggleAutoScroll()
 
-切换自动滚动状态。开启时新日志到达自动滚动到底部；关闭时保持当前位置不动。
+切换自动滚动状态。开启时新日志到达自动滚动到底部；关闭时保持当前位置不动。状态自动持久化到 localStorage。
+
+### _toggleLogFilters()
+
+切换高级过滤面板的展开/收起状态。面板包含级别过滤、模块过滤、日期范围和字号选择。展开状态持久化到 localStorage。
+
+### _updateLogClearDateBtn()
+
+根据日期过滤器状态更新"清除日期"按钮的可见性。
+
+### 持久化设置
+
+以下设置自动保存到 localStorage 并在页面加载时恢复：
+- `provider.logFontSize` — 字号（small/medium/large）
+- `provider.logAutoScroll` — 自动滚动开关
+- `provider.logLevelFilter` — 级别过滤器
+- `provider.logDateFrom` — 起始日期
+- `provider.logDateTo` — 截止日期
+- `provider.logFilterExpanded` — 高级过滤面板展开状态

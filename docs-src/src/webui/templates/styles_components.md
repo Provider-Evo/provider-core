@@ -35,4 +35,12 @@
 
 ### .log-conn-status
 
-WebSocket 连接状态指示，`.connected` 时变绿色。
+WebSocket 连接状态指示，`.connected` 时变绿色并带脉冲动画。
+
+### .log-toolbar-advanced
+
+高级过滤面板容器，包含级别、模块、日期范围和字号选择器。默认隐藏，通过"过滤"按钮切换。
+
+### .log-date-label / .log-date-input
+
+日期范围输入框样式，内联 flex 布局，带标签和日期选择器。

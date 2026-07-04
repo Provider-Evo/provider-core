@@ -67,6 +67,7 @@ document.getElementById('logAutoScrollBtn').addEventListener('click', function()
 });
 document.getElementById('logLevelSelect').addEventListener('change', function() {
   _logLevelFilter = this.value;
+  localStorage.setItem('provider.logLevelFilter', _logLevelFilter);
   filterLogs();
 });
 document.getElementById('logSearchInput').addEventListener('input', function() {
@@ -77,10 +78,55 @@ document.getElementById('logModuleSelect').addEventListener('change', function()
   _logModuleFilter = this.value;
   filterLogs();
 });
-// Initialize auto-scroll button state
+// Collapsible advanced filters toggle
+document.getElementById('logFilterToggleBtn').addEventListener('click', function() {
+  _toggleLogFilters();
+});
+// Date range filters
+document.getElementById('logDateFrom').addEventListener('change', function() {
+  _logDateFrom = this.value;
+  localStorage.setItem('provider.logDateFrom', _logDateFrom);
+  _updateLogClearDateBtn();
+  filterLogs();
+});
+document.getElementById('logDateTo').addEventListener('change', function() {
+  _logDateTo = this.value;
+  localStorage.setItem('provider.logDateTo', _logDateTo);
+  _updateLogClearDateBtn();
+  filterLogs();
+});
+document.getElementById('logClearDateBtn').addEventListener('click', function() {
+  _logDateFrom = '';
+  _logDateTo = '';
+  localStorage.removeItem('provider.logDateFrom');
+  localStorage.removeItem('provider.logDateTo');
+  document.getElementById('logDateFrom').value = '';
+  document.getElementById('logDateTo').value = '';
+  _updateLogClearDateBtn();
+  filterLogs();
+});
+// Initialize auto-scroll button state and restore level filter
 (function() {
   var btn = document.getElementById('logAutoScrollBtn');
-  if (btn) btn.classList.add('active');
+  if (btn) btn.classList.toggle('active', _logAutoScroll);
+  // Restore level filter select
+  var levelSel = document.getElementById('logLevelSelect');
+  if (levelSel) levelSel.value = _logLevelFilter;
+  // Restore collapsible filter panel state
+  if (_logFilterExpanded) {
+    var panel = document.getElementById('logAdvancedFilters');
+    var icon = document.getElementById('logFilterToggleIcon');
+    var toggleBtn = document.getElementById('logFilterToggleBtn');
+    if (panel) panel.style.display = '';
+    if (icon) icon.innerHTML = '&#9650;';
+    if (toggleBtn) toggleBtn.classList.add('active');
+  }
+  // Restore date range inputs
+  var dateFrom = document.getElementById('logDateFrom');
+  var dateTo = document.getElementById('logDateTo');
+  if (dateFrom && _logDateFrom) dateFrom.value = _logDateFrom;
+  if (dateTo && _logDateTo) dateTo.value = _logDateTo;
+  _updateLogClearDateBtn();
 })();
 // Font size buttons
 (function() {
