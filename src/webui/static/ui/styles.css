@@ -548,7 +548,7 @@ textarea:focus {
   height: 18px;
   border: 2px solid var(--border);
   border-top-color: var(--accent);
-  border-radius: 0;
+  border-radius: 50%;
   animation: chatSpinnerRotate 0.8s linear infinite;
 }
 
