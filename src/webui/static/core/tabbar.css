@@ -205,6 +205,15 @@
   color: var(--accent);
 }
 
+/* Horizontal: sticky add button at right edge so it's always visible */
+.horizontal .unified-tabbar-add {
+  position: sticky;
+  right: 0;
+  background: var(--panel);
+  z-index: 1;
+  margin-left: auto;
+}
+
 /* ========================= Sidebar Toggle Button ========================= */
 /* Matches pre-migration original: full-width button at top of sidebar */
 
@@ -258,10 +267,10 @@
   border-color: var(--err, #e74c3c);
 }
 
-/* Horizontal: top-right of tab bar */
+/* Horizontal: top-right of tab bar, offset for sticky add button */
 .horizontal .unified-close-all-btn {
   top: 5px;
-  right: 5px;
+  right: 36px;
 }
 
 /* Vertical: bottom area of sidebar */

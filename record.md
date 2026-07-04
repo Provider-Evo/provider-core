@@ -3280,3 +3280,8 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 [src/webui/static/index.html] 移除背景填充模式切换按钮，永久使用 cover 模式
 [src/webui/static/terminal/terminal.js] 移除 _customBgSize 变量和相关函数，简化自定义背景实现
 [src/webui/static/terminal/terminal.css] 固定背景图片为 cover 模式
+
+2026-07-04 23:00:00
+
+[src/webui/static/core/tabbar.css] 水平模式下加号按钮改为 sticky 固定在右侧，确保标签多时仍可见
+[src/webui/static/core/tabbar.css] 关闭全部按钮右偏移 36px 避免与加号按钮重叠
