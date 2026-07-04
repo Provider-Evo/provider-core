@@ -3419,3 +3419,7 @@ pytest tests/src/core/dispatch/test_selector.py: 27 passed
 
 [docs-src/src/webui/services/request_log.py] 修复文档中 _PERSIST_DIR 为 _DB_DIR
 [src/webui/static/ui/bootstrap.js] 移除 refreshButton 点击事件监听器
+
+2026-07-05 00:50:00
+
+[src/webui/static/ui/styles.css] 移动端侧边栏添加 flex-direction: row 确保水平布局
