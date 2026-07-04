@@ -3,22 +3,18 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp.web
 
 from src.core.config import get_config, reload_config
 from src.logger import get_logger
+from src.paths import project_root as _project_root
 
 logger = get_logger(__name__)
 
 # 上次检查结果缓存
 _last_check: Dict[str, Any] = {}
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent.parent
 
 
 def _get_autoupdate_config() -> Dict[str, Any]:

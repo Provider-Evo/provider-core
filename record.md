@@ -1,39 +1,40 @@
-# RECORD.md
+/d/Project/provider-self
+src/logger.py
+template/template_config.toml
+config/main_config.toml
+README.md
+.agents/provider-guide/SKILL.md
+src/webui/static/terminal/terminal.js
+src/webui/app.py
+src/webui/routers/admin.py
+src/webui/routers/files.py
+src/webui/static/core/state.js
+src/webui/static/index.html
+src/webui/static/ui/bootstrap.js
+src/paths.py
 
-> 本文件被 .gitignore 排除，不参与版本控制。仅供本地记录变更和阻塞项。
+2026-07-04 22:30:00
+[src/logger.py] 日志文件命名分隔符从下划线改为连字符
+[template/template_config.toml] 版本号更新至 2.2.239
+[config/main_config.toml] 版本号同步更新至 2.2.239
+[README.md] 版本徽章和路线图版本号更新至 2.2.239
+[.agents/provider-guide/SKILL.md] 版本字段更新至 2.2.239
 
-## 2026-07-04
+2026-07-04 22:35:00
+[src/webui/static/core/state.js] 日志面板虚拟滚动，优化大量日志条目时的渲染性能
 
-### 日志文件命名分隔符修改 (v2.2.239)
+2026-07-04 23:00:00
+[src/webui/static/terminal/terminal.js] 修复终端输出不实时显示，添加 xterm.refresh() 强制刷新视口
+[template/template_config.toml] 版本号更新至 2.2.240
+[config/main_config.toml] 版本号同步更新至 2.2.240
+[README.md] 版本徽章和路线图版本号更新至 2.2.240
+[.agents/provider-guide/SKILL.md] 版本字段更新至 2.2.240
 
-**变更内容**：将日志文件命名中的 `_` 分隔符改为 `-`，使文件名更清晰易读。
-
-**修改文件**：
-- `src/logger.py`：第 401 行，日志文件名模式从 `{log_name}_{time:YYYYMMDD_HHmmss}.log` 改为 `{log_name}-{time:YYYYMMDD-HHmmss}.log`
-- 版本号同步更新至 2.2.239（template/template_config.toml, config/main_config.toml, README.md, .agents/provider-guide/SKILL.md）
-
-**影响**：
-- 新生成的日志文件将使用连字符（-）作为分隔符，例如 `provider-v2-20260704-204009.log`
-- 旧的日志文件不受影响，保持原有命名格式
-
-### 日志面板虚拟滚动 (v2.2.239)
-
-**变更内容**：为日志面板添加虚拟滚动，优化大量日志条目时的渲染性能。
-
-**修改文件**：
-- `src/webui/static/core/state.js`：新增虚拟滚动状态和渲染逻辑，重构 addLogEntry 和 filterLogs
-
-**影响**：
-- 日志条目通过虚拟滚动只渲染可视区域内的条目，减少 DOM 节点数量
-- 滚动时按需创建/销毁日志条目 DOM 元素
-
-### 终端实时性修复 (v2.2.240)
-
-**变更内容**：修复终端输出不实时显示的问题，需要按回车才能看到新内容。
-
-**修改文件**：
-- `src/webui/static/terminal/terminal.js`：在 xterm.js 写入输出后强制刷新视口
-
-**影响**：
-- 终端输出现在会实时显示，无需用户手动按回车或滚动
-- 提升终端交互体验，避免用户误以为程序卡住
+2026-07-04 23:30:00
+[src/paths.py] 新增集中路径管理模块，提供 project_root/config_dir/persist_dir
+[src/webui/routers/admin.py] 重构路径硬编码为 src.paths 调用，提取 _validate_filename 校验函数
+[src/webui/routers/files.py] 重构路径硬编码为 src.paths.project_root 导入
+[src/webui/app.py] 添加 asyncio 导入
+[src/webui/static/core/state.js] 新增日志正则表达式搜索切换功能
+[src/webui/static/index.html] 添加正则搜索按钮
+[src/webui/static/ui/bootstrap.js] 绑定正则搜索按钮事件

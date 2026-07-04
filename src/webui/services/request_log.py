@@ -17,11 +17,11 @@ import sqlite3
 import threading
 import time
 from collections import deque
-from pathlib import Path
 from typing import Any, List
 
 from echotools.web.broker import RequestBroker, request_broker
 from src.logger import get_logger
+from src.paths import persist_db_dir, persist_dir, persist_json_dir
 
 __all__ = [
     "RequestBroker", "request_broker",
@@ -34,10 +34,7 @@ _log = get_logger(__name__)
 # SQLite 配置
 # ------------------------------------------------------------------
 
-_PERSIST_DIR = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui"
-_DB_DIR = _PERSIST_DIR / "db"
-_JSON_DIR = _PERSIST_DIR / "json"
-_DB_PATH = _DB_DIR / "requests.db"
+_DB_PATH = persist_db_dir() / "requests.db"
 _MAX_ENTRIES = 5000   # 数据库最多保留条数
 _MAX_BUFFER = 200     # 内存 buffer 最大条数
 _FLUSH_INTERVAL = 10  # 批量写入间隔（秒）
@@ -248,9 +245,9 @@ def start_request_persist() -> None:
     _init_db()
 
     # 清理旧 JSON 文件（迁移遗留）
-    old_json = _JSON_DIR / "requests.json"
+    old_json = persist_json_dir() / "requests.json"
     if not old_json.exists():
-        old_json = _PERSIST_DIR / "requests.json"  # 兼容旧路径
+        old_json = persist_dir("webui") / "requests.json"  # 兼容旧路径
     if old_json.exists():
         try:
             _migrate_json(old_json)
