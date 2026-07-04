@@ -196,23 +196,224 @@ async function saveConfig() {
   }
 }
 
-async function reloadServer() {
-  try {
-    const response = await fetch('/v1/admin/reload', { method: 'POST' });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText.slice(0, 200)}`);
-    }
-    const result = await response.json();
-    if (result.status === 'ok') {
-      toast('服务正在重启，页面将自动刷新', 'ok');
-      setTimeout(function() { location.reload(); }, 3000);
-    } else {
-      toast('重启失败：' + (result.error || '未知错误'), 'error');
-    }
-  } catch (error) {
-    toast('重启失败：' + String(error), 'error');
+// ========================= Restart Overlay =========================
+
+var _restartState = 'idle'; // idle | requesting | restarting | checking | success | failed
+var _restartProgress = 0;
+var _restartElapsed = 0;
+var _restartTimer = null;
+var _restartProgressTimer = null;
+var _restartCheckTimer = null;
+var _restartCheckAttempts = 0;
+
+var _RESTART_CONFIG = {
+  INITIAL_DELAY: 3000,
+  CHECK_INTERVAL: 2000,
+  CHECK_TIMEOUT: 3000,
+  MAX_ATTEMPTS: 60,
+  PROGRESS_INTERVAL: 200,
+  SUCCESS_REDIRECT_DELAY: 1500,
+};
+
+var _RESTART_TITLES = {
+  requesting: '准备重启',
+  restarting: '正在重启',
+  checking: '检查服务状态',
+  success: '重启成功',
+  failed: '重启失败',
+};
+
+var _RESTART_DESCS = {
+  requesting: '正在发送重启请求...',
+  restarting: '服务正在重启中，请稍候...',
+  checking: '服务正在启动，正在检查是否可用...',
+  success: '服务已恢复正常，即将刷新页面...',
+  failed: '服务在规定时间内未恢复，请检查服务状态',
+};
+
+function _restartSetState(status) {
+  _restartState = status;
+  var overlay = document.getElementById('restartOverlay');
+  var spinner = document.getElementById('restartSpinner');
+  var check = document.getElementById('restartCheck');
+  var fail = document.getElementById('restartFail');
+  var pulse = document.getElementById('restartPulse');
+  var title = document.getElementById('restartTitle');
+  var desc = document.getElementById('restartDesc');
+  var actions = document.getElementById('restartActions');
+
+  if (!overlay) return;
+
+  overlay.classList.remove('is-success', 'is-failed');
+  if (status === 'success') overlay.classList.add('is-success');
+  if (status === 'failed') overlay.classList.add('is-failed');
+
+  // Icons
+  var showSpinner = (status === 'requesting' || status === 'restarting' || status === 'checking');
+  var showCheck = (status === 'success');
+  var showFail = (status === 'failed');
+  if (spinner) spinner.style.display = showSpinner ? '' : 'none';
+  if (check) check.style.display = showCheck ? '' : 'none';
+  if (fail) fail.style.display = showFail ? '' : 'none';
+  if (pulse) pulse.classList.toggle('hidden', !showSpinner);
+
+  // Text
+  if (title) title.textContent = _RESTART_TITLES[status] || '';
+  if (desc) desc.textContent = _RESTART_DESCS[status] || '';
+
+  // Actions
+  if (actions) {
+    actions.style.display = (status === 'success' || status === 'failed') ? '' : 'none';
   }
+}
+
+function _restartUpdateProgress(percent) {
+  _restartProgress = Math.min(percent, 100);
+  var bar = document.getElementById('restartProgressBar');
+  var pct = document.getElementById('restartPercent');
+  if (bar) bar.style.width = _restartProgress + '%';
+  if (pct) pct.textContent = Math.round(_restartProgress) + '%';
+}
+
+function _restartUpdateElapsed() {
+  _restartElapsed++;
+  var el = document.getElementById('restartElapsed');
+  if (el) el.textContent = '已用时 ' + _restartElapsed + 's';
+}
+
+function _restartStartProgressTimer() {
+  _restartProgress = 0;
+  _restartElapsed = 0;
+  _restartUpdateProgress(0);
+  _restartUpdateElapsed();
+  _restartProgressTimer = setInterval(function() {
+    if (_restartProgress < 90) {
+      _restartUpdateProgress(_restartProgress + 1);
+    }
+  }, _RESTART_CONFIG.PROGRESS_INTERVAL);
+  _restartTimer = setInterval(function() {
+    _restartUpdateElapsed();
+  }, 1000);
+}
+
+function _restartStopTimers() {
+  if (_restartProgressTimer) { clearInterval(_restartProgressTimer); _restartProgressTimer = null; }
+  if (_restartTimer) { clearInterval(_restartTimer); _restartTimer = null; }
+  if (_restartCheckTimer) { clearTimeout(_restartCheckTimer); _restartCheckTimer = null; }
+}
+
+function _restartStartHealthCheck() {
+  _restartCheckAttempts = 0;
+  _restartSetState('checking');
+
+  function _doCheck() {
+    _restartCheckAttempts++;
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, _RESTART_CONFIG.CHECK_TIMEOUT);
+
+    fetch('/health', { signal: controller.signal })
+      .then(function(resp) {
+        clearTimeout(timeout);
+        if (resp.ok) {
+          return resp.json();
+        }
+        throw new Error('not ok');
+      })
+      .then(function(data) {
+        if (data && data.status === 'ok') {
+          _restartOnSuccess();
+          return;
+        }
+        _restartScheduleNext();
+      })
+      .catch(function() {
+        clearTimeout(timeout);
+        _restartScheduleNext();
+      });
+  }
+
+  function _restartScheduleNext() {
+    if (_restartCheckAttempts >= _RESTART_CONFIG.MAX_ATTEMPTS) {
+      _restartOnFailed();
+      return;
+    }
+    _restartCheckTimer = setTimeout(_doCheck, _RESTART_CONFIG.CHECK_INTERVAL);
+  }
+
+  _doCheck();
+}
+
+function _restartOnSuccess() {
+  _restartStopTimers();
+  _restartUpdateProgress(100);
+  _restartSetState('success');
+  setTimeout(function() { location.reload(); }, _RESTART_CONFIG.SUCCESS_REDIRECT_DELAY);
+}
+
+function _restartOnFailed() {
+  _restartStopTimers();
+  _restartSetState('failed');
+}
+
+function _restartShowOverlay() {
+  var overlay = document.getElementById('restartOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        overlay.classList.add('is-visible');
+      });
+    });
+  }
+}
+
+function _restartTrigger() {
+  _restartShowOverlay();
+  _restartSetState('requesting');
+  _restartStartProgressTimer();
+
+  // Send restart request (server will die, so timeout is expected)
+  var controller = new AbortController();
+  var timeout = setTimeout(function() { controller.abort(); }, 5000);
+
+  fetch('/v1/admin/reload', { method: 'POST', signal: controller.signal })
+    .then(function(resp) {
+      clearTimeout(timeout);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.json();
+    })
+    .then(function(result) {
+      if (result.status === 'ok') {
+        _restartSetState('restarting');
+        setTimeout(_restartStartHealthCheck, _RESTART_CONFIG.INITIAL_DELAY);
+      } else {
+        _restartStopTimers();
+        _restartSetState('failed');
+      }
+    })
+    .catch(function() {
+      // Timeout or network error = server is dying, which is expected
+      clearTimeout(timeout);
+      _restartSetState('restarting');
+      setTimeout(_restartStartHealthCheck, _RESTART_CONFIG.INITIAL_DELAY);
+    });
+}
+
+function reloadServer() {
+  showConfirmDialog('确认要重启服务吗？所有活跃连接将被中断。', {
+    title: '重启服务',
+    confirmText: '确认重启',
+    cancelText: '取消',
+  }).then(function(confirmed) {
+    if (confirmed) {
+      _restartTrigger();
+    }
+  });
+}
+
+function retryHealthCheck() {
+  _restartCheckAttempts = 0;
+  _restartStartHealthCheck();
 }
 
 async function reloadConfigFromFile() {
