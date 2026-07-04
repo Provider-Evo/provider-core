@@ -568,8 +568,8 @@ def get_terminal_store(persist_dir: Optional[Path] = None) -> TerminalSessionSto
         return _store
 
     if persist_dir is None:
-        project_root = Path(__file__).resolve().parent.parent.parent
-        persist_dir = project_root / "persist" / "terminal"
+        from src.paths import persist_dir as _default_persist_dir
+        persist_dir = _default_persist_dir("terminal")
 
     _store = TerminalSessionStore(persist_dir)
     logger.debug("全局 TerminalSessionStore 单例已创建: %s", persist_dir)
