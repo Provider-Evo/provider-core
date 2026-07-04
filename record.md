@@ -3474,3 +3474,17 @@ pytest tests/src/core/dispatch/test_selector.py: 27 passed
 [docs-src/src/webui/static/core/INDEX.md] 更新文档，说明压缩模式下状态点仍然显示
 纯前端 CSS/文档变更，无需 py_compile
 
+
+
+2026-07-06 01:00:00
+
+[版本更新] 2.2.235 → 2.2.236（README.md 徽章 + 路线图、SKILL.md frontmatter）与 config/template 已同步
+[.gitignore] 添加 .backup/ 目录过滤
+[docs-src/src/webui/routers/admin.md] 新建文档：管理端点（配置读写、服务重载、持久化存储、背景图片上传）
+[docs-src/src/webui/routers/INDEX.md] 添加 admin.md 条目
+[docs-src/src/webui/routes.md] 添加 bg-image 路由说明
+[src/webui/static/terminal/terminal.js] 新增 _migrateBgImageToServer 函数，将遗留 base64 data URL 迁移为服务器端文件上传
+py_compile: logs_ws.py, test_base.py, test_base.py (fncall), test_nous_protocol.py — 全部通过
+pytest tests/src/core: 330 passed, 0 failed
+pytest tests/src/core/dispatch/test_selector.py + test_models_cache.py + test_registry.py: 60 passed, 0 failed
+

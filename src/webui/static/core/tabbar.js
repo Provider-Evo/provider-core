@@ -138,7 +138,7 @@ var TabBar = (function () {
 
     /**
      * Create a DOM element for a single tab.
-     * Structure: icon + status + title + close
+     * Structure: status + title + close
      */
     instance._createTabElement = function (tab) {
       var el = document.createElement('div');
@@ -147,12 +147,6 @@ var TabBar = (function () {
       el.setAttribute('data-tooltip', tab.title || '');
 
       var self = this;
-
-      // Icon slot -- ALWAYS present for every tab type
-      var iconEl = document.createElement('span');
-      iconEl.className = 'unified-tab-icon';
-      iconEl.innerHTML = tab.icon || '';
-      el.appendChild(iconEl);
 
       // Status dot -- shown only when status is set (connecting/connected/disconnected)
       if (tab.status) {
@@ -352,14 +346,9 @@ var TabBar = (function () {
       var statusEl = el.querySelector('.unified-tab-status');
       if (status) {
         if (!statusEl) {
-          // Create status dot -- insert after icon
+          // Create status dot -- insert at the beginning
           statusEl = document.createElement('span');
-          var iconEl = el.querySelector('.unified-tab-icon');
-          if (iconEl && iconEl.nextSibling) {
-            el.insertBefore(statusEl, iconEl.nextSibling);
-          } else {
-            el.appendChild(statusEl);
-          }
+          el.insertBefore(statusEl, el.firstChild);
         }
         statusEl.className = 'unified-tab-status ' + status;
       } else if (statusEl) {
