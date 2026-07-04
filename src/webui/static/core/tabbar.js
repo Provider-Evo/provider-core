@@ -148,18 +148,18 @@ var TabBar = (function () {
 
       var self = this;
 
-      // Icon slot -- shown for tabs without status (e.g., file tabs in compressed mode)
-      var iconEl = document.createElement('span');
-      iconEl.className = 'unified-tab-icon';
-      iconEl.innerHTML = tab.icon || '';
-      el.appendChild(iconEl);
-
       // Status dot -- shown only when status is set (connecting/connected/disconnected)
       if (tab.status) {
         var statusEl = document.createElement('span');
         statusEl.className = 'unified-tab-status ' + tab.status;
         el.appendChild(statusEl);
       }
+
+      // Icon slot -- shown for tabs without status (e.g., file tabs in compressed mode)
+      var iconEl = document.createElement('span');
+      iconEl.className = 'unified-tab-icon';
+      iconEl.innerHTML = tab.icon || '';
+      el.appendChild(iconEl);
 
       // Title text
       var titleEl = document.createElement('span');
@@ -352,9 +352,14 @@ var TabBar = (function () {
       var statusEl = el.querySelector('.unified-tab-status');
       if (status) {
         if (!statusEl) {
-          // Create status dot -- insert at the beginning
+          // Create status dot -- insert before icon
           statusEl = document.createElement('span');
-          el.insertBefore(statusEl, el.firstChild);
+          var iconEl = el.querySelector('.unified-tab-icon');
+          if (iconEl) {
+            el.insertBefore(statusEl, iconEl);
+          } else {
+            el.insertBefore(statusEl, el.firstChild);
+          }
         }
         statusEl.className = 'unified-tab-status ' + status;
       } else if (statusEl) {

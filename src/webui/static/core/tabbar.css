@@ -100,6 +100,19 @@
   border-radius: 0;
 }
 
+/* ========================= Tab Icon ========================= */
+
+.unified-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 /* ========================= Tab Title ========================= */
 
 .unified-tab-title {
@@ -281,6 +294,11 @@
 /* Hide title and close button in compressed mode */
 .unified-tabbar.tabbar-compressed .unified-tab-title,
 .unified-tabbar.tabbar-compressed .unified-tab-close {
+  display: none;
+}
+
+/* Hide icon when status dot is present in compressed mode */
+.unified-tabbar.tabbar-compressed .unified-tab-status ~ .unified-tab-icon {
   display: none;
 }
 
