@@ -33,7 +33,6 @@ var TerminalManager = (function () {
   var _pendingDecStrip = ''; // pending incomplete escape sequence for cross-message handling
   var _customBgImage = ''; // custom background image data URL
   var _customBgOpacity = 0.3; // custom background opacity (0-1)
-  var _customBgSize = 'cover'; // background-size: cover | contain | stretch
 
   /**
    * Strip DEC private mode responses (e.g. ^[[?1;2c, ^[[?6c) that leak
@@ -217,17 +216,12 @@ var TerminalManager = (function () {
   function _applyCustomBgImage() {
     if (!_body) return;
     if (_customBgImage) {
-      _body.style.backgroundImage = 'url(' + _customBgImage + ')';
-      _body.style.backgroundSize = _customBgSize;
-      _body.style.backgroundPosition = 'center';
-      _body.style.backgroundRepeat = 'no-repeat';
-      _body.style.opacity = _customBgOpacity;
+      // Store background image URL in CSS variable for pseudo-element
+      _body.style.setProperty('--custom-bg-image', 'url(' + _customBgImage + ')');
+      _body.style.setProperty('--custom-bg-opacity', _customBgOpacity);
     } else {
-      _body.style.backgroundImage = '';
-      _body.style.backgroundSize = '';
-      _body.style.backgroundPosition = '';
-      _body.style.backgroundRepeat = '';
-      _body.style.opacity = '';
+      _body.style.removeProperty('--custom-bg-image');
+      _body.style.removeProperty('--custom-bg-opacity');
     }
   }
 
@@ -252,7 +246,6 @@ var TerminalManager = (function () {
   function _clearCustomBgImage() {
     _customBgImage = '';
     _customBgOpacity = 0.3;
-    _customBgSize = 'cover';
     _applyCustomBgImage();
     _saveTerminalBgMode();
   }
@@ -264,19 +257,8 @@ var TerminalManager = (function () {
   function _setCustomBgOpacity(opacity) {
     _customBgOpacity = Math.max(0, Math.min(1, opacity));
     if (_body) {
-      _body.style.opacity = _customBgOpacity;
-    }
-    _saveTerminalBgMode();
-  }
-
-  /**
-   * Set custom background size mode.
-   * @param {string} size - 'cover', 'contain', or 'stretch'
-   */
-  function _setCustomBgSize(size) {
-    _customBgSize = size;
-    if (_body) {
-      _body.style.backgroundSize = size;
+      // Update CSS variable for background opacity (affects pseudo-element only)
+      _body.style.setProperty('--custom-bg-opacity', _customBgOpacity);
     }
     _saveTerminalBgMode();
   }
@@ -328,7 +310,6 @@ var TerminalManager = (function () {
   function _updateCustomBgControls() {
     var controls = document.getElementById('terminalCustomBgControls');
     var opacityRange = document.getElementById('terminalBgOpacityRange');
-    var sizeLabel = document.getElementById('terminalBgSizeLabel');
 
     if (controls) {
       controls.style.display = _terminalBgMode === 'custom' ? 'flex' : 'none';
@@ -336,10 +317,6 @@ var TerminalManager = (function () {
 
     if (opacityRange) {
       opacityRange.value = Math.round(_customBgOpacity * 100);
-    }
-
-    if (sizeLabel) {
-      sizeLabel.textContent = _customBgSize;
     }
   }
 
@@ -354,12 +331,10 @@ var TerminalManager = (function () {
         if (_terminalBgMode === 'custom') {
           existing.bgImage = _customBgImage;
           existing.bgOpacity = _customBgOpacity;
-          existing.bgSize = _customBgSize;
         } else {
           // Clear custom settings when not in custom mode
           delete existing.bgImage;
           delete existing.bgOpacity;
-          delete existing.bgSize;
         }
         await persistSave('terminals.json', existing);
       }
@@ -381,9 +356,6 @@ var TerminalManager = (function () {
         }
         if (data && typeof data.bgOpacity === 'number') {
           _customBgOpacity = data.bgOpacity;
-        }
-        if (data && data.bgSize) {
-          _customBgSize = data.bgSize;
         }
       }
     } catch (e) { /* ignore */ }
@@ -510,14 +482,6 @@ var TerminalManager = (function () {
     if (bgOpacityRange) {
       bgOpacityRange.addEventListener('input', function(e) {
         _setCustomBgOpacity(parseInt(e.target.value) / 100);
-      });
-    }
-
-    var bgSizeBtn = document.getElementById('terminalBgSizeBtn');
-    if (bgSizeBtn) {
-      bgSizeBtn.addEventListener('click', function () {
-        _cycleCustomBgSize();
-        _updateCustomBgControls();
       });
     }
 
@@ -1195,7 +1159,6 @@ var TerminalManager = (function () {
       if (_customBgImage) {
         items.push({ label: '\u6E05\u9664\u80CC\u666F\u56FE\u7247', action: function () { _clearCustomBgImage(); } });
         items.push({ label: '\u900F\u660E\u5EA6: ' + Math.round(_customBgOpacity * 100) + '%', action: function () { _cycleCustomBgOpacity(); } });
-        items.push({ label: '\u586B\u5145\u6A21\u5F0F: ' + _customBgSize, action: function () { _cycleCustomBgSize(); } });
       }
     }
 
@@ -1283,16 +1246,6 @@ var TerminalManager = (function () {
     var idx = steps.indexOf(_customBgOpacity);
     var next = steps[(idx + 1) % steps.length];
     _setCustomBgOpacity(next);
-  }
-
-  /**
-   * Cycle custom background size: cover -> contain -> stretch -> cover
-   */
-  function _cycleCustomBgSize() {
-    var sizes = ['cover', 'contain', 'stretch'];
-    var idx = sizes.indexOf(_customBgSize);
-    var next = sizes[(idx + 1) % sizes.length];
-    _setCustomBgSize(next);
   }
 
   function _reconnectTab(tabId) {

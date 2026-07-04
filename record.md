@@ -3245,3 +3245,29 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 [src/webui/core/local_store.py] 本地存储路径从 data/local_store.json 迁移到 persist/webui/local_store.json
 [src/webui/static/chat/chat.js] 修复清空对话按钮：在 clearChatMessages 中清空 chatConversationHistory 数组
 [src/webui/static/ui/bootstrap.js] 移除清空对话事件处理中重复的 chatConversationHistory 赋值
+
+2026-07-04 20:15:00
+
+[src/webui/static/index.html] 调整终端面板标题栏布局：按钮区域始终靠右，标题垂直居中对齐
+
+2026-07-04 20:30:00
+
+[src/webui/static/index.html] 调整终端面板标题栏布局：自定义控制面板移到主按钮左侧，主按钮始终靠右
+[src/webui/static/terminal/terminal.css] 使用伪元素实现自定义背景图片，透明度仅影响背景不影响字体
+[src/webui/static/terminal/terminal.js] 使用CSS变量控制背景图片和透明度，通过伪元素实现
+
+2026-07-04 21:00:00
+
+[src/routes/] 重构路由目录结构：将 flat 结构拆分为 main/openai/anthropic 三个子包
+[src/routes/main/] 新增主路由子包：health.py, models.py, static.py, function_call.py, routes.py 聚合器
+[src/routes/openai/] 重构 OpenAI 路由子包：helpers.py, chat.py, media.py, stubs.py, routes.py 聚合器
+[src/routes/anthropic/] 重构 Anthropic 路由子包：messages.py
+[src/core/server/app.py] 更新路由导入路径适配新目录结构
+[docs-src/src/routes/INDEX.md] 更新路由目录结构文档
+
+2026-07-04 19:22:26
+
+[src/webui/static/index.html] 调整终端面板标题栏布局：自定义控制面板移到主按钮左侧，主按钮始终靠右
+[src/webui/static/terminal/terminal.js] 使用CSS变量控制背景图片和透明度，通过伪元素实现
+[src/webui/static/terminal/terminal.css] 使用伪元素实现自定义背景图片，透明度仅影响背景不影响字体
+[docs-src/src/webui/routers/terminal.md] 更新终端主题文档，添加自定义背景图片功能描述

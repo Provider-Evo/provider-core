@@ -37,13 +37,29 @@
   background: #1e1e1e;
 }
 
-/* Custom background image mode */
+/* Custom background image mode - use pseudo-element for background */
 .terminal-body.terminal-body--custom {
   background-color: var(--bg);
+  position: relative;
+}
+
+.terminal-body.terminal-body--custom::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--custom-bg-image, none);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  transition: opacity 0.3s ease;
+  opacity: var(--custom-bg-opacity, 0.3);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure terminal content stays above background */
+.terminal-body.terminal-body--custom > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* ========================= Custom Background Controls ========================= */

@@ -1345,6 +1345,24 @@ section.tab-panel > * {
   gap: 0;
 }
 
+/* When terminal tab is active, let content area fill remaining viewport */
+#mainTabSection:has(#tab-terminal.active) {
+  display: flex;
+  flex-direction: column;
+}
+
+#mainTabSection:has(#tab-terminal.active) > .webui-layout {
+  flex: 1;
+  min-height: 0;
+}
+
+.webui-content:has(#tab-terminal.active) {
+  max-height: none;
+  overflow: visible;
+  flex: 1;
+  min-height: 0;
+}
+
 #tab-terminal > .flex {
   flex-shrink: 0;
 }
