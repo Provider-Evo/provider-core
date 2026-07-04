@@ -314,6 +314,8 @@ function clearLogs() {
   _logEntries = [];
   _logSeenIds = {};
   _uniqueModules = [];
+  _logFilteredCache = null;
+  _vsRenderedRange = { start: -1, end: -1 };
   var box = document.getElementById('logBox');
   if (box) box.innerHTML = '';
   _rebuildModuleSelect();
