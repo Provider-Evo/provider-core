@@ -1,6 +1,0 @@
-layout = "vertical"
-sidebarCompressed = true
-theme = "dark"
-refreshInterval = 0
-timeoutMs = 30000
-compact = "1"
