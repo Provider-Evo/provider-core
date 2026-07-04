@@ -12,6 +12,7 @@ src/webui/static/core/state.js
 src/webui/static/index.html
 src/webui/static/ui/bootstrap.js
 src/paths.py
+main.py
 
 2026-07-04 22:30:00
 [src/logger.py] 日志文件命名分隔符从下划线改为连字符
@@ -46,3 +47,6 @@ src/paths.py
 [template/template_config.toml] 版本号更新至 2.2.242
 [config/main_config.toml] 版本号同步更新至 2.2.242
 [README.md] 版本徽章和路线图版本号更新至 2.2.242
+
+2026-07-04 23:50:00
+[main.py] WebUIWorker 不再占用独立端口，通过共享内存与 MainWorker 通信

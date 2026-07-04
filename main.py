@@ -306,47 +306,17 @@ async def _run() -> None:
 
 
 async def _run_webui() -> None:
-    """WebUIWorker 的异步主流程——启动 WebUI 服务，等待退出信号，优雅关闭。"""
-    cfg = get_config()
-    host = cfg.server.host
-    webui_port = getattr(cfg.server, "webui_port", 8001)
+    """WebUIWorker 的异步主流程——通过共享内存与 MainWorker 通信，不占用独立端口。
 
+    WebUIWorker 不再启动独立的 HTTP 服务器，而是通过共享内存与 MainWorker 通信。
+    MainWorker 已经包含了所有 WebUI 路由（端口 1337），WebUIWorker 只负责后台任务。
+    """
     from src.core.ipc import SharedMemoryManager
-    from src.webui.server import WebUIServer
 
-    # 初始化共享内存连接
+    # 初始化共享内存连接（与 MainWorker 共享）
     shared_mem = SharedMemoryManager("provider_shared_data", create=False)
 
-    # 从共享内存获取 Registry 快照（如果可用）
-    registry = None
-    snapshot = shared_mem.read()
-    if snapshot and "registry" in snapshot:
-        try:
-            registry = Registry.from_snapshot(snapshot["registry"])
-        except Exception as exc:
-            logger.warning("从共享内存恢复 Registry 失败: %s", exc)
-
-    # 创建 WebUI 服务器
-    server = WebUIServer(host=host, port=webui_port, registry=registry)
-
-    # 检查并释放端口占用
-    port_result = ensure_port_available(webui_port, cfg.server.startup_force_kill_port)
-    if port_result.occupied and not port_result.released:
-        if cfg.server.startup_force_kill_port:
-            logger.error(
-                "WebUI 端口 %d 被占用 (PIDs: %s)，已尝试强制终止但未能释放",
-                webui_port,
-                port_result.pids,
-            )
-        else:
-            logger.error(
-                "WebUI 端口 %d 被占用 (PIDs: %s)，startup_force_kill_port=false 未强制释放",
-                webui_port,
-                port_result.pids,
-            )
-
-    await server.start()
-    logger.info("WebUIWorker 已启动: http://%s:%d", host, webui_port)
+    logger.info("WebUIWorker 已启动（共享内存模式，无独立端口）")
 
     stop_event = asyncio.Event()
     _setup_signal_handlers(stop_event)
@@ -360,8 +330,6 @@ async def _run_webui() -> None:
     except (KeyboardInterrupt, SystemExit):
         logger.info("收到键盘中断，正在退出...")
     finally:
-        logger.info("正在关闭 WebUI 服务器...")
-        await server.shutdown()
         shared_mem.close()
         logger.info("WebUIWorker 已完全退出")
 
