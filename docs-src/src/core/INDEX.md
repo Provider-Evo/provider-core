@@ -19,4 +19,5 @@
 - `runtime_view.md`：WebUI 与状态接口共用的运行时摘要聚合模块。
 - `proxy.md`：代理系统详解。
 - `config/INDEX.md`：配置模块索引。
+- `dispatch/INDEX.md`：调度模块索引（选择器、网关、注册表）。
 - `fncall/protocols/dsml.py`：DSML 协议重导出模块（echotools 1.0.32+）

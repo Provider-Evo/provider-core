@@ -10,7 +10,7 @@
   min-height: 400px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
 }
@@ -34,7 +34,7 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 16px;
   cursor: pointer;
   color: var(--muted);
@@ -62,7 +62,7 @@
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   color: var(--muted);
   white-space: nowrap;
@@ -77,7 +77,7 @@
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
@@ -101,7 +101,7 @@
   justify-content: center;
   height: 30px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 12px;
   cursor: pointer;
   color: var(--muted);
@@ -228,7 +228,7 @@
   z-index: 10000;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 6px;
   min-width: 180px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
@@ -239,7 +239,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 13px;
   cursor: pointer;
   color: var(--text);
@@ -271,7 +271,7 @@
 .files-preview-dialog {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   width: 90%;
   max-width: 800px;
   max-height: 85vh;
@@ -306,7 +306,7 @@
 
 .files-preview-btn {
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 12px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -362,7 +362,7 @@
 .files-preview-image img {
   max-width: 100%;
   max-height: 60vh;
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .files-preview-binary {
@@ -470,7 +470,7 @@
 .files-rename-dialog input {
   width: 100%;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
@@ -488,7 +488,7 @@
 
 .files-rename-actions button {
   padding: 8px 18px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 14px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -544,7 +544,7 @@
   justify-content: center;
   background: rgba(59, 130, 246, 0.08);
   border: 2px dashed var(--accent, #3b82f6);
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 16px;
   font-weight: 600;
   color: var(--accent, #3b82f6);
@@ -558,7 +558,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 12px;
   color: var(--accent);
   background: var(--accent-soft);
@@ -609,7 +609,7 @@
   width: 180px;
   height: 30px;
   padding: 0 28px 0 10px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
@@ -669,7 +669,7 @@
   z-index: 1000;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   display: none;
 }

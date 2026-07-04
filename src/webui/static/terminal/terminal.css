@@ -12,7 +12,7 @@
   min-height: 0;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
 }
@@ -69,7 +69,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--panel-soft);
   border: 1px solid var(--border);
 }
@@ -80,7 +80,7 @@
   -webkit-appearance: none;
   appearance: none;
   background: var(--border);
-  border-radius: 2px;
+  border-radius: 0;
   outline: none;
 }
 
@@ -89,7 +89,7 @@
   appearance: none;
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--accent);
   cursor: pointer;
 }
@@ -97,7 +97,7 @@
 .terminal-bg-opacity-range::-moz-range-thumb {
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--accent);
   cursor: pointer;
   border: none;
@@ -110,7 +110,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
@@ -181,7 +181,7 @@
 
 .terminal-empty-state-actions button {
   padding: 10px 20px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 14px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -203,7 +203,7 @@
   z-index: 10000;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 6px;
   min-width: 160px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
@@ -214,7 +214,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 13px;
   cursor: pointer;
   color: var(--text);
@@ -255,7 +255,7 @@
 .terminal-ssh-dialog {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 24px;
   width: 100%;
   max-width: 440px;
@@ -289,7 +289,7 @@
 .terminal-ssh-field textarea {
   width: 100%;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
@@ -327,7 +327,7 @@
 
 .terminal-ssh-actions button {
   padding: 10px 20px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 14px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -377,7 +377,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 13px;
   transition: background 0.1s;

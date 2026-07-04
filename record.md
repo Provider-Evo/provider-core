@@ -3317,3 +3317,36 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 [docs-src/src/core/dispatch/selector.py] 更新文档反映 SQLite 存储架构、TASRecord 字段说明和数据库 schema
 [tests/src/core/dispatch/test_selector.py] 适配新 TASRecord 字段，新增 SQLite 持久化和批量刷新测试
 py_compile: selector.py; pytest tests/src/core/dispatch/test_selector.py: 27 passed
+
+2026-07-04 24:00:00
+
+[tests/src/core/dispatch/test_selector.py] 修复测试用例：重命名 test_score_error_penalty 为 test_error_triggers_cooling，修正拼写错误 success -> n_success
+[template/template_config.toml] 版本 2.2.225 -> 2.2.226
+[config/main_config.toml] 版本 2.2.225 -> 2.2.226
+[README.md] 版本徽章和路线图更新为 2.2.226
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.225 -> 2.2.226
+
+2026-07-04 24:10:00
+
+[src/webui/static/ui/styles.css] 侧边栏改为 flex 纵向布局，移除 padding/gap/border-radius/border，按钮贴紧左侧
+[template/template_config.toml] 版本 2.2.226 -> 2.2.227
+[config/main_config.toml] 版本 2.2.226 -> 2.2.227
+[README.md] 版本徽章和路线图更新为 2.2.227
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.226 -> 2.2.227
+py_compile: test_selector.py; pytest tests/src/core/dispatch/test_selector.py: 27 passed
+
+2026-07-04 23:50:00
+
+[docs-src/src/core/dispatch/selector.md] 新增调度选择器模块文档
+[docs-src/src/core/dispatch/INDEX.md] 新增调度模块索引
+[docs-src/tests/src/core/dispatch/INDEX.md] 新增调度测试索引
+[docs-src/src/core/INDEX.md] 更新核心索引，添加调度模块引用
+
+2026-07-04 24:20:00
+
+[src/webui/static/core/tabbar.css] 提高加号按钮 z-index 为 2，确保始终在最上层
+[src/webui/static/core/tabbar.css] 调整"关闭全部"按钮 right 值为 40px，避免遮挡加号按钮
+[docs-src/src/webui/routers/terminal.md] 添加前端标签页行为文档，说明加号按钮始终可见
+[template/template_config.toml] 版本 2.2.227 -> 2.2.228
+[config/main_config.toml] 版本 2.2.227 -> 2.2.228
+[README.md] 版本徽章和路线图更新为 2.2.228

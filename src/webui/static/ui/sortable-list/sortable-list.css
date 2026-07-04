@@ -6,7 +6,7 @@
   margin-bottom: 4px;
   padding: 4px 6px;
   border: 1px solid var(--border, #444);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--panel, #1a1a2e);
   transition: background 0.15s, opacity 0.15s, box-shadow 0.15s;
 }
@@ -61,7 +61,7 @@
   line-height: 1;
   width: 20px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: 0;
   transition: color 0.15s, background 0.15s;
 }
 .sl-btn:hover:not(:disabled) {

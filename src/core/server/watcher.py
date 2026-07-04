@@ -107,6 +107,9 @@ class FileWatcher:
       -> exit code 42 restart
     """
 
+    # Minimum seconds between consecutive frontend reload broadcasts
+    _FRONTEND_RELOAD_COOLDOWN = 5.0
+
     def __init__(self, root: Path) -> None:
         """Initialize file watcher.
 
@@ -118,6 +121,7 @@ class FileWatcher:
         self._session: Optional[Any] = None
         self._package_mtimes: Dict[str, float] = {}
         self._package_check_task: Optional[asyncio.Task] = None
+        self._last_frontend_reload: float = 0.0
 
         paths = []
         src = root / "src"

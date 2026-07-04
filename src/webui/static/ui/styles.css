@@ -124,7 +124,7 @@ body { margin: 0; font-family: Arial, sans-serif;
 /* Tool buttons (from quickshot input-box) */
 .tool-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border-radius: 10px;
+  width: 36px; height: 36px; border-radius: 0;
   background: transparent; color: var(--muted);
   cursor: pointer; border: none; padding: 0;
   transition: color 150ms ease, background-color 150ms ease;
@@ -144,7 +144,7 @@ body { margin: 0; font-family: Arial, sans-serif;
   filter: brightness(0) saturate(100%) invert(37%) sepia(67%) saturate(1268%) hue-rotate(200deg) brightness(94%) contrast(92%);
 }
 .custom-caret {
-  position: absolute; left: 0; top: 0; width: 2px; height: 24px; border-radius: 999px;
+  position: absolute; left: 0; top: 0; width: 2px; height: 24px; border-radius: 0;
   background: var(--accent); pointer-events: none; opacity: 0;
   transform: translate3d(0, 0, 0); will-change: transform, height, opacity; z-index: 4;
 }
@@ -153,9 +153,9 @@ body { margin: 0; font-family: Arial, sans-serif;
 @keyframes caretBlink { 0%, 48% { opacity: 1; } 50%, 100% { opacity: 0.22; } }
 .custom-scrollbar-root { opacity: 0; pointer-events: none; transition: opacity 120ms linear; }
 .custom-scrollbar-root.is-scrollable { opacity: 1; pointer-events: auto; }
-.custom-scrollbar-track { background: var(--scrollbar-track); border-radius: 999px; }
+.custom-scrollbar-track { background: var(--scrollbar-track); border-radius: 0; }
 .custom-scrollbar-thumb {
-  background: var(--scrollbar-thumb); border-radius: 999px; min-height: 24px;
+  background: var(--scrollbar-thumb); border-radius: 0; min-height: 24px;
   transform: translate3d(0, 0, 0); will-change: transform, height; cursor: grab;
   transition: background 0.1s ease;
 }
@@ -163,7 +163,7 @@ body { margin: 0; font-family: Arial, sans-serif;
 /* Chat message styles — refactored for modern bubble layout */
 .chat-message {
   padding: 12px 16px;
-  border-radius: 16px;
+  border-radius: 0;
   margin-bottom: 10px;
   line-height: 1.6;
   font-size: 14px;
@@ -190,7 +190,7 @@ body { margin: 0; font-family: Arial, sans-serif;
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.25);
   font-size: 12px;
@@ -234,7 +234,7 @@ body { margin: 0; font-family: Arial, sans-serif;
   min-height: 48px;
   max-height: 120px;
   resize: vertical;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid rgba(255, 255, 255, 0.4);
   background: rgba(255, 255, 255, 0.15);
   color: #fff;
@@ -259,7 +259,7 @@ body { margin: 0; font-family: Arial, sans-serif;
 .chat-msg-edit-send,
 .chat-msg-edit-cancel {
   padding: 4px 14px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid rgba(255, 255, 255, 0.4);
   font-size: 12px;
   cursor: pointer;
@@ -322,7 +322,7 @@ body { margin: 0; font-family: Arial, sans-serif;
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: 0;
   border: none;
   background: transparent;
   color: var(--muted);
@@ -347,7 +347,7 @@ body { margin: 0; font-family: Arial, sans-serif;
   margin: 6px auto;
   max-width: 70%;
   text-align: center;
-  border-radius: 10px;
+  border-radius: 0;
 }
 .chat-message-tool {
   background: var(--panel-alt);
@@ -359,7 +359,7 @@ body { margin: 0; font-family: Arial, sans-serif;
 }
 .chat-tool-btn {
   display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
-  border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 12px;
+  border-radius: 0; background: var(--accent-soft); color: var(--accent); font-size: 12px;
   border: 1px solid var(--accent); cursor: default;
 }
 .chat-tools-container {
@@ -374,7 +374,7 @@ body { margin: 0; font-family: Arial, sans-serif;
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel);
   cursor: pointer;
@@ -407,7 +407,7 @@ body { margin: 0; font-family: Arial, sans-serif;
 .chat-tool-args {
   margin-top: 6px;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--panel-alt);
   border: 1px solid var(--border);
   font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
@@ -428,7 +428,7 @@ body { margin: 0; font-family: Arial, sans-serif;
 .chat-test-report tr.fail td { background: var(--test-fail-bg); }
 .config-edit-area { min-height: 200px; max-height: 500px; overflow: auto;
   font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6;
-  border: 1px solid var(--border); border-radius: 12px; padding: 12px;
+  border: 1px solid var(--border); border-radius: 0; padding: 12px;
   background: var(--panel-soft); color: var(--text); white-space: pre; word-break: break-all;
   width: 100%; resize: vertical; }
 .config-edit-area:focus { border-color: var(--accent); outline: none; }
@@ -493,11 +493,11 @@ textarea:focus {
 }
 ::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
-  border-radius: 4px;
+  border-radius: 0;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 4px;
+  border-radius: 0;
   transition: background 0.15s ease;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -548,14 +548,14 @@ textarea:focus {
   height: 18px;
   border: 2px solid var(--border);
   border-top-color: var(--accent);
-  border-radius: 50%;
+  border-radius: 0;
   animation: chatSpinnerRotate 0.8s linear infinite;
 }
 
 /* Code blocks */
 .chat-codeblock-wrapper {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   overflow: hidden;
   margin: 8px 0;
   background: var(--panel-alt);
@@ -581,7 +581,7 @@ textarea:focus {
 }
 .chat-codeblock-tab {
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: 0;
   border: none;
   background: transparent;
   color: var(--muted);
@@ -595,7 +595,7 @@ textarea:focus {
 .chat-codeblock-copy,
 .chat-codeblock-collapse {
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--muted);
@@ -630,7 +630,7 @@ textarea:focus {
 .chat-inline-code {
   background: var(--panel-alt);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 1px 5px;
   font-family: 'Cascadia Code', 'Fira Code', monospace;
   font-size: 0.9em;
@@ -655,7 +655,7 @@ section.tab-panel > * {
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text);
@@ -716,7 +716,7 @@ section.tab-panel > * {
   position: fixed;
   z-index: 100001;
   overflow-y: auto;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel);
   box-shadow: 0 12px 32px rgba(21, 33, 56, 0.12);
@@ -732,7 +732,7 @@ section.tab-panel > * {
   width: calc(100% - 8px);
   margin: 0 4px 4px 4px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text);
@@ -766,7 +766,7 @@ section.tab-panel > * {
 .custom-dropdown-option {
   display: block;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 14px;
   color: var(--text);
   cursor: pointer;
@@ -822,7 +822,7 @@ section.tab-panel > * {
 /* Chat code blocks */
 .chat-codeblock-wrapper {
   margin: 8px 0;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   overflow: hidden;
 }
@@ -845,7 +845,7 @@ section.tab-panel > * {
 
 .chat-codeblock-copy {
   padding: 2px 10px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--muted);
@@ -876,7 +876,7 @@ section.tab-panel > * {
 
 .chat-codeblock-tab {
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: 0;
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted);
@@ -900,7 +900,7 @@ section.tab-panel > * {
 /* Inline code */
 .chat-inline-code {
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--panel-alt);
   color: var(--accent);
   font-family: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
@@ -928,7 +928,7 @@ section.tab-panel > * {
   padding: 6px 10px;
   font-size: 13px;
   min-height: 34px;
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 [data-compact="1"] .custom-dropdown-option {
@@ -965,7 +965,7 @@ section.tab-panel > * {
     text-align: center;
     padding: 8px 12px;
     font-size: 12px;
-    border-radius: 8px;
+    border-radius: 0;
     white-space: nowrap;
   }
   .model-filters {
@@ -1033,7 +1033,7 @@ section.tab-panel > * {
 .confirm-dialog {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 24px;
   min-width: 300px;
   max-width: 400px;
@@ -1068,7 +1068,7 @@ section.tab-panel > * {
 
 .confirm-dialog-btn {
   padding: 8px 20px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
@@ -1100,7 +1100,7 @@ section.tab-panel > * {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--panel-alt);
   color: var(--text);
   font-size: 14px;
@@ -1127,7 +1127,7 @@ section.tab-panel > * {
   min-width: 4px;
   max-width: 12px;
   background: var(--accent);
-  border-radius: 2px 2px 0 0;
+  border-radius: 0;
   position: relative;
   transition: opacity 0.15s;
 }
@@ -1140,38 +1140,38 @@ section.tab-panel > * {
   left: 0;
   right: 0;
   background: var(--err);
-  border-radius: 2px 0 0;
+  border-radius: 0;
 }
 
 /* ========== Config Form Controls ========== */
 .config-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; min-width: 0; }
 .config-field-block { padding: 6px 0; min-width: 0; }
 .config-field-label { font-size: 13px; color: var(--text); flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.config-input { flex: 0 1 180px; max-width: 100%; min-width: 0; padding: 4px 8px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); box-sizing: border-box; }
+.config-input { flex: 0 1 180px; max-width: 100%; min-width: 0; padding: 4px 8px; font-size: 13px; border: 1px solid var(--border); border-radius: 0; background: var(--panel); color: var(--text); box-sizing: border-box; }
 .config-input:focus { border-color: var(--accent); outline: none; }
-.config-json { width: 100%; min-height: 48px; padding: 4px 8px; font-size: 12px; font-family: monospace; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); resize: vertical; box-sizing: border-box; }
+.config-json { width: 100%; min-height: 48px; padding: 4px 8px; font-size: 12px; font-family: monospace; border: 1px solid var(--border); border-radius: 0; background: var(--panel); color: var(--text); resize: vertical; box-sizing: border-box; }
 
 /* Toggle switch */
 .config-toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
 .config-toggle input { opacity: 0; width: 0; height: 0; }
-.toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 20px; transition: background 0.2s; }
-.toggle-slider::before { content: ""; position: absolute; height: 14px; width: 14px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+.toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 0; transition: background 0.2s; }
+.toggle-slider::before { content: ""; position: absolute; height: 14px; width: 14px; left: 3px; bottom: 3px; background: #fff; border-radius: 0; transition: transform 0.2s; }
 .config-toggle input:checked + .toggle-slider { background: var(--accent); }
 .config-toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
 .config-readonly { font-size: 13px; color: var(--muted); font-family: monospace; }
 .config-list { width: 100%; max-width: 100%; overflow: hidden; }
 .config-list-item { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; min-width: 0; }
 .config-list-input { flex: 1; min-width: 0; width: auto; box-sizing: border-box; }
-.config-list-remove { background: none; border: none; color: var(--err); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
+.config-list-remove { background: none; border: none; color: var(--err); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 0; }
 .config-list-remove:hover { background: rgba(238,85,85,0.1); }
-.config-list-add { background: none; border: 1px dashed var(--border); color: var(--accent); cursor: pointer; font-size: 12px; padding: 4px 10px; border-radius: 6px; margin-top: 4px; }
+.config-list-add { background: none; border: 1px dashed var(--border); color: var(--accent); cursor: pointer; font-size: 12px; padding: 4px 10px; border-radius: 0; margin-top: 4px; }
 .config-list-add:hover { border-color: var(--accent); background: var(--accent-soft); }
 .config-mapping { width: 100%; max-width: 100%; }
 .config-mapping-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .config-mapping-key { flex: 2; min-width: 0; }
 .config-mapping-arrow { color: var(--muted); font-size: 14px; flex-shrink: 0; }
 .config-mapping-val { flex: 3; min-width: 0; }
-.config-mapping-remove { background: none; border: none; color: var(--err); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+.config-mapping-remove { background: none; border: none; color: var(--err); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 0; flex-shrink: 0; }
 .config-mapping-remove:hover { background: rgba(238,85,85,0.1); }
 
 /* ========== Request Inspector ========== */
@@ -1189,13 +1189,13 @@ section.tab-panel > * {
 .req-detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .req-detail-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .req-detail-label { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-.req-detail-content { font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-all; background: var(--panel-soft); padding: 8px; border-radius: 6px; max-height: 300px; overflow: auto; margin: 0; }
+.req-detail-content { font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-all; background: var(--panel-soft); padding: 8px; border-radius: 0; max-height: 300px; overflow: auto; margin: 0; }
 
 /* ========== Request Detail Modal ========== */
 .req-modal {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 24px;
   min-width: 500px;
   max-width: 800px;
@@ -1238,7 +1238,7 @@ section.tab-panel > * {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 0;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
@@ -1256,7 +1256,7 @@ section.tab-panel > * {
   margin-bottom: 16px;
   padding: 12px;
   background: var(--panel-soft);
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .req-modal-meta span {
@@ -1291,7 +1291,7 @@ section.tab-panel > * {
   font-size: 11px;
   padding: 2px 10px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--panel);
   color: var(--muted);
   cursor: pointer;
@@ -1312,7 +1312,7 @@ section.tab-panel > * {
   word-break: break-all;
   background: var(--panel-soft);
   padding: 12px;
-  border-radius: 8px;
+  border-radius: 0;
   max-height: 400px;
   overflow: auto;
   margin: 0;
