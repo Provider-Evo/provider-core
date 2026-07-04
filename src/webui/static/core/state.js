@@ -44,6 +44,12 @@ let _logFilterExpanded = localStorage.getItem('provider.logFilterExpanded') === 
 let _uniqueModules = [];
 let _logSeenIds = {};  // 去重
 
+// Virtual scrolling state
+let _logFilteredCache = null;  // cached filtered entries (invalidated on filter change)
+const _VS_ROW_HEIGHT = 26;
+const _VS_BUFFER = 50;
+let _vsRenderedRange = { start: -1, end: -1 };
+
 const _LOG_LEVEL_PRIORITY = { DEBUG: 10, INFO: 20, WARNING: 30, ERROR: 40, CRITICAL: 50, SUCCESS: 25 };
 
 // ========================= Log Helpers =========================
@@ -91,6 +97,79 @@ function _logEntryMatchesFilter(entry) {
     }
   }
   return true;
+}
+
+// ========================= Virtual Scrolling =========================
+
+function _invalidateLogFilterCache() {
+  _logFilteredCache = null;
+  _vsRenderedRange = { start: -1, end: -1 };
+}
+
+function _getFilteredLogs() {
+  if (_logFilteredCache !== null) return _logFilteredCache;
+  _logFilteredCache = [];
+  for (var i = _logEntries.length - 1; i >= 0; i--) {
+    if (_logEntryMatchesFilter(_logEntries[i])) {
+      _logFilteredCache.push(_logEntries[i]);
+    }
+  }
+  return _logFilteredCache;
+}
+
+function _renderVisibleLogs() {
+  var box = document.getElementById('logBox');
+  if (!box) return;
+  var filtered = _getFilteredLogs();
+  var totalHeight = filtered.length * _VS_ROW_HEIGHT;
+  var scrollTop = box.scrollTop;
+  var viewportH = box.clientHeight;
+
+  // Ensure spacer exists for scroll height
+  var spacer = box.querySelector('.log-vs-spacer');
+  if (!spacer) {
+    spacer = document.createElement('div');
+    spacer.className = 'log-vs-spacer';
+    spacer.style.cssText = 'width:1px;pointer-events:none;';
+    box.appendChild(spacer);
+  }
+  spacer.style.height = totalHeight + 'px';
+
+  // Calculate visible range
+  var startIdx = Math.max(0, Math.floor(scrollTop / _VS_ROW_HEIGHT) - _VS_BUFFER);
+  var endIdx = Math.min(filtered.length, Math.ceil((scrollTop + viewportH) / _VS_ROW_HEIGHT) + _VS_BUFFER);
+
+  // Skip if range unchanged
+  if (startIdx === _vsRenderedRange.start && endIdx === _vsRenderedRange.end) return;
+  _vsRenderedRange = { start: startIdx, end: endIdx };
+
+  // Remove old log entries (keep spacer)
+  var children = box.children;
+  for (var i = children.length - 1; i >= 0; i--) {
+    if (!children[i].classList.contains('log-vs-spacer')) {
+      box.removeChild(children[i]);
+    }
+  }
+
+  // Insert new entries before spacer
+  for (var j = startIdx; j < endIdx; j++) {
+    var dom = _createLogEntryDOM(filtered[j]);
+    dom.style.position = 'absolute';
+    dom.style.top = (j * _VS_ROW_HEIGHT) + 'px';
+    dom.style.left = '0';
+    dom.style.right = '0';
+    box.insertBefore(dom, spacer);
+  }
+}
+
+function _setupLogVirtualScroll() {
+  var box = document.getElementById('logBox');
+  if (!box || box._vsSetup) return;
+  box._vsSetup = true;
+  box.style.position = 'relative';
+  box.addEventListener('scroll', function() {
+    requestAnimationFrame(_renderVisibleLogs);
+  });
 }
 
 function _createLogEntryDOM(entry) {
@@ -202,17 +281,12 @@ function addLogEntry(entry) {
     _rebuildModuleSelect();
   }
 
-  if (!_logEntryMatchesFilter(entry)) {
-    _updateLogCount();
-    return;
+  // Invalidate filter cache and re-render visible logs
+  _invalidateLogFilterCache();
+  if (_logEntryMatchesFilter(entry)) {
+    _renderVisibleLogs();
+    _logAutoScrollToBottom();
   }
-
-  var box = document.getElementById('logBox');
-  if (box) {
-    box.appendChild(_createLogEntryDOM(entry));
-    while (box.children.length > _logMaxEntries) box.removeChild(box.firstChild);
-  }
-  _logAutoScrollToBottom();
   _updateLogCount();
 }
 
@@ -229,13 +303,9 @@ function _logAutoScrollToBottom() {
 }
 
 function filterLogs() {
-  var box = document.getElementById('logBox');
-  if (!box) return;
-  box.innerHTML = '';
-  for (var i = _logEntries.length - 1; i >= 0; i--) {
-    if (!_logEntryMatchesFilter(_logEntries[i])) continue;
-    box.appendChild(_createLogEntryDOM(_logEntries[i]));
-  }
+  _invalidateLogFilterCache();
+  _setupLogVirtualScroll();
+  _renderVisibleLogs();
   _logAutoScrollToBottom();
   _updateLogCount();
 }
