@@ -3214,3 +3214,22 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 
 [src/core/server/watcher.py] 添加前端文件监控，检测到前端文件变更时通过WebSocket广播reload消息
 [src/webui/static/config/actions.js] 添加reload消息处理，收到后自动刷新页面
+
+2026-07-04 21:30:00
+
+[template/template_config.toml] 版本 2.2.220 -> 2.2.221
+[config/main_config.toml] 版本 2.2.220 -> 2.2.221
+[README.md] 版本徽章和路线图更新为 2.2.221
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.220 -> 2.2.221
+[src/webui/static/core/state.js] 新增 showInputDialog 通用输入对话框组件和 _escapeAttr 工具函数，替代原生 prompt/confirm
+[src/webui/static/terminal/terminal.js] 重命名标签和重启终端改用自定义对话框组件
+[src/webui/static/files/files.js] 新建文件夹改用 showInputDialog 替代原生 prompt
+[src/webui/static/ui/styles.css] 新增 .input-dialog-input 样式；修复 #tab-terminal 布局改用 flex 自适应高度替代固定 calc 高度
+[docs-src/src/webui/templates/scripts_state.md] 新增 showInputDialog 组件文档
+[docs-src/src/webui/routers/terminal.md] 新增前端交互章节：标签重命名和重启确认
+[docs-src/src/webui/templates/styles_components.md] 新增输入对话框样式文档
+
+2026-07-04 19:30:00
+
+[src/webui/static/terminal/terminal.js] 增强 _stripDecResponses 函数处理跨消息 DEC 序列拆分，添加 _pendingDecStrip 状态跟踪
+[src/webui/static/ui/styles.css] 修复终端面板切换位置异常：移除 display:flex !important，改为 #tab-terminal.active 时应用 flex 布局

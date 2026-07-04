@@ -30,16 +30,39 @@ var TerminalManager = (function () {
   var _contextMenu = null;
   var _discoveryProcessed = false; // guard against double-processing existing sessions
   var _terminalBgMode = 'theme'; // 'theme' | 'original'
+  var _pendingDecStrip = ''; // pending incomplete escape sequence for cross-message handling
 
   /**
    * Strip DEC private mode responses (e.g. ^[[?1;2c, ^[[?6c) that leak
    * through ConPTY as visible garbage.  xterm.js handles these internally;
    * they must never reach xterm.write() as visible text.
    * Applied to ALL output — live stream, offline replay, and status messages.
+   * Handles cross-message splitting by tracking pending escape sequences.
    */
   function _stripDecResponses(data) {
     if (typeof data !== 'string') return data;
-    return data.replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '');
+    // Prepend any pending incomplete sequence from previous message
+    data = _pendingDecStrip + data;
+    _pendingDecStrip = '';
+
+    // Check for incomplete escape sequence at the end
+    var lastEsc = data.lastIndexOf('\x1b');
+    if (lastEsc !== -1) {
+      var suffix = data.slice(lastEsc);
+      // If suffix doesn't match a complete sequence pattern, it's incomplete
+      if (!/\x1b\[[0-9;]*[a-zA-Z]/.test(suffix) &&
+          !/\x1b\[[0-9;]*[cR]/.test(suffix) &&
+          !/\x1b\[\?[0-9;]*[a-zA-Z]/.test(suffix)) {
+        // Might be incomplete, keep as pending
+        _pendingDecStrip = suffix;
+        data = data.slice(0, lastEsc);
+      }
+    }
+
+    // Strip complete DEC responses
+    return data.replace(/\x1b\[[0-9;]*[cR]/g, '')
+               .replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '')
+               .replace(/\x1b\[[0-9;]*[c]/g, '');
   }
 
   /**
@@ -564,6 +587,9 @@ var TerminalManager = (function () {
     tab.ws = ws;
 
     ws.onopen = function () {
+      // Reset pending DEC strip state for new connection
+      _pendingDecStrip = '';
+
       // Send init message with terminal dimensions and connection parameters
       var cols = tab.xterm ? tab.xterm.cols : 80;
       var rows = tab.xterm ? tab.xterm.rows : 24;

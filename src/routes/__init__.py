@@ -4,11 +4,7 @@ from __future__ import annotations
 """HTTP 路由包。"""
 
 __all__ = [
+    "main",
     "openai",
-    "openai_helpers",
-    "openai_chat",
-    "openai_media",
-    "openai_stubs",
     "anthropic",
-    "static",
 ]

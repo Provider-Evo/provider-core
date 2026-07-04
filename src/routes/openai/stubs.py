@@ -22,7 +22,7 @@ import aiohttp.web
 from src.core.server import get_json as _get_json
 from src.core.tools import normalize_content
 from src.logger import get_logger
-from src.routes.openai_helpers import (
+from src.routes.openai.helpers import (
     _aid,
     _err,
     _fid,

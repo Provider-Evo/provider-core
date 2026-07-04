@@ -36,7 +36,7 @@ async def create_app(registry: Any, session: Any) -> aiohttp.web.Application:
     """
     from src.routes.anthropic import setup_routes as setup_anth
     from src.routes.openai import setup_routes as setup_oai
-    from src.routes.static import setup_routes as setup_static
+    from src.routes.main import setup_routes as setup_main
     from src.webui.middleware.static_nocache import static_nocache_middleware
     from src.webui.middleware.stats import stats_middleware
     from src.webui.routes import setup_routes as setup_webui
@@ -55,7 +55,7 @@ async def create_app(registry: Any, session: Any) -> aiohttp.web.Application:
     app[REGISTRY_KEY] = registry
     app[SESSION_KEY] = session
 
-    setup_static(app)
+    setup_main(app)
     setup_oai(app)
     setup_anth(app)
     setup_webui(app)

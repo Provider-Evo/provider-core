@@ -6,16 +6,16 @@ from __future__ import annotations
 本文件是一个轻量级聚合器，从子模块导入所有处理函数并注册路由。
 
 子模块：
-- openai_helpers: 共享工具函数、常量、ID 生成器
-- openai_chat: Chat Completions 端点（流式 + 非流式）
-- openai_media: 媒体端点（Images, Audio, Video, Embeddings, etc.）
-- openai_stubs: Stub/Not-Implemented 处理函数
+- helpers: 共享工具函数、常量、ID 生成器
+- chat: Chat Completions 端点（流式 + 非流式）
+- media: 媒体端点（Images, Audio, Video, Embeddings, etc.）
+- stubs: Stub/Not-Implemented 处理函数
 """
 
 import aiohttp.web
 
 # -- 共享工具函数和常量 (re-exported for backward compatibility) --
-from src.routes.openai_helpers import (  # noqa: F401
+from src.routes.openai.helpers import (  # noqa: F401
     _FNCALL_CLOSE_TAG,
     _FNCALL_END,
     _FNCALL_OPEN_TAG,
@@ -39,13 +39,13 @@ from src.routes.openai_helpers import (  # noqa: F401
 )
 
 # -- Chat Completions --
-from src.routes.openai_chat import (  # noqa: F401
+from src.routes.openai.chat import (  # noqa: F401
     _stream_chat,
     chat_completions,
 )
 
 # -- 媒体端点 --
-from src.routes.openai_media import (  # noqa: F401
+from src.routes.openai.media import (  # noqa: F401
     create_audio_translation,
     create_embeddings,
     create_image,
@@ -60,7 +60,7 @@ from src.routes.openai_media import (  # noqa: F401
 )
 
 # -- Stub / Not-Implemented 处理函数 --
-from src.routes.openai_stubs import (  # noqa: F401
+from src.routes.openai.stubs import (  # noqa: F401
     add_upload_part,
     cancel_batch,
     cancel_fine_tuning_job,

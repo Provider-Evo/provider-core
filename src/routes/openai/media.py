@@ -29,7 +29,7 @@ from src.core.server import (
 from src.core.server import REGISTRY_KEY
 from src.core.tools import normalize_content
 from src.logger import get_logger
-from src.routes.openai_helpers import (
+from src.routes.openai.helpers import (
     _err,
     _json,
     _normalize_messages,
