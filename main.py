@@ -241,6 +241,17 @@ async def _shutdown(
         task.cancel()
     await asyncio.gather(*tasks, return_exceptions=True)
 
+    # 主动关闭所有 WebSocket 连接，避免 ProactorEventLoop 下 transport 未正确关闭
+    from src.webui.logs_ws import log_broker
+    async with log_broker._lock:
+        sockets = list(log_broker._sockets)
+        log_broker._sockets.clear()
+    for ws in sockets:
+        try:
+            await ws.close()
+        except Exception:
+            pass
+
     logger.info("正在关闭注册表...")
     await registry.close()
 
