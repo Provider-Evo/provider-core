@@ -35,7 +35,9 @@ _log = get_logger(__name__)
 # ------------------------------------------------------------------
 
 _PERSIST_DIR = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui"
-_DB_PATH = _PERSIST_DIR / "requests.db"
+_DB_DIR = _PERSIST_DIR / "db"
+_JSON_DIR = _PERSIST_DIR / "json"
+_DB_PATH = _DB_DIR / "requests.db"
 _MAX_ENTRIES = 5000   # 数据库最多保留条数
 _MAX_BUFFER = 200     # 内存 buffer 最大条数
 _FLUSH_INTERVAL = 10  # 批量写入间隔（秒）
@@ -77,7 +79,7 @@ _started = False
 
 def _init_db() -> None:
     """创建 SQLite 数据库和表结构。"""
-    _PERSIST_DIR.mkdir(parents=True, exist_ok=True)
+    _DB_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(_DB_PATH))
     try:
         conn.executescript(_DB_SCHEMA)

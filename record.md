@@ -3345,6 +3345,15 @@ py_compile: selector.py; pytest tests/src/core/dispatch/test_selector.py: 27 pas
 py_compile: watcher.py
 py_compile: test_selector.py; pytest tests/src/core/dispatch/test_selector.py: 27 passed
 
+2026-07-04 24:30:00
+
+[src/webui/services/request_log.py] 请求日志从 JSON 文件持久化迁移至 SQLite，替代旧的 echotools 实现，新增脏列表批量刷新和启动加载
+[docs-src/src/webui/services/request_log.py] 同步文档反映 SQLite 持久化架构
+[template/template_config.toml] 版本 2.2.229 -> 2.2.230
+[config/main_config.toml] 版本 2.2.229 -> 2.2.230
+[README.md] 版本徽章和路线图更新为 2.2.230
+py_compile: request_log.py
+
 2026-07-04 23:50:00
 
 [docs-src/src/core/dispatch/selector.md] 新增调度选择器模块文档
@@ -3376,3 +3385,11 @@ py_compile: watcher.py
 [config/main_config.toml] 版本 2.2.229 -> 2.2.230
 [README.md] 版本徽章和路线图更新为 2.2.230
 py_compile: request_log.py
+
+2026-07-05 00:10:00
+
+[docs-src/src/core/dispatch/candidate.md] 新增候选项数据结构文档
+[docs-src/src/core/dispatch/gateway.md] 新增网关分发逻辑文档
+[docs-src/src/core/dispatch/registry.md] 新增平台注册表文档
+[docs-src/src/core/dispatch/runtime_view.md] 新增运行时视图工具文档
+[docs-src/src/core/dispatch/INDEX.md] 更新调度模块索引，添加所有组件描述
