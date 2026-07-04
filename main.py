@@ -501,13 +501,19 @@ def _restart_worker(
     """
     logger.info("重启 Worker (旧 PID=%d)...", proc.pid)
 
-    # 先终止旧进程
+    # 先终止旧进程（先 SIGTERM 优雅退出，超时后 SIGKILL 强制终止）
     if proc.poll() is None:
         logger.info("终止旧 Worker 进程 (PID=%d)...", proc.pid)
         try:
-            proc.kill()
-            proc.wait(timeout=5.0)
-            logger.info("旧 Worker 进程已终止")
+            proc.terminate()
+            try:
+                proc.wait(timeout=5.0)
+                logger.info("旧 Worker 进程已优雅退出")
+            except subprocess.TimeoutExpired:
+                logger.warning("旧 Worker 进程未响应 SIGTERM，发送 SIGKILL")
+                proc.kill()
+                proc.wait(timeout=3.0)
+                logger.info("旧 Worker 进程已强制终止")
         except Exception as exc:
             logger.warning("终止旧 Worker 进程失败: %s", exc)
 
@@ -536,8 +542,12 @@ def _kill_all_workers(
     if main_proc is not None and main_proc.poll() is None:
         logger.info("终止 MainWorker (PID=%d)...", main_proc.pid)
         try:
-            main_proc.kill()
-            main_proc.wait(timeout=5.0)
+            main_proc.terminate()
+            try:
+                main_proc.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                main_proc.kill()
+                main_proc.wait(timeout=3.0)
         except Exception as exc:
             logger.warning("终止 MainWorker 失败: %s", exc)
 
@@ -636,8 +646,12 @@ def _run_runner() -> None:
             exit_code = main_proc.wait()
         except KeyboardInterrupt:
             logger.info("Runner 收到 Ctrl+C，正在终止 MainWorker...")
-            main_proc.kill()
-            main_proc.wait()
+            main_proc.terminate()
+            try:
+                main_proc.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                main_proc.kill()
+                main_proc.wait()
             if main_reader is not None:
                 main_reader.join(timeout=2.0)
             logger.info("MainWorker 已终止，Runner 退出")

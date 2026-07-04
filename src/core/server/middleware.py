@@ -41,7 +41,7 @@ async def _auth_middleware(
        - Browser (``Accept: text/html``): 302 redirect to ``/login``
        - API client: JSON 401
     """
-    skip = {"/login"}
+    skip = {"/login", "/health"}
     if request.path in skip or request.method == "OPTIONS":
         return await handler(request)
     if request.path.startswith("/static/"):

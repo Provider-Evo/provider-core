@@ -54,17 +54,18 @@ function connectLogsSocket() {
   logsSocket = new WebSocket(url);
 
   var reconnectAttempts = 0;
+  var maxReconnectAttempts = 999;
   var maxReconnectDelay = 30000;
   var baseReconnectDelay = 1000;
 
   function scheduleReconnect() {
-    if (reconnectAttempts >= 10) {
+    if (reconnectAttempts >= maxReconnectAttempts) {
       socketNotice.textContent = '日志 WebSocket: 重连次数过多，请刷新页面';
       return;
     }
-    var delay = Math.min(baseReconnectDelay * Math.pow(2, reconnectAttempts), maxReconnectDelay);
+    var delay = Math.min(baseReconnectDelay * Math.pow(2, Math.min(reconnectAttempts, 8)), maxReconnectDelay);
     reconnectAttempts++;
-    socketNotice.textContent = '日志 WebSocket: 将在 ' + (delay / 1000).toFixed(1) + ' 秒后重连 (' + reconnectAttempts + '/10)';
+    socketNotice.textContent = '日志 WebSocket: 将在 ' + (delay / 1000).toFixed(1) + ' 秒后重连 (' + reconnectAttempts + ')';
     setTimeout(function() {
       connectLogsSocket();
     }, delay);
