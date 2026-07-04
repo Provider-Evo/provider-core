@@ -3367,3 +3367,12 @@ py_compile: test_selector.py; pytest tests/src/core/dispatch/test_selector.py: 2
 [docs-src/src/core/server/watcher.md] 更新前端热重载链路文档，补充冷却机制说明
 [src/webui/static/files/files.css] 移除文件管理器各组件 border-radius，统一为无圆角风格
 py_compile: watcher.py
+
+2026-07-04 24:40:00
+
+[src/webui/services/request_log.py] 请求日志从 JSON 文件迁移至 SQLite 持久化，支持批量刷盘和内存 buffer
+[docs-src/src/webui/services/request_log.py] 更新文档反映 SQLite 存储架构
+[template/template_config.toml] 版本 2.2.229 -> 2.2.230
+[config/main_config.toml] 版本 2.2.229 -> 2.2.230
+[README.md] 版本徽章和路线图更新为 2.2.230
+py_compile: request_log.py

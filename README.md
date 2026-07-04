@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.229-blue)
-![Version](https://img.shields.io/badge/version-v2.2.229-blue)
+![Status](https://img.shields.io/badge/status-v2.2.230-blue)
+![Version](https://img.shields.io/badge/version-v2.2.230-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,9 +1264,10 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.229
+### 当前版本：v2.2.230
 
-✅ 已完成（v2.2.229）：
+✅ 已完成（v2.2.230）：
+- refactor(webui): migrate request logs from JSON to SQLite persistence
 - fix(webui): terminal tab add button always visible regardless of tab count
 - fix(webui): close-all button repositioned to avoid overlapping the add button
 - feat(terminal): add custom background image support with opacity control and pseudo-element rendering
