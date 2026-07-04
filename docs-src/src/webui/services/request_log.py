@@ -119,7 +119,7 @@ _started = False
 
 def _init_db() -> None:
     """创建 SQLite 数据库和表结构。"""
-    _PERSIST_DIR.mkdir(parents=True, exist_ok=True)
+    _DB_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(_DB_PATH))
     try:
         conn.executescript(_DB_SCHEMA)
@@ -286,7 +286,9 @@ def start_request_persist() -> None:
     _init_db()
 
     # 清理旧 JSON 文件（迁移遗留）
-    old_json = _PERSIST_DIR / "requests.json"
+    old_json = _JSON_DIR / "requests.json"
+    if not old_json.exists():
+        old_json = _PERSIST_DIR / "requests.json"  # 兼容旧路径
     if old_json.exists():
         try:
             _migrate_json(old_json)

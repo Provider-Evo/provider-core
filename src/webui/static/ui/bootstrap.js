@@ -1,4 +1,3 @@
-document.getElementById('refreshButton').addEventListener('click', refreshAll);
 document.getElementById('refreshModelsButton').addEventListener('click', refreshModels);
 document.getElementById('fabThemeButton').addEventListener('click', function() {
   // Portable toggle: only switches between light and dark (no auto)
