@@ -1,7 +1,6 @@
 """平台注册表 — 复用 echotools PluginRegistry，绑定 PlatformAdapter。"""
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from echotools.logger.manager import get_logger
@@ -10,11 +9,10 @@ from echotools.plugin.registry import PluginRegistry
 from src.core.config import get_config
 from src.core.dispatch.candidate import Candidate
 from src.core.dispatch.selector import Selector
+from src.paths import persist_dir
 
 __all__ = ["Registry"]
 logger = get_logger(__name__)
-
-_PERSIST_ROOT = Path(__file__).parent.parent.parent.parent / "persist"
 
 
 class Registry:
@@ -22,7 +20,7 @@ class Registry:
 
     def __init__(self) -> None:
         self._registry = PluginRegistry()
-        self.selector = Selector(persist_dir=str(_PERSIST_ROOT / "gateway"), group_attr="platform")
+        self.selector = Selector(persist_dir=str(persist_dir("gateway")), group_attr="platform")
 
     async def init(self, session: Any) -> None:
         cfg = get_config()
