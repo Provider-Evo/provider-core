@@ -49,7 +49,7 @@ custom_prompt_zh = ""
 level = "DEBUG"
 color = true
 access_log = false
-log_name = "provider-v2"
+log_name = "provider-2"
 
 [autoupdate]
 enabled = false

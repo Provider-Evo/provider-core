@@ -4,7 +4,7 @@
 import pytest
 
 from src.core.fncall.protocols.xml import XmlProtocol
-from src.core.fncall.parsers.xml_parser import parse_fncall_provider
+from src.core.fncall.parsers.xml_parser import parse_fncall_managed_xml
 
 
 class TestXmlProtocol:
@@ -87,21 +87,21 @@ class TestXmlProtocol:
         assert "more" in cleaned
 
 
-class TestParseFncallProvider:
-    """Test parse_fncall_provider function."""
+class TestParseFncallManagedXml:
+    """Test parse_fncall_managed_xml function."""
 
     def test_parse_single_call(self):
         xml = '<|PROVIDER|tool_calls><|PROVIDER|invoke name="Bash"><|PROVIDER|parameter name="command"><![CDATA[echo hello]]></|PROVIDER|parameter></|PROVIDER|invoke></|PROVIDER|tool_calls>'
-        result = parse_fncall_provider(xml)
+        result = parse_fncall_managed_xml(xml)
         assert len(result) == 1
         assert result[0]["function"]["name"] == "Bash"
         assert "command" in result[0]["function"]["arguments"]
 
     def test_parse_cdata_value(self):
         xml = '<|PROVIDER|tool_calls><|PROVIDER|invoke name="Test"><|PROVIDER|parameter name="x"><![CDATA[hello world]]></|PROVIDER|parameter></|PROVIDER|invoke></|PROVIDER|tool_calls>'
-        result = parse_fncall_provider(xml)
+        result = parse_fncall_managed_xml(xml)
         assert result[0]["function"]["arguments"] == '{"x": "hello world"}'
 
     def test_parse_empty_returns_empty(self):
-        result = parse_fncall_provider("no tool calls here")
+        result = parse_fncall_managed_xml("no tool calls here")
         assert result == []
