@@ -383,10 +383,20 @@
         </div>
         <div class="log-toolbar">
           <input type="text" class="log-search" id="logSearchInput" placeholder="搜索日志...">
+          <button class="log-toolbar-btn" id="logAutoScrollBtn" type="button" title="自动滚动">
+            <span id="logAutoScrollIcon">&#9654;</span> 滚动
+          </button>
+          <button class="log-toolbar-btn" id="logExportBtn" type="button" title="导出日志">导出</button>
+          <button class="log-toolbar-btn log-toolbar-btn-danger" id="clearLogButton" type="button" title="清空日志">清空</button>
+          <button class="log-toolbar-btn" id="logFilterToggleBtn" type="button" title="展开/收起高级过滤">
+            <span id="logFilterToggleIcon">&#9660;</span> 过滤
+          </button>
+        </div>
+        <div class="log-toolbar log-toolbar-advanced" id="logAdvancedFilters" style="display:none;">
           <select class="log-level-select" id="logLevelSelect">
             <option value="all">全部级别</option>
             <option value="DEBUG">DEBUG+</option>
-            <option value="INFO" selected>INFO+</option>
+            <option value="INFO">INFO+</option>
             <option value="WARNING">WARNING+</option>
             <option value="ERROR">ERROR+</option>
             <option value="CRITICAL">CRITICAL</option>
@@ -394,17 +404,21 @@
           <select class="log-level-select" id="logModuleSelect">
             <option value="all">全部模块</option>
           </select>
+          <label class="log-date-label">
+            <span class="log-toolbar-label">从</span>
+            <input type="date" class="log-date-input" id="logDateFrom" title="起始日期">
+          </label>
+          <label class="log-date-label">
+            <span class="log-toolbar-label">至</span>
+            <input type="date" class="log-date-input" id="logDateTo" title="截止日期">
+          </label>
+          <button class="log-toolbar-btn log-toolbar-btn-danger" id="logClearDateBtn" type="button" title="清除日期过滤" style="display:none;">清除日期</button>
           <div class="log-toolbar-group">
             <label class="log-toolbar-label">字号</label>
             <button class="log-toolbar-btn log-font-btn active" data-size="small" type="button">小</button>
             <button class="log-toolbar-btn log-font-btn" data-size="medium" type="button">中</button>
             <button class="log-toolbar-btn log-font-btn" data-size="large" type="button">大</button>
           </div>
-          <button class="log-toolbar-btn" id="logAutoScrollBtn" type="button" title="自动滚动">
-            <span id="logAutoScrollIcon">&#9654;</span> 滚动
-          </button>
-          <button class="log-toolbar-btn" id="logExportBtn" type="button" title="导出日志">导出</button>
-          <button class="log-toolbar-btn log-toolbar-btn-danger" id="clearLogButton" type="button" title="清空日志">清空</button>
         </div>
         <div class="log-viewer log-font-small" id="logBox"></div>
       </section>

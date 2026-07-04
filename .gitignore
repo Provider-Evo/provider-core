@@ -63,6 +63,11 @@ server.log
 
 # aitianhu2 platform
 src/platforms/aitianhu2/
+
+# Documentation and tests
+docs-src/
+tests/
+
 !template/
 
 # Config manager backups

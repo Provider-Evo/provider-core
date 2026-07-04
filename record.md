@@ -3464,3 +3464,13 @@ pytest tests/src/core/dispatch/test_selector.py: 27 passed
 [src/webui/static/terminal/terminal.js] 移除终端标签页图标字符 '〉_'（4 处），标签页仅显示状态点+标题+关闭按钮
 纯前端 CSS/JS 变更，无需 py_compile
 
+2026-07-04 10:00:00
+
+[template/template_config.toml] 版本 2.2.234 -> 2.2.235
+[config/main_config.toml] 版本 2.2.234 -> 2.2.235
+[README.md] 版本徽章和路线图更新为 2.2.235
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.234 -> 2.2.235
+[src/webui/static/core/tabbar.css] 移除压缩模式下隐藏状态点的 CSS 规则，压缩模式下状态点（绿红点）仍然显示
+[docs-src/src/webui/static/core/INDEX.md] 更新文档，说明压缩模式下状态点仍然显示
+纯前端 CSS/文档变更，无需 py_compile
+

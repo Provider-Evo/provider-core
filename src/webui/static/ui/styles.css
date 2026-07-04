@@ -1454,6 +1454,32 @@ section.tab-panel > * {
   white-space: nowrap;
 }
 
+/* Advanced filter panel */
+.log-toolbar-advanced {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+/* Date range inputs */
+.log-date-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.log-date-input {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.log-date-input:focus { outline: none; border-color: var(--accent); }
+.log-date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+.log-date-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
 .log-count {
   font-size: 12px;
   color: var(--muted);
@@ -1483,6 +1509,11 @@ section.tab-panel > * {
 .log-conn-dot.connected {
   background: #3fb950;
   box-shadow: 0 0 6px rgba(63, 185, 80, 0.5);
+  animation: logDotPulse 2s ease-in-out infinite;
+}
+@keyframes logDotPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(63, 185, 80, 0.5); }
+  50% { opacity: 0.6; box-shadow: 0 0 10px rgba(63, 185, 80, 0.8); }
 }
 .log-conn-dot.disconnected {
   background: #f85149;

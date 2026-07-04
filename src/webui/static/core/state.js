@@ -33,11 +33,14 @@ const socketNotice = document.getElementById('socketNotice');
 let logsSocket = null;
 let _logEntries = [];
 const _logMaxEntries = 5000;
-let _logAutoScroll = true;
-let _logLevelFilter = 'INFO';
+let _logAutoScroll = localStorage.getItem('provider.logAutoScroll') !== 'false';
+let _logLevelFilter = localStorage.getItem('provider.logLevelFilter') || 'INFO';
 let _logSearchQuery = '';
 let _logModuleFilter = 'all';
 let _logFontSize = localStorage.getItem('provider.logFontSize') || 'small';
+let _logDateFrom = localStorage.getItem('provider.logDateFrom') || '';
+let _logDateTo = localStorage.getItem('provider.logDateTo') || '';
+let _logFilterExpanded = localStorage.getItem('provider.logFilterExpanded') === 'true';
 let _uniqueModules = [];
 let _logSeenIds = {};  // 去重
 
@@ -77,6 +80,15 @@ function _logEntryMatchesFilter(entry) {
     var msg = (entry.message || '').toLowerCase();
     var mod = (entry.module || '').toLowerCase();
     if (msg.indexOf(q) === -1 && mod.indexOf(q) === -1) return false;
+  }
+  // Date range filter
+  if (_logDateFrom || _logDateTo) {
+    var ts = entry.timestamp || '';
+    if (ts) {
+      var entryDate = ts.substring(0, 10); // YYYY-MM-DD
+      if (_logDateFrom && entryDate < _logDateFrom) return false;
+      if (_logDateTo && entryDate > _logDateTo) return false;
+    }
   }
   return true;
 }
@@ -134,6 +146,22 @@ function _applyLogFontSize() {
   if (!viewer) return;
   viewer.classList.remove('log-font-small', 'log-font-medium', 'log-font-large');
   viewer.classList.add('log-font-' + _logFontSize);
+}
+
+function _toggleLogFilters() {
+  _logFilterExpanded = !_logFilterExpanded;
+  var panel = document.getElementById('logAdvancedFilters');
+  var icon = document.getElementById('logFilterToggleIcon');
+  var btn = document.getElementById('logFilterToggleBtn');
+  if (panel) panel.style.display = _logFilterExpanded ? '' : 'none';
+  if (icon) icon.innerHTML = _logFilterExpanded ? '&#9650;' : '&#9660;';
+  if (btn) btn.classList.toggle('active', _logFilterExpanded);
+  localStorage.setItem('provider.logFilterExpanded', String(_logFilterExpanded));
+}
+
+function _updateLogClearDateBtn() {
+  var btn = document.getElementById('logClearDateBtn');
+  if (btn) btn.style.display = (_logDateFrom || _logDateTo) ? '' : 'none';
 }
 
 // Legacy log() for backwards compatibility
@@ -257,6 +285,7 @@ function _updateAutoScrollBtn() {
   var icon = document.getElementById('logAutoScrollIcon');
   if (btn) btn.classList.toggle('active', _logAutoScroll);
   if (icon) icon.innerHTML = _logAutoScroll ? '&#9654;' : '&#9646;&#9646;';
+  localStorage.setItem('provider.logAutoScroll', String(_logAutoScroll));
 }
 
 // ========================= Log Auto-Scroll Detection =========================
