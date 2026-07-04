@@ -171,32 +171,40 @@ class FileWatcher:
 
         needs_restart, platform_names, needs_frontend_reload = _classify(changed)
 
-        if needs_restart:
-            await asyncio.sleep(1.0)
-            _trigger_restart(self._session, self._registry)
-            return
+        worker_type = os.environ.get("WORKER_TYPE", "main")
 
-        for name in platform_names:
-            if self._registry and self._session:
-                logger.info("Hot-reloading platform: %s", name)
-                ok = await self._registry.reload_platform(name, self._session)
-                if ok:
-                    adapter = self._registry.adapters.get(name)
-                    models = (
-                        list(getattr(adapter, "supported_models", []))
-                        if adapter
-                        else []
-                    )
-                    for model in models:
-                        try:
-                            await self._registry.ensure_candidates(model, 1)
-                        except Exception as exc:
-                            logger.warning("Candidate refresh failed: %s", exc)
-                else:
-                    logger.warning("Platform [%s] hot-reload failed", name)
+        if worker_type == "main":
+            # MainWorker：处理重启和平台热重载
+            if needs_restart:
+                await asyncio.sleep(1.0)
+                _trigger_restart(self._session, self._registry)
+                return
 
-        if needs_frontend_reload:
-            logger.info("Frontend files changed, please refresh the browser manually")
+            for name in platform_names:
+                if self._registry and self._session:
+                    logger.info("Hot-reloading platform: %s", name)
+                    ok = await self._registry.reload_platform(name, self._session)
+                    if ok:
+                        adapter = self._registry.adapters.get(name)
+                        models = (
+                            list(getattr(adapter, "supported_models", []))
+                            if adapter
+                            else []
+                        )
+                        for model in models:
+                            try:
+                                await self._registry.ensure_candidates(model, 1)
+                            except Exception as exc:
+                                logger.warning("Candidate refresh failed: %s", exc)
+                    else:
+                        logger.warning("Platform [%s] hot-reload failed", name)
+        else:
+            # WebUIWorker：仅处理前端刷新
+            if needs_restart:
+                # WebUIWorker 不处理核心文件重启，只记录日志
+                logger.info("Core files changed in WebUIWorker, ignoring restart")
+            elif needs_frontend_reload:
+                logger.info("Frontend files changed, please refresh the browser manually")
 
     async def start(self, registry: Any, session: Any) -> None:
         """Start file watcher.

@@ -1,7 +1,8 @@
 [server]
-version = "2.2.238"
+version = "2.2.239"
 host = "0.0.0.0"
 port = 1337
+webui_port = 8001
 debug = false
 startup_force_kill_port = true
 

@@ -40,22 +40,31 @@
      └──────────┘ └──────────┘ └──────────┘
 ```
 
-## Runner-Worker 双进程架构
+## Runner-MainWorker-WebUIWorker 三进程架构
 
 ```
 main.py
   ├── Runner 进程（父进程）
-  │   └── 监控 Worker 子进程
-  │       · exit code 42 → 自动重启
-  │       · Ctrl+C → 终止 Worker
-  │       · 最多 50 次重启
+  │   └── 启动并守护 MainWorker 和 WebUIWorker
+  │       · exit code 42 → MainWorker 请求重启
+  │       · exit code 43 → WebUIWorker 请求重启
+  │       · exit code 44 → 两者都需要重启
+  │       · Ctrl+C → 终止所有 Worker
   │
-  └── Worker 进程（子进程，WORKER_PROCESS=1）
+  ├── MainWorker 进程（子进程，WORKER_PROCESS=1, WORKER_TYPE=main）
+  │   └── asyncio 事件循环
+  │       · API 请求处理（Gateway、Registry）
+  │       · 配置热重载
+  │       · 文件监视（触发重启）
+  │       · 端口 1337
+  │
+  └── WebUIWorker 进程（子进程，WORKER_PROCESS=1, WORKER_TYPE=webui）
       └── asyncio 事件循环
-          · aiohttp.web 服务器
-          · 所有平台适配器
-          · 配置热重载
-          · 文件监视
+          · WebUI 界面服务
+          · 日志 WebSocket 广播
+          · 静态文件服务
+          · 文件监视（仅刷新）
+          · 端口 8001
 ```
 
 ## 核心模块

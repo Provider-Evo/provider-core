@@ -641,3 +641,31 @@ Generated on: 2026-07-02
 - Maintained backward compatibility with existing WebUI.
 - Required version coordination between echotools and provider-v2.
 - Established pattern for future terminal feature development.
+
+---
+
+## ADR-034: Runner-MainWorker-WebUIWorker Triple-Process Architecture
+
+**Context**: The existing Runner-Worker dual-process architecture had all functionality (API handling, WebUI, file watching) in a single Worker process. This created coupling between API and WebUI components, making it difficult to restart or update them independently.
+
+**Options considered**:
+- **Option A** — Keep existing dual-process architecture with incremental improvements.
+- **Option B** — Refactor to triple-process architecture with separate MainWorker (API) and WebUIWorker (WebUI).
+
+**Decision**: Refactored to Runner-MainWorker-WebUIWorker triple-process architecture (v2.2.239).
+
+**Rationale**: Separating API and WebUI into independent processes provides:
+1. Independent lifecycle management — WebUI crashes don't affect API service
+2. Better fault isolation — API restarts don't require WebUI restart
+3. Clear separation of concerns — API and WebUI have different restart triggers
+4. Shared memory communication for Registry synchronization
+5. Enhanced startup_force_kill_port logic to handle both ports (1337 and 8001)
+
+**Consequences**:
+- Runner now manages two child processes instead of one.
+- Exit code protocol extended: 42 (MainWorker restart), 43 (WebUIWorker restart), 44 (both restart).
+- New WORKER_TYPE environment variable distinguishes MainWorker vs WebUIWorker.
+- FileWatcher behavior varies by worker type — MainWorker triggers restart, WebUIWorker only logs.
+- Added webui_port configuration option (default 8001).
+- Increased process management complexity but improved system resilience.
+- Required shared memory module (src/core/ipc/) for cross-process data sharing.
