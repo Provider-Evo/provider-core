@@ -3265,8 +3265,9 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 [src/core/server/app.py] 更新路由导入路径适配新目录结构
 [docs-src/src/routes/INDEX.md] 更新路由目录结构文档
 
-2026-07-04 19:22:26
+2026-07-04 22:00:00
 
+[src/webui/static/ui/styles.css] 修复终端面板不自适应窗口高度：使用 :has() 选择器在终端标签激活时让页面布局填充视口高度，flex 布局自适应剩余空间
 [src/webui/static/index.html] 调整终端面板标题栏布局：自定义控制面板移到主按钮左侧，主按钮始终靠右
 [src/webui/static/terminal/terminal.js] 使用CSS变量控制背景图片和透明度，通过伪元素实现
 [src/webui/static/terminal/terminal.css] 使用伪元素实现自定义背景图片，透明度仅影响背景不影响字体
