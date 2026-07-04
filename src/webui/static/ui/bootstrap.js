@@ -65,20 +65,11 @@ document.getElementById('logExportBtn').addEventListener('click', function() {
 document.getElementById('logAutoScrollBtn').addEventListener('click', function() {
   toggleAutoScroll();
 });
-document.getElementById('logLevelSelect').addEventListener('change', function() {
-  _logLevelFilter = this.value;
-  localStorage.setItem('provider.logLevelFilter', _logLevelFilter);
-  filterLogs();
-});
 document.getElementById('logSearchInput').addEventListener('input', function() {
   _logSearchQuery = this.value;
   filterLogs();
 });
 document.getElementById('logRegexBtn').addEventListener('click', function() { toggleLogRegex(); });
-document.getElementById('logModuleSelect').addEventListener('change', function() {
-  _logModuleFilter = this.value;
-  filterLogs();
-});
 // Collapsible advanced filters toggle
 document.getElementById('logFilterToggleBtn').addEventListener('click', function() {
   _toggleLogFilters();
@@ -200,12 +191,30 @@ window._dropdowns = {};
 ['modelPlatformSelect', 'modelCapabilitySelect', 'chatModelSelect',
  'chatProtocolSelect', 'themeSelect', 'compactSelect', 'tabLayoutSelect',
  'voiceSttModel', 'voiceTtsModel', 'recordingDeviceSelect',
- 'autoupdateBranch', 'requestStatusFilter', 'requestTimeFilter'].forEach(function(id) {
+ 'autoupdateBranch', 'requestStatusFilter', 'requestTimeFilter',
+ 'logLevelSelect', 'logModuleSelect'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) {
     window._dropdowns[id] = new CustomDropdown(el);
   }
 });
+
+// Log dropdown change handlers
+['logLevelSelect', 'logModuleSelect'].forEach(function(id) {
+  var dropdown = window._dropdowns && window._dropdowns[id];
+  if (dropdown) {
+    dropdown.onChange = function(value) {
+      if (id === 'logLevelSelect') {
+        _logLevelFilter = value;
+        localStorage.setItem('provider.logLevelFilter', _logLevelFilter);
+      } else if (id === 'logModuleSelect') {
+        _logModuleFilter = value;
+      }
+      filterLogs();
+    };
+  }
+});
+
 // Re-apply settings after dropdown initialization (needed for themeSelect/compactSelect)
 applyTheme();
 applyCompact();

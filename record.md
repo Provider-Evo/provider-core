@@ -80,3 +80,16 @@ config/webui_config.toml
 [main.py] Runner 新增错误退出重启逻辑，支持 max_restarts 配置限制最大重启次数
 [src/core/server/watcher.py] 修复平台目录变更检测时文件扩展名干扰问题
 [config/webui_config.toml] WebUI 主题从 dark 切换为 light
+
+2026-07-04 24:45:00
+[README.md] 版本徽章和路线图版本号更新至 2.2.246
+[template/template_config.toml] 版本号更新至 2.2.246
+[config/main_config.toml] 版本号同步更新至 2.2.246
+[src/webui/static/core/state.js] 日志搜索支持正则表达式模式，添加 _logSearchRegex 状态持久化
+
+2026-07-04 25:00:00
+[.gitignore] 添加 config/ 目录到过滤列表
+[main.py] Worker 重启时先终止旧进程，避免端口占用
+[src/logger.py] 日志文件名格式从下划线改为连字符
+[src/webui/static/index.html] 添加正则表达式搜索切换按钮
+[src/webui/static/ui/bootstrap.js] 绑定正则搜索按钮点击事件

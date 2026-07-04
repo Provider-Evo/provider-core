@@ -75,5 +75,9 @@ tests/
 template/old/
 .backup/
 
+# Allow tracking specific config and agent files
+!config/main_config.toml
+!.agents/provider-guide/SKILL.md
+
 logs/
 .htaccess
