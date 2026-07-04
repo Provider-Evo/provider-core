@@ -3333,6 +3333,16 @@ py_compile: selector.py; pytest tests/src/core/dispatch/test_selector.py: 27 pas
 [config/main_config.toml] 版本 2.2.226 -> 2.2.227
 [README.md] 版本徽章和路线图更新为 2.2.227
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.226 -> 2.2.227
+
+2026-07-04 24:20:00
+
+[src/core/server/watcher.py] 前端文件变更增加重载冷却，避免短时间内重复触发浏览器刷新
+[src/webui/static/files/files.css] 剩余组件 border-radius 全部改为 0（重命名对话框、剪贴板指示器、搜索清除按钮、加载动画）
+[template/template_config.toml] 版本 2.2.228 -> 2.2.229
+[config/main_config.toml] 版本 2.2.228 -> 2.2.229
+[README.md] 版本徽章和路线图更新为 2.2.229
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.227 -> 2.2.229
+py_compile: watcher.py
 py_compile: test_selector.py; pytest tests/src/core/dispatch/test_selector.py: 27 passed
 
 2026-07-04 23:50:00
