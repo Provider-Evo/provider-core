@@ -73,7 +73,7 @@ xterm.js 终端支持三种背景模式，通过右键上下文菜单切换：
 
 ### 持久化存储
 
-所有背景模式设置持久化保存在 `persist/webui/terminals.json` 的 `bgMode` 字段中，重启后自动恢复。全局主题切换时，Provider 主题模式下的终端会自动更新颜色。
+所有背景模式设置持久化保存在 `persist/webui/json/terminals.json` 的 `bgMode` 字段中，重启后自动恢复。全局主题切换时，Provider 主题模式下的终端会自动更新颜色。
 
 ## 鼠标事件支持
 

@@ -65,13 +65,6 @@
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-warn text-warn bg-panel hover:bg-warn hover:text-white transition" id="reloadServerButton" type="button">重启服务</button>
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-border bg-panel text-text hover:bg-panel-alt transition" id="reloadConfigButton" type="button">重载配置</button>
       </div>
-      <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">平台数量</div><div class="text-2xl font-bold" id="platformCount">-</div></div>
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">模型数量</div><div class="text-2xl font-bold" id="modelCount">-</div></div>
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">可用平台</div><div class="text-2xl font-bold" id="availablePlatformCount">-</div></div>
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">最近刷新</div><div class="text-2xl font-bold" id="lastRefresh">-</div></div>
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">服务状态</div><div class="text-2xl font-bold" id="healthValue">-</div></div>
-      </div>
       <div class="flex flex-wrap gap-2 items-center">
         <div class="px-3 py-2.5 bg-accent-soft rounded-xl leading-relaxed text-[14px]" id="socketNotice">日志 WebSocket: /v1/webui/ws/logs</div>
       </div>
@@ -107,6 +100,13 @@
           </div>
         </div>
         <div class="px-3 py-2.5 bg-accent-soft rounded-xl leading-relaxed text-[14px]" id="overviewNotice">等待状态刷新后展示摘要提示。</div>
+        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">平台数量</div><div class="text-2xl font-bold" id="platformCount">-</div></div>
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">模型数量</div><div class="text-2xl font-bold" id="modelCount">-</div></div>
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">可用平台</div><div class="text-2xl font-bold" id="availablePlatformCount">-</div></div>
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">最近刷新</div><div class="text-2xl font-bold" id="lastRefresh">-</div></div>
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">服务状态</div><div class="text-2xl font-bold" id="healthValue">-</div></div>
+        </div>
         <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]" id="overviewGrid"></div>
       </section>
 

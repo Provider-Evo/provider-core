@@ -1,6 +1,6 @@
 """WebUI 请求日志 SQLite 持久化。
 
-将请求日志写入 ``persist/webui/requests.db``，替代旧的 JSON 文件持久化。
+将请求日志写入 ``persist/webui/db/requests.db``，替代旧的 JSON 文件持久化。
 启动时从 SQLite 加载最近 N 条到内存 buffer，供 WebSocket 推送使用。
 
 数据流
@@ -75,7 +75,9 @@ _log = get_logger(__name__)
 # ------------------------------------------------------------------
 
 _PERSIST_DIR = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui"
-_DB_PATH = _PERSIST_DIR / "requests.db"
+_DB_DIR = _PERSIST_DIR / "db"
+_JSON_DIR = _PERSIST_DIR / "json"
+_DB_PATH = _DB_DIR / "requests.db"
 _MAX_ENTRIES = 5000   # 数据库最多保留条数
 _MAX_BUFFER = 200     # 内存 buffer 最大条数
 _FLUSH_INTERVAL = 10  # 批量写入间隔（秒）
