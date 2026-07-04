@@ -212,11 +212,15 @@ window._dropdowns = {};
   }
 });
 
-// Restore log level filter
+// Restore log level and module filters
 (function() {
-  var dropdown = window._dropdowns && window._dropdowns['logLevelSelect'];
-  if (dropdown) {
-    dropdown.setValue(_logLevelFilter);
+  var levelDropdown = window._dropdowns && window._dropdowns['logLevelSelect'];
+  if (levelDropdown) {
+    levelDropdown.setValue(_logLevelFilter);
+  }
+  var moduleDropdown = window._dropdowns && window._dropdowns['logModuleSelect'];
+  if (moduleDropdown) {
+    moduleDropdown.setValue(_logModuleFilter);
   }
 })();
 
