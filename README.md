@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.201-blue)
-![Version](https://img.shields.io/badge/version-2.2.201-blue)
+![Status](https://img.shields.io/badge/status-v2.2.238-blue)
+![Version](https://img.shields.io/badge/version-v2.2.238-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,7 +1264,87 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.201
+### 当前版本：v2.2.238
+
+✅ 已完成（v2.2.234）：
+- fix(webui): rewrite log panel with structured rendering, module colors, mobile layout, and smart auto-scroll
+
+✅ 已完成（v2.2.232）：
+- fix(terminal): add legacy base64 data URL to server-side file migration
+- test(core): fix ModelsCache test to match ListCache init behavior (fallback only, explicit load required)
+- refactor(dispatch): update Registry tests to match new plugin-based API
+
+✅ 已完成（v2.2.231）：
+- refactor(webui): migrate request logs from JSON to SQLite persistence
+- fix(webui): terminal tab add button always visible regardless of tab count
+- fix(webui): close-all button repositioned to avoid overlapping the add button
+- feat(terminal): add custom background image support with opacity control and pseudo-element rendering
+- fix(terminal): resolve panel positioning issue when switching tabs (remove display:flex !important)
+- fix(terminal): enhance DEC response stripping for cross-message handling
+
+✅ 已完成（v2.2.221）：
+- refactor(webui): replace native prompt/confirm dialogs with custom input/confirm components for terminal rename, restart confirmation, and new folder creation
+
+✅ 已完成（v2.2.220）：
+- fix(terminal): resolve terminal height overflow with precise flex layout and viewport-constrained sizing
+- fix(qwen): add `supported_models` property to QwenAdapter for runtime model count reporting
+- feat(terminal): improve session recovery with read-only reattach and offline output consumption
+- feat(terminal): add background mode toggle button for terminal UI
+- refactor(terminal): optimize terminal container layout with flex-based sizing
+
+✅ 已完成（v2.2.213）：
+- feat(terminal): migrate terminal system to T3 Code architecture
+  - Added shell fallback chains for cross-platform compatibility (Windows: pwsh.exe → PowerShell → cmd.exe; POSIX: $SHELL → zsh → bash → sh)
+  - Added output sanitization for clean history management
+  - Added subprocess monitoring with metadata events
+  - Added history management with 5000-line limit
+  - Added clear history and restart terminal operations
+  - Added subprocess indicator showing running command name in tab title
+  - Added terminal configuration options (max_history_lines, subprocess_monitor_interval, enable_subprocess_monitoring)
+  - Updated frontend with Clear History and Restart buttons in context menu
+  - Updated WebSocket protocol with clear, restart, and metadata messages
+  - All tests passing, documentation updated
+
+✅ 已完成（v2.2.209）：
+- fix(routes): accept enable_thinking from extra_body for thinking mode
+  - Updated thinking parameter handling in src/routes/openai_chat.py to accept both "thinking" and "enable_thinking" from extra_body
+
+✅ 已完成（v2.2.207）：
+- feat(opencode): enable proxy fetch and update RECORD.md
+  - Changed PROXY_FETCH_ENABLED from False to True in opencode constants
+  - Updated RECORD.md with brotli entry from previous session
+
+✅ 已完成（v2.2.206）：
+- fix(deps): add brotli for brotli decompression support
+  - aiohttp requires brotli to decode brotli-compressed responses from opencode and zen APIs
+
+✅ 已完成（v2.2.205）：
+
+- refactor(qwen): extract crypto/file_objects/io_utils/headers modules from shared.py
+- refactor(fncall): restructure parsers, protocols, prompt, and shared subpackages
+- refactor(core): extract utils subpackage (files/ids/io_utils/retry/scheduler)
+- refactor(config): extract base config module
+- refactor(dispatch): extract dispatch __init__ facade
+- refactor(webui): extract request_log service module
+
+✅ 已完成（v2.2.204）：
+- refactor(errors): add to_dict() serialization to all ProviderError subclasses
+- refactor(errors): fix ServerError to pass actual upstream status code instead of hardcoded 502
+- refactor(errors): centralize context-length detection keywords as bilingual frozenset
+- refactor(config): remove __getattr__ proxy from ConfigManager, deduplicate color-setting code
+
+✅ 已完成（v2.2.203）：
+- refactor(core): remove shims and slim down core public API
+- Add pyproject.toml for project packaging configuration
+- Remove src/core/shims.py backward-compatibility layer
+- Slim src/core/__init__.py from 203 to 25 lines, exposing only 7 core symbols
+- Mirror changes in docs-src/src/core/
+
+✅ 已完成（v2.2.202）：
+- refactor(main): Extract _setup_signal_handlers, _create_background_tasks, _shutdown from _run()
+- refactor(main): Narrow broad except Exception to specific exception types
+- refactor(base): Extract DEFAULT_CONTEXT_LENGTH, MODERATION_CATEGORIES, MODERATION_CATEGORY_SCORES constants
+- fix(webui): Fix import order (from __future__ import annotations after docstring)
 
 ✅ 已完成（v2.2.201）：
 - fix(opencode): MAX_RETRIES 从 50 降至 3，避免无效重试消耗
