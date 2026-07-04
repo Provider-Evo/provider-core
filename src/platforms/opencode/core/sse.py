@@ -1,11 +1,19 @@
+"""OpenCode SSE 解析（无状态层）。
+
+在 OpenAI 兼容格式基础上额外支持 reasoning 和 tool_calls 字段。
+"""
+
 from __future__ import annotations
 
-import json
 from typing import Any, Dict, Optional, Union
+
+from src.platforms.sse_common import load_sse_json
+
+__all__ = ["parse_sse_line"]
 
 
 def parse_sse_line(data_str: str) -> Optional[Union[str, Dict[str, Any]]]:
-    """Parse SSE data field content.
+    """解析 SSE data 字段内容（OpenAI 兼容 + reasoning + tool_calls）。
 
     Args:
         data_str: String after the ``data:`` prefix, with leading
@@ -14,26 +22,16 @@ def parse_sse_line(data_str: str) -> Optional[Union[str, Dict[str, Any]]]:
     Returns:
         str (text chunk), dict (thinking/tool_calls/usage), or None (skip).
     """
-    if not data_str or data_str == "[DONE]":
-        return None
-
-    try:
-        obj = json.loads(data_str)
-    except (json.JSONDecodeError, ValueError):
+    obj = load_sse_json(data_str)
+    if obj is None:
         return None
 
     choice = (obj.get("choices") or [{}])[0]
     delta = choice.get("delta", {})
 
-    # reasoning field for thinking content
-    reasoning = delta.get("reasoning")
+    reasoning = delta.get("reasoning") or delta.get("reasoning_content")
     if reasoning:
         return {"thinking": reasoning}
-
-    # Also check reasoning_content for compatibility
-    reasoning_content = delta.get("reasoning_content")
-    if reasoning_content:
-        return {"thinking": reasoning_content}
 
     content = delta.get("content", "")
     if content:
@@ -45,9 +43,6 @@ def parse_sse_line(data_str: str) -> Optional[Union[str, Dict[str, Any]]]:
 
     usage = obj.get("usage")
     if usage and isinstance(usage, dict):
-        return {"usage": {
-            "prompt_tokens": usage.get("prompt_tokens", 0),
-            "completion_tokens": usage.get("completion_tokens", 0),
-        }}
+        return {"usage": usage}
 
     return None

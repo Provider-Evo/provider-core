@@ -150,6 +150,9 @@ document.getElementById('logClearDateBtn').addEventListener('click', function() 
 })();
 document.getElementById('reloadServerButton').addEventListener('click', reloadServer);
 document.getElementById('reloadConfigButton').addEventListener('click', reloadConfigFromFile);
+// Restart overlay buttons
+document.getElementById('restartRefreshBtn').addEventListener('click', function() { location.reload(); });
+document.getElementById('restartRetryBtn').addEventListener('click', function() { retryHealthCheck(); });
 document.getElementById('configEditToggle').addEventListener('click', toggleConfigEdit);
 if (configEditArea) {
   configEditArea.addEventListener('input', function() {

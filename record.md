@@ -13,6 +13,9 @@ src/webui/static/index.html
 src/webui/static/ui/bootstrap.js
 src/paths.py
 main.py
+src/platforms/apiairforce/core/sse.py
+src/platforms/caiyuesbk/core/sse.py
+src/webui/static/ui/styles.css
 
 2026-07-04 22:30:00
 [src/logger.py] 日志文件命名分隔符从下划线改为连字符
@@ -50,3 +53,8 @@ main.py
 
 2026-07-04 23:50:00
 [main.py] WebUIWorker 不再占用独立端口，通过共享内存与 MainWorker 通信
+
+2026-07-04 23:55:00
+[src/platforms/apiairforce/core/sse.py] 重构为使用共享 SSE 解析模块
+[src/platforms/caiyuesbk/core/sse.py] 重构为使用共享 SSE 解析模块
+[src/webui/static/ui/styles.css] 更新 WebUI 样式

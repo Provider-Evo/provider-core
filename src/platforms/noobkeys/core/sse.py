@@ -1,7 +1,15 @@
+"""Noobkeys SSE 解析（无状态层）。
+
+在 OpenAI 兼容格式基础上额外支持 delta.reasoning 字段。
+"""
+
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
+
+from src.platforms.sse_common import load_sse_json
+
+__all__ = ["parse_sse_line"]
 
 
 def parse_sse_line(data_str: str) -> Optional[Union[str, Dict[str, Any]]]:
@@ -18,12 +26,8 @@ def parse_sse_line(data_str: str) -> Optional[Union[str, Dict[str, Any]]]:
     Returns:
         ``str``（文本片段）、``dict``（thinking / usage）或 ``None``（跳过）。
     """
-    if not data_str or data_str == "[DONE]":
-        return None
-
-    try:
-        obj = json.loads(data_str)
-    except (json.JSONDecodeError, ValueError):
+    obj = load_sse_json(data_str)
+    if obj is None:
         return None
 
     choices = obj.get("choices") or []
@@ -40,11 +44,6 @@ def parse_sse_line(data_str: str) -> Optional[Union[str, Dict[str, Any]]]:
 
     usage = obj.get("usage")
     if usage and isinstance(usage, dict):
-        return {
-            "usage": {
-                "prompt_tokens": usage.get("prompt_tokens", 0),
-                "completion_tokens": usage.get("completion_tokens", 0),
-            }
-        }
+        return {"usage": usage}
 
     return None

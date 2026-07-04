@@ -44,3 +44,29 @@ WebSocket 连接状态指示，`.connected` 时变绿色并带脉冲动画。
 ### .log-date-label / .log-date-input
 
 日期范围输入框样式，内联 flex 布局，带标签和日期选择器。
+
+## 重启覆盖层样式
+
+### .restart-overlay
+
+全屏固定覆盖层，z-index 10001。默认隐藏，显示时带 0.95 不透明度和 4px 背景模糊。使用 flex 居中布局。
+
+### .restart-bg-rings
+
+背景同心圆环容器。包含三个 `.restart-ring`，使用 `restartRing` 关键帧动画（scale 0.8->1.3，opacity 0->0.15->0），交错 0.6s 触发，产生扩散脉冲效果。
+
+### .restart-card
+
+居中卡片，使用 CSS 变量主题色（`--panel`、`--border`），圆角 16px，带阴影。包含图标、标题、描述、进度条、元信息和操作按钮。
+
+### .restart-icon-wrap / .restart-spinner / .restart-pulse
+
+图标容器 72x72px。spinner 使用 `restartSpin` 旋转动画（1s 线性无限）。pulse 在 spinner 背后使用 `restartPulse` 缩放动画（1->2.2，opacity 0.3->0）。
+
+### .restart-progress-bar
+
+进度条，宽度 220px，高度 6px，使用 `--accent` 色，transition 0.2s。
+
+### .restart-btn / .restart-btn-primary
+
+操作按钮，匹配全局按钮风格。primary 使用 `--accent` 背景白字。
