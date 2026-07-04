@@ -101,10 +101,7 @@ document.getElementById('logClearDateBtn').addEventListener('click', function() 
 (function() {
   var btn = document.getElementById('logAutoScrollBtn');
   if (btn) btn.classList.toggle('active', _logAutoScroll);
-  // Restore level filter select
-  var levelSel = document.getElementById('logLevelSelect');
-  if (levelSel) levelSel.value = _logLevelFilter;
-  // Restore collapsible filter panel state
+    // Restore collapsible filter panel state
   if (_logFilterExpanded) {
     var panel = document.getElementById('logAdvancedFilters');
     var icon = document.getElementById('logFilterToggleIcon');
@@ -214,6 +211,14 @@ window._dropdowns = {};
     };
   }
 });
+
+// Restore log level filter
+(function() {
+  var dropdown = window._dropdowns && window._dropdowns['logLevelSelect'];
+  if (dropdown) {
+    dropdown.setValue(_logLevelFilter);
+  }
+})();
 
 // Re-apply settings after dropdown initialization (needed for themeSelect/compactSelect)
 applyTheme();
