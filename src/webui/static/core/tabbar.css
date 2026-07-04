@@ -304,10 +304,7 @@
   gap: 0;
 }
 
-/* Hide status dot in compressed mode to save space (icon is enough) */
-.unified-tabbar.tabbar-compressed .unified-tab-status {
-  display: none;
-}
+/* Status dot visible in compressed mode */
 
 /* Tooltip on hover for compressed tabs */
 .unified-tabbar.tabbar-compressed .unified-tab {

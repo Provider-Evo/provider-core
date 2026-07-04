@@ -3454,3 +3454,13 @@ pytest tests/src/core/dispatch/test_selector.py: 27 passed
 [docs-src/src/webui/routers/INDEX.md] 添加 admin.md 条目
 [docs-src/src/webui/routes.md] 添加 bg-image 路由说明
 
+2026-07-06 00:00:00
+
+[template/template_config.toml] 版本 2.2.233 -> 2.2.234
+[config/main_config.toml] 版本 2.2.233 -> 2.2.234
+[README.md] 版本徽章和路线图更新为 2.2.234
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.233 -> 2.2.234
+[src/webui/static/core/tabbar.css] 终端标签页状态点 border-radius 从 0 改为 50%，使状态点成为圆形
+[src/webui/static/terminal/terminal.js] 移除终端标签页图标字符 '〉_'（4 处），标签页仅显示状态点+标题+关闭按钮
+纯前端 CSS/JS 变更，无需 py_compile
+
