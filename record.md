@@ -3267,8 +3267,16 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 
 2026-07-04 22:00:00
 
-[src/webui/static/ui/styles.css] 修复终端面板不自适应窗口高度：使用 :has() 选择器在终端标签激活时让页面布局填充视口高度，flex 布局自适应剩余空间
-[src/webui/static/index.html] 调整终端面板标题栏布局：自定义控制面板移到主按钮左侧，主按钮始终靠右
-[src/webui/static/terminal/terminal.js] 使用CSS变量控制背景图片和透明度，通过伪元素实现
+[src/webui/static/ui/styles.css] 修复终端面板不自适应窗口高度：终端激活时 body 填充 100vh，整条布局链路设置固定高度约束，overflow:hidden 防止滚动干扰
 [src/webui/static/terminal/terminal.css] 使用伪元素实现自定义背景图片，透明度仅影响背景不影响字体
 [docs-src/src/webui/routers/terminal.md] 更新终端主题文档，添加自定义背景图片功能描述
+
+2026-07-04 22:30:00
+
+[template/template_config.toml] 版本 2.2.222 -> 2.2.223
+[config/main_config.toml] 版本 2.2.221 -> 2.2.223
+[README.md] 版本徽章和路线图更新为 2.2.223
+[.agents/provider-guide/SKILL.md] 版本字段 2.2.221 -> 2.2.223
+[src/webui/static/index.html] 移除背景填充模式切换按钮，永久使用 cover 模式
+[src/webui/static/terminal/terminal.js] 移除 _customBgSize 变量和相关函数，简化自定义背景实现
+[src/webui/static/terminal/terminal.css] 固定背景图片为 cover 模式

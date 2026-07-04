@@ -1345,33 +1345,37 @@ section.tab-panel > * {
   gap: 0;
 }
 
-/* When terminal tab is active, let content area fill remaining viewport */
+/* Terminal: page fills viewport */
+body:has(#tab-terminal.active) {
+  height: 100vh;
+  overflow: hidden;
+}
+body:has(#tab-terminal.active) > .grid {
+  height: 100vh;
+  overflow: hidden;
+  grid-template-rows: auto 1fr;
+}
 #mainTabSection:has(#tab-terminal.active) {
-  display: flex;
-  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
-
 #mainTabSection:has(#tab-terminal.active) > .webui-layout {
-  flex: 1;
+  height: 100%;
   min-height: 0;
 }
-
 .webui-content:has(#tab-terminal.active) {
+  height: 100%;
   max-height: none;
-  overflow: visible;
-  flex: 1;
-  min-height: 0;
+  overflow: hidden;
 }
 
 #tab-terminal > .flex {
   flex-shrink: 0;
 }
-
 #tab-terminal .terminal-container {
   flex: 1;
   min-height: 0;
 }
-
 #tab-terminal .terminal-bg-mode-btn {
   flex-shrink: 0;
 }
