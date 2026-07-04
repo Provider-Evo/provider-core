@@ -1,7 +1,7 @@
 ---
 name: provider-guide
 description: This skill should be used when the user works on Provider-V2 and needs the full local project rule set, platform adapter conventions, docs-src or tests mirror guidance, script generation and packaging workflows, WebUI maintenance rules, persistent state changes, startup behavior checks, or a compliance review against the migrated legacy standards.
-version: 2.2.246
+version: 2.2.247
 ---
 
 # Provider Guide

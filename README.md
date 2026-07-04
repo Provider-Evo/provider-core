@@ -19,7 +19,7 @@
 <div align="center">
 
 ![Status](https://img.shields.io/badge/status-v2.2.246-blue)
-![Version](https://img.shields.io/badge/version-v2.2.246-blue)
+![Version](https://img.shields.io/badge/version-v2.2.247-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
