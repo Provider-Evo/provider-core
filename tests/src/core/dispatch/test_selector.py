@@ -257,21 +257,14 @@ class TestSelector:
         s_slow = selector._score(slow, time.time())
         assert s_fast > s_slow
 
-    def test_score_error_penalty(self, selector):
-        good = TASRecord(
-            group="p", n_success=10, n_fails=0,
-            latency_sum=1000.0, latency_sum_sq=100000.0, n_latency_samples=10,
-            last_success=time.time(), last_used=time.time(), n_calls=10,
-        )
-        errored = TASRecord(
-            group="p", n_success=10, n_fails=0,
-            latency_sum=1000.0, latency_sum_sq=100000.0, n_latency_samples=10,
-            last_success=time.time(), last_used=time.time(),
-            error_time=time.time(), n_calls=10,
-        )
-        s_good = selector._score(good, time.time())
-        s_err = selector._score(errored, time.time())
-        assert s_good > s_err
+    def test_error_triggers_cooling(self, selector):
+        """Error penalty is applied via cooling, not the score function."""
+        # Record a failure
+        selector._ensure("test_1", "test")
+        selector._pool["test_1"].error_time = time.time()
+        selector._pool["test_1"].n_fails = 2
+        # Should be cooling
+        assert selector._is_cooling("test_1")
 
     def test_score_fails_penalty(self, selector):
         reliable = TASRecord(
@@ -280,7 +273,7 @@ class TestSelector:
             last_used=time.time(), n_calls=10,
         )
         flaky = TASRecord(
-            group="p", success=5, n_fails=5,
+            group="p", n_success=5, n_fails=5,
             latency_sum=1000.0, n_latency_samples=10,
             last_used=time.time(), n_calls=10,
         )
