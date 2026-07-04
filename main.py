@@ -495,42 +495,6 @@ def _build_worker_env(color_enabled: bool, worker_type: str = "main") -> dict:
     return env
 
 
-def _wait_for_any_exit(
-    main_proc: subprocess.Popen,
-    webui_proc: subprocess.Popen,
-) -> int:
-    """等待任一 Worker 退出，返回退出码。
-
-    当任一 Worker 退出时，终止另一个 Worker。
-
-    Args:
-        main_proc: MainWorker 进程。
-        webui_proc: WebUIWorker 进程。
-
-    Returns:
-        退出码。
-    """
-    while True:
-        main_ret = main_proc.poll()
-        webui_ret = webui_proc.poll()
-
-        if main_ret is not None:
-            # MainWorker 退出，终止 WebUIWorker
-            logger.info("MainWorker 退出，正在终止 WebUIWorker (PID=%d)...", webui_proc.pid)
-            webui_proc.kill()
-            webui_proc.wait()
-            return main_ret
-
-        if webui_ret is not None:
-            # WebUIWorker 退出，终止 MainWorker
-            logger.info("WebUIWorker 退出，正在终止 MainWorker (PID=%d)...", main_proc.pid)
-            main_proc.kill()
-            main_proc.wait()
-            return webui_ret
-
-        time.sleep(0.3)
-
-
 def _restart_worker(
     proc: subprocess.Popen,
     args: list,
@@ -563,51 +527,42 @@ def _restart_worker(
 
 def _kill_all_workers(
     main_proc: Optional[subprocess.Popen],
-    webui_proc: Optional[subprocess.Popen],
 ) -> None:
     """终止所有 Worker 进程。
 
     Args:
         main_proc: MainWorker 进程。
-        webui_proc: WebUIWorker 进程。
     """
-    for proc, name in ((main_proc, "MainWorker"), (webui_proc, "WebUIWorker")):
-        if proc is not None and proc.poll() is None:
-            logger.info("终止 %s (PID=%d)...", name, proc.pid)
-            try:
-                proc.kill()
-                proc.wait(timeout=5.0)
-            except Exception as exc:
-                logger.warning("终止 %s 失败: %s", name, exc)
+    if main_proc is not None and main_proc.poll() is None:
+        logger.info("终止 MainWorker (PID=%d)...", main_proc.pid)
+        try:
+            main_proc.kill()
+            main_proc.wait(timeout=5.0)
+        except Exception as exc:
+            logger.warning("终止 MainWorker 失败: %s", exc)
 
 
 def _run_runner() -> None:
-    """Runner 进程入口——守护 MainWorker 和 WebUIWorker 子进程，处理自动重启。
+    """Runner 进程入口——守护 MainWorker 子进程，处理自动重启。
 
     重启策略：
     - MainWorker 以退出码 42 退出时触发重启，冷却 1 秒后再启动新 MainWorker。
-    - WebUIWorker 以退出码 43 退出时触发重启，冷却 1 秒后再启动新 WebUIWorker。
-    - 退出码 44 表示两者都需要重启。
     - 若在 ``_RAPID_RESTART_THRESHOLD`` 秒内连续快速重启超过
       ``_MAX_RAPID_RESTARTS`` 次，Runner 放弃重启并退出。
     - Worker 以其他退出码退出时，Runner 直接退出（不重启）。
-    - Runner 收到 Ctrl+C 时，立即终止所有 Worker 并退出。
+    - Runner 收到 Ctrl+C 时，立即终止 Worker 并退出。
     """
     color_enabled = _read_color_config()
     main_worker_env = _build_worker_env(color_enabled, worker_type="main")
-    webui_worker_env = _build_worker_env(color_enabled, worker_type="webui")
 
     python = sys.executable
     main_args = [python, "-u", str(_ROOT / "main.py")]
-    webui_args = [python, "-u", str(_ROOT / "main.py")]
 
     rapid_restart_count = 0
     last_start_time: float = 0.0
 
     main_proc: Optional[subprocess.Popen] = None
-    webui_proc: Optional[subprocess.Popen] = None
     main_reader: Optional[threading.Thread] = None
-    webui_reader: Optional[threading.Thread] = None
 
     while True:
         # ------------------------------------------------------------------
@@ -635,7 +590,7 @@ def _run_runner() -> None:
 
         last_start_time = time.time()
 
-        logger.debug("启动 MainWorker 和 WebUIWorker 子进程...")
+        logger.debug("启动 MainWorker 子进程...")
 
         # ------------------------------------------------------------------
         # 启动 MainWorker 子进程
@@ -663,59 +618,27 @@ def _run_runner() -> None:
         main_reader.start()
 
         # ------------------------------------------------------------------
-        # 启动 WebUIWorker 子进程
-        # ------------------------------------------------------------------
-        try:
-            webui_proc = subprocess.Popen(
-                webui_args,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                env=webui_worker_env,
-            )
-        except OSError as exc:
-            logger.error("无法启动 WebUIWorker 进程: %s", exc)
-            # 终止已启动的 MainWorker
-            main_proc.kill()
-            main_proc.wait()
-            main_reader.join(timeout=2.0)
-            break
-
-        assert webui_proc.stdout is not None, "webui_proc.stdout 不应为 None（已指定 PIPE）"
-
-        webui_reader = threading.Thread(
-            target=_pipe_reader,
-            args=(webui_proc.stdout,),
-            daemon=True,
-            name=f"pipe-reader-webui-{webui_proc.pid}",
-        )
-        webui_reader.start()
-
-        # ------------------------------------------------------------------
-        # 等待任一 Worker 退出
+        # 等待 Worker 退出
         # ------------------------------------------------------------------
         exit_code: int
         try:
-            exit_code = _wait_for_any_exit(main_proc, webui_proc)
+            exit_code = main_proc.wait()
         except KeyboardInterrupt:
-            logger.info("Runner 收到 Ctrl+C，正在终止所有 Worker...")
-            _kill_all_workers(main_proc, webui_proc)
+            logger.info("Runner 收到 Ctrl+C，正在终止 MainWorker...")
+            main_proc.kill()
+            main_proc.wait()
             if main_reader is not None:
                 main_reader.join(timeout=2.0)
-            if webui_reader is not None:
-                webui_reader.join(timeout=2.0)
-            logger.info("所有 Worker 已终止，Runner 退出")
+            logger.info("MainWorker 已终止，Runner 退出")
             return
 
         if main_reader is not None:
             main_reader.join(timeout=2.0)
-        if webui_reader is not None:
-            webui_reader.join(timeout=2.0)
 
         # ------------------------------------------------------------------
         # 根据退出码决策
         # ------------------------------------------------------------------
-        if exit_code in (_RESTART_EXIT_CODE, _WEBUI_RESTART_EXIT_CODE, _RESTART_ALL_EXIT_CODE):
+        if exit_code == _RESTART_EXIT_CODE:
             logger.info(
                 "触发自动重启（退出码 %d），冷却 %.1f 秒后重启...",
                 exit_code,
@@ -723,25 +646,8 @@ def _run_runner() -> None:
             )
             time.sleep(_RESTART_COOLDOWN)
 
-            # 根据退出码决定重启哪个 Worker
-            if exit_code == _RESTART_EXIT_CODE:
-                # MainWorker 请求重启，同时重启 WebUIWorker
-                if main_proc is not None:
-                    main_proc = _restart_worker(main_proc, main_args, main_worker_env)
-                if webui_proc is not None:
-                    webui_proc = _restart_worker(webui_proc, webui_args, webui_worker_env)
-            elif exit_code == _WEBUI_RESTART_EXIT_CODE:
-                # WebUIWorker 请求重启，同时重启 MainWorker
-                if main_proc is not None:
-                    main_proc = _restart_worker(main_proc, main_args, main_worker_env)
-                if webui_proc is not None:
-                    webui_proc = _restart_worker(webui_proc, webui_args, webui_worker_env)
-            else:
-                # 两者都需要重启
-                if main_proc is not None:
-                    main_proc = _restart_worker(main_proc, main_args, main_worker_env)
-                if webui_proc is not None:
-                    webui_proc = _restart_worker(webui_proc, webui_args, webui_worker_env)
+            # 重启 MainWorker
+            main_proc = _restart_worker(main_proc, main_args, main_worker_env)
 
             # 重新启动管道读取线程
             assert main_proc is not None and main_proc.stdout is not None
@@ -752,25 +658,16 @@ def _run_runner() -> None:
                 name=f"pipe-reader-main-{main_proc.pid}",
             )
             main_reader.start()
-
-            assert webui_proc is not None and webui_proc.stdout is not None
-            webui_reader = threading.Thread(
-                target=_pipe_reader,
-                args=(webui_proc.stdout,),
-                daemon=True,
-                name=f"pipe-reader-webui-{webui_proc.pid}",
-            )
-            webui_reader.start()
         else:
             logger.info("Worker 正常退出（退出码 %d），Runner 退出", exit_code)
             break
 
     # 清理
-    _kill_all_workers(main_proc, webui_proc)
+    if main_proc is not None and main_proc.poll() is None:
+        main_proc.kill()
+        main_proc.wait()
     if main_reader is not None:
         main_reader.join(timeout=2.0)
-    if webui_reader is not None:
-        webui_reader.join(timeout=2.0)
 
 
 # ---------------------------------------------------------------------------

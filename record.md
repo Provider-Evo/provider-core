@@ -38,3 +38,11 @@ src/paths.py
 [src/webui/static/core/state.js] 新增日志正则表达式搜索切换功能
 [src/webui/static/index.html] 添加正则搜索按钮
 [src/webui/static/ui/bootstrap.js] 绑定正则搜索按钮事件
+
+2026-07-04 23:45:00
+[src/core/config/manager.py] 重构路径硬编码为 src.paths.config_dir 调用
+[src/core/models_cache.py] 重构路径硬编码为 src.paths.persist_dir 调用
+[src/webui/services/stats.py] 重构路径硬编码为 src.paths.persist_json_dir 调用
+[template/template_config.toml] 版本号更新至 2.2.242
+[config/main_config.toml] 版本号同步更新至 2.2.242
+[README.md] 版本徽章和路线图版本号更新至 2.2.242

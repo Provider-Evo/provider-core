@@ -36,8 +36,8 @@ class ConfigManager:
             self._center.load(config_path)
         else:
             # 默认使用 config/main_config.toml
-            from pathlib import Path
-            default_config_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "main_config.toml"
+            from src.paths import config_dir
+            default_config_path = config_dir() / "main_config.toml"
             if default_config_path.exists():
                 self._center.load(str(default_config_path))
             else:
