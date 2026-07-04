@@ -277,16 +277,18 @@ async def _run() -> None:
     if port_result.occupied and not port_result.released:
         if cfg.server.startup_force_kill_port:
             logger.error(
-                "端口 %d 被占用 (PIDs: %s)，已尝试强制终止但未能释放",
+                "端口 %d 被占用 (PIDs: %s)，已尝试强制终止但未能释放，退出",
                 port,
                 port_result.pids,
             )
         else:
             logger.error(
-                "端口 %d 被占用 (PIDs: %s)，startup_force_kill_port=false 未强制释放",
+                "端口 %d 被占用 (PIDs: %s)，startup_force_kill_port=false 未强制释放，退出",
                 port,
                 port_result.pids,
             )
+        # 退出非零码，让 Runner 处理错误重启
+        raise SystemExit(1)
 
     runner = aiohttp.web.AppRunner(app, access_log=_access_log)
     await runner.setup()

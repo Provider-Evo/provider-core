@@ -35,9 +35,15 @@ var TerminalManager = (function () {
   var _customBgOpacity = 0.3; // custom background opacity (0-1)
 
   /**
-   * Strip DEC private mode responses (e.g. ^[[?1;2c, ^[[?6c) that leak
-   * through ConPTY as visible garbage.  xterm.js handles these internally;
-   * they must never reach xterm.write() as visible text.
+   * Strip Device Attribute (DA) responses that leak through ConPTY as
+   * visible garbage.  xterm.js handles these internally; they must never
+   * reach xterm.write() as visible text.
+   *
+   * DA responses end with 'c' (e.g. ^[[?6c, ^[[?1;2c, ^[[?62;1;2;6c).
+   * This function does NOT strip DEC private mode SET/RESET sequences
+   * (e.g. ^[[?25h, ^[[?25l, ^[[?1049h) because those control cursor
+   * visibility, alternate screen buffer, mouse tracking, etc. — xterm.js
+   * must receive them to function correctly with TUI applications.
    * Applied to ALL output — live stream, offline replay, and status messages.
    * Handles cross-message splitting by tracking pending escape sequences.
    */
@@ -53,18 +59,17 @@ var TerminalManager = (function () {
       var suffix = data.slice(lastEsc);
       // If suffix doesn't match a complete sequence pattern, it's incomplete
       if (!/\x1b\[[0-9;]*[a-zA-Z]/.test(suffix) &&
-          !/\x1b\[[0-9;]*[cR]/.test(suffix) &&
-          !/\x1b\[\?[0-9;]*[a-zA-Z]/.test(suffix)) {
+          !/\x1b\[\?[0-9;]*c/.test(suffix)) {
         // Might be incomplete, keep as pending
         _pendingDecStrip = suffix;
         data = data.slice(0, lastEsc);
       }
     }
 
-    // Strip complete DEC responses
-    return data.replace(/\x1b\[[0-9;]*[cR]/g, '')
-               .replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '')
-               .replace(/\x1b\[[0-9;]*[c]/g, '');
+    // Strip Device Attribute responses (end with 'c' after ?)
+    // e.g. \x1b[?6c  \x1b[?1;2c  \x1b[?62;1;2;6c
+    return data.replace(/\x1b\[\?[0-9;]*c/g, '')
+               .replace(/\x1b\[[0-9;]*[cR]/g, '');
   }
 
   /**
