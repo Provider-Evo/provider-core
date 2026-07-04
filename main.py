@@ -281,22 +281,51 @@ async def _run() -> None:
         _logging.getLogger("aiohttp.access") if cfg.debug.access_log else None
     )
 
-    # 检查并释放端口占用
-    port_result = ensure_port_available(port, cfg.server.startup_force_kill_port)
-    if port_result.occupied and not port_result.released:
-        if cfg.server.startup_force_kill_port:
-            logger.error(
-                "端口 %d 被占用 (PIDs: %s)，已尝试强制终止但未能释放，退出",
+    # 检查并释放端口占用（带重试）
+    max_port_retries = 5
+    port_retry_delay = 2.0
+    port_bound = False
+
+    for port_attempt in range(max_port_retries):
+        port_result = ensure_port_available(port, cfg.server.startup_force_kill_port)
+        if not port_result.occupied or port_result.released:
+            port_bound = True
+            break
+        # 端口仍被占用
+        if port_attempt < max_port_retries - 1:
+            logger.warning(
+                "端口 %d 被占用 (PIDs: %s)，%s，等待 %.1f 秒后重试 (%d/%d)...",
                 port,
                 port_result.pids,
+                "已尝试强制终止" if cfg.server.startup_force_kill_port else "未强制终止",
+                port_retry_delay,
+                port_attempt + 1,
+                max_port_retries,
             )
+            await asyncio.sleep(port_retry_delay)
+            # 增加冷却时间给Windows更多时间释放TCP套接字
+            port_retry_delay = min(port_retry_delay * 1.5, 10.0)
         else:
-            logger.error(
-                "端口 %d 被占用 (PIDs: %s)，startup_force_kill_port=false 未强制释放，退出",
-                port,
-                port_result.pids,
-            )
-        # 关闭已创建的资源后再退出
+            if cfg.server.startup_force_kill_port:
+                logger.error(
+                    "端口 %d 被占用 (PIDs: %s)，已尝试强制终止并重试 %d 次但未能释放，退出",
+                    port,
+                    port_result.pids,
+                    max_port_retries,
+                )
+            else:
+                logger.error(
+                    "端口 %d 被占用 (PIDs: %s)，startup_force_kill_port=false 未强制释放，退出",
+                    port,
+                    port_result.pids,
+                )
+            # 关闭已创建的资源后再退出
+            await session.close()
+            await registry.close()
+            raise SystemExit(1)
+
+    if not port_bound:
+        # 理论上不会到这里，但作为安全措施
         await session.close()
         await registry.close()
         raise SystemExit(1)
