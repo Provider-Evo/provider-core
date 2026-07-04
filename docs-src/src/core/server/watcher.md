@@ -1,6 +1,6 @@
 # src/core/server/watcher.py
 
-文件变更监控器，负责热重载平台、检测核心变更触发重启、检测前端变更触发浏览器刷新。
+文件变更监控器，负责热重载平台、检测核心变更触发重启、检测前端变更输出日志提示。
 
 ## 监控范围
 
@@ -19,19 +19,9 @@
 | `main_config.toml` 或 `main.py` | 进程重启 (exit 42) |
 | `src/core/` 或 `src/routes/` | 进程重启 (exit 42) |
 | `src/platforms/<name>/` | 平台热重载 |
-| `src/webui/static/` | 浏览器刷新 (WebSocket 广播 reload) |
+| `src/webui/static/` | 日志提示用户手动刷新浏览器 |
 | 其他 `src/` 下的文件 | 进程重启 (exit 42) |
 
-## 前端热重载链路
+## 前端文件变更处理
 
-1. `FileWatcher` 检测到 `src/webui/static/` 下文件变化
-2. `_classify()` 判断 `needs_frontend_reload = True`
-3. 检查冷却时间（5秒内不重复触发），避免频繁刷新
-4. 通过 `log_broker.broadcast({"type": "reload"})` 广播
-5. 前端 WebSocket 收到 reload 消息后执行 `location.reload()`
-
-## 冷却机制
-
-- 前端热重载最小间隔：5秒（`_FRONTEND_RELOAD_COOLDOWN`）
-- 防止短时间内多次文件变更导致浏览器频繁刷新
-- 每次广播后记录时间戳，下次触发时检查间隔
+检测到 `src/webui/static/` 下文件变化时，仅输出日志提示用户手动刷新浏览器，不自动广播 reload 消息。
