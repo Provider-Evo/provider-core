@@ -1321,22 +1321,130 @@ section.tab-panel > * {
   border: 1px solid var(--border);
 }
 
-/* ========== Log Line Numbers ========== */
-.log-line {
+/* ========== Log Viewer ========== */
+.log-viewer {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  height: calc(100vh - 280px);
+  min-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, Monaco, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  contain: layout style;
+}
+
+.log-viewer::-webkit-scrollbar { width: 6px; }
+.log-viewer::-webkit-scrollbar-track { background: transparent; }
+.log-viewer::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+.log-viewer::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+.log-entry {
   display: flex;
-  gap: 8px;
-  line-height: 1.6;
+  gap: 0;
+  padding: 1px 12px;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+  transition: background 0.1s;
 }
-.log-ln {
+.log-entry:hover { background: rgba(56, 58, 64, 0.4); }
+
+.log-time {
   flex-shrink: 0;
-  width: 36px;
-  text-align: right;
-  color: var(--muted);
-  opacity: 0.5;
+  width: 120px;
+  color: #8b949e;
   user-select: none;
-  font-size: 11px;
-  line-height: 1.6;
 }
+
+.log-level {
+  flex-shrink: 0;
+  width: 72px;
+  font-weight: 600;
+  text-transform: uppercase;
+  user-select: none;
+}
+.log-level-DEBUG { color: #8b949e; }
+.log-level-INFO { color: #58a6ff; }
+.log-level-WARNING { color: #d29922; }
+.log-level-ERROR { color: #f85149; }
+.log-level-CRITICAL { color: #ff7b72; font-weight: 700; }
+.log-level-SUCCESS { color: #3fb950; }
+
+.log-module {
+  flex-shrink: 0;
+  width: 140px;
+  color: #79c0ff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-msg {
+  flex: 1;
+  color: #c9d1d9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ========== Log Toolbar ========== */
+.log-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+
+.log-search {
+  flex: 1;
+  min-width: 160px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.log-search:focus { outline: none; border-color: var(--accent); }
+
+.log-level-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.log-toolbar-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.log-toolbar-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.log-toolbar-btn-danger:hover { background: rgba(217, 72, 72, 0.1); color: var(--err); border-color: var(--err); }
+.log-toolbar-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.log-conn-status {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--panel-alt);
+  color: var(--muted);
+}
+.log-conn-status.connected { color: var(--ok); }
 
 /* ========== Terminal Tab Layout ========== */
 /* When terminal tab is active, fixed-position it to fill the viewport.

@@ -368,16 +368,32 @@
       </section>
 
       <section class="tab-panel hidden" id="tab-logs" aria-labelledby="tab-logs-button">
-        <div class="flex flex-wrap justify-between items-end gap-3">
-          <div>
-            <h2>运行日志</h2>
-            <p class="m-0 text-muted leading-relaxed">显示当前页面交互与接口调用反馈，不替代服务端真实日志文件。</p>
+        <div class="flex flex-wrap justify-between items-center gap-3">
+          <div class="min-w-0">
+            <h2 class="m-0">运行日志</h2>
+            <p class="m-0 text-muted leading-relaxed">实时日志流，支持搜索、级别过滤和导出。</p>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-border bg-panel text-text hover:bg-panel-alt transition" id="clearLogButton" type="button">清空日志</button>
+          <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
+            <span class="log-conn-status" id="logConnStatus">未连接</span>
           </div>
         </div>
-        <pre class="border border-border rounded-xl p-3.5 bg-panel-soft min-h-[200px] max-h-[400px] overflow-auto text-[13px] leading-relaxed font-mono card-hover-lift" id="logBox"></pre>
+        <div class="log-toolbar">
+          <input type="text" class="log-search" id="logSearchInput" placeholder="搜索日志...">
+          <select class="log-level-select" id="logLevelSelect">
+            <option value="all">全部级别</option>
+            <option value="DEBUG">DEBUG+</option>
+            <option value="INFO" selected>INFO+</option>
+            <option value="WARNING">WARNING+</option>
+            <option value="ERROR">ERROR+</option>
+            <option value="CRITICAL">CRITICAL</option>
+          </select>
+          <button class="log-toolbar-btn" id="logAutoScrollBtn" type="button" title="自动滚动">
+            <span id="logAutoScrollIcon">&#9654;</span> 滚动
+          </button>
+          <button class="log-toolbar-btn" id="logExportBtn" type="button" title="导出日志">导出</button>
+          <button class="log-toolbar-btn log-toolbar-btn-danger" id="clearLogButton" type="button" title="清空日志">清空</button>
+        </div>
+        <div class="log-viewer" id="logBox"></div>
       </section>
 
       <section class="tab-panel hidden" id="tab-terminal" aria-labelledby="tab-terminal-button">

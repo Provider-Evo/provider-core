@@ -31,9 +31,13 @@ const refreshState = document.getElementById('refreshState');
 const toastWrap = document.getElementById('toastWrap');
 const socketNotice = document.getElementById('socketNotice');
 let logsSocket = null;
-let _logLineCount = 0;
 let _logEntries = [];
-const _logMaxEntries = 2000;
+const _logMaxEntries = 5000;
+let _logAutoScroll = true;
+let _logLevelFilter = 'INFO';
+let _logSearchQuery = '';
+
+const _LOG_LEVEL_PRIORITY = { DEBUG: 10, INFO: 20, WARNING: 30, ERROR: 40, CRITICAL: 50, SUCCESS: 25 };
 
 function ansiToHtml(text) {
   var escaped = text
@@ -85,33 +89,126 @@ function ansiToHtml(text) {
 }
 
 function log(message) {
-  // Skip timestamp prefix if message already starts with a date pattern (MM-DD from WebSocket)
+  // Legacy support: parse ANSI-formatted message string
   var hasDate = /^\d{2}-\d{2}\s/.test(message);
   var line = hasDate ? message : ('[' + new Date().toLocaleTimeString() + '] ' + message);
-  _logEntries.unshift({ html: ansiToHtml(line) });
+  addLogEntry({
+    timestamp: line.substring(0, 14),
+    level: 'INFO',
+    module: '',
+    message: line,
+  });
+}
 
-  // Prepend new entry to DOM
+function addLogEntry(entry) {
+  _logEntries.unshift(entry);
+  if (!_shouldShowLog(entry)) return;
+
   var div = document.createElement('div');
-  div.className = 'log-line';
-  div.innerHTML = '<span class="log-ln">1</span>' + ansiToHtml(line);
-  if (logBox.firstChild) {
-    logBox.insertBefore(div, logBox.firstChild);
-  } else {
-    logBox.appendChild(div);
+  div.className = 'log-entry';
+  div.innerHTML =
+    '<span class="log-time">' + _escapeHtml(entry.timestamp || '') + '</span>' +
+    '<span class="log-level log-level-' + (entry.level || 'INFO') + '">' + (entry.level || 'INFO') + '</span>' +
+    '<span class="log-module">' + _escapeHtml(entry.module || '') + '</span>' +
+    '<span class="log-msg">' + ansiToHtml(entry.message || '') + '</span>';
+
+  var box = document.getElementById('logBox');
+  if (box) {
+    box.appendChild(div);
+    while (box.children.length > _logMaxEntries) {
+      box.removeChild(box.firstChild);
+    }
   }
 
-  // Remove excess entries from both array and DOM
+  // Remove excess from array
   while (_logEntries.length > _logMaxEntries) {
     _logEntries.pop();
-    if (logBox.lastChild) logBox.removeChild(logBox.lastChild);
   }
 
-  // Renumber all visible entries: #1 at top (newest), increasing downward
-  var lines = logBox.children;
-  for (var i = 0; i < lines.length; i++) {
-    var ln = lines[i].querySelector('.log-ln');
-    if (ln) ln.textContent = i + 1;
+  _logAutoScrollToBottom();
+}
+
+function _shouldShowLog(entry) {
+  if (_logLevelFilter !== 'all') {
+    var entryPri = _LOG_LEVEL_PRIORITY[entry.level] || 0;
+    var filterPri = _LOG_LEVEL_PRIORITY[_logLevelFilter] || 0;
+    if (entryPri < filterPri) return false;
   }
+  if (_logSearchQuery) {
+    var q = _logSearchQuery.toLowerCase();
+    var msg = (entry.message || '').toLowerCase();
+    var mod = (entry.module || '').toLowerCase();
+    if (msg.indexOf(q) === -1 && mod.indexOf(q) === -1) return false;
+  }
+  return true;
+}
+
+function _logAutoScrollToBottom() {
+  if (!_logAutoScroll) return;
+  var box = document.getElementById('logBox');
+  if (box) {
+    requestAnimationFrame(function() {
+      box.scrollTop = box.scrollHeight;
+    });
+  }
+}
+
+function filterLogs() {
+  var box = document.getElementById('logBox');
+  if (!box) return;
+  box.innerHTML = '';
+  // Re-render in reverse order (newest first → append in reverse)
+  for (var i = _logEntries.length - 1; i >= 0; i--) {
+    var entry = _logEntries[i];
+    if (!_shouldShowLog(entry)) continue;
+    var div = document.createElement('div');
+    div.className = 'log-entry';
+    div.innerHTML =
+      '<span class="log-time">' + _escapeHtml(entry.timestamp || '') + '</span>' +
+      '<span class="log-level log-level-' + (entry.level || 'INFO') + '">' + (entry.level || 'INFO') + '</span>' +
+      '<span class="log-module">' + _escapeHtml(entry.module || '') + '</span>' +
+      '<span class="log-msg">' + ansiToHtml(entry.message || '') + '</span>';
+    box.appendChild(div);
+  }
+  _logAutoScrollToBottom();
+}
+
+function clearLogs() {
+  _logEntries = [];
+  var box = document.getElementById('logBox');
+  if (box) box.innerHTML = '';
+  toast('日志已清空', 'ok');
+}
+
+function exportLogs() {
+  var lines = [];
+  for (var i = _logEntries.length - 1; i >= 0; i--) {
+    var e = _logEntries[i];
+    lines.push((e.timestamp || '') + ' [' + (e.level || '') + '] [' + (e.module || '') + '] ' + (e.message || ''));
+  }
+  var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  var now = new Date();
+  a.download = 'provider-logs-' + now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0') + '_' +
+    String(now.getHours()).padStart(2, '0') +
+    String(now.getMinutes()).padStart(2, '0') + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('日志已导出', 'ok');
+}
+
+function toggleAutoScroll() {
+  _logAutoScroll = !_logAutoScroll;
+  var btn = document.getElementById('logAutoScrollBtn');
+  var icon = document.getElementById('logAutoScrollIcon');
+  if (btn) btn.classList.toggle('active', _logAutoScroll);
+  if (icon) icon.innerHTML = _logAutoScroll ? '&#9654;' : '&#9646;&#9646;';
 }
 
 function toast(message, type) {

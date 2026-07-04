@@ -75,14 +75,10 @@ class TestFncallStreamParserNous:
     def test_detects_nous(self):
         protocol = NousProtocol()
         parser = FncallStreamParser(protocol=protocol)
-        fc = LT + "function_calls" + GT
-        inv = LT + 'invoke name="Bash"' + GT
-        param = LT + 'parameter name="cmd"' + GT + "![CDATA[ls]]" + LT + "/parameter" + GT
-        end_inv = LT + "/invoke" + GT
-        end_fc = LT + "/function_calls" + GT
-        parser.feed("wait " + fc)
-        parser.feed(inv + param)
-        parser.feed(end_inv + end_fc)
+        # Nous format: <function=name>...</function>
+        parser.feed('wait <function=Bash>')
+        parser.feed('{"cmd":"ls"}')
+        parser.feed('</function>')
         parser.feed(" done")
         text, calls = parser.finalize()
         assert parser.has_calls

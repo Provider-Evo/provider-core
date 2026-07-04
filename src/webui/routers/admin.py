@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import aiohttp.web
 
-__all__ = ["reload_service", "config_get", "config_put", "config_reload", "persist_get", "persist_put"]
+__all__ = ["reload_service", "config_get", "config_put", "config_reload", "persist_get", "persist_put", "bg_image_upload", "bg_image_get"]
 
 
 async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
