@@ -40,7 +40,7 @@ from .endpoints import (
     TASK_TIMERS_PATH,
     TTS_DIR,
 )
-from .errors import WafBlockedError
+from .errors import WafBlockedError, TokenExpiredError
 from .headers import build_headers
 from .logs import LogsMixin
 from .media import MediaMixin
@@ -315,6 +315,15 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
                 ):
                     yield chunk
                 return
+            except TokenExpiredError as exc:
+                email = str(candidate.meta.get("email", ""))
+                if email in self._account_states:
+                    account = self._account_states[email]
+                    account.is_login = False
+                    account.token = ""
+                    self._rebuild_candidates()
+                    self._save_persist()
+                raise
             except WafBlockedError as exc:
                 last_error = exc
                 self._log_retry(f"WAF retry {attempt + 1}/3")

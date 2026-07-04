@@ -3290,3 +3290,19 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 
 [src/webui/static/core/tabbar.css] 水平模式下加号按钮改为 sticky 固定在右侧，确保标签多时仍可见
 [src/webui/static/core/tabbar.css] 关闭全部按钮右偏移 36px 避免与加号按钮重叠
+
+2026-07-04 23:30:00
+
+[src/platforms/qwen/core/errors.py] 新增 TokenExpiredError 异常类型
+[src/platforms/qwen/core/chat_session.py] create 方法检测 token 过期错误并抛出 TokenExpiredError
+
+2026-07-04 23:35:00
+
+[src/platforms/qwen/core/chat_session.py] create_chat 检测 unauthorized 错误码和 Token has expired 详情，抛出 TokenExpiredError
+[src/platforms/qwen/core/client.py] stream_chat 捕获 TokenExpiredError，标记账号未登录、清除 token、重建候选列表并持久化
+[docs-src/src/platforms/qwen/core/qwen.md] 更新注意事项，添加 Token 过期自动处理描述
+[src/platforms/qwen/core/client.py] complete 方法捕获 TokenExpiredError 并设置 account.is_login = False
+
+2026-07-04 22:45:00
+
+[src/webui/static/ui/styles.css] 调整侧边栏导航按钮样式：移除间距和圆角，按钮紧密排列靠左对齐

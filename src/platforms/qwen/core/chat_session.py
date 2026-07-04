@@ -47,6 +47,11 @@ class ChatSession:
             data = await response.json()
             chat_id = (data.get("data") or {}).get("id", "")
             if not data.get("success") or not chat_id:
+                error_data = data.get("data") or {}
+                error_code = error_data.get("code", "")
+                error_details = error_data.get("details", "")
+                if error_code == "unauthorized" or "Token has expired" in error_details:
+                    raise TokenExpiredError(f"Qwen token expired: {error_details}")
                 raise RuntimeError(f"Qwen create-chat returned an invalid payload: {data}")
             return chat_id
 

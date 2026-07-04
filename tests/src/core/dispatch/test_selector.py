@@ -1,10 +1,11 @@
 """Tests for src/core/dispatch/selector.py."""
 import math
 import os
+import sqlite3
 import pytest
 import tempfile
 import time
-from unittest.mock import patch
+from pathlib import Path
 
 from src.core.dispatch.selector import Selector, TASRecord
 from src.core.dispatch.candidate import Candidate
@@ -13,44 +14,103 @@ from src.core.dispatch.candidate import Candidate
 class TestTASRecord:
     def test_default_values(self):
         r = TASRecord()
-        assert r.platform == ""
-        assert r.error_time == 0.0
-        assert r.last_call == 0.0
-        assert r.ema_speed == 0.0
-        assert r.ema_latency == 0.0
-        assert r.n_calls == 0
+        assert r.group == ""
+        assert r.n_success == 0
         assert r.n_fails == 0
+        assert r.latency_sum == 0.0
+        assert r.latency_sum_sq == 0.0
+        assert r.n_latency_samples == 0
+        assert r.speed_sum == 0.0
+        assert r.speed_sum_sq == 0.0
+        assert r.n_speed_samples == 0
+        assert r.last_success == 0.0
+        assert r.last_used == 0.0
+        assert r.error_time == 0.0
+        assert r.n_calls == 0
 
     def test_to_dict(self):
-        r = TASRecord(platform="test", ema_speed=25.0, ema_latency=1.2, n_calls=10)
+        r = TASRecord(
+            group="test",
+            n_success=5,
+            n_fails=1,
+            latency_sum=500.0,
+            n_latency_samples=5,
+            speed_sum=100.0,
+            n_speed_samples=5,
+        )
         d = r.to_dict()
-        assert d["platform"] == "test"
-        assert d["ema_speed"] == 25.0
-        assert d["ema_latency"] == 1.2
-        assert d["n_calls"] == 10
-        assert "cooling" in d
+        assert d["group"] == "test"
+        assert d["n_success"] == 5
+        assert d["n_fails"] == 1
+        assert d["latency_sum"] == 500.0
+        assert d["n_latency_samples"] == 5
+        assert d["speed_sum"] == 100.0
+        assert d["n_speed_samples"] == 5
+        # Derived fields
+        assert "success_rate" in d
+        assert "mean_latency" in d
+        assert "mean_speed" in d
 
-    def test_cooling_in_dict(self):
-        r = TASRecord(error_time=time.time(), n_fails=2)
-        d = r.to_dict()
-        assert d["cooling"] is True
+    def test_from_dict(self):
+        data = {
+            "group": "test",
+            "n_success": 3,
+            "n_fails": 1,
+            "latency_sum": 300.0,
+            "latency_sum_sq": 30000.0,
+            "n_latency_samples": 3,
+            "speed_sum": 60.0,
+            "speed_sum_sq": 2000.0,
+            "n_speed_samples": 3,
+            "last_success": 1000.0,
+            "last_used": 900.0,
+            "error_time": 0.0,
+            "n_calls": 4,
+        }
+        r = TASRecord.from_dict(data)
+        assert r.group == "test"
+        assert r.n_success == 3
+        assert r.latency_sum == 300.0
 
-    def test_not_cooling_no_fails(self):
-        r = TASRecord(error_time=time.time(), n_fails=0)
-        d = r.to_dict()
-        assert d["cooling"] is False
+    def test_beta_mean(self):
+        r = TASRecord(n_success=8, n_fails=2)
+        # Beta(2+8, 2+2) = Beta(10, 4), mean = 10/14 ≈ 0.714
+        assert abs(r.beta_mean - 10 / 14) < 0.001
+
+    def test_beta_std(self):
+        r = TASRecord(n_success=8, n_fails=2)
+        assert r.beta_std > 0
+
+    def test_latency_mean(self):
+        r = TASRecord(latency_sum=500.0, n_latency_samples=5)
+        assert r.latency_mean == 100.0
+
+    def test_latency_mean_no_samples(self):
+        r = TASRecord()
+        assert r.latency_mean == 1000.0
+
+    def test_speed_mean(self):
+        r = TASRecord(speed_sum=100.0, n_speed_samples=5)
+        assert r.speed_mean == 20.0
+
+    def test_speed_mean_no_samples(self):
+        r = TASRecord()
+        assert r.speed_mean == 10.0
+
+    def test_total_obs(self):
+        r = TASRecord(n_success=5, n_fails=3)
+        assert r.total_obs == 8
 
 
 @pytest.fixture
 def selector():
     with tempfile.TemporaryDirectory() as td:
-        yield Selector(persist_dir=td)
+        yield Selector(persist_dir=td, prune_days=9999)
 
 
 class TestSelector:
     def test_init(self, selector):
-        assert selector._eps > 0
-        assert selector._n == 0
+        assert selector._db_path.exists()
 
     @pytest.mark.asyncio
     async def test_select_empty_returns_empty(self, selector):
@@ -92,9 +152,9 @@ class TestSelector:
         r = selector._pool["test_123"]
         assert r.n_calls == 1
         assert r.n_fails == 0
-        assert r.last_call > 0
-        assert r.ema_latency > 0
-        assert r.ema_speed > 0
+        assert r.last_success > 0
+        assert r.latency_sum > 0
+        assert r.n_latency_samples == 1
 
     @pytest.mark.asyncio
     async def test_record_fail(self, selector):
@@ -112,9 +172,9 @@ class TestSelector:
             platform="test",
         )
         r = selector._pool["test_123"]
-        assert r.ema_speed > 0
+        assert r.speed_sum > 0
         # speed = 40 / 4.0 = 10.0 tok/s
-        assert abs(r.ema_speed - 10.0) < 0.1
+        assert abs(r.speed_mean - 10.0) < 0.1
 
     @pytest.mark.asyncio
     async def test_get_stats(self, selector):
@@ -125,10 +185,11 @@ class TestSelector:
         stats_dict = await selector.get_stats()
         assert "test_123" in stats_dict
         d = stats_dict["test_123"]
-        assert "platform" in d
-        assert "ema_speed" in d
-        assert "ema_latency" in d
-        assert "cooling" in d
+        assert "group" in d
+        assert "n_success" in d
+        assert "n_fails" in d
+        assert "latency_sum" in d
+        assert "speed_sum" in d
 
     @pytest.mark.asyncio
     async def test_cooling_filter(self, selector):
@@ -140,118 +201,110 @@ class TestSelector:
         r1 = selector._ensure("test_1", "test")
         r1.error_time = time.time()
         r1.n_fails = 2
-        selector._cf["test_1"] = 2
 
         result = await selector.select(cands, count=1)
         assert result[0].id == "test_2"
 
     @pytest.mark.asyncio
-    async def test_persistence(self):
+    async def test_sqlite_persistence(self):
         with tempfile.TemporaryDirectory() as td:
-            s1 = Selector(persist_dir=td)
+            s1 = Selector(persist_dir=td, prune_days=9999)
             await s1.record(
                 "cand_1", success=True, latency=1.0, tokens=20,
                 duration=3.0, platform="plat",
             )
+            s1._flush()
 
-            s2 = Selector(persist_dir=td)
+            s2 = Selector(persist_dir=td, prune_days=9999)
             assert "cand_1" in s2._pool
             assert s2._pool["cand_1"].n_calls == 1
+            assert s2._pool["cand_1"].latency_sum > 0
 
     @pytest.mark.asyncio
-    async def test_weights_persistence(self):
-        with tempfile.TemporaryDirectory() as td:
-            s1 = Selector(persist_dir=td)
-            s1._w.w_speed = 0.3
-            s1._w.w_lat = 0.2
-            s1._w.w_err = 0.2
-            s1._w.w_call = 0.1
-            s1._w.w_fails = 0.2
-            s1._save_weights()
+    async def test_batch_flush(self, selector):
+        await selector.record("a", success=True, latency=0.1, tokens=5, duration=1.0, platform="p")
+        await selector.record("b", success=False, platform="p")
 
-            s2 = Selector(persist_dir=td)
-            assert abs(s2._w.w_speed - 0.3) < 0.001
-            assert abs(s2._w.w_lat - 0.2) < 0.001
-            assert abs(s2._w.w_fails - 0.2) < 0.001
+        # Should be in dirty buffer, not yet flushed
+        assert len(selector._dirty) == 2
+
+        # Manual flush
+        selector._flush()
+
+        # Dirty buffer should be empty
+        assert len(selector._dirty) == 0
+
+        # Records should be in SQLite
+        conn = sqlite3.connect(str(selector._db_path))
+        count = conn.execute("SELECT COUNT(*) FROM records").fetchone()[0]
+        conn.close()
+        assert count == 2
 
     def test_score_fast_vs_slow(self, selector):
         fast = TASRecord(
-            platform="p", ema_speed=50.0, ema_latency=0.5,
-            last_call=time.time(), n_calls=10,
+            group="p", n_success=10, n_fails=0,
+            latency_sum=500.0, latency_sum_sq=5000.0, n_latency_samples=10,
+            speed_sum=500.0, speed_sum_sq=50000.0, n_speed_samples=10,
+            last_success=time.time(), last_used=time.time(), n_calls=10,
         )
         slow = TASRecord(
-            platform="p", ema_speed=5.0, ema_latency=3.0,
-            last_call=time.time(), n_calls=10,
+            group="p", n_success=10, n_fails=0,
+            latency_sum=3000.0, latency_sum_sq=900000.0, n_latency_samples=10,
+            speed_sum=50.0, speed_sum_sq=500.0, n_speed_samples=10,
+            last_success=time.time(), last_used=time.time(), n_calls=10,
         )
-        s_fast = selector._score_one(fast, 27.5, 1.75)
-        s_slow = selector._score_one(slow, 27.5, 1.75)
+        s_fast = selector._score(fast, time.time())
+        s_slow = selector._score(slow, time.time())
         assert s_fast > s_slow
 
     def test_score_error_penalty(self, selector):
         good = TASRecord(
-            platform="p", ema_speed=20.0, ema_latency=1.0,
-            last_call=time.time(), n_calls=10,
+            group="p", n_success=10, n_fails=0,
+            latency_sum=1000.0, latency_sum_sq=100000.0, n_latency_samples=10,
+            last_success=time.time(), last_used=time.time(), n_calls=10,
         )
         errored = TASRecord(
-            platform="p", ema_speed=20.0, ema_latency=1.0,
-            last_call=time.time(), n_calls=10,
-            error_time=time.time(),
+            group="p", n_success=10, n_fails=0,
+            latency_sum=1000.0, latency_sum_sq=100000.0, n_latency_samples=10,
+            last_success=time.time(), last_used=time.time(),
+            error_time=time.time(), n_calls=10,
         )
-        s_good = selector._score_one(good, 20.0, 1.0)
-        s_err = selector._score_one(errored, 20.0, 1.0)
+        s_good = selector._score(good, time.time())
+        s_err = selector._score(errored, time.time())
         assert s_good > s_err
 
     def test_score_fails_penalty(self, selector):
         reliable = TASRecord(
-            platform="p", ema_speed=20.0, ema_latency=1.0,
-            last_call=time.time(), n_calls=10, n_fails=0,
+            group="p", n_success=10, n_fails=0,
+            latency_sum=1000.0, n_latency_samples=10,
+            last_used=time.time(), n_calls=10,
         )
         flaky = TASRecord(
-            platform="p", ema_speed=20.0, ema_latency=1.0,
-            last_call=time.time(), n_calls=10, n_fails=5,
+            group="p", success=5, n_fails=5,
+            latency_sum=1000.0, n_latency_samples=10,
+            last_used=time.time(), n_calls=10,
         )
-        s_reliable = selector._score_one(reliable, 20.0, 1.0)
-        s_flaky = selector._score_one(flaky, 20.0, 1.0)
+        s_reliable = selector._score(reliable, time.time())
+        s_flaky = selector._score(flaky, time.time())
         assert s_reliable > s_flaky
 
-    def test_score_fails_capped_at_10(self, selector):
-        fails_10 = TASRecord(
-            platform="p", ema_speed=20.0, ema_latency=1.0,
-            last_call=time.time(), n_calls=10, n_fails=10,
-        )
-        fails_20 = TASRecord(
-            platform="p", ema_speed=20.0, ema_latency=1.0,
-            last_call=time.time(), n_calls=10, n_fails=20,
-        )
-        s_10 = selector._score_one(fails_10, 20.0, 1.0)
-        s_20 = selector._score_one(fails_20, 20.0, 1.0)
-        assert abs(s_10 - s_20) < 0.001
+    @pytest.mark.asyncio
+    async def test_prune_stale(self):
+        with tempfile.TemporaryDirectory() as td:
+            s = Selector(persist_dir=td, prune_days=0)
+            await s.record("old", success=False, platform="p")
+            s._pool["old"].last_used = time.time() - 86400 * 2
+            s._flush()
 
-    def test_tune_weights_sum_preserved(self, selector):
-        r = TASRecord(
-            platform="p", ema_speed=20.0, ema_latency=1.0,
-            last_call=time.time(), error_time=time.time(),
-        )
-        selector._tune_weights(r, True)
-        total = (
-            selector._w.w_err + selector._w.w_call
-            + selector._w.w_speed + selector._w.w_lat
-            + selector._w.w_fails
-        )
-        assert abs(total - 1.0) < 0.001
+            pruned = s.prune_stale()
+            assert pruned >= 1
+            assert "old" not in s._pool
 
-    def test_stop_criterion_insufficient_samples(self, selector):
-        cands = [
-            Candidate(id="test_1", platform="test", resource_id="r1"),
-            Candidate(id="test_2", platform="test", resource_id="r2"),
-        ]
-        result = selector._stop(cands, 10.0, 2.0)
-        assert result is False
+    def test_close_flushes(self, selector):
+        # Record something
+        selector._ensure("test", "p")
+        selector._dirty["test"] = selector._pool["test"]
 
-    def test_explore_returns_candidate(self, selector):
-        cands = [
-            Candidate(id="test_1", platform="test", resource_id="r1"),
-            Candidate(id="test_2", platform="test", resource_id="r2"),
-        ]
-        result = selector._explore(cands, 10.0, 2.0)
-        assert result in cands
+        selector.close()
+        assert selector._closed
+        assert len(selector._dirty) == 0

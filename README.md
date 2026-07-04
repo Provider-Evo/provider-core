@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.224-blue)
-![Version](https://img.shields.io/badge/version-2.2.224-blue)
+![Status](https://img.shields.io/badge/status-v2.2.225-blue)
+![Version](https://img.shields.io/badge/version-2.2.225-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,9 +1264,9 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.223
+### 当前版本：v2.2.225
 
-✅ 已完成（v2.2.223）：
+✅ 已完成（v2.2.225）：
 - feat(terminal): add custom background image support with opacity control and pseudo-element rendering
 - fix(terminal): resolve panel positioning issue when switching tabs (remove display:flex !important)
 - fix(terminal): enhance DEC response stripping for cross-message handling

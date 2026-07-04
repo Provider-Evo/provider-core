@@ -127,3 +127,4 @@ enabled_platforms = ["qwen"]
 3. **WAF 检测仅检查 Content-Type** -- 不包含状态码或 body 关键词
 4. **所有 10000 个账号在启动时从持久化恢复** -- 初始候选项数量巨大
 5. **图片/视频/TTS 文件保存到本地磁盘** -- 使用 `GENERATED_*_DIR` 目录
+6. **Token 过期自动处理** -- `chat_session.create_chat()` 检测 `unauthorized` 错误码或 "Token has expired" 详情，抛出 `TokenExpiredError`；`client.stream_chat()` 捕获后将对应账号标记为未登录、清除 token、重建候选列表并持久化，然后重新抛出以触发下一个候选重试
