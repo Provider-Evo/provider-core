@@ -138,7 +138,7 @@ var TabBar = (function () {
 
     /**
      * Create a DOM element for a single tab.
-     * Structure: status + title + close
+     * Structure: icon + status + title + close
      */
     instance._createTabElement = function (tab) {
       var el = document.createElement('div');
@@ -147,6 +147,12 @@ var TabBar = (function () {
       el.setAttribute('data-tooltip', tab.title || '');
 
       var self = this;
+
+      // Icon slot -- shown for tabs without status (e.g., file tabs in compressed mode)
+      var iconEl = document.createElement('span');
+      iconEl.className = 'unified-tab-icon';
+      iconEl.innerHTML = tab.icon || '';
+      el.appendChild(iconEl);
 
       // Status dot -- shown only when status is set (connecting/connected/disconnected)
       if (tab.status) {

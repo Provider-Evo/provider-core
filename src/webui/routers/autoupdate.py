@@ -30,7 +30,7 @@ def _get_autoupdate_config() -> Dict[str, Any]:
 
 
 async def _run_git(*args: str, timeout: int = 30) -> Tuple[bool, str, str]:
-    root = _project_root()
+    root = _project_root
     try:
         proc = await asyncio.create_subprocess_exec(
             "git", *args,
@@ -160,7 +160,7 @@ async def autoupdate_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         body = await request.json()
         import tomlkit
 
-        config_path = _project_root() / "config" / "main_config.toml"
+        config_path = _project_root / "config" / "main_config.toml"
         if not config_path.exists():
             return aiohttp.web.json_response({"success": False, "error": "config/main_config.toml not found"}, status=404)
 
