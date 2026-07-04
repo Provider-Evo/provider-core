@@ -71,8 +71,8 @@ body { margin: 0; font-family: Arial, sans-serif;
   border-right: 1px solid var(--border);
   background: var(--panel-soft); position: sticky; top: 0; max-height: 80vh; overflow-y: auto;
   contain: layout style; }
-.sidebar-nav-item { text-align: left; border-radius: 0; padding: 10px 14px; font-size: 14px;
-  border: none; border-left: 3px solid transparent; background: var(--panel); color: var(--text);
+.sidebar-nav-item { text-align: left; border-radius: 0; padding: 10px 14px 10px 0; font-size: 14px;
+  border: none; background: var(--panel); color: var(--text);
   cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; font-weight: 500;
   contain: layout style; }
 .sidebar-nav-item:hover { background: var(--panel-alt); }

@@ -121,6 +121,45 @@
   background: var(--panel);
 }
 
+.files-list-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Virtual scroll ---- */
+.files-virtual-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.files-virtual-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.files-virtual-scroll-inner {
+  position: relative;
+}
+
+.files-virtual-scroll .files-table {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.files-virtual-scroll .files-virtual-row {
+  position: absolute;
+  width: 100%;
+}
+
 .files-table {
   width: 100%;
   border-collapse: collapse;
@@ -332,6 +371,10 @@
   white-space: pre;
   tab-size: 4;
   counter-reset: line;
+}
+
+.files-preview-code code {
+  display: block;
 }
 
 .files-preview-code .line {
