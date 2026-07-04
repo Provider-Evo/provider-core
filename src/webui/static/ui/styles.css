@@ -1350,7 +1350,6 @@ section.tab-panel > * {
   display: flex;
   gap: 0;
   padding: 1px 12px;
-  white-space: nowrap;
   border-bottom: 1px solid rgba(128, 128, 128, 0.08);
   transition: background 0.1s;
 }
@@ -1361,6 +1360,7 @@ section.tab-panel > * {
   width: 120px;
   color: var(--muted);
   user-select: none;
+  white-space: nowrap;
 }
 
 .log-level {
@@ -1369,6 +1369,7 @@ section.tab-panel > * {
   font-weight: 600;
   text-transform: uppercase;
   user-select: none;
+  white-space: nowrap;
 }
 .log-level-DEBUG { color: #8b949e; }
 .log-level-INFO { color: #58a6ff; }
@@ -1383,6 +1384,7 @@ section.tab-panel > * {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--accent);
+  white-space: nowrap;
 }
 
 .log-msg {
