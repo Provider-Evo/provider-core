@@ -12,6 +12,7 @@ from .headers import build_headers, build_stop_headers
 from .payloads import build_new_chat_payload, build_payload, build_stop_payload
 from .storage import save_image_file
 from .sse import parse_sse_event
+from .errors import TokenExpiredError
 
 
 class ChatSession:

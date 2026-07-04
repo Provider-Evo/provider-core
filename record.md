@@ -3271,6 +3271,11 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 [src/webui/static/terminal/terminal.css] 使用伪元素实现自定义背景图片，透明度仅影响背景不影响字体
 [docs-src/src/webui/routers/terminal.md] 更新终端主题文档，添加自定义背景图片功能描述
 
+2026-07-04 23:00:00
+
+[src/core/server/watcher.py] 修复 WebUI 热重载失效：FileWatcher 扩展名过滤添加 .js/.css/.html，使前端静态文件变更能被检测并触发浏览器刷新
+[docs-src/src/core/server/watcher.md] 新增 watcher 模块文档
+
 2026-07-04 22:30:00
 
 [template/template_config.toml] 版本 2.2.222 -> 2.2.223

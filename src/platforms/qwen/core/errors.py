@@ -5,3 +5,7 @@ from __future__ import annotations
 
 class WafBlockedError(RuntimeError):
     """Raised when the upstream returns an HTML block page instead of SSE."""
+
+
+class TokenExpiredError(RuntimeError):
+    """Raised when the authentication token has expired."""

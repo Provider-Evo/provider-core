@@ -129,7 +129,7 @@ class FileWatcher:
 
         self._watcher = _BaseWatcher(
             paths=paths,
-            extensions={".py", ".toml"},
+            extensions={".py", ".toml", ".js", ".css", ".html"},
             interval=2.0,
         )
 
