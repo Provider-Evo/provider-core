@@ -74,6 +74,7 @@ document.getElementById('logSearchInput').addEventListener('input', function() {
   _logSearchQuery = this.value;
   filterLogs();
 });
+document.getElementById('logRegexBtn').addEventListener('click', function() { toggleLogRegex(); });
 document.getElementById('logModuleSelect').addEventListener('change', function() {
   _logModuleFilter = this.value;
   filterLogs();

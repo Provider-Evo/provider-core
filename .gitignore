@@ -20,6 +20,7 @@ node_modules
 persist
 venv
 agent_log
+config/
 
 # Extensions
 *.dll

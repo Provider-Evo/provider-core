@@ -36,6 +36,7 @@ const _logMaxEntries = 5000;
 let _logAutoScroll = localStorage.getItem('provider.logAutoScroll') !== 'false';
 let _logLevelFilter = localStorage.getItem('provider.logLevelFilter') || 'INFO';
 let _logSearchQuery = '';
+let _logSearchRegex = localStorage.getItem('provider.logSearchRegex') === 'true';
 let _logModuleFilter = 'all';
 let _logFontSize = localStorage.getItem('provider.logFontSize') || 'small';
 let _logDateFrom = localStorage.getItem('provider.logDateFrom') || '';
@@ -82,10 +83,21 @@ function _logEntryMatchesFilter(entry) {
   }
   if (_logModuleFilter !== 'all' && entry.module !== _logModuleFilter) return false;
   if (_logSearchQuery) {
-    var q = _logSearchQuery.toLowerCase();
-    var msg = (entry.message || '').toLowerCase();
-    var mod = (entry.module || '').toLowerCase();
-    if (msg.indexOf(q) === -1 && mod.indexOf(q) === -1) return false;
+    var msg = entry.message || '';
+    var mod = entry.module || '';
+    if (_logSearchRegex) {
+      try {
+        var re = new RegExp(_logSearchQuery, 'i');
+        if (!re.test(msg) && !re.test(mod)) return false;
+      } catch (e) {
+        // Invalid regex — fall back to literal substring match
+        var q = _logSearchQuery.toLowerCase();
+        if (msg.toLowerCase().indexOf(q) === -1 && mod.toLowerCase().indexOf(q) === -1) return false;
+      }
+    } else {
+      var q = _logSearchQuery.toLowerCase();
+      if (msg.toLowerCase().indexOf(q) === -1 && mod.toLowerCase().indexOf(q) === -1) return false;
+    }
   }
   // Date range filter
   if (_logDateFrom || _logDateTo) {

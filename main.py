@@ -485,6 +485,17 @@ def _restart_worker(
         新的进程对象。
     """
     logger.info("重启 Worker (旧 PID=%d)...", proc.pid)
+
+    # 先终止旧进程
+    if proc.poll() is None:
+        logger.info("终止旧 Worker 进程 (PID=%d)...", proc.pid)
+        try:
+            proc.kill()
+            proc.wait(timeout=5.0)
+            logger.info("旧 Worker 进程已终止")
+        except Exception as exc:
+            logger.warning("终止旧 Worker 进程失败: %s", exc)
+
     try:
         new_proc = subprocess.Popen(
             args,

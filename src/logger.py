@@ -398,7 +398,7 @@ def _setup_handlers() -> None:
     # 文件输出处理器 - 详细格式，记录所有 TRACE 级别
     log_name = _resolve_log_name()
     _loguru_logger.add(
-        str(_LOG_DIR / f"{log_name}_{{time:YYYYMMDD_HHmmss}}.log"),
+        str(_LOG_DIR / f"{log_name}-{{time:YYYYMMDD-HHmmss}}.log"),
         level="TRACE",
         format=(
             "{time:YYYY-MM-DD HH:mm:ss.SSS} | "
