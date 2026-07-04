@@ -15,16 +15,51 @@ __all__ = ["WebUILogBroker", "log_broker", "setup_loguru_sink"]
 # 保留最近 200 条日志
 LOG_BUFFER_SIZE = 200
 
-# 等级缩写映射
-_LEVEL_ABBR = {
-    "TRACE": "T",
-    "DEBUG": "D",
-    "INFO": "I",
-    "SUCCESS": "S",
-    "WARNING": "W",
-    "ERROR": "E",
-    "CRITICAL": "C",
+# 模块颜色映射（hex 前景色）
+MODULE_COLORS: Dict[str, str] = {
+    "server": "#8b949e",
+    "watcher": "#d29922",
+    "webui": "#79c0ff",
+    "webui.routers": "#79c0ff",
+    "webui.routers.websocket": "#a5d6ff",
+    "webui.logs_ws": "#a5d6ff",
+    "webui.services": "#79c0ff",
+    "webui.services.request_log": "#a5d6ff",
+    "dispatch": "#3fb950",
+    "dispatch.runtime": "#56d364",
+    "middleware": "#da77f2",
+    "middleware.request_broker": "#d2a8ff",
+    "core.terminal_sessions": "#f0883e",
+    "core.server": "#8b949e",
+    "core.config": "#79c0ff",
+    "core.dispatch": "#3fb950",
+    "config.main_config": "#79c0ff",
 }
+
+# 日志 ID 生成器
+_log_counter = 0
+
+
+def _make_log_id() -> str:
+    global _log_counter
+    _log_counter += 1
+    return f"{int(time.time() * 1000)}_{_log_counter}"
+
+
+def _resolve_module_color(module_name: str) -> str:
+    """按前缀匹配模块颜色。"""
+    if not module_name:
+        return ""
+    # 精确匹配
+    if module_name in MODULE_COLORS:
+        return MODULE_COLORS[module_name]
+    # 逐级前缀匹配
+    parts = module_name.split(".")
+    for i in range(len(parts), 0, -1):
+        candidate = ".".join(parts[:i])
+        if candidate in MODULE_COLORS:
+            return MODULE_COLORS[candidate]
+    return ""
 
 
 class WebUILogBroker:
@@ -75,16 +110,6 @@ class WebUILogBroker:
             for socket in stale:
                 self._sockets.discard(socket)
 
-    _MSG_ANSI = {
-        "TRACE": "\033[37m",
-        "DEBUG": "\033[32m",
-        "INFO": "\033[34m",
-        "SUCCESS": "\033[1;32m",
-        "WARNING": "\033[1;33m",
-        "ERROR": "\033[31m",
-        "CRITICAL": "\033[1;31m",
-    }
-
     def _loguru_sink(self, message: Any) -> None:
         """loguru sink：同步函数，通过 run_coroutine_threadsafe 推入事件循环。"""
         if message is None or self._loop is None:
@@ -93,15 +118,15 @@ class WebUILogBroker:
             record = message.record
             level_name = record["level"].name
             msg_text = str(record["message"])
-            color = self._MSG_ANSI.get(level_name, "")
-            if color:
-                msg_text = f"{color}{msg_text}\033[0m"
+            module_name = record["extra"].get("module_name", "")
             payload = {
                 "type": "log",
-                "timestamp": record["time"].strftime("%H:%M:%S"),
-                "level": _LEVEL_ABBR.get(level_name, level_name[0]),
-                "module": record["extra"].get("module_name", ""),
+                "id": _make_log_id(),
+                "timestamp": record["time"].strftime("%Y-%m-%dT%H:%M:%S"),
+                "level": level_name,  # 完整级别名 "INFO" 而非 "I"
+                "module": module_name,
                 "message": msg_text,
+                "moduleColor": _resolve_module_color(module_name),
             }
             if self._loop.is_running():
                 asyncio.run_coroutine_threadsafe(self.broadcast(payload), self._loop)

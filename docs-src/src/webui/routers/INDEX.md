@@ -4,6 +4,7 @@
 
 | 文件 | 说明 |
 |------|------|
+| admin.md | 管理端点（配置读写、服务重载、持久化存储、背景图片上传） |
 | pages.md | HTML 页面响应（管理台、登录、登出） |
 | summary.md | 摘要与导出 |
 | websocket.md | 日志 WebSocket |

@@ -72,10 +72,14 @@ function connectLogsSocket() {
 
   function _updateConnStatus(connected) {
     var el = document.getElementById('logConnStatus');
-    if (el) {
-      el.textContent = connected ? '已连接' : '未连接';
-      el.classList.toggle('connected', connected);
+    var dot = document.getElementById('logConnDot');
+    var text = document.getElementById('logConnText');
+    if (el) el.classList.toggle('connected', connected);
+    if (dot) {
+      dot.classList.toggle('connected', connected);
+      dot.classList.toggle('disconnected', !connected);
     }
+    if (text) text.textContent = connected ? '已连接' : '未连接';
   }
 
   logsSocket.onopen = function() {
@@ -87,17 +91,19 @@ function connectLogsSocket() {
     try {
       var payload = JSON.parse(event.data);
       if (payload.type === 'log' && payload.message) {
-        var levelMap = { 'D': 'DEBUG', 'I': 'INFO', 'W': 'WARNING', 'E': 'ERROR', 'C': 'CRITICAL', 'S': 'SUCCESS' };
-        var level = levelMap[(payload.level || 'I').toUpperCase()] || payload.level || 'INFO';
-        var now = new Date();
-        var dateStr = String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        var ts = payload.timestamp || '--:--:--';
-
+        // 支持新格式（完整级别名 "INFO"）和旧格式（单字母 "I"）
+        var level = payload.level || 'INFO';
+        if (level.length === 1) {
+          var levelMap = { 'D': 'DEBUG', 'I': 'INFO', 'W': 'WARNING', 'E': 'ERROR', 'C': 'CRITICAL', 'S': 'SUCCESS' };
+          level = levelMap[level.toUpperCase()] || 'INFO';
+        }
         addLogEntry({
-          timestamp: dateStr + ' ' + ts,
+          id: payload.id || '',
+          timestamp: payload.timestamp || new Date().toISOString(),
           level: level,
           module: payload.module || '',
           message: payload.message,
+          moduleColor: payload.moduleColor || '',
         });
       }
     } catch (error) {

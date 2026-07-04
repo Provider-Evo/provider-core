@@ -627,7 +627,7 @@ var TerminalManager = (function () {
       _bar.addTab({
         id: tabId,
         type: 'terminal',
-        icon: '&#9002;_',
+        icon: '',
         title: name,
         closable: true,
         status: 'connecting',
@@ -941,7 +941,7 @@ var TerminalManager = (function () {
         _bar.addTab({
           id: s.session_id,
           type: 'terminal',
-          icon: '&#9002;_',
+          icon: '',
           title: name,
           closable: true,
           status: 'connecting',
@@ -1541,7 +1541,7 @@ var TerminalManager = (function () {
     // Update TabBar display
     if (_bar) {
       _bar.setTitle(tabId, tab.name);
-      _bar.setIcon(tabId, '&#9002;_');
+      _bar.setIcon(tabId, '');
       _bar.setStatus(tabId, 'connecting');
     }
 
@@ -1821,7 +1821,7 @@ var TerminalManager = (function () {
     // Update TabBar display
     if (_bar) {
       _bar.setTitle(tabId, tab.name);
-      _bar.setIcon(tabId, '&#9002;_');
+      _bar.setIcon(tabId, '');
       _bar.setStatus(tabId, 'connecting');
     }
 

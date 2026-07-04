@@ -373,8 +373,12 @@
             <h2 class="m-0">运行日志</h2>
             <p class="m-0 text-muted leading-relaxed">实时日志流，支持搜索、级别过滤和导出。</p>
           </div>
-          <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
-            <span class="log-conn-status" id="logConnStatus">未连接</span>
+          <div class="flex items-center gap-3 flex-shrink-0 ml-auto">
+            <span class="log-count" id="logCount">0 条</span>
+            <span class="log-conn-status" id="logConnStatus">
+              <span class="log-conn-dot disconnected" id="logConnDot"></span>
+              <span id="logConnText">未连接</span>
+            </span>
           </div>
         </div>
         <div class="log-toolbar">
@@ -387,13 +391,22 @@
             <option value="ERROR">ERROR+</option>
             <option value="CRITICAL">CRITICAL</option>
           </select>
+          <select class="log-level-select" id="logModuleSelect">
+            <option value="all">全部模块</option>
+          </select>
+          <div class="log-toolbar-group">
+            <label class="log-toolbar-label">字号</label>
+            <button class="log-toolbar-btn log-font-btn active" data-size="small" type="button">小</button>
+            <button class="log-toolbar-btn log-font-btn" data-size="medium" type="button">中</button>
+            <button class="log-toolbar-btn log-font-btn" data-size="large" type="button">大</button>
+          </div>
           <button class="log-toolbar-btn" id="logAutoScrollBtn" type="button" title="自动滚动">
             <span id="logAutoScrollIcon">&#9654;</span> 滚动
           </button>
           <button class="log-toolbar-btn" id="logExportBtn" type="button" title="导出日志">导出</button>
           <button class="log-toolbar-btn log-toolbar-btn-danger" id="clearLogButton" type="button" title="清空日志">清空</button>
         </div>
-        <div class="log-viewer" id="logBox"></div>
+        <div class="log-viewer log-font-small" id="logBox"></div>
       </section>
 
       <section class="tab-panel hidden" id="tab-terminal" aria-labelledby="tab-terminal-button">

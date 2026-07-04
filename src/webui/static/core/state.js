@@ -36,104 +36,42 @@ const _logMaxEntries = 5000;
 let _logAutoScroll = true;
 let _logLevelFilter = 'INFO';
 let _logSearchQuery = '';
+let _logModuleFilter = 'all';
+let _logFontSize = localStorage.getItem('provider.logFontSize') || 'small';
+let _uniqueModules = [];
+let _logSeenIds = {};  // 去重
 
 const _LOG_LEVEL_PRIORITY = { DEBUG: 10, INFO: 20, WARNING: 30, ERROR: 40, CRITICAL: 50, SUCCESS: 25 };
 
-function ansiToHtml(text) {
-  var escaped = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  var colors = {
-    '30': '#555', '31': '#e74c3c', '32': '#2ecc71', '33': '#f1c40f',
-    '34': '#3498db', '35': '#9b59b6', '36': '#1abc9c', '37': '#ccc',
-    '90': '#777', '91': '#ff6b6b', '92': '#51cf66', '93': '#ffd43b',
-    '94': '#74c0fc', '95': '#da77f2', '96': '#63e6be', '97': '#fff'
-  };
-  var result = '';
-  var openSpans = 0;
-  var regex = /\x1b\[([\d;]*)m/g;
-  var lastIndex = 0;
-  var match;
-  while ((match = regex.exec(escaped)) !== null) {
-    result += escaped.substring(lastIndex, match.index);
-    var codes = match[1].split(';');
-    for (var i = 0; i < codes.length; i++) {
-      var code = codes[i];
-      if (code === '0' || code === '') {
-        while (openSpans > 0) { result += '</span>'; openSpans--; }
-      } else if (code === '1') {
-        result += '<span style="font-weight:bold">'; openSpans++;
-      } else if (code === '2') {
-        result += '<span style="opacity:0.7">'; openSpans++;
-      } else if (code === '3') {
-        result += '<span style="font-style:italic">'; openSpans++;
-      } else if (code === '4') {
-        result += '<span style="text-decoration:underline">'; openSpans++;
-      } else if (colors[code]) {
-        result += '<span style="color:' + colors[code] + '">'; openSpans++;
-      } else {
-        var codeNum = parseInt(code, 10);
-        if (codeNum >= 40 && codeNum <= 47) {
-          // Background colors — skip silently
-        } else if (codeNum >= 100 && codeNum <= 107) {
-          // Bright background colors — skip silently
-        }
-      }
-    }
-    lastIndex = regex.lastIndex;
-  }
-  result += escaped.substring(lastIndex);
-  while (openSpans > 0) { result += '</span>'; openSpans--; }
-  return result;
+// ========================= Log Helpers =========================
+
+function _escapeHtml(text) {
+  var d = document.createElement('div');
+  d.textContent = String(text);
+  return d.innerHTML;
 }
 
-function log(message) {
-  // Legacy support: parse ANSI-formatted message string
-  var hasDate = /^\d{2}-\d{2}\s/.test(message);
-  var line = hasDate ? message : ('[' + new Date().toLocaleTimeString() + '] ' + message);
-  addLogEntry({
-    timestamp: line.substring(0, 14),
-    level: 'INFO',
-    module: '',
-    message: line,
-  });
+function _formatLogTimestamp(ts) {
+  if (!ts) return '--:--:--';
+  var match = ts.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}:\d{2}:\d{2})/);
+  if (match) return match[2] + '-' + match[3] + ' ' + match[4];
+  return ts;
 }
 
-function addLogEntry(entry) {
-  _logEntries.unshift(entry);
-  if (!_shouldShowLog(entry)) return;
-
-  var div = document.createElement('div');
-  div.className = 'log-entry';
-  div.innerHTML =
-    '<span class="log-time">' + _escapeHtml(entry.timestamp || '') + '</span>' +
-    '<span class="log-level log-level-' + (entry.level || 'INFO') + '">' + (entry.level || 'INFO') + '</span>' +
-    '<span class="log-module">' + _escapeHtml(entry.module || '') + '</span>' +
-    '<span class="log-msg">' + ansiToHtml(entry.message || '') + '</span>';
-
-  var box = document.getElementById('logBox');
-  if (box) {
-    box.appendChild(div);
-    while (box.children.length > _logMaxEntries) {
-      box.removeChild(box.firstChild);
-    }
-  }
-
-  // Remove excess from array
-  while (_logEntries.length > _logMaxEntries) {
-    _logEntries.pop();
-  }
-
-  _logAutoScrollToBottom();
+function _formatLogLevel(level) {
+  if (!level) return 'INFO';
+  if (level === 'WARNING') return 'WARN';
+  if (level === 'CRITICAL') return 'CRIT';
+  return level;
 }
 
-function _shouldShowLog(entry) {
+function _logEntryMatchesFilter(entry) {
   if (_logLevelFilter !== 'all') {
     var entryPri = _LOG_LEVEL_PRIORITY[entry.level] || 0;
     var filterPri = _LOG_LEVEL_PRIORITY[_logLevelFilter] || 0;
     if (entryPri < filterPri) return false;
   }
+  if (_logModuleFilter !== 'all' && entry.module !== _logModuleFilter) return false;
   if (_logSearchQuery) {
     var q = _logSearchQuery.toLowerCase();
     var msg = (entry.message || '').toLowerCase();
@@ -142,6 +80,115 @@ function _shouldShowLog(entry) {
   }
   return true;
 }
+
+function _createLogEntryDOM(entry) {
+  var div = document.createElement('div');
+  div.className = 'log-entry';
+  var levelText = _formatLogLevel(entry.level || 'INFO');
+  var moduleStyle = entry.moduleColor ? ' style="color:' + _escapeHtml(entry.moduleColor) + '"' : '';
+  div.innerHTML =
+    '<span class="log-time">' + _escapeHtml(_formatLogTimestamp(entry.timestamp)) + '</span>' +
+    '<span class="log-level log-level-' + _escapeHtml(entry.level || 'INFO') + '">' + levelText + '</span>' +
+    '<span class="log-module"' + moduleStyle + '>' + _escapeHtml(entry.module || '') + '</span>' +
+    '<span class="log-msg">' + _escapeHtml(entry.message || '') + '</span>';
+  return div;
+}
+
+function _updateUniqueModules() {
+  var seen = {};
+  for (var i = 0; i < _logEntries.length; i++) {
+    var mod = _logEntries[i].module;
+    if (mod && !seen[mod]) {
+      seen[mod] = true;
+      _uniqueModules.push(mod);
+    }
+  }
+  _uniqueModules.sort();
+  _rebuildModuleSelect();
+}
+
+function _rebuildModuleSelect() {
+  var sel = document.getElementById('logModuleSelect');
+  if (!sel) return;
+  var prev = sel.value;
+  sel.innerHTML = '<option value="all">全部模块</option>';
+  for (var i = 0; i < _uniqueModules.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = _uniqueModules[i];
+    opt.textContent = _uniqueModules[i];
+    sel.appendChild(opt);
+  }
+  sel.value = prev || 'all';
+}
+
+function _updateLogCount() {
+  var el = document.getElementById('logCount');
+  if (!el) return;
+  var total = _logEntries.length;
+  var visible = logBox ? logBox.children.length : 0;
+  el.textContent = visible + ' / ' + total + ' 条';
+}
+
+function _applyLogFontSize() {
+  var viewer = document.getElementById('logBox');
+  if (!viewer) return;
+  viewer.classList.remove('log-font-small', 'log-font-medium', 'log-font-large');
+  viewer.classList.add('log-font-' + _logFontSize);
+}
+
+// Legacy log() for backwards compatibility
+function log(message) {
+  addLogEntry({
+    id: '',
+    timestamp: new Date().toISOString(),
+    level: 'INFO',
+    module: '',
+    message: message,
+  });
+}
+
+// ========================= Log Entry =========================
+
+function addLogEntry(entry) {
+  // 去重
+  if (entry.id && _logSeenIds[entry.id]) return;
+  if (entry.id) {
+    _logSeenIds[entry.id] = true;
+    // 裁剪去重缓存
+    var keys = Object.keys(_logSeenIds);
+    if (keys.length > _logMaxEntries + 500) {
+      for (var k = 0; k < 500; k++) delete _logSeenIds[keys[k]];
+    }
+  }
+
+  _logEntries.unshift(entry);
+  while (_logEntries.length > _logMaxEntries) {
+    var removed = _logEntries.pop();
+    if (removed.id) delete _logSeenIds[removed.id];
+  }
+
+  // 更新模块列表
+  if (entry.module && _uniqueModules.indexOf(entry.module) === -1) {
+    _uniqueModules.push(entry.module);
+    _uniqueModules.sort();
+    _rebuildModuleSelect();
+  }
+
+  if (!_logEntryMatchesFilter(entry)) {
+    _updateLogCount();
+    return;
+  }
+
+  var box = document.getElementById('logBox');
+  if (box) {
+    box.appendChild(_createLogEntryDOM(entry));
+    while (box.children.length > _logMaxEntries) box.removeChild(box.firstChild);
+  }
+  _logAutoScrollToBottom();
+  _updateLogCount();
+}
+
+// ========================= Log Filtering =========================
 
 function _logAutoScrollToBottom() {
   if (!_logAutoScroll) return;
@@ -157,26 +204,22 @@ function filterLogs() {
   var box = document.getElementById('logBox');
   if (!box) return;
   box.innerHTML = '';
-  // Re-render in reverse order (newest first → append in reverse)
   for (var i = _logEntries.length - 1; i >= 0; i--) {
-    var entry = _logEntries[i];
-    if (!_shouldShowLog(entry)) continue;
-    var div = document.createElement('div');
-    div.className = 'log-entry';
-    div.innerHTML =
-      '<span class="log-time">' + _escapeHtml(entry.timestamp || '') + '</span>' +
-      '<span class="log-level log-level-' + (entry.level || 'INFO') + '">' + (entry.level || 'INFO') + '</span>' +
-      '<span class="log-module">' + _escapeHtml(entry.module || '') + '</span>' +
-      '<span class="log-msg">' + ansiToHtml(entry.message || '') + '</span>';
-    box.appendChild(div);
+    if (!_logEntryMatchesFilter(_logEntries[i])) continue;
+    box.appendChild(_createLogEntryDOM(_logEntries[i]));
   }
   _logAutoScrollToBottom();
+  _updateLogCount();
 }
 
 function clearLogs() {
   _logEntries = [];
+  _logSeenIds = {};
+  _uniqueModules = [];
   var box = document.getElementById('logBox');
   if (box) box.innerHTML = '';
+  _rebuildModuleSelect();
+  _updateLogCount();
   toast('日志已清空', 'ok');
 }
 
@@ -184,7 +227,7 @@ function exportLogs() {
   var lines = [];
   for (var i = _logEntries.length - 1; i >= 0; i--) {
     var e = _logEntries[i];
-    lines.push((e.timestamp || '') + ' [' + (e.level || '') + '] [' + (e.module || '') + '] ' + (e.message || ''));
+    lines.push(_formatLogTimestamp(e.timestamp) + ' [' + (e.level || '') + '] [' + (e.module || '') + '] ' + (e.message || ''));
   }
   var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
   var url = URL.createObjectURL(blob);
@@ -205,11 +248,34 @@ function exportLogs() {
 
 function toggleAutoScroll() {
   _logAutoScroll = !_logAutoScroll;
+  _updateAutoScrollBtn();
+  if (_logAutoScroll) _logAutoScrollToBottom();
+}
+
+function _updateAutoScrollBtn() {
   var btn = document.getElementById('logAutoScrollBtn');
   var icon = document.getElementById('logAutoScrollIcon');
   if (btn) btn.classList.toggle('active', _logAutoScroll);
   if (icon) icon.innerHTML = _logAutoScroll ? '&#9654;' : '&#9646;&#9646;';
 }
+
+// ========================= Log Auto-Scroll Detection =========================
+
+(function _setupLogScrollDetection() {
+  var box = document.getElementById('logBox');
+  if (!box) return;
+  box.addEventListener('scroll', function() {
+    var distFromBottom = box.scrollHeight - box.scrollTop - box.clientHeight;
+    if (distFromBottom > 100 && _logAutoScroll) {
+      _logAutoScroll = false;
+      _updateAutoScrollBtn();
+    }
+    if (distFromBottom < 30 && !_logAutoScroll) {
+      _logAutoScroll = true;
+      _updateAutoScrollBtn();
+    }
+  });
+})();
 
 function toast(message, type) {
   const node = document.createElement('div');

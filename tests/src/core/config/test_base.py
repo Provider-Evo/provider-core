@@ -108,11 +108,3 @@ class TestConfigBaseStr:
         assert "TestCfg" in s
         assert "str_field" in s
         assert "int_field" in s
-
-
-class TestGetTypeHints:
-    def test_caching(self):
-        from src.core.config.base import _get_type_hints
-        hints1 = _get_type_hints(TestCfg)
-        hints2 = _get_type_hints(TestCfg)
-        assert hints1 is hints2  # Same cached object

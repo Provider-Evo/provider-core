@@ -1,5 +1,5 @@
 [server]
-version = "2.2.232"
+version = "2.2.234"
 host = "0.0.0.0"
 port = 1337
 debug = false

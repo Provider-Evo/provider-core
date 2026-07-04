@@ -3441,3 +3441,16 @@ pytest tests/src/core/dispatch/test_selector.py: 27 passed
 [tests/src/core/dispatch/test_registry.py] 更新 Registry 测试适配新 plugin-based API（_registry.plugins 替代 _adapters）
 
 验证结果：py_compile 通过，pytest tests/src/core/test_models_cache.py: 22 passed，pytest tests/src/core/dispatch/test_registry.py: 11 passed
+
+
+2026-07-05 21:20:00
+
+[版本更新] 2.2.232 → 2.2.233（config/main_config.toml, template/template_config.toml, README.md, SKILL.md）
+[src/webui/routers/admin.py] 新增 bg_image_upload 和 bg_image_get 端点，终端背景图片从 base64 data URL 迁移为文件存储
+[src/webui/routes.py] 注册 POST /v1/webui/bg-image 和 GET /v1/webui/bg-image/{filename} 路由
+[src/webui/routers/__init__.py] 导出 bg_image_upload, bg_image_get
+[src/webui/static/terminal/terminal.js] _setCustomBgImage 改为 fetch 上传，新增 _migrateBgImageToServer 自动迁移遗留 data URL
+[docs-src/src/webui/routers/admin.md] 新建文档：管理端点（配置读写、服务重载、持久化存储、背景图片上传）
+[docs-src/src/webui/routers/INDEX.md] 添加 admin.md 条目
+[docs-src/src/webui/routes.md] 添加 bg-image 路由说明
+

@@ -73,10 +73,34 @@ document.getElementById('logSearchInput').addEventListener('input', function() {
   _logSearchQuery = this.value;
   filterLogs();
 });
+document.getElementById('logModuleSelect').addEventListener('change', function() {
+  _logModuleFilter = this.value;
+  filterLogs();
+});
 // Initialize auto-scroll button state
 (function() {
   var btn = document.getElementById('logAutoScrollBtn');
   if (btn) btn.classList.add('active');
+})();
+// Font size buttons
+(function() {
+  var savedSize = localStorage.getItem('provider.logFontSize') || 'small';
+  _logFontSize = savedSize;
+  _applyLogFontSize();
+  document.querySelectorAll('.log-font-btn').forEach(function(btn) {
+    if (btn.dataset.size === savedSize) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.log-font-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      _logFontSize = btn.dataset.size;
+      _applyLogFontSize();
+      localStorage.setItem('provider.logFontSize', _logFontSize);
+    });
+  });
 })();
 document.getElementById('reloadServerButton').addEventListener('click', reloadServer);
 document.getElementById('reloadConfigButton').addEventListener('click', reloadConfigFromFile);

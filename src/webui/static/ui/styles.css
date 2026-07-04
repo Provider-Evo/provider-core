@@ -71,7 +71,7 @@ body { margin: 0; font-family: Arial, sans-serif;
   border-right: 1px solid var(--border);
   background: var(--panel-soft); position: sticky; top: 0; max-height: 80vh; overflow-y: auto;
   contain: layout style; }
-.sidebar-nav-item { text-align: left; border-radius: 0; padding: 10px 14px 10px 0; font-size: 14px;
+.sidebar-nav-item { display: flex; align-items: center; gap: 8px; border-radius: 0; padding: 10px 14px; font-size: 14px;
   border: none; background: var(--panel); color: var(--text);
   cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; font-weight: 500;
   contain: layout style; }
@@ -1323,11 +1323,11 @@ section.tab-panel > * {
 
 /* ========== Log Viewer ========== */
 .log-viewer {
-  background: #0d1117;
+  background: var(--panel-alt, #0d1117);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  height: calc(100vh - 280px);
-  min-height: 300px;
+  border-radius: 8px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, Monaco, monospace;
@@ -1338,29 +1338,34 @@ section.tab-panel > * {
 
 .log-viewer::-webkit-scrollbar { width: 6px; }
 .log-viewer::-webkit-scrollbar-track { background: transparent; }
-.log-viewer::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
-.log-viewer::-webkit-scrollbar-thumb:hover { background: #484f58; }
+.log-viewer::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.log-viewer::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* Font size variants */
+.log-font-small { font-size: 12px; line-height: 1.5; }
+.log-font-medium { font-size: 13px; line-height: 1.6; }
+.log-font-large { font-size: 14px; line-height: 1.7; }
 
 .log-entry {
   display: flex;
   gap: 0;
   padding: 1px 12px;
   white-space: nowrap;
-  border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.08);
   transition: background 0.1s;
 }
-.log-entry:hover { background: rgba(56, 58, 64, 0.4); }
+.log-entry:hover { background: rgba(128, 128, 128, 0.08); }
 
 .log-time {
   flex-shrink: 0;
   width: 120px;
-  color: #8b949e;
+  color: var(--muted);
   user-select: none;
 }
 
 .log-level {
   flex-shrink: 0;
-  width: 72px;
+  width: 60px;
   font-weight: 600;
   text-transform: uppercase;
   user-select: none;
@@ -1374,17 +1379,17 @@ section.tab-panel > * {
 
 .log-module {
   flex-shrink: 0;
-  width: 140px;
-  color: #79c0ff;
+  width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--accent);
 }
 
 .log-msg {
   flex: 1;
-  color: #c9d1d9;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 /* ========== Log Toolbar ========== */
@@ -1437,14 +1442,77 @@ section.tab-panel > * {
 .log-toolbar-btn-danger:hover { background: rgba(217, 72, 72, 0.1); color: var(--err); border-color: var(--err); }
 .log-toolbar-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+.log-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.log-toolbar-label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.log-count {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .log-conn-status {
   font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
   padding: 3px 8px;
   border-radius: 6px;
   background: var(--panel-alt);
   color: var(--muted);
 }
 .log-conn-status.connected { color: var(--ok); }
+
+.log-conn-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+.log-conn-dot.connected {
+  background: #3fb950;
+  box-shadow: 0 0 6px rgba(63, 185, 80, 0.5);
+}
+.log-conn-dot.disconnected {
+  background: #f85149;
+}
+
+/* ========== Log Mobile Layout ========== */
+@media (max-width: 768px) {
+  .log-entry {
+    flex-direction: column;
+    gap: 2px;
+    white-space: normal;
+    padding: 4px 12px;
+  }
+  .log-time, .log-level {
+    display: inline;
+    width: auto;
+  }
+  .log-module {
+    width: auto;
+  }
+  .log-msg {
+    white-space: pre-wrap;
+  }
+  .log-toolbar {
+    gap: 6px;
+  }
+  .log-search {
+    min-width: 120px;
+  }
+}
 
 /* ========== Terminal Tab Layout ========== */
 /* When terminal tab is active, fixed-position it to fill the viewport.

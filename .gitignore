@@ -67,6 +67,7 @@ src/platforms/aitianhu2/
 
 # Config manager backups
 template/old/
+.backup/
 
 logs/
 .htaccess
