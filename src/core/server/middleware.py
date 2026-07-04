@@ -41,10 +41,17 @@ async def _auth_middleware(
        - Browser (``Accept: text/html``): 302 redirect to ``/login``
        - API client: JSON 401
     """
-    skip = {"/login", "/health", "/v1/webui/auth/verify"}
-    if request.path in skip or request.method == "OPTIONS":
+    # --- Only enforce API key auth on API routes ---
+    # WebUI pages use their own auth middleware (pv2_session cookie).
+    # This middleware only protects /v1/ API endpoints (excluding /v1/webui/).
+    path = request.path
+    if not path.startswith("/v1/") or path.startswith("/v1/webui/"):
         return await handler(request)
-    if request.path.startswith("/static/"):
+
+    skip = {"/login", "/health"}
+    if path in skip or request.method == "OPTIONS":
+        return await handler(request)
+    if path.startswith("/static/"):
         return await handler(request)
 
     cfg = get_config()
