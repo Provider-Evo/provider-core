@@ -455,7 +455,7 @@
 .files-rename-dialog {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 0;
   padding: 24px;
   width: 100%;
   max-width: 400px;
@@ -573,7 +573,7 @@
   justify-content: center;
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
@@ -635,7 +635,7 @@
   transform: translateY(-50%);
   width: 18px;
   height: 18px;
-  border-radius: 4px;
+  border-radius: 0;
   display: none;
   align-items: center;
   justify-content: center;
@@ -762,7 +762,7 @@
   margin-right: 8px;
   border: 2px solid var(--border);
   border-top-color: var(--accent);
-  border-radius: 50%;
+  border-radius: 0;
   animation: files-spin 0.7s linear infinite;
 }
 

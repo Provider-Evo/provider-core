@@ -202,6 +202,11 @@ class FileWatcher:
                     logger.warning("Platform [%s] hot-reload failed", name)
 
         if needs_frontend_reload:
+            now = asyncio.get_event_loop().time()
+            if now - self._last_frontend_reload < self._FRONTEND_RELOAD_COOLDOWN:
+                logger.debug("Frontend reload skipped (cooldown)")
+                return
+            self._last_frontend_reload = now
             logger.info("Frontend files changed, broadcasting reload to browsers")
             try:
                 await log_broker.broadcast({"type": "reload"})

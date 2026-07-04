@@ -3350,3 +3350,10 @@ py_compile: test_selector.py; pytest tests/src/core/dispatch/test_selector.py: 2
 [template/template_config.toml] 版本 2.2.227 -> 2.2.228
 [config/main_config.toml] 版本 2.2.227 -> 2.2.228
 [README.md] 版本徽章和路线图更新为 2.2.228
+
+2026-07-04 24:30:00
+
+[src/core/server/watcher.py] 前端热重载增加5秒冷却机制，防止短时间内频繁刷新浏览器
+[docs-src/src/core/server/watcher.md] 更新前端热重载链路文档，补充冷却机制说明
+[src/webui/static/files/files.css] 移除文件管理器各组件 border-radius，统一为无圆角风格
+py_compile: watcher.py

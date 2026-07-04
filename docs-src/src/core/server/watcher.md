@@ -26,5 +26,12 @@
 
 1. `FileWatcher` 检测到 `src/webui/static/` 下文件变化
 2. `_classify()` 判断 `needs_frontend_reload = True`
-3. 通过 `log_broker.broadcast({"type": "reload"})` 广播
-4. 前端 WebSocket 收到 reload 消息后执行 `location.reload()`
+3. 检查冷却时间（5秒内不重复触发），避免频繁刷新
+4. 通过 `log_broker.broadcast({"type": "reload"})` 广播
+5. 前端 WebSocket 收到 reload 消息后执行 `location.reload()`
+
+## 冷却机制
+
+- 前端热重载最小间隔：5秒（`_FRONTEND_RELOAD_COOLDOWN`）
+- 防止短时间内多次文件变更导致浏览器频繁刷新
+- 每次广播后记录时间戳，下次触发时检查间隔
