@@ -360,11 +360,6 @@
   transition: background 0.12s ease, color 0.12s ease, padding 0.2s ease;
 }
 
-/* Icon always visible in all modes */
-.unified-tab-icon {
-  display: inline-flex;
-}
-
 /* ========================= Vertical Expanded Extra ========================= */
 
 /* Slightly wider tab titles in vertical expanded mode */

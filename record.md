@@ -3488,3 +3488,54 @@ py_compile: logs_ws.py, test_base.py, test_base.py (fncall), test_nous_protocol.
 pytest tests/src/core: 330 passed, 0 failed
 pytest tests/src/core/dispatch/test_selector.py + test_models_cache.py + test_registry.py: 60 passed, 0 failed
 
+
+2026-07-06 01:00:00
+
+[版本更新] 2.2.236 → 2.2.237（README.md 徽章 + 路线图、SKILL.md frontmatter）与 config/template 已同步
+[src/webui/static/core/tabbar.css] 移除 .unified-tab-icon 样式和压缩模式下隐藏图标的 CSS 规则
+[src/webui/static/core/tabbar.js] 简化标签页结构：移除 icon 元素，status dot 插入位置改为 el.firstChild
+[docs-src/src/webui/static/core/INDEX.md] 更新压缩模式说明：图标隐藏，状态点居中显示
+纯前端 CSS/JS 变更，无需 py_compile
+
+
+2026-07-04 21:50:00
+
+[docs-src完善] 完善和更新docs-src目录结构：
+- 创建docs-src/src/core/errors/目录及INDEX.md文档
+- 创建docs-src/src/routes/anthropic/目录及INDEX.md文档
+- 创建docs-src/src/routes/main/目录及INDEX.md文档
+- 创建docs-src/src/platforms/azuretranslate/目录及文档
+- 创建docs-src/src/platforms/deepl/目录及文档
+- 创建docs-src/src/platforms/googletranslate/目录及文档
+- 创建docs-src/src/platforms/yandextranslate/目录及文档
+- 创建docs-src/src/platforms/qwen/mvp/目录及文档
+- 创建docs-src/src/webui/static/子目录及文档（chat, config, core, dashboard, stats, terminal, ui, files）
+- 创建docs-src/src/core/server/INDEX.md文档
+- 创建docs-src/src/core/utils/INDEX.md文档
+- 创建docs-src/src/core/fncall/INDEX.md文档
+- 创建docs-src/src/core/fncall/registry.md文档
+- 创建docs-src/src/core/fncall/parsers/INDEX.md文档
+- 创建docs-src/src/core/fncall/prompt/INDEX.md文档
+- 创建docs-src/src/core/fncall/prompt/inject.md文档
+- 创建docs-src/src/core/fncall/protocols/INDEX.md文档
+- 创建docs-src/src/core/fncall/shared/INDEX.md文档
+- 更新docs-src/INDEX.md文档，完善导航结构
+
+[tests完善] 完善和更新tests目录结构：
+- 创建tests/src/platforms/azuretranslate/目录及test_azuretranslate_mvp.py
+- 创建tests/src/platforms/deepl/目录及test_deepl_mvp.py
+- 创建tests/src/platforms/googletranslate/目录及test_googletranslate_mvp.py
+- 创建tests/src/platforms/yandextranslate/目录及test_yandextranslate_mvp.py
+- 创建tests/src/platforms/qwen/mvp/目录及test_qwen_mvp_standalone.py
+- 创建tests/src/core/server/目录及test_server.py
+- 为所有新平台目录添加__init__.py文件
+
+[.gitignore更新] 添加过滤规则：
+- 过滤docs-src/目录
+- 过滤tests/目录
+
+[验证结果] 
+- pytest tests/src/platforms/: 101 passed, 3 failed, 17 skipped
+- 新添加的平台测试全部通过
+- docs-src目录结构完整，包含119个INDEX.md文件
+- tests目录包含109个Python测试文件

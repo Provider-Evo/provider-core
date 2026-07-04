@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.236-blue)
-![Version](https://img.shields.io/badge/version-v2.2.236-blue)
+![Status](https://img.shields.io/badge/status-v2.2.238-blue)
+![Version](https://img.shields.io/badge/version-v2.2.238-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-17+-orange)
@@ -1264,7 +1264,7 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.236
+### 当前版本：v2.2.238
 
 ✅ 已完成（v2.2.234）：
 - fix(webui): rewrite log panel with structured rendering, module colors, mobile layout, and smart auto-scroll

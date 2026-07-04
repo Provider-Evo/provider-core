@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "provider-guide"
-version = "2.2.204"
+version = "2.2.237"
 description = "Unified AI model gateway aggregating 17+ platforms behind a single OpenAI/Anthropic-compatible API"
 readme = "README.md"
 requires-python = ">=3.8"
