@@ -28,4 +28,28 @@ def create_app(registry: Optional[Any] = None, server: Optional[Any] = None) -> 
     config = get_server_config()
     app[WEBUI_CONFIG_KEY] = config.to_dict()
     setup_routes(app)
+
+    async def _on_startup(application: aiohttp.web.Application) -> None:
+        """启动钩子 — 加载持久化数据。"""
+        try:
+            from src.webui.services.stats import start_persist
+            start_persist()
+        except Exception:
+            pass
+
+        try:
+            from src.webui.services.request_log import start_request_persist
+            start_request_persist()
+        except Exception:
+            pass
+
+        try:
+            from src.webui.logs_ws import log_broker, setup_loguru_sink
+            loop = asyncio.get_running_loop()
+            log_broker.set_loop(loop)
+            setup_loguru_sink()
+        except Exception:
+            pass
+
+    app.on_startup.append(_on_startup)
     return app
