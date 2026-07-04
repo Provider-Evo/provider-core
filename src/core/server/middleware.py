@@ -41,7 +41,7 @@ async def _auth_middleware(
        - Browser (``Accept: text/html``): 302 redirect to ``/login``
        - API client: JSON 401
     """
-    skip = {"/login", "/health"}
+    skip = {"/login", "/health", "/v1/webui/auth/verify"}
     if request.path in skip or request.method == "OPTIONS":
         return await handler(request)
     if request.path.startswith("/static/"):
@@ -92,10 +92,9 @@ async def _auth_middleware(
         token = auth_header[7:].strip()
     elif api_key_header:
         token = api_key_header.strip()
-    else:
-        cookie_token = request.cookies.get("pv2_session", "").strip()
-        if cookie_token:
-            token = cookie_token
+    # NOTE: pv2_session cookie is NOT checked here — it belongs to the
+    # WebUI auth middleware only. Checking it against API keys would cause
+    # an infinite redirect loop after WebUI login.
 
     if token not in cfg.auth.keys:
         accept = request.headers.get("Accept", "")
