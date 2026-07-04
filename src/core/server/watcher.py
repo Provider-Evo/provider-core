@@ -12,8 +12,6 @@ from echotools.logger.manager import get_logger
 from echotools.watcher.file_watcher import FileWatcher as _BaseWatcher
 from loguru import logger as _loguru_logger
 
-from src.webui.logs_ws import log_broker
-
 __all__ = ["FileWatcher"]
 
 logger = get_logger(__name__)
@@ -107,9 +105,6 @@ class FileWatcher:
       -> exit code 42 restart
     """
 
-    # Minimum seconds between consecutive frontend reload broadcasts
-    _FRONTEND_RELOAD_COOLDOWN = 5.0
-
     def __init__(self, root: Path) -> None:
         """Initialize file watcher.
 
@@ -121,7 +116,6 @@ class FileWatcher:
         self._session: Optional[Any] = None
         self._package_mtimes: Dict[str, float] = {}
         self._package_check_task: Optional[asyncio.Task] = None
-        self._last_frontend_reload: float = 0.0
 
         paths = []
         src = root / "src"
@@ -202,16 +196,7 @@ class FileWatcher:
                     logger.warning("Platform [%s] hot-reload failed", name)
 
         if needs_frontend_reload:
-            now = asyncio.get_event_loop().time()
-            if now - self._last_frontend_reload < self._FRONTEND_RELOAD_COOLDOWN:
-                logger.debug("Frontend reload skipped (cooldown)")
-                return
-            self._last_frontend_reload = now
-            logger.info("Frontend files changed, broadcasting reload to browsers")
-            try:
-                await log_broker.broadcast({"type": "reload"})
-            except Exception as exc:
-                logger.warning("Failed to broadcast reload: %s", exc)
+            logger.info("Frontend files changed, please refresh the browser manually")
 
     async def start(self, registry: Any, session: Any) -> None:
         """Start file watcher.

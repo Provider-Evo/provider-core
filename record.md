@@ -3399,3 +3399,20 @@ py_compile: request_log.py
 [src/webui/services/request_log.py] 修复旧 JSON 文件迁移路径，兼容新旧目录结构
 [src/webui/services/stats.py] 统计数据持久化目录从 persist/webui/ 迁移至 persist/webui/json/
 py_compile: request_log.py, stats.py
+
+2026-07-05 00:30:00
+
+[persist/webui/] 目录重组：创建 json/ 和 db/ 子目录，JSON 文件统一放入 json/，SQLite 数据库放入 db/
+[src/webui/services/request_log.py] 数据库路径改为 persist/webui/db/requests.db
+[src/webui/services/stats.py] 统计文件路径改为 persist/webui/json/stats.json
+[src/webui/core/local_store.py] 本地存储路径改为 persist/webui/json/local_store.json
+[src/webui/routers/admin.py] persist_get/persist_put 路径改为 persist/webui/json/
+[docs-src/src/webui/services/request_log.py] 更新文档路径为 persist/webui/db/requests.db
+[docs-src/src/webui/routers/terminal.md] 更新文档路径为 persist/webui/json/terminals.json
+py_compile: request_log.py, stats.py, local_store.py, admin.py
+pytest tests/src/core/dispatch/test_selector.py: 27 passed
+
+2026-07-05 00:40:00
+
+[docs-src/src/webui/services/request_log.py] 修复文档中 _PERSIST_DIR 为 _DB_DIR
+[src/webui/static/ui/bootstrap.js] 移除 refreshButton 点击事件监听器
