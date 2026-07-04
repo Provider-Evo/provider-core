@@ -8,6 +8,7 @@ port = 1337
 webui_port = 8001
 debug = false
 startup_force_kill_port = true
+max_restarts = 3
 
 [anthropic]
 api_version = "2023-06-01"

@@ -16,6 +16,7 @@ from src.webui.routers import (
     logs_ws, persist_get, persist_put, reload_service, requests_list, requests_ws,
     stats_api, stats_reset, summary_api, terminal_sessions_api, terminal_ws, webui_page,
 )
+from src.webui.routers.admin_auth import auth_regenerate, auth_update, auth_verify
 
 __all__ = ["setup_routes"]
 
@@ -77,3 +78,7 @@ def setup_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/webui/files/project-root", files_project_root)
     app.router.add_post("/v1/webui/bg-image", bg_image_upload)
     app.router.add_get("/v1/webui/bg-image/{filename}", bg_image_get)
+    # Auth management
+    app.router.add_post("/v1/webui/auth/verify", auth_verify)
+    app.router.add_post("/v1/webui/auth/update", auth_update)
+    app.router.add_post("/v1/webui/auth/regenerate", auth_regenerate)

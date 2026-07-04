@@ -81,6 +81,12 @@ _RAPID_RESTART_THRESHOLD = 5.0
 # 触发重启后的短暂冷却时间（秒）
 _RESTART_COOLDOWN = 1.0
 
+# Worker 错误重启等待时间（秒）
+_ERROR_RESTART_DELAY = 10.0
+
+# Worker 错误重启默认最大次数
+_DEFAULT_MAX_ERROR_RESTARTS = 3
+
 
 # ---------------------------------------------------------------------------
 # 工具函数
