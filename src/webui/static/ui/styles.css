@@ -940,6 +940,7 @@ section.tab-panel > * {
   .webui-body { grid-template-columns: 1fr; padding-bottom: 56px; }
   .webui-sidebar {
     display: flex;
+    flex-direction: row;
     position: fixed;
     bottom: 0;
     left: 0;

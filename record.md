@@ -3305,6 +3305,9 @@ py_compile: adaptercore.py, terminal_sessions.py, manager.py, business.py, proxy
 
 2026-07-04 22:45:00
 
+[src/core/server/watcher.py] 移除前端自动刷新浏览器逻辑，仅保留日志提示用户手动刷新；移除 log_broker 依赖和冷却机制
+[src/webui/static/config/actions.js] 移除 reload 消息处理器
+[docs-src/src/core/server/watcher.md] 更新文档，移除前端热重载链路和冷却机制描述
 [src/webui/static/ui/styles.css] 调整侧边栏导航按钮样式：移除间距和圆角，按钮紧密排列靠左对齐
 
 2026-07-04 23:40:00
