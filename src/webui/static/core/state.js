@@ -47,9 +47,11 @@ let _logSeenIds = {};  // 去重
 
 // Virtual scrolling state
 let _logFilteredCache = null;  // cached filtered entries (invalidated on filter change)
-const _VS_ROW_HEIGHT = 26;
+const _VS_DEFAULT_ROW_HEIGHT = 26;
 const _VS_BUFFER = 50;
 let _vsRenderedRange = { start: -1, end: -1 };
+let _vsRowHeights = {};  // cache for measured row heights
+let _vsMeasuredHeights = new Set();  // track which rows have been measured
 
 const _LOG_LEVEL_PRIORITY = { DEBUG: 10, INFO: 20, WARNING: 30, ERROR: 40, CRITICAL: 50, SUCCESS: 25 };
 
@@ -116,6 +118,8 @@ function _logEntryMatchesFilter(entry) {
 function _invalidateLogFilterCache() {
   _logFilteredCache = null;
   _vsRenderedRange = { start: -1, end: -1 };
+  _vsRowHeights = {};
+  _vsMeasuredHeights = new Set();
 }
 
 function _getFilteredLogs() {
@@ -129,11 +133,42 @@ function _getFilteredLogs() {
   return _logFilteredCache;
 }
 
+function _getEstimatedRowHeight(idx) {
+  return _vsRowHeights[idx] || _VS_DEFAULT_ROW_HEIGHT;
+}
+
+function _getRowTop(idx) {
+  var top = 0;
+  for (var i = 0; i < idx; i++) {
+    top += _getEstimatedRowHeight(i);
+  }
+  return top;
+}
+
+function _getTotalHeight() {
+  var total = 0;
+  var filtered = _getFilteredLogs();
+  for (var i = 0; i < filtered.length; i++) {
+    total += _getEstimatedRowHeight(i);
+  }
+  return total;
+}
+
+function _measureRowHeight(dom, idx) {
+  var h = dom.getBoundingClientRect().height;
+  if (h > 0 && Math.abs(h - _getEstimatedRowHeight(idx)) > 1) {
+    _vsRowHeights[idx] = h;
+    _vsMeasuredHeights.add(idx);
+    return true;
+  }
+  return false;
+}
+
 function _renderVisibleLogs() {
   var box = document.getElementById('logBox');
   if (!box) return;
   var filtered = _getFilteredLogs();
-  var totalHeight = filtered.length * _VS_ROW_HEIGHT;
+  var totalHeight = _getTotalHeight();
   var scrollTop = box.scrollTop;
   var viewportH = box.clientHeight;
 
@@ -147,9 +182,22 @@ function _renderVisibleLogs() {
   }
   spacer.style.height = totalHeight + 'px';
 
-  // Calculate visible range
-  var startIdx = Math.max(0, Math.floor(scrollTop / _VS_ROW_HEIGHT) - _VS_BUFFER);
-  var endIdx = Math.min(filtered.length, Math.ceil((scrollTop + viewportH) / _VS_ROW_HEIGHT) + _VS_BUFFER);
+  // Calculate visible range using cumulative heights
+  var startIdx = 0;
+  var accH = 0;
+  while (startIdx < filtered.length && accH + _getEstimatedRowHeight(startIdx) < scrollTop) {
+    accH += _getEstimatedRowHeight(startIdx);
+    startIdx++;
+  }
+  startIdx = Math.max(0, startIdx - _VS_BUFFER);
+
+  var endIdx = startIdx;
+  accH = _getRowTop(startIdx);
+  while (endIdx < filtered.length && accH < scrollTop + viewportH) {
+    accH += _getEstimatedRowHeight(endIdx);
+    endIdx++;
+  }
+  endIdx = Math.min(filtered.length, endIdx + _VS_BUFFER);
 
   // Skip if range unchanged
   if (startIdx === _vsRenderedRange.start && endIdx === _vsRenderedRange.end) return;
@@ -167,11 +215,28 @@ function _renderVisibleLogs() {
   for (var j = startIdx; j < endIdx; j++) {
     var dom = _createLogEntryDOM(filtered[j]);
     dom.style.position = 'absolute';
-    dom.style.top = (j * _VS_ROW_HEIGHT) + 'px';
+    dom.style.top = _getRowTop(j) + 'px';
     dom.style.left = '0';
     dom.style.right = '0';
     box.insertBefore(dom, spacer);
   }
+
+  // Measure heights after rendering
+  requestAnimationFrame(function() {
+    var needReRender = false;
+    var children = box.children;
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].classList.contains('log-vs-spacer')) continue;
+      var idx = startIdx + i;
+      if (idx < filtered.length && _measureRowHeight(children[i], idx)) {
+        needReRender = true;
+      }
+    }
+    if (needReRender) {
+      _vsRenderedRange = { start: -1, end: -1 };
+      _renderVisibleLogs();
+    }
+  });
 }
 
 function _setupLogVirtualScroll() {
@@ -343,6 +408,8 @@ function clearLogs() {
   _uniqueModules = [];
   _logFilteredCache = null;
   _vsRenderedRange = { start: -1, end: -1 };
+  _vsRowHeights = {};
+  _vsMeasuredHeights = new Set();
   var box = document.getElementById('logBox');
   if (box) box.innerHTML = '';
   _rebuildModuleSelect();

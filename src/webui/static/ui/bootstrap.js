@@ -74,26 +74,33 @@ document.getElementById('logRegexBtn').addEventListener('click', function() { to
 document.getElementById('logFilterToggleBtn').addEventListener('click', function() {
   _toggleLogFilters();
 });
-// Date range filters
-document.getElementById('logDateFrom').addEventListener('change', function() {
-  _logDateFrom = this.value;
-  localStorage.setItem('provider.logDateFrom', _logDateFrom);
-  _updateLogClearDateBtn();
-  filterLogs();
-});
-document.getElementById('logDateTo').addEventListener('change', function() {
-  _logDateTo = this.value;
-  localStorage.setItem('provider.logDateTo', _logDateTo);
-  _updateLogClearDateBtn();
-  filterLogs();
+// Date range filters — CustomDatePicker
+window._datePickers = {};
+['logDateFrom', 'logDateTo'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el && typeof CustomDatePicker !== 'undefined') {
+    window._datePickers[id] = new CustomDatePicker(el, {
+      onChange: function(value) {
+        if (id === 'logDateFrom') {
+          _logDateFrom = value;
+          localStorage.setItem('provider.logDateFrom', value);
+        } else {
+          _logDateTo = value;
+          localStorage.setItem('provider.logDateTo', value);
+        }
+        _updateLogClearDateBtn();
+        filterLogs();
+      }
+    });
+  }
 });
 document.getElementById('logClearDateBtn').addEventListener('click', function() {
   _logDateFrom = '';
   _logDateTo = '';
   localStorage.removeItem('provider.logDateFrom');
   localStorage.removeItem('provider.logDateTo');
-  document.getElementById('logDateFrom').value = '';
-  document.getElementById('logDateTo').value = '';
+  if (window._datePickers.logDateFrom) window._datePickers.logDateFrom.setValue('');
+  if (window._datePickers.logDateTo) window._datePickers.logDateTo.setValue('');
   _updateLogClearDateBtn();
   filterLogs();
 });
@@ -111,10 +118,8 @@ document.getElementById('logClearDateBtn').addEventListener('click', function() 
     if (toggleBtn) toggleBtn.classList.add('active');
   }
   // Restore date range inputs
-  var dateFrom = document.getElementById('logDateFrom');
-  var dateTo = document.getElementById('logDateTo');
-  if (dateFrom && _logDateFrom) dateFrom.value = _logDateFrom;
-  if (dateTo && _logDateTo) dateTo.value = _logDateTo;
+  if (window._datePickers && window._datePickers.logDateFrom && _logDateFrom) window._datePickers.logDateFrom.setValue(_logDateFrom);
+  if (window._datePickers && window._datePickers.logDateTo && _logDateTo) window._datePickers.logDateTo.setValue(_logDateTo);
   _updateLogClearDateBtn();
   // Restore regex search state
   _updateRegexBtn();

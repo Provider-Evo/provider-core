@@ -1466,19 +1466,6 @@ section.tab-panel > * {
   align-items: center;
   gap: 4px;
 }
-.log-date-input {
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel-alt);
-  color: var(--text);
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-}
-.log-date-input:focus { outline: none; border-color: var(--accent); }
-.log-date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
-.log-date-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
 .log-count {
   font-size: 12px;
