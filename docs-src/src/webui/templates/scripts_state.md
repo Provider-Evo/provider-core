@@ -49,6 +49,10 @@ showInputDialog('请输入名称:', {
 
 清空内存中的日志条目数组和 DOM 容器。不清除过滤器状态。
 
+### _rebuildModuleSelect()
+
+重建模块下拉菜单选项。从 `_uniqueModules` 数组构建选项，优先使用 CustomDropdown 的 `setOptions` 方法更新，若不可用则回退到原生 select 操作。
+
 ### exportLogs()
 
 将日志导出为 TXT 文件，格式：`timestamp [level] [module] message`。通过 Blob + 动态 `<a>` 标签触发浏览器下载。

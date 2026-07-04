@@ -214,14 +214,29 @@ function _rebuildModuleSelect() {
   var sel = document.getElementById('logModuleSelect');
   if (!sel) return;
   var prev = sel.value;
-  sel.innerHTML = '<option value="all">全部模块</option>';
+  
+  // Build options array
+  var opts = [{ value: 'all', text: '全部模块' }];
   for (var i = 0; i < _uniqueModules.length; i++) {
-    var opt = document.createElement('option');
-    opt.value = _uniqueModules[i];
-    opt.textContent = _uniqueModules[i];
-    sel.appendChild(opt);
+    opts.push({ value: _uniqueModules[i], text: _uniqueModules[i] });
   }
-  sel.value = prev || 'all';
+  
+  // Update CustomDropdown if available, otherwise fallback to native select
+  var dropdown = window._dropdowns && window._dropdowns['logModuleSelect'];
+  if (dropdown && typeof dropdown.setOptions === 'function') {
+    dropdown.setOptions(opts, false);
+    dropdown.setValue(prev || 'all');
+  } else {
+    // Fallback to native select manipulation
+    sel.innerHTML = '<option value="all">全部模块</option>';
+    for (var i = 0; i < _uniqueModules.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = _uniqueModules[i];
+      opt.textContent = _uniqueModules[i];
+      sel.appendChild(opt);
+    }
+    sel.value = prev || 'all';
+  }
 }
 
 function _updateLogCount() {
