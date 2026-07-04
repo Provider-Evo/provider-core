@@ -57,11 +57,27 @@ document.getElementById('copyConfigButton').addEventListener('click', function()
   copyText(configJsonBox.textContent || '{}', '配置摘要已复制');
 });
 document.getElementById('clearLogButton').addEventListener('click', function() {
-  _logEntries = [];
-  _logLineCount = 0;
-  logBox.innerHTML = '';
-  toast('日志已清空', 'ok');
+  clearLogs();
 });
+document.getElementById('logExportBtn').addEventListener('click', function() {
+  exportLogs();
+});
+document.getElementById('logAutoScrollBtn').addEventListener('click', function() {
+  toggleAutoScroll();
+});
+document.getElementById('logLevelSelect').addEventListener('change', function() {
+  _logLevelFilter = this.value;
+  filterLogs();
+});
+document.getElementById('logSearchInput').addEventListener('input', function() {
+  _logSearchQuery = this.value;
+  filterLogs();
+});
+// Initialize auto-scroll button state
+(function() {
+  var btn = document.getElementById('logAutoScrollBtn');
+  if (btn) btn.classList.add('active');
+})();
 document.getElementById('reloadServerButton').addEventListener('click', reloadServer);
 document.getElementById('reloadConfigButton').addEventListener('click', reloadConfigFromFile);
 document.getElementById('configEditToggle').addEventListener('click', toggleConfigEdit);

@@ -46,7 +46,7 @@ function connectLogsSocket() {
     return;
   }
   if (logsSocket && (logsSocket.readyState === WebSocket.CONNECTING || logsSocket.readyState === WebSocket.OPEN)) {
-    return; // 已有活跃连接
+    return;
   }
 
   var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -54,8 +54,8 @@ function connectLogsSocket() {
   logsSocket = new WebSocket(url);
 
   var reconnectAttempts = 0;
-  var maxReconnectDelay = 30000; // 30秒最大重连延迟
-  var baseReconnectDelay = 1000; // 1秒基础重连延迟
+  var maxReconnectDelay = 30000;
+  var baseReconnectDelay = 1000;
 
   function scheduleReconnect() {
     if (reconnectAttempts >= 10) {
@@ -70,40 +70,35 @@ function connectLogsSocket() {
     }, delay);
   }
 
+  function _updateConnStatus(connected) {
+    var el = document.getElementById('logConnStatus');
+    if (el) {
+      el.textContent = connected ? '已连接' : '未连接';
+      el.classList.toggle('connected', connected);
+    }
+  }
+
   logsSocket.onopen = function() {
-    reconnectAttempts = 0; // 重置重连计数
+    reconnectAttempts = 0;
     socketNotice.textContent = '日志 WebSocket: 已连接';
+    _updateConnStatus(true);
   };
   logsSocket.onmessage = function(event) {
     try {
       var payload = JSON.parse(event.data);
-      if (payload.type === 'hello') {
-        // hello 不显示，历史日志会紧随其后
-      }
-      if (payload.type === 'history') {
-        // History count notification — no log needed
-      }
       if (payload.type === 'log' && payload.message) {
-        var levelColors = {
-          'D': '90', 'DEBUG': '90',
-          'I': '34', 'INFO': '34',
-          'W': '33', 'WARNING': '33',
-          'E': '31', 'ERROR': '31',
-          'C': '91', 'CRITICAL': '91',
-          'S': '32', 'SUCCESS': '32'
-        };
-        var level = (payload.level || 'I').toUpperCase();
-        var colorCode = levelColors[level] || '37';
-        var ts = payload.timestamp || '--:--:--';
-        var mod = payload.module || '';
+        var levelMap = { 'D': 'DEBUG', 'I': 'INFO', 'W': 'WARNING', 'E': 'ERROR', 'C': 'CRITICAL', 'S': 'SUCCESS' };
+        var level = levelMap[(payload.level || 'I').toUpperCase()] || payload.level || 'INFO';
         var now = new Date();
         var dateStr = String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        var timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
-        var line = '\x1b[34m' + dateStr + ' ' + ts + '\x1b[0m | \x1b[' + colorCode + 'm[ ' + level + ' ]\x1b[0m | \x1b[36m' + mod + '\x1b[0m | ' + payload.message;
-        log(line);
-      }
-      if (payload.type === 'pong') {
-        // 心跳响应不显示
+        var ts = payload.timestamp || '--:--:--';
+
+        addLogEntry({
+          timestamp: dateStr + ' ' + ts,
+          level: level,
+          module: payload.module || '',
+          message: payload.message,
+        });
       }
     } catch (error) {
       // Ignore parse errors
@@ -111,9 +106,11 @@ function connectLogsSocket() {
   };
   logsSocket.onerror = function() {
     socketNotice.textContent = '日志 WebSocket: 连接异常';
+    _updateConnStatus(false);
   };
   logsSocket.onclose = function() {
     socketNotice.textContent = '日志 WebSocket: 已关闭';
+    _updateConnStatus(false);
     scheduleReconnect();
   };
 }

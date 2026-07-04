@@ -227,17 +227,23 @@ var TerminalManager = (function () {
 
   /**
    * Set custom background image from file input.
+   * Uploads the image to the server and stores the URL path.
    * @param {File} file - Image file
    */
   function _setCustomBgImage(file) {
     if (!file || !file.type.startsWith('image/')) return;
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      _customBgImage = e.target.result;
-      _applyCustomBgImage();
-      _saveTerminalBgMode();
-    };
-    reader.readAsDataURL(file);
+    var formData = new FormData();
+    formData.append('file', file);
+    fetch('/v1/webui/bg-image', { method: 'POST', body: formData })
+      .then(function(resp) { return resp.json(); })
+      .then(function(data) {
+        if (data && data.url) {
+          _customBgImage = data.url;
+          _applyCustomBgImage();
+          _saveTerminalBgMode();
+        }
+      })
+      .catch(function() {});
   }
 
   /**
@@ -343,6 +349,7 @@ var TerminalManager = (function () {
 
   /**
    * Load terminal background mode from持久化 storage.
+   * Handles both legacy data URLs and new server-side file paths.
    */
   async function _loadTerminalBgMode() {
     try {
@@ -352,7 +359,12 @@ var TerminalManager = (function () {
           _terminalBgMode = data.bgMode;
         }
         if (data && data.bgImage) {
-          _customBgImage = data.bgImage;
+          // Legacy data URL: migrate to server-side file
+          if (data.bgImage.indexOf('data:') === 0) {
+            _migrateBgImageToServer(data.bgImage);
+          } else {
+            _customBgImage = data.bgImage;
+          }
         }
         if (data && typeof data.bgOpacity === 'number') {
           _customBgOpacity = data.bgOpacity;

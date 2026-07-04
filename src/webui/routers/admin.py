@@ -158,3 +158,49 @@ async def persist_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         return aiohttp.web.json_response({"status": "ok"})
     except Exception as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)
+
+
+async def bg_image_upload(request: aiohttp.web.Request) -> aiohttp.web.Response:
+    """POST /v1/webui/bg-image — upload a terminal background image to persist/webui/img/."""
+    import hashlib
+    from pathlib import Path
+
+    reader = await request.multipart()
+    field = await reader.next()
+    if field is None or field.name != "file":
+        return aiohttp.web.json_response({"error": "missing file field"}, status=400)
+
+    img_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui" / "img"
+    img_dir.mkdir(parents=True, exist_ok=True)
+
+    data = await field.read()
+    if len(data) > 5 * 1024 * 1024:
+        return aiohttp.web.json_response({"error": "file too large (max 5MB)"}, status=400)
+
+    content_type = field.headers.get("Content-Type", "image/png")
+    ext_map = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
+    ext = ext_map.get(content_type, ".png")
+    file_hash = hashlib.md5(data).hexdigest()[:12]
+    filename = f"terminal-bg-{file_hash}{ext}"
+    filepath = img_dir / filename
+
+    filepath.write_bytes(data)
+    url = f"/v1/webui/bg-image/{filename}"
+    return aiohttp.web.json_response({"url": url, "filename": filename})
+
+
+async def bg_image_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
+    """GET /v1/webui/bg-image/{filename} — serve a terminal background image."""
+    from pathlib import Path
+
+    filename = request.match_info["filename"]
+    if ".." in filename or "/" in filename or "\\" in filename:
+        return aiohttp.web.json_response({"error": "invalid filename"}, status=400)
+
+    img_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui" / "img"
+    filepath = img_dir / filename
+
+    if not filepath.exists():
+        return aiohttp.web.json_response({"error": "not found"}, status=404)
+
+    return aiohttp.web.FileResponse(filepath)

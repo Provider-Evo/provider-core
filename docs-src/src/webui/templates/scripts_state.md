@@ -30,3 +30,25 @@ showInputDialog('请输入名称:', {
   }
 });
 ```
+
+## 日志查看器
+
+### addLogEntry(entry)
+
+结构化日志渲染入口。接收包含 timestamp/level/module/message 字段的对象，渲染为结构化 DOM 行并追加到日志容器。自动裁剪超过 5000 条的旧条目。
+
+### filterLogs()
+
+根据当前级别过滤和搜索关键词重新渲染日志容器。级别过滤使用优先级模型（选 INFO 显示 INFO 及以上）。搜索对 message 和 module 做大小写不敏感子串匹配。
+
+### clearLogs()
+
+清空内存中的日志条目数组和 DOM 容器。
+
+### exportLogs()
+
+将日志导出为 TXT 文件，格式：`timestamp [level] [module] message`。通过 Blob + 动态 `<a>` 标签触发浏览器下载。
+
+### toggleAutoScroll()
+
+切换自动滚动状态。开启时新日志到达自动滚动到底部；关闭时保持当前位置不动。

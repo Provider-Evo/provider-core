@@ -3325,6 +3325,16 @@ py_compile: selector.py; pytest tests/src/core/dispatch/test_selector.py: 27 pas
 
 [tests/src/core/dispatch/test_selector.py] 修复测试用例：重命名 test_score_error_penalty 为 test_error_triggers_cooling，修正拼写错误 success -> n_success
 [template/template_config.toml] 版本 2.2.225 -> 2.2.226
+
+2026-07-05 00:10:00
+
+[src/webui/static/index.html] 重写日志面板：工具栏含搜索框/级别过滤/自动滚动/导出/清空按钮，日志容器改为 div.log-viewer
+[src/webui/static/core/state.js] 重写日志渲染逻辑：结构化 addLogEntry 替代 ANSI 拼接，新增 filterLogs/clearLogs/exportLogs/toggleAutoScroll
+[src/webui/static/config/actions.js] WebSocket 消息处理改用结构化 addLogEntry，级别缩写映射为全称
+[src/webui/static/ui/styles.css] 新增日志查看器样式：深色背景、四列布局、级别着色、自定义滚动条、工具栏
+[src/webui/static/ui/bootstrap.js] 更新日志按钮绑定：清空/导出/自动滚动/级别过滤/搜索
+[docs-src/src/webui/templates/scripts_state.md] 新增日志查看器函数文档
+[docs-src/src/webui/templates/styles_components.md] 新增日志查看器样式文档
 [config/main_config.toml] 版本 2.2.225 -> 2.2.226
 [README.md] 版本徽章和路线图更新为 2.2.226
 [.agents/provider-guide/SKILL.md] 版本字段 2.2.225 -> 2.2.226
