@@ -257,7 +257,8 @@ async def _shutdown(
     await session.close()
 
     logger.info("正在停止 Web 服务器...")
-    await runner.cleanup()
+    if runner is not None:
+        await runner.cleanup()
 
     logger.info("Provider-V2 已完全退出")
 
@@ -281,59 +282,72 @@ async def _run() -> None:
         _logging.getLogger("aiohttp.access") if cfg.debug.access_log else None
     )
 
-    # 检查并释放端口占用（带重试）
-    max_port_retries = 5
-    port_retry_delay = 2.0
-    port_bound = False
+    # 检查并绑定端口（带重试）
+    # Windows 上 kill 进程后 TCP 套接字可能仍在 TIME_WAIT，
+    # netstat 看不到进程但 bind 仍会失败，因此将 ensure_port_available
+    # 和 site.start() 合并在同一个重试循环中。
+    max_port_retries = 8
+    port_retry_delay = 1.0
+    runner: Optional[aiohttp.web.AppRunner] = None
 
     for port_attempt in range(max_port_retries):
         port_result = ensure_port_available(port, cfg.server.startup_force_kill_port)
-        if not port_result.occupied or port_result.released:
-            port_bound = True
-            break
-        # 端口仍被占用
-        if port_attempt < max_port_retries - 1:
-            logger.warning(
-                "端口 %d 被占用 (PIDs: %s)，%s，等待 %.1f 秒后重试 (%d/%d)...",
-                port,
-                port_result.pids,
-                "已尝试强制终止" if cfg.server.startup_force_kill_port else "未强制终止",
-                port_retry_delay,
-                port_attempt + 1,
-                max_port_retries,
-            )
-            await asyncio.sleep(port_retry_delay)
-            # 增加冷却时间给Windows更多时间释放TCP套接字
-            port_retry_delay = min(port_retry_delay * 1.5, 10.0)
-        else:
-            if cfg.server.startup_force_kill_port:
-                logger.error(
-                    "端口 %d 被占用 (PIDs: %s)，已尝试强制终止并重试 %d 次但未能释放，退出",
+        if port_result.occupied and not port_result.released:
+            # 端口被占用且无法释放
+            if port_attempt < max_port_retries - 1:
+                logger.warning(
+                    "端口 %d 被占用 (PIDs: %s)，%s，等待 %.1f 秒后重试 (%d/%d)...",
                     port,
                     port_result.pids,
+                    "已尝试强制终止" if cfg.server.startup_force_kill_port else "未强制终止",
+                    port_retry_delay,
+                    port_attempt + 1,
                     max_port_retries,
                 )
+                await asyncio.sleep(port_retry_delay)
+                port_retry_delay = min(port_retry_delay * 1.5, 8.0)
+                continue
             else:
                 logger.error(
-                    "端口 %d 被占用 (PIDs: %s)，startup_force_kill_port=false 未强制释放，退出",
-                    port,
-                    port_result.pids,
+                    "端口 %d 被占用 (PIDs: %s)，重试 %d 次后仍无法释放，退出",
+                    port, port_result.pids, max_port_retries,
                 )
-            # 关闭已创建的资源后再退出
-            await session.close()
-            await registry.close()
-            raise SystemExit(1)
+                await session.close()
+                await registry.close()
+                raise SystemExit(1)
 
-    if not port_bound:
-        # 理论上不会到这里，但作为安全措施
+        # 端口可用（或已释放），尝试绑定
+        runner = aiohttp.web.AppRunner(app, access_log=_access_log)
+        await runner.setup()
+        site = aiohttp.web.TCPSite(runner, host, port)
+        try:
+            await site.start()
+            break  # 绑定成功
+        except OSError as exc:
+            # ensure_port_available 报告空闲但实际 bind 失败（TIME_WAIT）
+            await runner.cleanup()
+            runner = None
+            if port_attempt < max_port_retries - 1:
+                logger.warning(
+                    "端口 %d 绑定失败 (%s)，等待 %.1f 秒后重试 (%d/%d)...",
+                    port, exc, port_retry_delay,
+                    port_attempt + 1, max_port_retries,
+                )
+                await asyncio.sleep(port_retry_delay)
+                port_retry_delay = min(port_retry_delay * 1.5, 8.0)
+            else:
+                logger.error(
+                    "端口 %d 绑定失败，重试 %d 次后仍无法绑定，退出: %s",
+                    port, max_port_retries, exc,
+                )
+                await session.close()
+                await registry.close()
+                raise SystemExit(1)
+    else:
+        # 循环正常结束但未 break（不应到达此处）
         await session.close()
         await registry.close()
         raise SystemExit(1)
-
-    runner = aiohttp.web.AppRunner(app, access_log=_access_log)
-    await runner.setup()
-    site = aiohttp.web.TCPSite(runner, host, port)
-    await site.start()
 
     logger.info("MainWorker 已启动: http://%s:%d", host, port)
 

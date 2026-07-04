@@ -27,7 +27,7 @@ async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def config_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """GET /v1/config — 返回完整配置 JSON（直接读取 config/main_config.toml）。"""
+    """GET /v1/config — 返回 WebUI 配置 JSON（读取 config/webui_config.toml）。"""
     from pathlib import Path
 
     try:
@@ -35,20 +35,21 @@ async def config_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
     except ImportError:
         import tomli as tomllib  # Python < 3.11
 
-    config_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "main_config.toml"
+    config_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "webui_config.toml"
     try:
         with open(config_path, "rb") as f:
             data = tomllib.load(f)
         return aiohttp.web.json_response(data)
     except FileNotFoundError:
-        return aiohttp.web.json_response({"error": "config/main_config.toml not found"}, status=404)
+        return aiohttp.web.json_response({})
     except Exception as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)
 
 
 async def config_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """PUT /v1/config — 写入配置并重新加载。"""
-    from src.core.config import write_config
+    """PUT /v1/config — 写入 WebUI 配置到 webui_config.toml。"""
+    import json
+    from pathlib import Path
 
     try:
         payload = await request.json()
@@ -58,15 +59,19 @@ async def config_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
             status=400,
         )
 
-    ok = await write_config(payload)
-    if ok:
+    config_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "webui_config.toml"
+    try:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
         return aiohttp.web.json_response(
-            {"status": "ok", "message": "Config saved and reloaded"},
+            {"status": "ok", "message": "WebUI config saved"},
         )
-    return aiohttp.web.json_response(
-        {"error": "write failed"},
-        status=500,
-    )
+    except Exception as e:
+        return aiohttp.web.json_response(
+            {"error": str(e)},
+            status=500,
+        )
 
 
 async def config_reload(request: aiohttp.web.Request) -> aiohttp.web.Response:

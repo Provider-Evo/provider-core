@@ -46,7 +46,10 @@
 .terminal-body.terminal-body--custom::before {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background-image: var(--custom-bg-image, none);
   background-size: cover;
   background-position: center;

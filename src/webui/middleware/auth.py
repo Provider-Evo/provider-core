@@ -18,6 +18,7 @@ _PUBLIC_PATHS: frozenset[str] = frozenset({
     "/login",
     "/logout",
     "/v1/health",
+    "/v1/webui/auth/verify",
 })
 
 # Path prefixes that do NOT require authentication

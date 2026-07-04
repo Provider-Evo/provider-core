@@ -185,7 +185,7 @@ async function saveConfig() {
     if (result.status === 'ok') {
       state.configDirty = false;
       updateConfigSaveStatus();
-      toast('配置已保存并重新加载', 'ok');
+      toast('WebUI 配置已保存', 'ok');
       // Prevent renderConfig from re-fetching and overwriting the form for 5 seconds
       if (typeof _lastConfigSaveTime !== 'undefined') _lastConfigSaveTime = Date.now();
       await refreshAll();
