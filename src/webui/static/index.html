@@ -72,16 +72,21 @@
 
     <div class="webui-body">
     <aside class="webui-sidebar" id="sidebar">
-      <button class="sidebar-nav-item tab-button" data-tab="overview" type="button">概览</button>
-      <button class="sidebar-nav-item tab-button" data-tab="stats" type="button">统计</button>
-      <button class="sidebar-nav-item tab-button" data-tab="platforms" type="button">平台</button>
-      <button class="sidebar-nav-item tab-button" data-tab="models" type="button">模型</button>
-      <button class="sidebar-nav-item tab-button" data-tab="config" type="button">配置</button>
-      <button class="sidebar-nav-item tab-button" data-tab="autoupdate" type="button">更新</button>
-      <button class="sidebar-nav-item tab-button" data-tab="chat" type="button">聊天</button>
-      <button class="sidebar-nav-item tab-button" data-tab="logs" type="button">日志</button>
-      <button class="sidebar-nav-item tab-button" data-tab="terminal" type="button">终端</button>
-      <button class="sidebar-nav-item tab-button" data-tab="files" type="button">文件</button>
+      <button class="sidebar-nav-item tab-button" data-tab="overview" data-tooltip="概览" type="button">概览</button>
+      <button class="sidebar-nav-item tab-button" data-tab="stats" data-tooltip="统计" type="button">统计</button>
+      <button class="sidebar-nav-item tab-button" data-tab="platforms" data-tooltip="平台" type="button">平台</button>
+      <button class="sidebar-nav-item tab-button" data-tab="models" data-tooltip="模型" type="button">模型</button>
+      <button class="sidebar-nav-item tab-button" data-tab="config" data-tooltip="配置" type="button">配置</button>
+      <button class="sidebar-nav-item tab-button" data-tab="autoupdate" data-tooltip="更新" type="button">更新</button>
+      <button class="sidebar-nav-item tab-button" data-tab="chat" data-tooltip="聊天" type="button">聊天</button>
+      <button class="sidebar-nav-item tab-button" data-tab="logs" data-tooltip="日志" type="button">日志</button>
+      <button class="sidebar-nav-item tab-button" data-tab="terminal" data-tooltip="终端" type="button">终端</button>
+      <button class="sidebar-nav-item tab-button" data-tab="files" data-tooltip="文件" type="button">文件</button>
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" title="折叠/展开侧边���">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
     </aside>
 
     <section class="bg-panel border border-border rounded-2xl shadow-panel grid gap-0 overflow-hidden" id="mainTabSection">

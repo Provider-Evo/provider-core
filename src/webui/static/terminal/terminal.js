@@ -831,8 +831,6 @@ var TerminalManager = (function () {
             var filtered = _stripDecResponses(msg.data);
             if (filtered) {
               tab.xterm.write(filtered);
-              // Force viewport refresh to ensure real-time display
-              tab.xterm.refresh(0, tab.xterm.rows - 1);
             }
           }
         } else if (msg.type === 'error') {

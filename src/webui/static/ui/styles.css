@@ -65,21 +65,151 @@ body { margin: 0; font-family: Arial, sans-serif;
 .tab-panel.active { display: grid; gap: 14px; contain: layout style; }
 .tab-loading-indicator { padding: 24px; text-align: center; color: var(--muted); font-size: 14px; }
 .tab-button.active { background: var(--accent); color: #fff; border-color: transparent; }
-.webui-body { display: grid; grid-template-columns: 180px 1fr; gap: 0; align-items: start; }
-.webui-layout { display: block; min-height: 60vh; contain: layout style; }
-.webui-sidebar { display: flex; flex-direction: column; gap: 0; padding: 0;
+/* 可折叠侧边栏布局 */
+.webui-body {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 0;
+  align-items: stretch;
+  min-height: calc(100vh - 80px);
+  transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.webui-body.expanded {
+  grid-template-columns: 200px 1fr;
+}
+
+.webui-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  contain: layout style;
+}
+
+.webui-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px 0;
   border-right: 1px solid var(--border);
-  background: var(--panel-soft); position: sticky; top: 0; max-height: 80vh; overflow-y: auto;
-  contain: layout style; }
-.sidebar-nav-item { display: flex; align-items: center; gap: 8px; border-radius: 0; padding: 10px 14px; font-size: 14px;
-  border: none; background: var(--panel); color: var(--text);
-  cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; font-weight: 500;
-  contain: layout style; }
-.sidebar-nav-item:hover { background: var(--panel-alt); }
-.sidebar-nav-item.active { background: var(--accent-soft); color: var(--accent);
-  border-color: transparent; border-left-color: var(--accent); }
-.webui-content { padding: 14px; min-width: 0; overflow-y: auto; max-height: calc(100vh - 200px); }
-#mainTabSection { contain: layout style; overflow: hidden; }
+  background: var(--panel-soft);
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  contain: layout style;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 0;
+  padding: 12px 16px;
+  font-size: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--panel-alt);
+}
+
+.sidebar-nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 折叠状态：只显示图标 */
+.webui-body:not(.expanded) .sidebar-nav-item {
+  justify-content: center;
+  padding: 12px;
+}
+
+.webui-body:not(.expanded) .sidebar-nav-item .sidebar-label {
+  display: none;
+}
+
+/* 折叠按钮 */
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--panel-alt);
+  color: var(--accent);
+}
+
+.sidebar-collapse-btn svg {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.webui-body:not(.expanded) .sidebar-collapse-btn svg {
+  transform: rotate(180deg);
+}
+
+/* Tooltip for collapsed state */
+.webui-body:not(.expanded) .sidebar-nav-item {
+  position: relative;
+}
+
+.webui-body:not(.expanded) .sidebar-nav-item::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--panel);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 1000;
+  margin-left: 8px;
+}
+
+.webui-body:not(.expanded) .sidebar-nav-item:hover::after {
+  opacity: 1;
+}
+
+.webui-content {
+  padding: 16px;
+  min-width: 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+#mainTabSection {
+  contain: layout style;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 /* Chat input container */
 #chatInputViewport {
   position: relative;
@@ -937,7 +1067,7 @@ section.tab-panel > * {
 }
 
 @media (max-width: 768px) {
-  .webui-body { grid-template-columns: 1fr; padding-bottom: 56px; }
+  .webui-body { grid-template-columns: 1fr; padding-bottom: 60px; }
   .webui-sidebar {
     display: flex;
     flex-direction: row;
@@ -949,8 +1079,8 @@ section.tab-panel > * {
     width: 100%;
     height: auto;
     z-index: 1000;
-    padding: 4px 6px;
-    gap: 2px;
+    padding: 6px 8px;
+    gap: 4px;
     border-right: none;
     border-top: 1px solid var(--border);
     background: var(--panel);
@@ -959,15 +1089,32 @@ section.tab-panel > * {
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    align-items: center;
   }
   .webui-sidebar::-webkit-scrollbar { display: none; }
   .webui-sidebar .sidebar-nav-item {
     flex-shrink: 0;
     text-align: center;
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 8px 10px;
+    font-size: 11px;
     border-radius: 0;
     white-space: nowrap;
+    justify-content: center;
+  }
+  .webui-sidebar .sidebar-nav-item .sidebar-label {
+    display: block;
+    font-size: 10px;
+    margin-top: 2px;
+  }
+  .webui-sidebar .sidebar-collapse-btn {
+    display: none;
+  }
+  .sidebar-nav-item::before {
+    display: block;
+    margin-bottom: 2px;
+  }
+  .sidebar-nav-item {
+    flex-direction: column;
   }
   .model-filters {
     flex-direction: column;
