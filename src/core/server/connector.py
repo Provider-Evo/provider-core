@@ -1,6 +1,6 @@
 """Shared aiohttp TCPConnector factory with configurable connection pool.
 
-Centralizes connector creation so that all components (MainWorker, adapters,
+Centralizes connector creation so that all components (Worker, adapters,
 proxy manager) share a single, consistently configured connector instance.
 """
 

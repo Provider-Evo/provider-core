@@ -2,26 +2,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-"""Provider-V2 主入口——Runner-MainWorker-WebUIWorker 三进程架构。
+"""Provider-V2 主入口——Runner-Worker 双进程架构。
 
 Runner 进程：
-  - 启动并守护 MainWorker 和 WebUIWorker 子进程
-  - 监控退出码，处理自动重启（码 42/43/44）
-  - 转发子进程 stdout 输出
+  - 守护 Worker 子进程
+  - 监控退出码，处理自动重启（码 42）
+  - 传递 Ctrl+C 给 Worker，Runner 本身不重启
 
-MainWorker 进程：
-  - API 请求处理（Gateway、Registry）
-  - 配置热重载
-  - 文件监视（触发重启）
-
-WebUIWorker 进程：
-  - WebUI 界面服务
-  - 日志 WebSocket 广播
-  - 静态文件服务
-  - 文件监视（仅刷新）
+Worker 进程：
+  - asyncio 事件循环
+  - 初始化全��子系统
+  - 永久运行直到收到��出信号或触发重启
 
 IDLE 环境：
-  - 检测到 IDLE 时直接以单进程 MainWorker 模式运行
+  - 检测到 IDLE 时直接以单进程 Worker 模式运行
   - 文件监视器只提示，不触发重启
 """
 
@@ -69,8 +63,6 @@ logger = get_logger(__name__)
 
 # Worker 进程通过此退出码通知 Runner 执行重启
 _RESTART_EXIT_CODE = 42
-_WEBUI_RESTART_EXIT_CODE = 43
-_RESTART_ALL_EXIT_CODE = 44
 
 # Runner 允许的最大连续快速重启次数
 _MAX_RAPID_RESTARTS = 10
@@ -94,26 +86,26 @@ _DEFAULT_MAX_ERROR_RESTARTS = 3
 
 
 def _is_idle() -> bool:
-    """检测当前是否在 Python IDLE 环境中运行。
+    """检测当前是否在 Python IDLE 环境中运���。
 
     通过检查标准输出类型来判断：IDLE 将 sys.stdout 替换为自定义对象，
     而非标准的 ``TextIOWrapper``。此方法比检查 ``__main__`` 属性更可靠。
 
     Returns:
-        在 IDLE 中运行时返回 True。
+        �� IDLE 中运行时返回 True。
     """
     import io
     return not isinstance(sys.stdout, io.TextIOWrapper)
 
 
 def _read_color_config() -> bool:
-    """从 config/main_config.toml 读取 debug.color 配置项。
+    """��� config/main_config.toml 读取 debug.color 配置项��
 
     在 Python 3.11+ 使用标准库 tomllib；低版本尝试第三方 tomli；
     均不可用或文件不存在时默认返回 True（启用颜色）。
 
     Returns:
-        color 配置值，默认 True。
+        color 配置值��默认 True。
     """
     cfg_path = _ROOT / "config" / "main_config.toml"
     if not cfg_path.exists():
@@ -134,7 +126,7 @@ def _read_color_config() -> bool:
             raw = tomli.load(fh)
         return bool(raw.get("debug", {}).get("color", True))
     except ImportError:
-        logger.debug("tomli 未安装，跳过 color 配置读取，默认启用颜色")
+        logger.debug("tomli 未安装，跳过 color 配置读取，默认启用��色")
         return True
     except (Exception,):  # tomli.TOMLDecodeError or OSError
         return True
@@ -144,7 +136,7 @@ def _make_connector() -> aiohttp.TCPConnector:
     """创建忽略 SSL 证书验证的 TCP 连接器（从配置读取连接池参数）。
 
     Returns:
-        配置好的 TCPConnector 实例。
+        配置���的 TCPConnector 实例。
     """
     from src.core.server.connector import make_connector
     return make_connector()
@@ -173,7 +165,7 @@ def _setup_signal_handlers(stop_event: asyncio.Event) -> None:
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, _on_signal)
     else:
-        logger.debug("Windows 平台：信号处理器通过 KeyboardInterrupt 捕获")
+        logger.debug("Windows 平台��信号处理器通过 KeyboardInterrupt 捕获")
 
 
 async def _create_background_tasks(
@@ -264,7 +256,7 @@ async def _shutdown(
 
 
 async def _run() -> None:
-    """MainWorker 的异步主流程——启动所有组件，等待退出信号，优雅关闭。"""
+    """Worker 的异步主流程——启动所有��件，等待退出信号，优雅关闭。"""
     cfg = get_config()
     host = cfg.server.host
     port = cfg.server.port
@@ -283,7 +275,7 @@ async def _run() -> None:
     )
 
     # 检查并绑定端口（带重试）
-    # Windows 上 kill 进程后 TCP 套接字可能仍在 TIME_WAIT，
+    # Windows 上 kill 进程后 TCP ��接字可能仍在 TIME_WAIT，
     # netstat 看不到进程但 bind 仍会失败，因此将 ensure_port_available
     # 和 site.start() 合并在同一个重试循环中。
     max_port_retries = 8
@@ -337,19 +329,19 @@ async def _run() -> None:
                 port_retry_delay = min(port_retry_delay * 1.5, 8.0)
             else:
                 logger.error(
-                    "端口 %d 绑定失败，重试 %d 次后仍无法绑定，退出: %s",
+                    "端口 %d 绑定失败��重试 %d 次后仍无法绑定，退出: %s",
                     port, max_port_retries, exc,
                 )
                 await session.close()
                 await registry.close()
                 raise SystemExit(1)
     else:
-        # 循环正常结束但未 break（不应到达此处）
+        # 循环正常结���但未 break（不应到达此处）
         await session.close()
         await registry.close()
         raise SystemExit(1)
 
-    logger.info("MainWorker 已启动: http://%s:%d", host, port)
+    logger.info("Worker 已启动: http://%s:%d", host, port)
 
     stop_event = asyncio.Event()
     _setup_signal_handlers(stop_event)
@@ -362,45 +354,16 @@ async def _run() -> None:
         else:
             await stop_event.wait()
     except (KeyboardInterrupt, SystemExit):
-        logger.info("收到键盘中断，正在退出...")
+        logger.info("收到键盘中断��正在退出...")
     finally:
         await _shutdown(tasks, registry, session, runner)
-
-
-async def _run_webui() -> None:
-    """WebUIWorker 的异步主流程——通过共享内存与 MainWorker 通信，不占用独立端口。
-
-    WebUIWorker 不再启动独立的 HTTP 服务器，而是通过共享内存与 MainWorker 通信。
-    MainWorker 已经包含了所有 WebUI 路由（端口 1337），WebUIWorker 只负责后台任务。
-    """
-    from src.core.ipc import SharedMemoryManager
-
-    # 初始化共享内存连接（与 MainWorker 共享）
-    shared_mem = SharedMemoryManager("provider_shared_data", create=False)
-
-    logger.info("WebUIWorker 已启动（共享内存模式，无独立端口）")
-
-    stop_event = asyncio.Event()
-    _setup_signal_handlers(stop_event)
-
-    try:
-        if sys.platform == "win32":
-            while not stop_event.is_set():
-                await asyncio.sleep(0.5)
-        else:
-            await stop_event.wait()
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("收到键盘中断，正在退出...")
-    finally:
-        shared_mem.close()
-        logger.info("WebUIWorker 已完全退出")
 
 
 async def _run_idle_watcher() -> None:
     """IDLE 环境下的文件监视器——只提示变更，不触发重启。"""
     watcher = FileWatcher(_ROOT)
     mtimes: dict = watcher._scan()
-    logger.info("IDLE 文件监视已启动，文件变更时将提示手动重启")
+    logger.info("IDLE 文件监��已启动，文件变更时将提示手动重启")
 
     while True:
         await asyncio.sleep(2.0)
@@ -430,8 +393,8 @@ async def _run_idle_watcher() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _run_main_worker() -> None:
-    """MainWorker 进程入口——配置事件循环策略并启动异步主流程。"""
+def _run_worker() -> None:
+    """Worker 进程入口——配置事件循环策略并启动异步主流程。"""
     if sys.platform == "win32":
         if sys.version_info < (3, 12):
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -450,29 +413,7 @@ def _run_main_worker() -> None:
     try:
         asyncio.run(_run())
     except KeyboardInterrupt:
-        logger.info("MainWorker 已退出")
-
-
-def _run_webui_worker() -> None:
-    """WebUIWorker 进程入口——配置事件循环策略并启动 WebUI 异步主流程。"""
-    if sys.platform == "win32":
-        if sys.version_info < (3, 12):
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    else:
-        try:
-            import uvloop  # type: ignore[import]
-            if sys.version_info >= (3, 14):
-                uvloop.install()
-            else:
-                asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-            logger.debug("uvloop 已启用")
-        except (ImportError, OSError) as exc:
-            logger.debug("uvloop 初始化失败（%s），使用默认事件循环", exc)
-
-    try:
-        asyncio.run(_run_webui())
-    except KeyboardInterrupt:
-        logger.info("WebUIWorker 已退出")
+        logger.info("Worker 已退出")
 
 
 # ---------------------------------------------------------------------------
@@ -500,19 +441,17 @@ def _pipe_reader(stream: IO[bytes]) -> None:
             pass
 
 
-def _build_worker_env(color_enabled: bool, worker_type: str = "main") -> dict:
+def _build_worker_env(color_enabled: bool) -> dict:
     """构建 Worker 子进程的环境变量字典。
 
     Args:
         color_enabled: 是否启用 ANSI 颜色输出。
-        worker_type: Worker 类型，"main" 或 "webui"。
 
     Returns:
         环境变量字典（基于当前进程环境的副本）。
     """
     env = os.environ.copy()
     env["WORKER_PROCESS"] = "1"
-    env["WORKER_TYPE"] = worker_type
     env["PYTHONIOENCODING"] = "utf-8"
 
     if color_enabled:
@@ -525,90 +464,22 @@ def _build_worker_env(color_enabled: bool, worker_type: str = "main") -> dict:
     return env
 
 
-def _restart_worker(
-    proc: subprocess.Popen,
-    args: list,
-    env: dict,
-) -> subprocess.Popen:
-    """重启 Worker 进程。
-
-    Args:
-        proc: 需要重启的进程。
-        args: 启动参数。
-        env: 环境变量。
-
-    Returns:
-        新的进程对象。
-    """
-    logger.info("重启 Worker (旧 PID=%d)...", proc.pid)
-
-    # 先终止旧进程（先 SIGTERM 优雅退出，超时后 SIGKILL 强制终止）
-    if proc.poll() is None:
-        logger.info("终止旧 Worker 进程 (PID=%d)...", proc.pid)
-        try:
-            proc.terminate()
-            try:
-                proc.wait(timeout=5.0)
-                logger.info("旧 Worker 进程已优雅退出")
-            except subprocess.TimeoutExpired:
-                logger.warning("旧 Worker 进程未响应 SIGTERM，发送 SIGKILL")
-                proc.kill()
-                proc.wait(timeout=3.0)
-                logger.info("旧 Worker 进程已强制终止")
-        except Exception as exc:
-            logger.warning("终止旧 Worker 进程失败: %s", exc)
-
-    try:
-        new_proc = subprocess.Popen(
-            args,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            env=env,
-        )
-        return new_proc
-    except OSError as exc:
-        logger.error("无法重启 Worker 进程: %s", exc)
-        raise
-
-
-def _kill_all_workers(
-    main_proc: Optional[subprocess.Popen],
-) -> None:
-    """终止所有 Worker 进程。
-
-    Args:
-        main_proc: MainWorker 进程。
-    """
-    if main_proc is not None and main_proc.poll() is None:
-        logger.info("终止 MainWorker (PID=%d)...", main_proc.pid)
-        try:
-            main_proc.terminate()
-            try:
-                main_proc.wait(timeout=5.0)
-            except subprocess.TimeoutExpired:
-                main_proc.kill()
-                main_proc.wait(timeout=3.0)
-        except Exception as exc:
-            logger.warning("终止 MainWorker 失败: %s", exc)
-
-
 def _run_runner() -> None:
-    """Runner 进程入口——守护 MainWorker 子进程，处理自动重启。
+    """Runner 进程入口——守护 Worker 子进程，处理自动重启。
 
     重启策略：
-    - MainWorker 以退出码 42 退出时触发重启，冷却 1 秒后再启动新 MainWorker。
-    - 若在 ``_RAPID_RESTART_THRESHOLD`` 秒内连续快速重启超过
+    - Worker 以退出码 42 退出时触发重启，冷却 1 秒后再启动新 Worker。
+    - 若在 ``_RAPID_RESTART_THRESHOLD`` 秒内连续快��重启超过
       ``_MAX_RAPID_RESTARTS`` 次，Runner 放弃重启并退出。
     - Worker 以其他退出码退出时（错误退出），等待 10 秒后重启，
       但最多重启 ``max_restarts`` 次（默认 3 次）。
     - Runner 收到 Ctrl+C 时，立即终止 Worker 并退出。
     """
     color_enabled = _read_color_config()
-    main_worker_env = _build_worker_env(color_enabled, worker_type="main")
+    worker_env = _build_worker_env(color_enabled)
 
     python = sys.executable
-    main_args = [python, "-u", str(_ROOT / "main.py")]
+    args = [python, "-u", str(_ROOT / "main.py")]
 
     # 读取 max_restarts 配置项
     max_error_restarts = _DEFAULT_MAX_ERROR_RESTARTS
@@ -623,8 +494,8 @@ def _run_runner() -> None:
     error_restart_count = 0
     last_start_time: float = 0.0
 
-    main_proc: Optional[subprocess.Popen] = None
-    main_reader: Optional[threading.Thread] = None
+    proc: Optional[subprocess.Popen] = None
+    reader_thread: Optional[threading.Thread] = None
 
     while True:
         # ------------------------------------------------------------------
@@ -637,7 +508,7 @@ def _run_runner() -> None:
             rapid_restart_count += 1
             if rapid_restart_count > _MAX_RAPID_RESTARTS:
                 logger.error(
-                    "Worker 在 %.1f 秒内连续快速重启 %d 次，Runner 放弃重启并退出",
+                    "Worker 在 %.1f 秒内连续快速重启 %d 次，Runner 放���重启并退出",
                     _RAPID_RESTART_THRESHOLD,
                     rapid_restart_count,
                 )
@@ -652,54 +523,54 @@ def _run_runner() -> None:
 
         last_start_time = time.time()
 
-        logger.debug("启动 MainWorker 子进程...")
+        logger.debug("启动 Worker 子进程...")
 
         # ------------------------------------------------------------------
-        # 启动 MainWorker 子进程
+        # 启动 Worker 子进程
         # ------------------------------------------------------------------
         try:
-            main_proc = subprocess.Popen(
-                main_args,
+            proc = subprocess.Popen(
+                args,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                env=main_worker_env,
+                env=worker_env,
             )
         except OSError as exc:
-            logger.error("无法启动 MainWorker 进程: %s", exc)
+            logger.error("无法��动 Worker 进程: %s", exc)
             break
 
-        assert main_proc.stdout is not None, "main_proc.stdout 不应为 None（已指定 PIPE）"
+        assert proc.stdout is not None, "proc.stdout 不应为 None（已指定 PIPE）"
 
-        main_reader = threading.Thread(
+        reader_thread = threading.Thread(
             target=_pipe_reader,
-            args=(main_proc.stdout,),
+            args=(proc.stdout,),
             daemon=True,
-            name=f"pipe-reader-main-{main_proc.pid}",
+            name=f"pipe-reader-{proc.pid}",
         )
-        main_reader.start()
+        reader_thread.start()
 
         # ------------------------------------------------------------------
         # 等待 Worker 退出
         # ------------------------------------------------------------------
         exit_code: int
         try:
-            exit_code = main_proc.wait()
+            exit_code = proc.wait()
         except KeyboardInterrupt:
-            logger.info("Runner 收到 Ctrl+C，正在终止 MainWorker...")
-            main_proc.terminate()
+            logger.info("Runner 收到 Ctrl+C，正在终止 Worker (PID=%d)...", proc.pid)
+            proc.terminate()
             try:
-                main_proc.wait(timeout=5.0)
+                proc.wait(timeout=5.0)
             except subprocess.TimeoutExpired:
-                main_proc.kill()
-                main_proc.wait()
-            if main_reader is not None:
-                main_reader.join(timeout=2.0)
-            logger.info("MainWorker 已终止，Runner 退出")
+                proc.kill()
+                proc.wait()
+            if reader_thread is not None:
+                reader_thread.join(timeout=2.0)
+            logger.info("Worker 已终止，Runner 退出")
             return
 
-        if main_reader is not None:
-            main_reader.join(timeout=2.0)
+        if reader_thread is not None:
+            reader_thread.join(timeout=2.0)
 
         # ------------------------------------------------------------------
         # 根据退出码决策
@@ -712,25 +583,12 @@ def _run_runner() -> None:
                 _RESTART_COOLDOWN,
             )
             time.sleep(_RESTART_COOLDOWN)
-
-            # 重启 MainWorker
-            main_proc = _restart_worker(main_proc, main_args, main_worker_env)
-
-            # 重新启动管道读取线程
-            assert main_proc is not None and main_proc.stdout is not None
-            main_reader = threading.Thread(
-                target=_pipe_reader,
-                args=(main_proc.stdout,),
-                daemon=True,
-                name=f"pipe-reader-main-{main_proc.pid}",
-            )
-            main_reader.start()
         elif exit_code != 0:
             # 错误退出：等待 10 秒后重启，但限制最大重启次数
             error_restart_count += 1
             if error_restart_count > max_error_restarts:
                 logger.error(
-                    "Worker 因错误退出 %d 次（最大 %d 次），Runner 放弃重启并退出",
+                    "Worker 因错误退出 %d 次（最大 %d 次），Runner 放弃���启并退出",
                     error_restart_count - 1,
                     max_error_restarts,
                 )
@@ -743,29 +601,16 @@ def _run_runner() -> None:
                 max_error_restarts,
             )
             time.sleep(_ERROR_RESTART_DELAY)
-
-            # 重启 MainWorker
-            main_proc = _restart_worker(main_proc, main_args, main_worker_env)
-
-            # 重新启动管道读取线程
-            assert main_proc is not None and main_proc.stdout is not None
-            main_reader = threading.Thread(
-                target=_pipe_reader,
-                args=(main_proc.stdout,),
-                daemon=True,
-                name=f"pipe-reader-main-{main_proc.pid}",
-            )
-            main_reader.start()
         else:
             logger.info("Worker 正常退出（退出码 %d），Runner 退出", exit_code)
             break
 
     # 清理
-    if main_proc is not None and main_proc.poll() is None:
-        main_proc.kill()
-        main_proc.wait()
-    if main_reader is not None:
-        main_reader.join(timeout=2.0)
+    if proc is not None and proc.poll() is None:
+        proc.kill()
+        proc.wait()
+    if reader_thread is not None:
+        reader_thread.join(timeout=2.0)
 
 
 # ---------------------------------------------------------------------------
@@ -774,28 +619,22 @@ def _run_runner() -> None:
 
 
 def main() -> None:
-    """程序主入口——根据运行环境选择合适的启动模式。
+    """程序主入口——根据��行环境选择合适的启动模式。
 
     启动模式优先级：
     1. ``WORKER_PROCESS=1`` 环境变量：以 Worker 模式运行（由 Runner 启动）
-       - ``WORKER_TYPE=main``：MainWorker 模式
-       - ``WORKER_TYPE=webui``：WebUIWorker 模式
-    2. IDLE 环境：直接以 MainWorker 模式运行（单进程，禁用颜色）
-    3. 其他：以 Runner 模式运行，由 Runner 守护 MainWorker 和 WebUIWorker 子进程
+    2. IDLE 环境：直接以 Worker 模式运行（单进程，禁用颜色）
+    3. 其他：以 Runner 模式运行，由 Runner 守护 Worker 子进程
     """
     is_worker = os.environ.get("WORKER_PROCESS") == "1"
-    worker_type = os.environ.get("WORKER_TYPE", "main")
 
     if is_worker:
-        if worker_type == "webui":
-            _run_webui_worker()
-        else:
-            _run_main_worker()
+        _run_worker()
     elif _is_idle():
-        print("IDLE 环境：直接以 MainWorker 模式运行（单进程）。", flush=True)
+        print("IDLE 环境：直接以 Worker 模式运行（单进程）。", flush=True)
         os.environ["NO_COLOR"] = "1"
         os.environ.pop("CLICOLOR_FORCE", None)
-        _run_main_worker()
+        _run_worker()
     else:
         _run_runner()
 
