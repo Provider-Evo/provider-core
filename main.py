@@ -357,6 +357,10 @@ async def _run() -> None:
         logger.info("收到键盘中断��正在退出...")
     finally:
         await _shutdown(tasks, registry, session, runner)
+        # 使用 os._exit() 强制退出，避免 Python 线程关闭清理
+        # 避免 "Exception ignored on threading shutdown" 错误
+        # 在 _shutdown() 中已完成所有清理工作，此处强��退出是安全的
+        os._exit(0)
 
 
 async def _run_idle_watcher() -> None:
