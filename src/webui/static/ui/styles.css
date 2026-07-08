@@ -62,7 +62,7 @@ input[type="radio"] {
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Arial, sans-serif;
   background: linear-gradient(180deg, var(--bg) 0%, var(--panel-soft) 100%); color: var(--text); }
-.tab-panel.active { display: grid; gap: 14px; contain: layout style; }
+.tab-panel.active { display: grid; gap: 14px; }
 .tab-loading-indicator { padding: 24px; text-align: center; color: var(--muted); font-size: 14px; }
 .tab-button.active { background: var(--accent); color: #fff; border-color: transparent; }
 /* 可折叠侧边栏布局 */
@@ -83,7 +83,6 @@ body { margin: 0; font-family: Arial, sans-serif;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  contain: layout style;
 }
 
 .webui-sidebar {
@@ -204,7 +203,6 @@ body { margin: 0; font-family: Arial, sans-serif;
 }
 
 #mainTabSection {
-  contain: layout style;
   overflow: hidden;
   flex: 1;
   display: flex;
@@ -1297,6 +1295,9 @@ section.tab-panel > * {
 .config-field-label { font-size: 13px; color: var(--text); flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .config-input { flex: 0 1 180px; max-width: 100%; min-width: 0; padding: 4px 8px; font-size: 13px; border: 1px solid var(--border); border-radius: 0; background: var(--panel); color: var(--text); box-sizing: border-box; }
 .config-input:focus { border-color: var(--accent); outline: none; }
+.page-spinner-btn { display:block; width:16px; height:12px; line-height:10px; font-size:8px; border:1px solid var(--border); background:var(--panel); color:var(--text); cursor:pointer; text-align:center; padding:0; }
+.page-spinner-btn:first-child { border-bottom:none; }
+.page-spinner-btn:hover { background:var(--accent); color:#fff; }
 .config-json { width: 100%; min-height: 48px; padding: 4px 8px; font-size: 12px; font-family: monospace; border: 1px solid var(--border); border-radius: 0; background: var(--panel); color: var(--text); resize: vertical; box-sizing: border-box; }
 
 /* Toggle switch */
@@ -1689,7 +1690,7 @@ section.tab-panel > * {
   flex-direction: column;
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 1000;
   overflow: hidden;
   gap: 0;
   background: var(--panel);
