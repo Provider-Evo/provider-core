@@ -1,6 +1,5 @@
 # Directories
 .qoder
-.agents
 .claude
 .codebuddy
 .cursor
@@ -12,6 +11,7 @@
 .svn
 .vscode
 .zed
+.opencode
 __pycache__
 data
 env
@@ -19,6 +19,8 @@ node_modules
 persist
 venv
 agent_log
+config/
+.agents/
 
 # Extensions
 *.dll
@@ -36,6 +38,7 @@ config.toml
 # File names
 SELF.cmd
 .DS_Store
+NOTE.md
 PROJECT_DECISIONS.md
 RAW.md
 raw.md
@@ -62,10 +65,16 @@ server.log
 
 # aitianhu2 platform
 src/platforms/aitianhu2/
+
+# Documentation and tests
+docs-src/
+tests/
+
 !template/
 
 # Config manager backups
 template/old/
+.backup/
 
 logs/
 .htaccess

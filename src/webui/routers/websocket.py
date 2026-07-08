@@ -29,6 +29,8 @@ async def logs_ws(request: aiohttp.web.Request) -> aiohttp.web.WebSocketResponse
                 break
             if message.type == aiohttp.WSMsgType.TEXT and message.data == "ping":
                 await socket.send_json({"type": "pong", "timestamp": int(time.time())})
+    except asyncio.CancelledError:
+        pass
     finally:
         await log_broker.unregister(socket)
     return socket

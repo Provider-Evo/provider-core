@@ -69,18 +69,15 @@ JSON 文件结构
 * ``models()`` 工厂函数
 """
 
-from pathlib import Path
 from typing import List, Optional
 
 from echotools.cache.list_cache import ListCache
 from src.logger import get_logger
+from src.paths import persist_dir as _persist_dir
 
 __all__ = ["ModelsCache", "models"]
 
 logger = get_logger(__name__)
-
-# 缓存根目录：<project_root>/persist/
-_PERSIST_ROOT: Path = Path(__file__).resolve().parent.parent.parent / "persist"
 
 # 模块级全局单例，首次调用 models() 时初始化。
 _cache: Optional["ModelsCache"] = None
@@ -133,7 +130,7 @@ class ModelsCache(ListCache):
         fallback_models: List[str],
         fetch_enabled: bool = True,
     ) -> None:
-        cache_path = str(_PERSIST_ROOT / platform / "models.json") if platform else ""
+        cache_path = str(_persist_dir(platform) / "models.json") if platform else ""
         super().__init__(
             name=platform,
             fallback=fallback_models,

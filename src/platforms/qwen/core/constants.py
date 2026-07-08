@@ -1,34 +1,48 @@
 from __future__ import annotations
 
-"""Qwen 平台内部常量。
+"""Qwen platform constants.
 
-本模块承接所有平台级别的常量定义，包含：
-- 端点根地址（BASE_URL）与浏览器标识（USER_AGENT）
-- 支持的模型列表（MODELS）
-- 平台能力字典（CAPS）
-- 持久化路径（MODELS_PERSIST_PATH）
-供 core/* 内部及 util.py 门面使用，禁止被 adapter.py 直接导入。
+This module intentionally carries the broad platform-level constant surface
+expected by the adapter itself and by legacy compatibility imports.
 """
 
 from typing import Dict, Final, List
 
-# ---------------------------------------------------------------------------
-# 端点与浏览器标识
-# ---------------------------------------------------------------------------
-
-BASE_URL: Final[str] = "https://chat.qwen.ai"
-"""Qwen 聊天服务根地址（无尾部斜杠）。"""
-
-USER_AGENT: Final[str] = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/148.0.0.0 Safari/537.36"
+from .endpoints import (
+    BAXIA_SDK_VERSION,
+    BASE_URL,
+    BXUA_VERSION,
+    COOKIE_REFRESH_INTERVAL,
+    CUSTOM_BASE64_CHARS,
+    FRONTEND_VERSION,
+    GENERATED_IMAGE_DIR,
+    GENERATED_VIDEO_DIR,
+    INITIAL_LOGIN_MAX,
+    LOGIN_BATCH,
+    LOGIN_BATCH_SIZE,
+    LOGIN_CONCURRENCY,
+    LOGIN_POLL_INTERVAL,
+    LOGIN_POOL_SIZE,
+    LOGIN_SELECT_MAX,
+    LOGIN_SELECT_MIN,
+    MODELS_PERSIST_PATH,
+    PERSIST_INTERVAL,
+    PERSIST_PATH,
+    PROXY_SELECTOR_PERSIST_PATH,
+    SEC_CH_UA,
+    SSE_TIMEOUT,
+    TASK_TIMERS_PATH,
+    TOKEN_EXPIRY_MARGIN,
+    TOKEN_REFRESH_INTERVAL,
+    TTS_DIR,
+    TTS_TIMEOUT,
+    UPLOAD_TEMP_DIR,
+    USER_AGENT,
+    USER_AGENT_MOBILE,
+    VIDEO_CDN_BASE,
+    VIDEO_TASK_MAX_POLL_TIME,
+    VIDEO_TASK_POLL_INTERVAL,
 )
-"""桌面浏览器 User-Agent。"""
-
-# ---------------------------------------------------------------------------
-# 支持的模型列表
-# ---------------------------------------------------------------------------
 
 MODELS: Final[List[str]] = [
     "qwen3.6-plus",
@@ -55,11 +69,6 @@ MODELS: Final[List[str]] = [
     "qwen-plus-2025-01-25",
     "qwen-turbo-2025-02-11",
 ]
-"""平台真实支持的模型 ID 列表，来源于 Qwen 官方 API 文档。"""
-
-# ---------------------------------------------------------------------------
-# 能力字典——仅声明平台真实支持的能力
-# ---------------------------------------------------------------------------
 
 CAPS: Final[Dict[str, bool]] = {
     "chat": True,
@@ -73,29 +82,44 @@ CAPS: Final[Dict[str, bool]] = {
     "continuation": True,
     "artifacts": True,
 }
-"""平台能力声明字典。
-
-键对应 Candidate 字段，值均为 True（不支持的能力不写入）。
-"""
-
-# ---------------------------------------------------------------------------
-# 持久化路径
-# ---------------------------------------------------------------------------
-
-MODELS_PERSIST_PATH: Final[str] = "persist/qwen/models.json"
-"""模型列表持久化文件路径。"""
-
-# ---------------------------------------------------------------------------
-# 智能代理选择
-# ---------------------------------------------------------------------------
 
 SMART_PROXY_ENABLED: Final[bool] = True
-"""是否启用智能代理选择器（ProxySelector）。
 
-为 True 时，当 _proxy_override 为 None（无显式覆盖），使用 TAS-like 算法
-根据历史性能数据自动选择代理或直连路径。
-为 False 时，回退到传统行为（仅依赖 _proxy_override 显式覆盖）。
-"""
-
-PROXY_SELECTOR_PERSIST_PATH: Final[str] = "persist/qwen/proxy.json"
-"""ProxySelector 持久化文件路径（独立于 usage.json）。"""
+__all__ = [
+    "BASE_URL",
+    "USER_AGENT",
+    "USER_AGENT_MOBILE",
+    "SEC_CH_UA",
+    "FRONTEND_VERSION",
+    "BAXIA_SDK_VERSION",
+    "BXUA_VERSION",
+    "CUSTOM_BASE64_CHARS",
+    "MODELS",
+    "CAPS",
+    "MODELS_PERSIST_PATH",
+    "PERSIST_PATH",
+    "TASK_TIMERS_PATH",
+    "PROXY_SELECTOR_PERSIST_PATH",
+    "GENERATED_IMAGE_DIR",
+    "GENERATED_VIDEO_DIR",
+    "TTS_DIR",
+    "UPLOAD_TEMP_DIR",
+    "SMART_PROXY_ENABLED",
+    "LOGIN_BATCH",
+    "LOGIN_BATCH_SIZE",
+    "LOGIN_CONCURRENCY",
+    "LOGIN_POOL_SIZE",
+    "LOGIN_SELECT_MIN",
+    "LOGIN_SELECT_MAX",
+    "INITIAL_LOGIN_MAX",
+    "LOGIN_POLL_INTERVAL",
+    "TOKEN_EXPIRY_MARGIN",
+    "TOKEN_REFRESH_INTERVAL",
+    "COOKIE_REFRESH_INTERVAL",
+    "PERSIST_INTERVAL",
+    "SSE_TIMEOUT",
+    "TTS_TIMEOUT",
+    "VIDEO_CDN_BASE",
+    "VIDEO_TASK_MAX_POLL_TIME",
+    "VIDEO_TASK_POLL_INTERVAL",
+]

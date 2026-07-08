@@ -34,7 +34,7 @@ class NetworkError(ProviderError):
 
 
 class ConfigError(ProviderError):
-    """配置错误——config.toml 格式错误或缺少必要字段。"""
+    """配置错误——config/main_config.toml 格式错误或缺少必要字段。"""
 
     def __init__(self, message: str) -> None:
         super().__init__(message, status_code=500)

@@ -6,14 +6,12 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from pathlib import Path
 from typing import Any, Awaitable, Callable, List, Optional
 
 from src.logger import get_logger
+from src.paths import persist_dir
 
 logger = get_logger(__name__)
-
-_PERSIST_ROOT = Path(__file__).parent.parent.parent.parent.parent / "persist"
 
 
 class ModelsCache:
@@ -36,7 +34,7 @@ class ModelsCache:
         self._fallback = list(fallback_models)
         self._fetch_enabled = fetch_enabled
         self._models: List[str] = list(fallback_models)
-        self._cache_path = _PERSIST_ROOT / platform / "models.json"
+        self._cache_path = persist_dir(platform) / "models.json"
         self._refreshing = False
 
     async def load(self) -> List[str]:

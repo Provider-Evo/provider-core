@@ -29,16 +29,389 @@ var TerminalManager = (function () {
   var _savedConnections = [];
   var _contextMenu = null;
   var _discoveryProcessed = false; // guard against double-processing existing sessions
+  var _terminalBgMode = 'theme'; // 'theme' | 'original' | 'custom'
+  var _pendingDecStrip = ''; // pending incomplete escape sequence for cross-message handling
+  var _customBgImage = ''; // custom background image data URL
+  var _customBgOpacity = 0.3; // custom background opacity (0-1)
 
   /**
-   * Strip DEC private mode responses (e.g. ^[[?1;2c, ^[[?6c) that leak
-   * through ConPTY as visible garbage.  xterm.js handles these internally;
-   * they must never reach xterm.write() as visible text.
+   * Strip Device Attribute (DA) responses that leak through ConPTY as
+   * visible garbage.  xterm.js handles these internally; they must never
+   * reach xterm.write() as visible text.
+   *
+   * DA responses end with 'c' (e.g. ^[[?6c, ^[[?1;2c, ^[[?62;1;2;6c).
+   * This function does NOT strip DEC private mode SET/RESET sequences
+   * (e.g. ^[[?25h, ^[[?25l, ^[[?1049h) because those control cursor
+   * visibility, alternate screen buffer, mouse tracking, etc. — xterm.js
+   * must receive them to function correctly with TUI applications.
    * Applied to ALL output — live stream, offline replay, and status messages.
+   * Handles cross-message splitting by tracking pending escape sequences.
    */
   function _stripDecResponses(data) {
     if (typeof data !== 'string') return data;
-    return data.replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '');
+    // Prepend any pending incomplete sequence from previous message
+    data = _pendingDecStrip + data;
+    _pendingDecStrip = '';
+
+    // Check for incomplete escape sequence at the end
+    var lastEsc = data.lastIndexOf('\x1b');
+    if (lastEsc !== -1) {
+      var suffix = data.slice(lastEsc);
+      // If suffix doesn't match a complete sequence pattern, it's incomplete
+      if (!/\x1b\[[0-9;]*[a-zA-Z]/.test(suffix) &&
+          !/\x1b\[\?[0-9;]*c/.test(suffix)) {
+        // Might be incomplete, keep as pending
+        _pendingDecStrip = suffix;
+        data = data.slice(0, lastEsc);
+      }
+    }
+
+    // Strip Device Attribute responses (end with 'c' after ?)
+    // e.g. \x1b[?6c  \x1b[?1;2c  \x1b[?62;1;2;6c
+    return data.replace(/\x1b\[\?[0-9;]*c/g, '')
+               .replace(/\x1b\[[0-9;]*[cR]/g, '');
+  }
+
+  /**
+   * Return xterm.js theme colors based on background mode and current UI theme.
+   * @param {string} bgMode - 'theme', 'original', or 'custom'
+   */
+  function _getTerminalTheme(bgMode) {
+    bgMode = bgMode || _terminalBgMode;
+
+    if (bgMode === 'original') {
+      // Classic dark terminal theme (VS Code style)
+      return {
+        background: '#1e1e1e',
+        foreground: '#cccccc',
+        cursor: '#ffffff',
+        selectionBackground: '#264f78',
+        black: '#1e1e1e',
+        red: '#f44747',
+        green: '#6a9955',
+        yellow: '#dcdcaa',
+        blue: '#569cd6',
+        magenta: '#c586c0',
+        cyan: '#4ec9b0',
+        white: '#cccccc',
+        brightBlack: '#808080',
+        brightRed: '#f44747',
+        brightGreen: '#6a9955',
+        brightYellow: '#dcdcaa',
+        brightBlue: '#569cd6',
+        brightMagenta: '#c586c0',
+        brightCyan: '#4ec9b0',
+        brightWhite: '#ffffff',
+      };
+    }
+
+    if (bgMode === 'custom') {
+      // Custom image mode: transparent background to let CSS background show through
+      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      return {
+        background: 'rgba(0,0,0,0)',
+        foreground: isDark ? '#edf3ff' : '#162033',
+        cursor: isDark ? '#edf3ff' : '#162033',
+        selectionBackground: isDark ? 'rgba(42,58,92,0.8)' : 'rgba(219,227,255,0.8)',
+        black: isDark ? '#172131' : '#172131',
+        red: isDark ? '#ff7b7b' : '#d94848',
+        green: isDark ? '#37ca7e' : '#1f9d61',
+        yellow: isDark ? '#ffb454' : '#d17b17',
+        blue: isDark ? '#8aa4ff' : '#4263eb',
+        magenta: isDark ? '#c084fc' : '#9333ea',
+        cyan: isDark ? '#22d3ee' : '#0891b2',
+        white: isDark ? '#edf3ff' : '#f3f6fb',
+        brightBlack: isDark ? '#9eabc2' : '#5d6980',
+        brightRed: isDark ? '#ff9b9b' : '#ef4444',
+        brightGreen: isDark ? '#5ee6a0' : '#22c55e',
+        brightYellow: isDark ? '#ffc97a' : '#f59e0b',
+        brightBlue: isDark ? '#a8bbff' : '#6366f1',
+        brightMagenta: isDark ? '#d4a5ff' : '#a855f7',
+        brightCyan: isDark ? '#5ee9f5' : '#06b6d4',
+        brightWhite: '#ffffff',
+      };
+    }
+
+    // Theme mode: follow provider-v2 global light/dark theme
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      return {
+        background: '#0d1420',
+        foreground: '#edf3ff',
+        cursor: '#edf3ff',
+        selectionBackground: '#2a3a5c',
+        black: '#172131',
+        red: '#ff7b7b',
+        green: '#37ca7e',
+        yellow: '#ffb454',
+        blue: '#8aa4ff',
+        magenta: '#c084fc',
+        cyan: '#22d3ee',
+        white: '#edf3ff',
+        brightBlack: '#9eabc2',
+        brightRed: '#ff9b9b',
+        brightGreen: '#5ee6a0',
+        brightYellow: '#ffc97a',
+        brightBlue: '#a8bbff',
+        brightMagenta: '#d4a5ff',
+        brightCyan: '#5ee9f5',
+        brightWhite: '#ffffff',
+      };
+    }
+    return {
+      background: '#ffffff',
+      foreground: '#162033',
+      cursor: '#162033',
+      selectionBackground: '#dbe3ff',
+      black: '#172131',
+      red: '#d94848',
+      green: '#1f9d61',
+      yellow: '#d17b17',
+      blue: '#4263eb',
+      magenta: '#9333ea',
+      cyan: '#0891b2',
+      white: '#f3f6fb',
+      brightBlack: '#5d6980',
+      brightRed: '#ef4444',
+      brightGreen: '#22c55e',
+      brightYellow: '#f59e0b',
+      brightBlue: '#6366f1',
+      brightMagenta: '#a855f7',
+      brightCyan: '#06b6d4',
+      brightWhite: '#ffffff',
+    };
+  }
+
+  /**
+   * Apply terminal background mode to all open tabs and persist the setting.
+   * @param {string} mode - 'theme', 'original', or 'custom'
+   */
+  function _applyTerminalBgMode(mode) {
+    _terminalBgMode = mode;
+    document.documentElement.setAttribute('data-terminal-bg', mode);
+
+    // Toggle CSS class on terminal body
+    if (_body) {
+      _body.classList.remove('terminal-body--original', 'terminal-body--custom');
+      if (mode === 'original') {
+        _body.classList.add('terminal-body--original');
+      } else if (mode === 'custom') {
+        _body.classList.add('terminal-body--custom');
+        _applyCustomBgImage();
+      }
+    }
+
+    // Update all open xterm instances
+    var theme = _getTerminalTheme(mode);
+    for (var i = 0; i < _tabs.length; i++) {
+      var tab = _tabs[i];
+      if (tab.xterm) {
+        tab.xterm.options.theme = theme;
+      }
+    }
+
+    _saveTerminalBgMode();
+    _updateBgModeButton();
+    _updateCustomBgControls();
+  }
+
+  /**
+   * Apply custom background image to terminal body.
+   */
+  function _applyCustomBgImage() {
+    if (!_body) return;
+    if (_customBgImage) {
+      // Store background image URL in CSS variable for pseudo-element
+      _body.style.setProperty('--custom-bg-image', 'url(' + _customBgImage + ')');
+      _body.style.setProperty('--custom-bg-opacity', _customBgOpacity);
+    } else {
+      _body.style.removeProperty('--custom-bg-image');
+      _body.style.removeProperty('--custom-bg-opacity');
+    }
+  }
+
+  /**
+   * Migrate legacy base64 data URL to server-side file.
+   * Converts the data URL to a Blob, uploads it, and updates stored URL.
+   * @param {string} dataUrl - Legacy base64 data URL
+   */
+  function _migrateBgImageToServer(dataUrl) {
+    // Convert data URL to Blob
+    var parts = dataUrl.split(',');
+    if (parts.length !== 2) return;
+    var mime = parts[0].match(/:(.*?);/);
+    if (!mime) return;
+    var bstr = atob(parts[1]);
+    var n = bstr.length;
+    var u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    var blob = new Blob([u8arr], { type: mime[1] });
+    var ext = (mime[1].split('/')[1] || 'png').split(';')[0];
+    var filename = 'terminal-bg-migrated.' + ext;
+    var formData = new FormData();
+    formData.append('file', blob, filename);
+    fetch('/v1/webui/bg-image', { method: 'POST', body: formData })
+      .then(function(resp) { return resp.json(); })
+      .then(function(data) {
+        if (data && data.url) {
+          _customBgImage = data.url;
+          _applyCustomBgImage();
+          _saveTerminalBgMode();
+        }
+      })
+      .catch(function() {});
+  }
+
+  /**
+   * Set custom background image from file input.
+   * Uploads the image to the server and stores the URL path.
+   * @param {File} file - Image file
+   */
+  function _setCustomBgImage(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    var formData = new FormData();
+    formData.append('file', file);
+    fetch('/v1/webui/bg-image', { method: 'POST', body: formData })
+      .then(function(resp) { return resp.json(); })
+      .then(function(data) {
+        if (data && data.url) {
+          _customBgImage = data.url;
+          _applyCustomBgImage();
+          _saveTerminalBgMode();
+        }
+      })
+      .catch(function() {});
+  }
+
+  /**
+   * Clear custom background image.
+   */
+  function _clearCustomBgImage() {
+    _customBgImage = '';
+    _customBgOpacity = 0.3;
+    _applyCustomBgImage();
+    _saveTerminalBgMode();
+  }
+
+  /**
+   * Set custom background opacity.
+   * @param {number} opacity - Value between 0 and 1
+   */
+  function _setCustomBgOpacity(opacity) {
+    _customBgOpacity = Math.max(0, Math.min(1, opacity));
+    if (_body) {
+      // Update CSS variable for background opacity (affects pseudo-element only)
+      _body.style.setProperty('--custom-bg-opacity', _customBgOpacity);
+    }
+    _saveTerminalBgMode();
+  }
+
+  /**
+   * Toggle between background modes: theme -> original -> custom -> theme
+   */
+  function _toggleTerminalBgMode() {
+    var modes = ['theme', 'original', 'custom'];
+    var idx = modes.indexOf(_terminalBgMode);
+    var next = modes[(idx + 1) % modes.length];
+    _applyTerminalBgMode(next);
+  }
+
+  /**
+   * Get display label for current background mode.
+   */
+  function _getBgModeLabel() {
+    var labels = {
+      'original': '\u7ECF\u5178\u9ED1\u8272',
+      'custom': '\u81EA\u5B9A\u4E49\u56FE\u7247',
+      'theme': 'Provider \u4E3B\u9898'
+    };
+    return labels[_terminalBgMode] || 'Provider \u4E3B\u9898';
+  }
+
+  /**
+   * Update the background mode button display.
+   */
+  function _updateBgModeButton() {
+    var iconEl = document.getElementById('terminalBgModeIcon');
+    var labelEl = document.getElementById('terminalBgModeLabel');
+    var icons = {
+      'original': '\u263E', // ☾ moon
+      'custom': '\u25A3',   // ▣ image
+      'theme': '\u2600'     // ☀ sun
+    };
+    if (iconEl) {
+      iconEl.textContent = icons[_terminalBgMode] || '\u2600';
+    }
+    if (labelEl) {
+      labelEl.textContent = _getBgModeLabel();
+    }
+  }
+
+  /**
+   * Update custom background controls visibility and state.
+   */
+  function _updateCustomBgControls() {
+    var controls = document.getElementById('terminalCustomBgControls');
+    var opacityRange = document.getElementById('terminalBgOpacityRange');
+
+    if (controls) {
+      controls.style.display = _terminalBgMode === 'custom' ? 'flex' : 'none';
+    }
+
+    if (opacityRange) {
+      opacityRange.value = Math.round(_customBgOpacity * 100);
+    }
+  }
+
+  /**
+   * Save terminal background mode to持久化 storage.
+   */
+  async function _saveTerminalBgMode() {
+    try {
+      if (typeof persistSave === 'function') {
+        var existing = await persistLoad('terminals.json') || {};
+        existing.bgMode = _terminalBgMode;
+        if (_terminalBgMode === 'custom') {
+          existing.bgImage = _customBgImage;
+          existing.bgOpacity = _customBgOpacity;
+        } else {
+          // Clear custom settings when not in custom mode
+          delete existing.bgImage;
+          delete existing.bgOpacity;
+        }
+        await persistSave('terminals.json', existing);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * Load terminal background mode from持久化 storage.
+   * Handles both legacy data URLs and new server-side file paths.
+   */
+  async function _loadTerminalBgMode() {
+    try {
+      if (typeof persistLoad === 'function') {
+        var data = await persistLoad('terminals.json');
+        if (data && data.bgMode) {
+          _terminalBgMode = data.bgMode;
+        }
+        if (data && data.bgImage) {
+          // Legacy data URL: migrate to server-side file
+          if (data.bgImage.indexOf('data:') === 0) {
+            _migrateBgImageToServer(data.bgImage);
+          } else {
+            _customBgImage = data.bgImage;
+          }
+        }
+        if (data && typeof data.bgOpacity === 'number') {
+          _customBgOpacity = data.bgOpacity;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    // Apply the loaded mode
+    _applyTerminalBgMode(_terminalBgMode);
   }
 
   // DOM references (set in init)
@@ -99,10 +472,10 @@ var TerminalManager = (function () {
           }
           // Persist the state
           (async function () {
-            var existing = await persistLoad('config.toml') || {};
+            var existing = await persistLoad('terminals.json') || {};
             existing.layout = (typeof _tabLayoutConfig !== 'undefined') ? _tabLayoutConfig.layout : 'horizontal';
             existing.sidebarCompressed = collapsed;
-            persistSave('config.toml', existing);
+            persistSave('terminals.json', existing);
           })();
         },
       });
@@ -134,6 +507,37 @@ var TerminalManager = (function () {
     // Load saved connections
     _loadSavedConnections();
 
+    // Load terminal background mode preference
+    _loadTerminalBgMode();
+
+    // Background mode button click handler
+    var bgModeBtn = document.getElementById('terminalBgModeBtn');
+    if (bgModeBtn) {
+      bgModeBtn.addEventListener('click', function () {
+        _toggleTerminalBgMode();
+        _updateBgModeButton();
+        _updateCustomBgControls();
+      });
+    }
+    _updateBgModeButton();
+
+    // Custom background controls
+    var bgImageBtn = document.getElementById('terminalBgImageBtn');
+    if (bgImageBtn) {
+      bgImageBtn.addEventListener('click', function () {
+        _showImagePicker();
+      });
+    }
+
+    var bgOpacityRange = document.getElementById('terminalBgOpacityRange');
+    if (bgOpacityRange) {
+      bgOpacityRange.addEventListener('input', function(e) {
+        _setCustomBgOpacity(parseInt(e.target.value) / 100);
+      });
+    }
+
+    _updateCustomBgControls();
+
     // Window resize: trigger fit on active terminal.
     // Per-tab ResizeObservers handle their own pane sizing,
     // but window resize may not fire ResizeObserver on hidden panes.
@@ -161,6 +565,17 @@ var TerminalManager = (function () {
 
     // Session discovery is handled by _probeForDiscovery() at the start
     // of init(), which uses a WebSocket to receive existing_sessions.
+  }
+
+  function _updateTabTitle(tab) {
+    if (!tab || !_bar) return;
+
+    var title = tab.name;
+    if (tab._hasRunningSubprocess && tab._childCommandLabel) {
+      title += ' [' + tab._childCommandLabel + ']';
+    }
+
+    _bar.setTitle(tab.id, title);
   }
 
   function _onActivate() {
@@ -207,6 +622,7 @@ var TerminalManager = (function () {
       options: options,
       _resizeObserver: null,
       _container: null,
+      _readOnly: false,
     };
 
     _tabs.push(tab);
@@ -216,7 +632,7 @@ var TerminalManager = (function () {
       _bar.addTab({
         id: tabId,
         type: 'terminal',
-        icon: '&#9002;_',
+        icon: '',
         title: name,
         closable: true,
         status: 'connecting',
@@ -286,12 +702,7 @@ var TerminalManager = (function () {
       lineHeight: 1.15,
       scrollback: 5000,
       allowProposedApi: true,
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-        selectionBackground: '#264f78',
-      },
+      theme: _getTerminalTheme(),
     });
 
     // Create and load FitAddon
@@ -334,6 +745,20 @@ var TerminalManager = (function () {
       }
     });
 
+    // Binary input handler for mouse events (TUI apps like htop, vim, mc).
+    // xterm.js emits binary mouse protocol data via onBinary when the
+    // application enables mouse tracking (DECSET 1000/1002/1003).
+    xterm.onBinary(function (data) {
+      if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+        tab.ws.send(JSON.stringify({ type: 'input', data: data }));
+      }
+    });
+
+    // Ensure xterm gets focus on click inside its container.
+    xtermContainer.addEventListener('click', function () {
+      xterm.focus();
+    });
+
     // Connect WebSocket
     _connectWebSocket(tab);
 
@@ -358,6 +783,9 @@ var TerminalManager = (function () {
     tab.ws = ws;
 
     ws.onopen = function () {
+      // Reset pending DEC strip state for new connection
+      _pendingDecStrip = '';
+
       // Send init message with terminal dimensions and connection parameters
       var cols = tab.xterm ? tab.xterm.cols : 80;
       var rows = tab.xterm ? tab.xterm.rows : 24;
@@ -413,16 +841,32 @@ var TerminalManager = (function () {
           if (_bar) _bar.setStatus(tab.id, 'disconnected');
         } else if (msg.type === 'exit') {
           if (tab.xterm) {
-            tab.xterm.write(_stripDecResponses(
-              '\r\n\x1b[33m[\u8FDB\u7A0B\u5DF2\u9000\u51FA\uFF0C\u9000\u51FA\u7801 ' +
-              msg.code + ']\x1b[0m'
-            ));
+            if (msg.code === -1) {
+              // Non-reattachable session (recovered after server restart)
+              tab.xterm.write(_stripDecResponses(
+                '\r\n\x1b[33m[\u6B64\u4F1A\u8BDD\u4E3A\u5386\u53F2\u8BB0\u5F55\uFF0C\u8FDB\u7A0B\u5DF2\u4E0D\u53EF\u4EA4\u4E92]\x1b[0m\r\n'
+              ));
+              tab._readOnly = true;
+              if (_bar) _bar.setTitle(tab.id, tab.name + ' [\u5386\u53F2]');
+            } else {
+              tab.xterm.write(_stripDecResponses(
+                '\r\n\x1b[33m[\u8FDB\u7A0B\u5DF2\u9000\u51FA\uFF0C\u9000\u51FA\u7801 ' +
+                msg.code + ']\x1b[0m'
+              ));
+            }
           }
           tab.status = 'disconnected';
           if (_bar) _bar.setStatus(tab.id, 'disconnected');
         } else if (msg.type === 'session_closed') {
           // Backend confirms the session was killed (response to close_session)
           // Tab is already being cleaned up by closeTab()
+        } else if (msg.type === 'metadata') {
+          // Subprocess monitoring metadata
+          if (msg.has_running_subprocess !== undefined) {
+            tab._hasRunningSubprocess = msg.has_running_subprocess;
+            tab._childCommandLabel = msg.child_command_label || null;
+            _updateTabTitle(tab);
+          }
         } else if (msg.type === 'existing_sessions') {
           // Backend advertises surviving sessions from a previous connection.
           // Recreate tab UI and reconnect WebSocket for each alive session.
@@ -492,6 +936,7 @@ var TerminalManager = (function () {
         options: {},
         _resizeObserver: null,
         _container: null,
+        _readOnly: false,
       };
 
       _tabs.push(tab);
@@ -501,7 +946,7 @@ var TerminalManager = (function () {
         _bar.addTab({
           id: s.session_id,
           type: 'terminal',
-          icon: '&#9002;_',
+          icon: '',
           title: name,
           closable: true,
           status: 'connecting',
@@ -752,10 +1197,26 @@ var TerminalManager = (function () {
       { label: '\u91CD\u547D\u540D', action: function () { _promptRename(tabId); } },
       { label: '\u91CD\u65B0\u8FDE\u63A5', action: function () { _reconnectTab(tabId); } },
       { separator: true },
-      { label: '\u5173\u95ED', action: function () { closeTab(tabId); } },
-      { label: '\u5173\u95ED\u5176\u4ED6', action: function () { closeOtherTabs(tabId); } },
-      { label: '\u5173\u95ED\u5168\u90E8', action: function () { closeAllTabs(); }, danger: true },
+      { label: '\u6E05\u9664\u5386\u53F2', action: function () { _clearHistory(tabId); } },
+      { label: '\u91CD\u542F\u7EC8\u7AEF', action: function () { _restartTerminal(tabId); } },
+      { separator: true },
+      { label: '\u80CC\u666F\u6A21\u5F0F: ' + _getBgModeLabel(), action: function () { _toggleTerminalBgMode(); } },
     ];
+
+    // Add custom background options if in custom mode
+    if (_terminalBgMode === 'custom') {
+      items.push({ separator: true });
+      items.push({ label: '\u9009\u62E9\u80CC\u666F\u56FE\u7247', action: function () { _showImagePicker(); } });
+      if (_customBgImage) {
+        items.push({ label: '\u6E05\u9664\u80CC\u666F\u56FE\u7247', action: function () { _clearCustomBgImage(); } });
+        items.push({ label: '\u900F\u660E\u5EA6: ' + Math.round(_customBgOpacity * 100) + '%', action: function () { _cycleCustomBgOpacity(); } });
+      }
+    }
+
+    items.push({ separator: true });
+    items.push({ label: '\u5173\u95ED', action: function () { closeTab(tabId); } });
+    items.push({ label: '\u5173\u95ED\u5176\u4ED6', action: function () { closeOtherTabs(tabId); } });
+    items.push({ label: '\u5173\u95ED\u5168\u90E8', action: function () { closeAllTabs(); }, danger: true });
 
     for (var i = 0; i < items.length; i++) {
       if (items[i].separator) {
@@ -799,10 +1260,43 @@ var TerminalManager = (function () {
   function _promptRename(tabId) {
     var tab = _getTabById(tabId);
     if (!tab) return;
-    var newName = prompt('\u91CD\u547D\u540D\u7EC8\u7AEF\u6807\u7B7E:', tab.name);
-    if (newName && newName.trim()) {
-      renameTab(tabId, newName.trim());
-    }
+    showInputDialog('输入新的终端标签名称:', {
+      title: '重命名终端标签',
+      defaultValue: tab.name,
+      placeholder: '终端标签名称'
+    }).then(function(newName) {
+      if (newName && newName.trim()) {
+        renameTab(tabId, newName.trim());
+      }
+    });
+  }
+
+  /**
+   * Show image picker dialog for custom background.
+   */
+  function _showImagePicker() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    input.addEventListener('change', function(e) {
+      if (e.target.files && e.target.files[0]) {
+        _setCustomBgImage(e.target.files[0]);
+      }
+      document.body.removeChild(input);
+    });
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  /**
+   * Cycle custom background opacity: 0.1 -> 0.3 -> 0.5 -> 0.7 -> 0.9 -> 0.1
+   */
+  function _cycleCustomBgOpacity() {
+    var steps = [0.1, 0.3, 0.5, 0.7, 0.9];
+    var idx = steps.indexOf(_customBgOpacity);
+    var next = steps[(idx + 1) % steps.length];
+    _setCustomBgOpacity(next);
   }
 
   function _reconnectTab(tabId) {
@@ -848,12 +1342,7 @@ var TerminalManager = (function () {
           lineHeight: 1.15,
           scrollback: 5000,
           allowProposedApi: true,
-          theme: {
-            background: '#1e1e1e',
-            foreground: '#d4d4d4',
-            cursor: '#d4d4d4',
-            selectionBackground: '#264f78',
-          },
+          theme: _getTerminalTheme(),
         });
         var fitAddon = new FitAddon.FitAddon();
         xterm.loadAddon(fitAddon);
@@ -881,11 +1370,63 @@ var TerminalManager = (function () {
           }
         });
 
+        // Re-attach binary input handler for mouse events (TUI apps)
+        xterm.onBinary(function (data) {
+          if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+            tab.ws.send(JSON.stringify({ type: 'input', data: data }));
+          }
+        });
+
+        // Re-attach click-to-focus
+        xtermContainer.addEventListener('click', function () {
+          xterm.focus();
+        });
+
         xterm.write(_stripDecResponses('\x1b[33m[\u91CD\u65B0\u8FDE\u63A5\u4E2D...]\x1b[0m\r\n'));
       }
     }
 
     _connectWebSocket(tab);
+  }
+
+  function _clearHistory(tabId) {
+    var tab = _getTabById(tabId);
+    if (!tab || !tab.ws || tab.ws.readyState !== WebSocket.OPEN) return;
+
+    try {
+      tab.ws.send(JSON.stringify({ type: 'clear' }));
+      if (tab.xterm) {
+        tab.xterm.clear();
+        tab.xterm.write('\x1b[33m[\u5386\u53F2\u5DF2\u6E05\u9664]\x1b[0m\r\n');
+      }
+    } catch (e) {
+      console.error('Failed to send clear command:', e);
+    }
+  }
+
+  function _restartTerminal(tabId) {
+    var tab = _getTabById(tabId);
+    if (!tab || !tab.ws || tab.ws.readyState !== WebSocket.OPEN) return;
+
+    showConfirmDialog('确定要重启终端吗？当前进程将被终止。', {
+      title: '重启终端',
+      confirmText: '重启',
+      cancelText: '取消'
+    }).then(function(confirmed) {
+      if (!confirmed) return;
+
+      try {
+        var cols = tab.xterm ? tab.xterm.cols : 80;
+        var rows = tab.xterm ? tab.xterm.rows : 24;
+        tab.ws.send(JSON.stringify({ type: 'restart', cols: cols, rows: rows }));
+        if (tab.xterm) {
+          tab.xterm.clear();
+          tab.xterm.write('\x1b[33m[\u91CD\u542F\u4E2D...]\x1b[0m\r\n');
+        }
+      } catch (e) {
+        console.error('Failed to send restart command:', e);
+      }
+    });
   }
 
   // ========================= Chooser Tab (New Tab Page) =========================
@@ -1005,7 +1546,7 @@ var TerminalManager = (function () {
     // Update TabBar display
     if (_bar) {
       _bar.setTitle(tabId, tab.name);
-      _bar.setIcon(tabId, '&#9002;_');
+      _bar.setIcon(tabId, '');
       _bar.setStatus(tabId, 'connecting');
     }
 
@@ -1285,7 +1826,7 @@ var TerminalManager = (function () {
     // Update TabBar display
     if (_bar) {
       _bar.setTitle(tabId, tab.name);
-      _bar.setIcon(tabId, '&#9002;_');
+      _bar.setIcon(tabId, '');
       _bar.setStatus(tabId, 'connecting');
     }
 
@@ -1311,7 +1852,9 @@ var TerminalManager = (function () {
   async function _saveSavedConnections() {
     try {
       if (typeof persistSave === 'function') {
-        await persistSave('terminals.json', { connections: _savedConnections });
+        var existing = await persistLoad('terminals.json') || {};
+        existing.connections = _savedConnections;
+        await persistSave('terminals.json', existing);
       }
     } catch (e) {
       // ignore
@@ -1336,6 +1879,16 @@ var TerminalManager = (function () {
     closeOtherTabs: closeOtherTabs,
     renameTab: renameTab,
     showSSHDialog: _showSSHDialog,
+    refreshTheme: function () {
+      if (_terminalBgMode === 'theme') {
+        var theme = _getTerminalTheme('theme');
+        for (var i = 0; i < _tabs.length; i++) {
+          if (_tabs[i].xterm) {
+            _tabs[i].xterm.options.theme = theme;
+          }
+        }
+      }
+    },
   };
 })();
 

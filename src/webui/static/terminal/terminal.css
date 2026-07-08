@@ -8,11 +8,11 @@
 .terminal-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 260px);
-  min-height: 400px;
+  flex: 1;
+  min-height: 0;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
 }
@@ -26,9 +26,111 @@
 
 .terminal-body {
   flex: 1;
+  min-height: 0;
   position: relative;
   overflow: hidden;
+  background: var(--bg);
+}
+
+/* Classic black terminal background mode */
+.terminal-body.terminal-body--original {
   background: #1e1e1e;
+}
+
+/* Custom background image mode - use pseudo-element for background */
+.terminal-body.terminal-body--custom {
+  background-color: var(--bg);
+  position: relative;
+}
+
+.terminal-body.terminal-body--custom::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: var(--custom-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--custom-bg-opacity, 0.3);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure terminal content stays above background */
+.terminal-body.terminal-body--custom > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ========================= Custom Background Controls ========================= */
+
+.terminal-custom-bg-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 0;
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+}
+
+.terminal-bg-opacity-range {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border);
+  border-radius: 0;
+  outline: none;
+}
+
+.terminal-bg-opacity-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.terminal-bg-opacity-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+
+/* ========================= Background Mode Button ========================= */
+
+.terminal-bg-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 0;
+  border: 1px solid var(--border);
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.terminal-bg-mode-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.terminal-bg-mode-btn .terminal-bg-mode-icon {
+  font-size: 14px;
 }
 
 .terminal-container.tab-layout-vertical .terminal-body {
@@ -82,7 +184,7 @@
 
 .terminal-empty-state-actions button {
   padding: 10px 20px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 14px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -104,7 +206,7 @@
   z-index: 10000;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 6px;
   min-width: 160px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
@@ -115,7 +217,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 13px;
   cursor: pointer;
   color: var(--text);
@@ -156,7 +258,7 @@
 .terminal-ssh-dialog {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 24px;
   width: 100%;
   max-width: 440px;
@@ -190,7 +292,7 @@
 .terminal-ssh-field textarea {
   width: 100%;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
@@ -228,7 +330,7 @@
 
 .terminal-ssh-actions button {
   padding: 10px 20px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 14px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -278,7 +380,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 13px;
   transition: background 0.1s;

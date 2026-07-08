@@ -31,88 +31,462 @@ const refreshState = document.getElementById('refreshState');
 const toastWrap = document.getElementById('toastWrap');
 const socketNotice = document.getElementById('socketNotice');
 let logsSocket = null;
-let _logLineCount = 0;
 let _logEntries = [];
-const _logMaxEntries = 2000;
+const _logMaxEntries = 5000;
+let _logAutoScroll = localStorage.getItem('provider.logAutoScroll') !== 'false';
+let _logLevelFilter = localStorage.getItem('provider.logLevelFilter') || 'INFO';
+let _logSearchQuery = '';
+let _logSearchRegex = localStorage.getItem('provider.logSearchRegex') === 'true';
+let _logModuleFilter = 'all';
+let _logFontSize = localStorage.getItem('provider.logFontSize') || 'small';
+let _logDateFrom = localStorage.getItem('provider.logDateFrom') || '';
+let _logDateTo = localStorage.getItem('provider.logDateTo') || '';
+let _logFilterExpanded = localStorage.getItem('provider.logFilterExpanded') === 'true';
+let _uniqueModules = [];
+let _logSeenIds = {};  // 去重
 
-function ansiToHtml(text) {
-  var escaped = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  var colors = {
-    '30': '#555', '31': '#e74c3c', '32': '#2ecc71', '33': '#f1c40f',
-    '34': '#3498db', '35': '#9b59b6', '36': '#1abc9c', '37': '#ccc',
-    '90': '#777', '91': '#ff6b6b', '92': '#51cf66', '93': '#ffd43b',
-    '94': '#74c0fc', '95': '#da77f2', '96': '#63e6be', '97': '#fff'
-  };
-  var result = '';
-  var openSpans = 0;
-  var regex = /\x1b\[([\d;]*)m/g;
-  var lastIndex = 0;
-  var match;
-  while ((match = regex.exec(escaped)) !== null) {
-    result += escaped.substring(lastIndex, match.index);
-    var codes = match[1].split(';');
-    for (var i = 0; i < codes.length; i++) {
-      var code = codes[i];
-      if (code === '0' || code === '') {
-        while (openSpans > 0) { result += '</span>'; openSpans--; }
-      } else if (code === '1') {
-        result += '<span style="font-weight:bold">'; openSpans++;
-      } else if (code === '2') {
-        result += '<span style="opacity:0.7">'; openSpans++;
-      } else if (code === '3') {
-        result += '<span style="font-style:italic">'; openSpans++;
-      } else if (code === '4') {
-        result += '<span style="text-decoration:underline">'; openSpans++;
-      } else if (colors[code]) {
-        result += '<span style="color:' + colors[code] + '">'; openSpans++;
-      } else {
-        var codeNum = parseInt(code, 10);
-        if (codeNum >= 40 && codeNum <= 47) {
-          // Background colors — skip silently
-        } else if (codeNum >= 100 && codeNum <= 107) {
-          // Bright background colors — skip silently
-        }
+// Virtual scrolling state
+let _logFilteredCache = null;  // cached filtered entries (invalidated on filter change)
+const _VS_DEFAULT_ROW_HEIGHT = 26;
+const _VS_BUFFER = 50;
+let _vsRenderedRange = { start: -1, end: -1 };
+let _vsRowHeights = {};  // cache for measured row heights
+let _vsMeasuredHeights = new Set();  // track which rows have been measured
+
+const _LOG_LEVEL_PRIORITY = { DEBUG: 10, INFO: 20, WARNING: 30, ERROR: 40, CRITICAL: 50, SUCCESS: 25 };
+
+// ========================= Log Helpers =========================
+
+function _escapeHtml(text) {
+  var d = document.createElement('div');
+  d.textContent = String(text);
+  return d.innerHTML;
+}
+
+function _formatLogTimestamp(ts) {
+  if (!ts) return '--:--:--';
+  var match = ts.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}:\d{2}:\d{2})/);
+  if (match) return match[2] + '-' + match[3] + ' ' + match[4];
+  return ts;
+}
+
+function _formatLogLevel(level) {
+  if (!level) return 'INFO';
+  if (level === 'WARNING') return 'WARN';
+  if (level === 'CRITICAL') return 'CRIT';
+  return level;
+}
+
+function _logEntryMatchesFilter(entry) {
+  if (_logLevelFilter !== 'all') {
+    var entryPri = _LOG_LEVEL_PRIORITY[entry.level] || 0;
+    var filterPri = _LOG_LEVEL_PRIORITY[_logLevelFilter] || 0;
+    if (entryPri < filterPri) return false;
+  }
+  if (_logModuleFilter !== 'all' && entry.module !== _logModuleFilter) return false;
+  if (_logSearchQuery) {
+    var msg = entry.message || '';
+    var mod = entry.module || '';
+    if (_logSearchRegex) {
+      try {
+        var re = new RegExp(_logSearchQuery, 'i');
+        if (!re.test(msg) && !re.test(mod)) return false;
+      } catch (e) {
+        // Invalid regex — fall back to literal substring match
+        var q = _logSearchQuery.toLowerCase();
+        if (msg.toLowerCase().indexOf(q) === -1 && mod.toLowerCase().indexOf(q) === -1) return false;
+      }
+    } else {
+      var q = _logSearchQuery.toLowerCase();
+      if (msg.toLowerCase().indexOf(q) === -1 && mod.toLowerCase().indexOf(q) === -1) return false;
+    }
+  }
+  // Date range filter
+  if (_logDateFrom || _logDateTo) {
+    var ts = entry.timestamp || '';
+    if (ts) {
+      var entryDate = ts.substring(0, 10); // YYYY-MM-DD
+      if (_logDateFrom && entryDate < _logDateFrom) return false;
+      if (_logDateTo && entryDate > _logDateTo) return false;
+    }
+  }
+  return true;
+}
+
+// ========================= Virtual Scrolling =========================
+
+function _invalidateLogFilterCache() {
+  _logFilteredCache = null;
+  _vsRenderedRange = { start: -1, end: -1 };
+  _vsRowHeights = {};
+  _vsMeasuredHeights = new Set();
+}
+
+function _getFilteredLogs() {
+  if (_logFilteredCache !== null) return _logFilteredCache;
+  _logFilteredCache = [];
+  for (var i = _logEntries.length - 1; i >= 0; i--) {
+    if (_logEntryMatchesFilter(_logEntries[i])) {
+      _logFilteredCache.push(_logEntries[i]);
+    }
+  }
+  return _logFilteredCache;
+}
+
+function _getEstimatedRowHeight(idx) {
+  return _vsRowHeights[idx] || _VS_DEFAULT_ROW_HEIGHT;
+}
+
+function _getRowTop(idx) {
+  var top = 0;
+  for (var i = 0; i < idx; i++) {
+    top += _getEstimatedRowHeight(i);
+  }
+  return top;
+}
+
+function _getTotalHeight() {
+  var total = 0;
+  var filtered = _getFilteredLogs();
+  for (var i = 0; i < filtered.length; i++) {
+    total += _getEstimatedRowHeight(i);
+  }
+  return total;
+}
+
+function _measureRowHeight(dom, idx) {
+  var h = dom.getBoundingClientRect().height;
+  if (h > 0 && Math.abs(h - _getEstimatedRowHeight(idx)) > 1) {
+    _vsRowHeights[idx] = h;
+    _vsMeasuredHeights.add(idx);
+    return true;
+  }
+  return false;
+}
+
+function _renderVisibleLogs() {
+  var box = document.getElementById('logBox');
+  if (!box) return;
+  var filtered = _getFilteredLogs();
+  var totalHeight = _getTotalHeight();
+  var scrollTop = box.scrollTop;
+  var viewportH = box.clientHeight;
+
+  // Ensure spacer exists for scroll height
+  var spacer = box.querySelector('.log-vs-spacer');
+  if (!spacer) {
+    spacer = document.createElement('div');
+    spacer.className = 'log-vs-spacer';
+    spacer.style.cssText = 'width:1px;pointer-events:none;';
+    box.appendChild(spacer);
+  }
+  spacer.style.height = totalHeight + 'px';
+
+  // Calculate visible range using cumulative heights
+  var startIdx = 0;
+  var accH = 0;
+  while (startIdx < filtered.length && accH + _getEstimatedRowHeight(startIdx) < scrollTop) {
+    accH += _getEstimatedRowHeight(startIdx);
+    startIdx++;
+  }
+  startIdx = Math.max(0, startIdx - _VS_BUFFER);
+
+  var endIdx = startIdx;
+  accH = _getRowTop(startIdx);
+  while (endIdx < filtered.length && accH < scrollTop + viewportH) {
+    accH += _getEstimatedRowHeight(endIdx);
+    endIdx++;
+  }
+  endIdx = Math.min(filtered.length, endIdx + _VS_BUFFER);
+
+  // Skip if range unchanged
+  if (startIdx === _vsRenderedRange.start && endIdx === _vsRenderedRange.end) return;
+  _vsRenderedRange = { start: startIdx, end: endIdx };
+
+  // Remove old log entries (keep spacer)
+  var children = box.children;
+  for (var i = children.length - 1; i >= 0; i--) {
+    if (!children[i].classList.contains('log-vs-spacer')) {
+      box.removeChild(children[i]);
+    }
+  }
+
+  // Insert new entries before spacer
+  for (var j = startIdx; j < endIdx; j++) {
+    var dom = _createLogEntryDOM(filtered[j]);
+    dom.style.position = 'absolute';
+    dom.style.top = _getRowTop(j) + 'px';
+    dom.style.left = '0';
+    dom.style.right = '0';
+    box.insertBefore(dom, spacer);
+  }
+
+  // Measure heights after rendering
+  requestAnimationFrame(function() {
+    var needReRender = false;
+    var children = box.children;
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].classList.contains('log-vs-spacer')) continue;
+      var idx = startIdx + i;
+      if (idx < filtered.length && _measureRowHeight(children[i], idx)) {
+        needReRender = true;
       }
     }
-    lastIndex = regex.lastIndex;
-  }
-  result += escaped.substring(lastIndex);
-  while (openSpans > 0) { result += '</span>'; openSpans--; }
-  return result;
+    if (needReRender) {
+      _vsRenderedRange = { start: -1, end: -1 };
+      _renderVisibleLogs();
+    }
+  });
 }
 
-function log(message) {
-  // Skip timestamp prefix if message already starts with a date pattern (MM-DD from WebSocket)
-  var hasDate = /^\d{2}-\d{2}\s/.test(message);
-  var line = hasDate ? message : ('[' + new Date().toLocaleTimeString() + '] ' + message);
-  _logEntries.unshift({ html: ansiToHtml(line) });
+function _setupLogVirtualScroll() {
+  var box = document.getElementById('logBox');
+  if (!box || box._vsSetup) return;
+  box._vsSetup = true;
+  box.style.position = 'relative';
+  box.addEventListener('scroll', function() {
+    requestAnimationFrame(_renderVisibleLogs);
+  });
+}
 
-  // Prepend new entry to DOM
+function _createLogEntryDOM(entry) {
   var div = document.createElement('div');
-  div.className = 'log-line';
-  div.innerHTML = '<span class="log-ln">1</span>' + ansiToHtml(line);
-  if (logBox.firstChild) {
-    logBox.insertBefore(div, logBox.firstChild);
+  div.className = 'log-entry';
+  var levelText = _formatLogLevel(entry.level || 'INFO');
+  var moduleStyle = entry.moduleColor ? ' style="color:' + _escapeHtml(entry.moduleColor) + '"' : '';
+  div.innerHTML =
+    '<span class="log-time">' + _escapeHtml(_formatLogTimestamp(entry.timestamp)) + '</span>' +
+    '<span class="log-level log-level-' + _escapeHtml(entry.level || 'INFO') + '">' + levelText + '</span>' +
+    '<span class="log-module"' + moduleStyle + '>' + _escapeHtml(entry.module || '') + '</span>' +
+    '<span class="log-msg">' + _escapeHtml(entry.message || '') + '</span>';
+  return div;
+}
+
+function _updateUniqueModules() {
+  var seen = {};
+  for (var i = 0; i < _logEntries.length; i++) {
+    var mod = _logEntries[i].module;
+    if (mod && !seen[mod]) {
+      seen[mod] = true;
+      _uniqueModules.push(mod);
+    }
+  }
+  _uniqueModules.sort();
+  _rebuildModuleSelect();
+}
+
+function _rebuildModuleSelect() {
+  var sel = document.getElementById('logModuleSelect');
+  if (!sel) return;
+  var prev = sel.value;
+  
+  // Build options array
+  var opts = [{ value: 'all', text: '全部模块' }];
+  for (var i = 0; i < _uniqueModules.length; i++) {
+    opts.push({ value: _uniqueModules[i], text: _uniqueModules[i] });
+  }
+  
+  // Update CustomDropdown if available, otherwise fallback to native select
+  var dropdown = window._dropdowns && window._dropdowns['logModuleSelect'];
+  if (dropdown && typeof dropdown.setOptions === 'function') {
+    dropdown.setOptions(opts, false);
+    dropdown.setValue(prev || 'all');
   } else {
-    logBox.appendChild(div);
-  }
-
-  // Remove excess entries from both array and DOM
-  while (_logEntries.length > _logMaxEntries) {
-    _logEntries.pop();
-    if (logBox.lastChild) logBox.removeChild(logBox.lastChild);
-  }
-
-  // Renumber all visible entries: #1 at top (newest), increasing downward
-  var lines = logBox.children;
-  for (var i = 0; i < lines.length; i++) {
-    var ln = lines[i].querySelector('.log-ln');
-    if (ln) ln.textContent = i + 1;
+    // Fallback to native select manipulation
+    sel.innerHTML = '<option value="all">全部模块</option>';
+    for (var i = 0; i < _uniqueModules.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = _uniqueModules[i];
+      opt.textContent = _uniqueModules[i];
+      sel.appendChild(opt);
+    }
+    sel.value = prev || 'all';
   }
 }
+
+function _updateLogCount() {
+  var el = document.getElementById('logCount');
+  if (!el) return;
+  var total = _logEntries.length;
+  var visible = logBox ? logBox.children.length : 0;
+  el.textContent = visible + ' / ' + total + ' 条';
+}
+
+function _applyLogFontSize() {
+  var viewer = document.getElementById('logBox');
+  if (!viewer) return;
+  viewer.classList.remove('log-font-small', 'log-font-medium', 'log-font-large');
+  viewer.classList.add('log-font-' + _logFontSize);
+}
+
+function _toggleLogFilters() {
+  _logFilterExpanded = !_logFilterExpanded;
+  var panel = document.getElementById('logAdvancedFilters');
+  var icon = document.getElementById('logFilterToggleIcon');
+  var btn = document.getElementById('logFilterToggleBtn');
+  if (panel) panel.style.display = _logFilterExpanded ? '' : 'none';
+  if (icon) icon.innerHTML = _logFilterExpanded ? '&#9650;' : '&#9660;';
+  if (btn) btn.classList.toggle('active', _logFilterExpanded);
+  localStorage.setItem('provider.logFilterExpanded', String(_logFilterExpanded));
+}
+
+function _updateLogClearDateBtn() {
+  var btn = document.getElementById('logClearDateBtn');
+  if (btn) btn.style.display = (_logDateFrom || _logDateTo) ? '' : 'none';
+}
+
+// Legacy log() for backwards compatibility
+function log(message) {
+  addLogEntry({
+    id: '',
+    timestamp: new Date().toISOString(),
+    level: 'INFO',
+    module: '',
+    message: message,
+  });
+}
+
+// ========================= Log Entry =========================
+
+function addLogEntry(entry) {
+  // 去重
+  if (entry.id && _logSeenIds[entry.id]) return;
+  if (entry.id) {
+    _logSeenIds[entry.id] = true;
+    // 裁剪去重缓存
+    var keys = Object.keys(_logSeenIds);
+    if (keys.length > _logMaxEntries + 500) {
+      for (var k = 0; k < 500; k++) delete _logSeenIds[keys[k]];
+    }
+  }
+
+  _logEntries.unshift(entry);
+  while (_logEntries.length > _logMaxEntries) {
+    var removed = _logEntries.pop();
+    if (removed.id) delete _logSeenIds[removed.id];
+  }
+
+  // 更新模块列表
+  if (entry.module && _uniqueModules.indexOf(entry.module) === -1) {
+    _uniqueModules.push(entry.module);
+    _uniqueModules.sort();
+    _rebuildModuleSelect();
+  }
+
+  // Invalidate filter cache and re-render visible logs
+  _invalidateLogFilterCache();
+  if (_logEntryMatchesFilter(entry)) {
+    _renderVisibleLogs();
+    _logAutoScrollToBottom();
+  }
+  _updateLogCount();
+}
+
+// ========================= Log Filtering =========================
+
+function _logAutoScrollToBottom() {
+  if (!_logAutoScroll) return;
+  var box = document.getElementById('logBox');
+  if (box) {
+    requestAnimationFrame(function() {
+      box.scrollTop = box.scrollHeight;
+    });
+  }
+}
+
+function filterLogs() {
+  _invalidateLogFilterCache();
+  _setupLogVirtualScroll();
+  _renderVisibleLogs();
+  _logAutoScrollToBottom();
+  _updateLogCount();
+}
+
+function clearLogs() {
+  _logEntries = [];
+  _logSeenIds = {};
+  _uniqueModules = [];
+  _logFilteredCache = null;
+  _vsRenderedRange = { start: -1, end: -1 };
+  _vsRowHeights = {};
+  _vsMeasuredHeights = new Set();
+  var box = document.getElementById('logBox');
+  if (box) box.innerHTML = '';
+  _rebuildModuleSelect();
+  _updateLogCount();
+  toast('日志已清空', 'ok');
+}
+
+function exportLogs() {
+  var lines = [];
+  for (var i = _logEntries.length - 1; i >= 0; i--) {
+    var e = _logEntries[i];
+    lines.push(_formatLogTimestamp(e.timestamp) + ' [' + (e.level || '') + '] [' + (e.module || '') + '] ' + (e.message || ''));
+  }
+  var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  var now = new Date();
+  a.download = 'provider-logs-' + now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0') + '_' +
+    String(now.getHours()).padStart(2, '0') +
+    String(now.getMinutes()).padStart(2, '0') + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('日志已导出', 'ok');
+}
+
+function toggleAutoScroll() {
+  _logAutoScroll = !_logAutoScroll;
+  _updateAutoScrollBtn();
+  if (_logAutoScroll) _logAutoScrollToBottom();
+}
+
+function _updateAutoScrollBtn() {
+  var btn = document.getElementById('logAutoScrollBtn');
+  var icon = document.getElementById('logAutoScrollIcon');
+  if (btn) btn.classList.toggle('active', _logAutoScroll);
+  if (icon) icon.innerHTML = _logAutoScroll ? '&#9654;' : '&#9646;&#9646;';
+  localStorage.setItem('provider.logAutoScroll', String(_logAutoScroll));
+}
+
+function toggleLogRegex() {
+  _logSearchRegex = !_logSearchRegex;
+  _updateRegexBtn();
+  _invalidateLogFilterCache();
+  _renderVisibleLogs();
+}
+
+function _updateRegexBtn() {
+  var btn = document.getElementById('logRegexBtn');
+  if (btn) {
+    btn.classList.toggle('active', _logSearchRegex);
+    btn.title = _logSearchRegex ? '正则表达式搜索已开启' : '正则表达式搜索已关闭';
+  }
+  localStorage.setItem('provider.logSearchRegex', String(_logSearchRegex));
+}
+
+// ========================= Log Auto-Scroll Detection =========================
+
+(function _setupLogScrollDetection() {
+  var box = document.getElementById('logBox');
+  if (!box) return;
+  box.addEventListener('scroll', function() {
+    var distFromBottom = box.scrollHeight - box.scrollTop - box.clientHeight;
+    if (distFromBottom > 100 && _logAutoScroll) {
+      _logAutoScroll = false;
+      _updateAutoScrollBtn();
+    }
+    if (distFromBottom < 30 && !_logAutoScroll) {
+      _logAutoScroll = true;
+      _updateAutoScrollBtn();
+    }
+  });
+})();
 
 function toast(message, type) {
   const node = document.createElement('div');
@@ -164,6 +538,63 @@ function showConfirmDialog(message, options) {
     overlay.querySelector('.confirm-dialog-cancel').addEventListener('click', function() { close(false); });
     overlay.addEventListener('click', function(e) { if (e.target === overlay) close(false); });
   });
+}
+
+function showInputDialog(message, options) {
+  options = options || {};
+  var title = options.title || '输入';
+  var defaultValue = options.defaultValue || '';
+  var confirmText = options.confirmText || '确定';
+  var cancelText = options.cancelText || '取消';
+  var placeholder = options.placeholder || '';
+
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML =
+      '<div class="confirm-dialog">' +
+      '<div class="confirm-dialog-title">' + title + '</div>' +
+      '<div class="confirm-dialog-message">' + message + '</div>' +
+      '<input type="text" class="input-dialog-input" value="' + _escapeAttr(defaultValue) + '" placeholder="' + _escapeAttr(placeholder) + '">' +
+      '<div class="confirm-dialog-actions">' +
+      '<button class="confirm-dialog-btn confirm-dialog-cancel" type="button">' + cancelText + '</button>' +
+      '<button class="confirm-dialog-btn confirm-dialog-ok" type="button">' + confirmText + '</button>' +
+      '</div></div>';
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function() { overlay.classList.add('is-visible'); });
+
+    var input = overlay.querySelector('.input-dialog-input');
+    input.focus();
+    input.select();
+
+    function close(result) {
+      overlay.classList.remove('is-visible');
+      setTimeout(function() { overlay.remove(); resolve(result); }, 180);
+    }
+
+    function confirm() {
+      var value = input.value.trim();
+      close(value || null);
+    }
+
+    overlay.querySelector('.confirm-dialog-ok').addEventListener('click', confirm);
+    overlay.querySelector('.confirm-dialog-cancel').addEventListener('click', function() { close(null); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(null); });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); confirm(); }
+      if (e.key === 'Escape') close(null);
+    });
+  });
+}
+
+function _escapeAttr(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function loadSettings() {
@@ -268,6 +699,10 @@ function applyTheme() {
   themeState.textContent = 'theme: ' + state.settings.theme;
   document.getElementById('themeSelect').value = state.settings.theme;
   updateThemeIcon();
+  // Notify terminal module to refresh theme when in 'theme' mode
+  if (typeof TerminalManager !== 'undefined' && TerminalManager.refreshTheme) {
+    TerminalManager.refreshTheme();
+  }
 }
 
 function updateThemeIcon() {

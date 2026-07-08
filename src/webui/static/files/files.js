@@ -675,7 +675,7 @@ var FileManager = (function () {
     // File list area
     var listArea = document.createElement('div');
     listArea.className = 'files-list-area';
-    listArea.style.cssText = 'flex:1;overflow-y:auto;';
+    listArea.style.cssText = 'flex:1;min-height:0;';
 
     if (tab.loading) {
       listArea.innerHTML = '<div class="files-loading">加载中...</div>';
@@ -692,20 +692,22 @@ var FileManager = (function () {
         var table = _buildTable(tab);
         listArea.appendChild(table);
 
-        // Lazy-load scroll trigger for normal (non-virtual) table mode
-        if (!tab._lazyAllLoaded && tab._lazyTotal > tab.entries.length) {
-          listArea.addEventListener('scroll', function () {
-            if (tab._lazyLoadingMore || tab._lazyAllLoaded) return;
-            var scrollBottom = listArea.scrollTop + listArea.clientHeight;
-            if (scrollBottom >= listArea.scrollHeight - 200) {
-              _loadMore(tab);
-            }
-          });
-        }
+        // Lazy-load scroll trigger will be added after listArea is appended to _body
       }
     }
 
     _body.appendChild(listArea);
+
+    // Lazy-load scroll trigger for normal (non-virtual) table mode
+    if (!tab._scrollContainer && !tab._lazyAllLoaded && tab._lazyTotal > tab.entries.length) {
+      _body.addEventListener('scroll', function () {
+        if (tab._lazyLoadingMore || tab._lazyAllLoaded) return;
+        var scrollBottom = _body.scrollTop + _body.clientHeight;
+        if (scrollBottom >= _body.scrollHeight - 200) {
+          _loadMore(tab);
+        }
+      });
+    }
 
     // Drag-and-drop upload support on the list area
     _setupDragDrop(listArea, tab);
@@ -1626,16 +1628,20 @@ var FileManager = (function () {
   }
 
   function _promptNewFolder(tab) {
-    var name = prompt('新文件夹名称:');
-    if (!name || !name.trim()) return;
+    showInputDialog('输入新文件夹名称:', {
+      title: '新建文件夹',
+      placeholder: '文件夹名称'
+    }).then(function(name) {
+      if (!name || !name.trim()) return;
 
-    var newPath = _pathJoin(tab.path, name.trim());
+      var newPath = _pathJoin(tab.path, name.trim());
 
-    Api.post('/v1/webui/files/mkdir', { path: newPath }).then(function () {
-      if (typeof toast === 'function') toast('文件夹已创建', 'ok');
-      _loadDirectory(tab, tab.path);
-    }).catch(function (e) {
-      if (typeof toast === 'function') toast('失败: ' + e.message, 'error');
+      Api.post('/v1/webui/files/mkdir', { path: newPath }).then(function () {
+        if (typeof toast === 'function') toast('文件夹已创建', 'ok');
+        _loadDirectory(tab, tab.path);
+      }).catch(function (e) {
+        if (typeof toast === 'function') toast('失败: ' + e.message, 'error');
+      });
     });
   }
 

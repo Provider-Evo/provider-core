@@ -1,5 +1,3 @@
-document.getElementById('refreshButton').addEventListener('click', refreshAll);
-document.getElementById('refreshModelsButton').addEventListener('click', refreshModels);
 document.getElementById('fabThemeButton').addEventListener('click', function() {
   // Portable toggle: only switches between light and dark (no auto)
   var current = state.settings.theme;
@@ -59,13 +57,98 @@ document.getElementById('copyConfigButton').addEventListener('click', function()
   copyText(configJsonBox.textContent || '{}', '配置摘要已复制');
 });
 document.getElementById('clearLogButton').addEventListener('click', function() {
-  _logEntries = [];
-  _logLineCount = 0;
-  logBox.innerHTML = '';
-  toast('日志已清空', 'ok');
+  clearLogs();
 });
+document.getElementById('logExportBtn').addEventListener('click', function() {
+  exportLogs();
+});
+document.getElementById('logAutoScrollBtn').addEventListener('click', function() {
+  toggleAutoScroll();
+});
+document.getElementById('logSearchInput').addEventListener('input', function() {
+  _logSearchQuery = this.value;
+  filterLogs();
+});
+document.getElementById('logRegexBtn').addEventListener('click', function() { toggleLogRegex(); });
+// Collapsible advanced filters toggle
+document.getElementById('logFilterToggleBtn').addEventListener('click', function() {
+  _toggleLogFilters();
+});
+// Date range filters — CustomDatePicker
+window._datePickers = {};
+['logDateFrom', 'logDateTo'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el && typeof CustomDatePicker !== 'undefined') {
+    window._datePickers[id] = new CustomDatePicker(el, {
+      onChange: function(value) {
+        if (id === 'logDateFrom') {
+          _logDateFrom = value;
+          localStorage.setItem('provider.logDateFrom', value);
+        } else {
+          _logDateTo = value;
+          localStorage.setItem('provider.logDateTo', value);
+        }
+        _updateLogClearDateBtn();
+        filterLogs();
+      }
+    });
+  }
+});
+document.getElementById('logClearDateBtn').addEventListener('click', function() {
+  _logDateFrom = '';
+  _logDateTo = '';
+  localStorage.removeItem('provider.logDateFrom');
+  localStorage.removeItem('provider.logDateTo');
+  if (window._datePickers.logDateFrom) window._datePickers.logDateFrom.setValue('');
+  if (window._datePickers.logDateTo) window._datePickers.logDateTo.setValue('');
+  _updateLogClearDateBtn();
+  filterLogs();
+});
+// Initialize auto-scroll button state and restore level filter
+(function() {
+  var btn = document.getElementById('logAutoScrollBtn');
+  if (btn) btn.classList.toggle('active', _logAutoScroll);
+    // Restore collapsible filter panel state
+  if (_logFilterExpanded) {
+    var panel = document.getElementById('logAdvancedFilters');
+    var icon = document.getElementById('logFilterToggleIcon');
+    var toggleBtn = document.getElementById('logFilterToggleBtn');
+    if (panel) panel.style.display = '';
+    if (icon) icon.innerHTML = '&#9650;';
+    if (toggleBtn) toggleBtn.classList.add('active');
+  }
+  // Restore date range inputs
+  if (window._datePickers && window._datePickers.logDateFrom && _logDateFrom) window._datePickers.logDateFrom.setValue(_logDateFrom);
+  if (window._datePickers && window._datePickers.logDateTo && _logDateTo) window._datePickers.logDateTo.setValue(_logDateTo);
+  _updateLogClearDateBtn();
+  // Restore regex search state
+  _updateRegexBtn();
+})();
+// Font size buttons
+(function() {
+  var savedSize = localStorage.getItem('provider.logFontSize') || 'small';
+  _logFontSize = savedSize;
+  _applyLogFontSize();
+  document.querySelectorAll('.log-font-btn').forEach(function(btn) {
+    if (btn.dataset.size === savedSize) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.log-font-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      _logFontSize = btn.dataset.size;
+      _applyLogFontSize();
+      localStorage.setItem('provider.logFontSize', _logFontSize);
+    });
+  });
+})();
 document.getElementById('reloadServerButton').addEventListener('click', reloadServer);
 document.getElementById('reloadConfigButton').addEventListener('click', reloadConfigFromFile);
+// Restart overlay buttons
+document.getElementById('restartRefreshBtn').addEventListener('click', function() { location.reload(); });
+document.getElementById('restartRetryBtn').addEventListener('click', function() { retryHealthCheck(); });
 document.getElementById('configEditToggle').addEventListener('click', toggleConfigEdit);
 if (configEditArea) {
   configEditArea.addEventListener('input', function() {
@@ -110,12 +193,42 @@ window._dropdowns = {};
 ['modelPlatformSelect', 'modelCapabilitySelect', 'chatModelSelect',
  'chatProtocolSelect', 'themeSelect', 'compactSelect', 'tabLayoutSelect',
  'voiceSttModel', 'voiceTtsModel', 'recordingDeviceSelect',
- 'autoupdateBranch', 'requestStatusFilter', 'requestTimeFilter'].forEach(function(id) {
+ 'autoupdateBranch', 'requestStatusFilter', 'requestTimeFilter',
+ 'logLevelSelect', 'logModuleSelect'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) {
     window._dropdowns[id] = new CustomDropdown(el);
   }
 });
+
+// Log dropdown change handlers
+['logLevelSelect', 'logModuleSelect'].forEach(function(id) {
+  var dropdown = window._dropdowns && window._dropdowns[id];
+  if (dropdown) {
+    dropdown.onChange = function(value) {
+      if (id === 'logLevelSelect') {
+        _logLevelFilter = value;
+        localStorage.setItem('provider.logLevelFilter', _logLevelFilter);
+      } else if (id === 'logModuleSelect') {
+        _logModuleFilter = value;
+      }
+      filterLogs();
+    };
+  }
+});
+
+// Restore log level and module filters
+(function() {
+  var levelDropdown = window._dropdowns && window._dropdowns['logLevelSelect'];
+  if (levelDropdown) {
+    levelDropdown.setValue(_logLevelFilter);
+  }
+  var moduleDropdown = window._dropdowns && window._dropdowns['logModuleSelect'];
+  if (moduleDropdown) {
+    moduleDropdown.setValue(_logModuleFilter);
+  }
+})();
+
 // Re-apply settings after dropdown initialization (needed for themeSelect/compactSelect)
 applyTheme();
 applyCompact();
@@ -334,7 +447,6 @@ function _initChatTab() {
   if (chatClearBtn) {
     chatClearBtn.addEventListener('click', function() {
       clearChatMessages();
-      chatConversationHistory = [];
       toast('对话已清空', 'ok');
     });
   }

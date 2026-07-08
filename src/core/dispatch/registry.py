@@ -1,7 +1,7 @@
 """平台注册表 — 复用 echotools PluginRegistry，绑定 PlatformAdapter。"""
 from __future__ import annotations
 
-from pathlib import Path
+import asyncio
 from typing import Any, Dict, List, Optional
 
 from echotools.logger.manager import get_logger
@@ -10,11 +10,10 @@ from echotools.plugin.registry import PluginRegistry
 from src.core.config import get_config
 from src.core.dispatch.candidate import Candidate
 from src.core.dispatch.selector import Selector
+from src.paths import persist_dir
 
 __all__ = ["Registry"]
 logger = get_logger(__name__)
-
-_PERSIST_ROOT = Path(__file__).parent.parent.parent.parent / "persist"
 
 
 class Registry:
@@ -22,7 +21,7 @@ class Registry:
 
     def __init__(self) -> None:
         self._registry = PluginRegistry()
-        self.selector = Selector(persist_dir=str(_PERSIST_ROOT / "gateway"), group_attr="platform")
+        self.selector = Selector(persist_dir=str(persist_dir("gateway")), group_attr="platform")
 
     async def init(self, session: Any) -> None:
         cfg = get_config()
@@ -117,4 +116,20 @@ class Registry:
         return await self.all_models()
 
     async def close(self) -> None:
-        await self._registry.close()
+        # 保存适配器引用，PluginRegistry.close() 会清空 plugins 字典
+        adapters = dict(self._registry.plugins)
+
+        # 逐个适配器显式关闭，确保内部 session 被释放
+        # PluginRegistry.close() 有5秒超时，可能未完全关闭
+        for name, adapter in adapters.items():
+            try:
+                close_fn = getattr(adapter, "close", None)
+                if close_fn is not None:
+                    await asyncio.wait_for(close_fn(), timeout=10.0)
+            except asyncio.TimeoutError:
+                logger.warning("适配器 [%s] 关闭超时", name)
+            except Exception as exc:
+                logger.warning("适配器 [%s] 关闭失败: %s", name, exc)
+
+        # 清理 PluginRegistry 内部状态
+        self._registry._plugins.clear()

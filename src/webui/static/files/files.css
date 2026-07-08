@@ -10,7 +10,7 @@
   min-height: 400px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
 }
@@ -34,7 +34,7 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 16px;
   cursor: pointer;
   color: var(--muted);
@@ -62,7 +62,7 @@
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   color: var(--muted);
   white-space: nowrap;
@@ -77,7 +77,7 @@
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
@@ -101,7 +101,7 @@
   justify-content: center;
   height: 30px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 12px;
   cursor: pointer;
   color: var(--muted);
@@ -119,6 +119,45 @@
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--panel);
+}
+
+.files-list-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Virtual scroll ---- */
+.files-virtual-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.files-virtual-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.files-virtual-scroll-inner {
+  position: relative;
+}
+
+.files-virtual-scroll .files-table {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.files-virtual-scroll .files-virtual-row {
+  position: absolute;
+  width: 100%;
 }
 
 .files-table {
@@ -228,7 +267,7 @@
   z-index: 10000;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 6px;
   min-width: 180px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
@@ -239,7 +278,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 13px;
   cursor: pointer;
   color: var(--text);
@@ -271,7 +310,7 @@
 .files-preview-dialog {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   width: 90%;
   max-width: 800px;
   max-height: 85vh;
@@ -306,7 +345,7 @@
 
 .files-preview-btn {
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 12px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -332,6 +371,10 @@
   white-space: pre;
   tab-size: 4;
   counter-reset: line;
+}
+
+.files-preview-code code {
+  display: block;
 }
 
 .files-preview-code .line {
@@ -362,7 +405,7 @@
 .files-preview-image img {
   max-width: 100%;
   max-height: 60vh;
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .files-preview-binary {
@@ -455,7 +498,7 @@
 .files-rename-dialog {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 0;
   padding: 24px;
   width: 100%;
   max-width: 400px;
@@ -470,7 +513,7 @@
 .files-rename-dialog input {
   width: 100%;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
@@ -488,7 +531,7 @@
 
 .files-rename-actions button {
   padding: 8px 18px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 14px;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -544,7 +587,7 @@
   justify-content: center;
   background: rgba(59, 130, 246, 0.08);
   border: 2px dashed var(--accent, #3b82f6);
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 16px;
   font-weight: 600;
   color: var(--accent, #3b82f6);
@@ -558,7 +601,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 12px;
   color: var(--accent);
   background: var(--accent-soft);
@@ -573,7 +616,7 @@
   justify-content: center;
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
@@ -609,7 +652,7 @@
   width: 180px;
   height: 30px;
   padding: 0 28px 0 10px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--panel-alt);
   color: var(--text);
@@ -635,7 +678,7 @@
   transform: translateY(-50%);
   width: 18px;
   height: 18px;
-  border-radius: 4px;
+  border-radius: 0;
   display: none;
   align-items: center;
   justify-content: center;
@@ -669,7 +712,7 @@
   z-index: 1000;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   display: none;
 }
@@ -762,7 +805,7 @@
   margin-right: 8px;
   border: 2px solid var(--border);
   border-top-color: var(--accent);
-  border-radius: 50%;
+  border-radius: 0;
   animation: files-spin 0.7s linear infinite;
 }
 

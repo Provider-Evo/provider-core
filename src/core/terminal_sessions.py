@@ -399,6 +399,41 @@ class TerminalSessionStore:
                 exc_info=True,
             )
 
+    def consume_offline_output(self, session_id: str) -> str:
+        """原子性地读取并清空离线输出缓冲区。
+
+        读取完整内容后立即删除输出文件，避免并发客户端重复消费。
+        适用于服务器重启后恢复会话时的一次性读取场景。
+
+        Parameters
+        ----------
+        session_id:
+            会话唯一标识。
+
+        Returns
+        -------
+        str
+            离线输出内容；缓冲区文件不存在时返回空字符串。
+        """
+        output_path = self._output_path(session_id)
+        if not output_path.exists():
+            return ""
+        try:
+            content = output_path.read_text(encoding="utf-8", errors="replace")
+            output_path.unlink()
+            logger.debug("离线输出已消费: %s (%d bytes)", session_id, len(content))
+            return content
+        except OSError:
+            logger.debug("消费离线输出失败: %s", session_id, exc_info=True)
+            return ""
+        except Exception:
+            logger.warning(
+                "消费离线输出时发生意外错误: %s",
+                session_id,
+                exc_info=True,
+            )
+            return ""
+
     # ------------------------------------------------------------------
     # 清理
     # ------------------------------------------------------------------
@@ -533,8 +568,8 @@ def get_terminal_store(persist_dir: Optional[Path] = None) -> TerminalSessionSto
         return _store
 
     if persist_dir is None:
-        project_root = Path(__file__).resolve().parent.parent.parent
-        persist_dir = project_root / "persist" / "terminal"
+        from src.paths import persist_dir as _default_persist_dir
+        persist_dir = _default_persist_dir("terminal")
 
     _store = TerminalSessionStore(persist_dir)
     logger.debug("全局 TerminalSessionStore 单例已创建: %s", persist_dir)

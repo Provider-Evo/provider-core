@@ -67,34 +67,42 @@ __all__ = [
 ]
 
 
+_CONTEXT_LENGTH_KEYWORDS = frozenset({
+    # English
+    "context_length",
+    "context window",
+    "maximum context",
+    "token limit",
+    "max_tokens",
+    "prompt is too long",
+    "input token",
+    "context length",
+    # Chinese
+    "上下文",
+    "超长",
+    "超出",
+    "token 超过",
+})
+
+
 def classify_http_error(
     status_code: int,
     message: str,
     original: Optional[Exception] = None,
 ) -> ProviderError:
-    """根据 HTTP 状态码分类错误。
+    """Classify an HTTP status code into a typed ProviderError.
 
     Args:
-        status_code: HTTP 状态码。
-        message: 错误信息。
-        original: 原始异常。
+        status_code: HTTP status code.
+        message: Error message.
+        original: Original exception.
 
     Returns:
-        对应的错误实例。
+        Typed error instance.
     """
     if status_code == 400:
         msg_lower = message.lower()
-        context_keywords = (
-            "context",
-            "token",
-            "max_tokens",
-            "maximum context",
-            "prompt is too long",
-            "上下文",
-            "超长",
-            "超出",
-        )
-        if any(keyword in msg_lower for keyword in context_keywords):
+        if any(kw in msg_lower for kw in _CONTEXT_LENGTH_KEYWORDS):
             return ContextLengthError(message, original=original)
         return ValidationError(message)
     if status_code == 401:

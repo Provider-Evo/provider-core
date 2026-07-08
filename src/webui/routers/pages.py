@@ -3,11 +3,17 @@ from __future__ import annotations
 """WebUI 页面路由。"""
 
 from pathlib import Path
-from urllib.parse import quote
 
 import aiohttp.web
 
 from src.core.config import get_config
+from src.webui.core.auth import (
+    COOKIE_NAME,
+    clear_session_cookie,
+    set_session_cookie,
+    verify_session_cookie,
+)
+from src.webui.core.security import token_manager
 
 __all__ = ["webui_page", "login_page", "logout_page"]
 
@@ -46,20 +52,18 @@ _LOGIN_HTML = """<!doctype html>
   .err { margin-top:12px; padding:9px 11px; border-radius:8px;
          background:rgba(255,120,120,.12); color:var(--err); font-size:13px; }
   .hint { margin-top:14px; font-size:12px; color:var(--muted); line-height:1.55; }
-  code { background:rgba(138,164,255,.12); padding:1px 6px; border-radius:5px;
-         font-size:12px; }
 </style>
 </head>
 <body>
   <form class="card" method="post" action="/login">
     <h1>Provider-V2</h1>
-    <p>请输入 API 密钥以继续访问 WebUI。该密钥与调用 <code>/v1/…</code> 时使用的 Bearer 密钥一致。</p>
-    <label for="token">API Key</label>
+    <p>请输入 WebUI 访问令牌以继续。该令牌与 API 密钥（apikey）相互独立，仅用于管理界面认证。</p>
+    <label for="token">WebUI Token</label>
     <input id="token" name="token" type="password" autocomplete="current-password"
-           placeholder="sk-…" required autofocus>
+           placeholder="输入启动日志中显示的令牌" required autofocus>
     {error_block}
     <button type="submit">登录</button>
-    <div class="hint">密钥存储在浏览器 Cookie 中（HttpOnly），不会上传到任何第三方。</div>
+    <div class="hint">令牌存储在浏览器 HttpOnly Cookie 中，不会上传到任何第三方。</div>
   </form>
 </body>
 </html>
@@ -76,14 +80,13 @@ async def webui_page(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def login_page(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """登录页：GET 返回表单，POST 校验密钥后下发 pv2_session Cookie。"""
+    """登录页：GET 返回表单，POST 校验 webui_token 后下发 pv2_session Cookie。"""
     cfg = get_config()
-    keys = cfg.auth.keys or []
     enabled = cfg.auth.enabled
 
     if request.method == "GET":
         # 已登录的浏览器访问 /login 直接回到主页
-        if enabled and request.cookies.get("pv2_session") in keys:
+        if enabled and verify_session_cookie(request):
             raise aiohttp.web.HTTPFound("/")
         html = _LOGIN_HTML.replace("{error_block}", "")
         return aiohttp.web.Response(text=html, content_type="text/html")
@@ -95,19 +98,12 @@ async def login_page(request: aiohttp.web.Request) -> aiohttp.web.Response:
     if not next_url.startswith("/") or next_url.startswith("//"):
         next_url = "/"
 
-    if not enabled or (keys and token in keys):
+    if not enabled or token_manager.verify(token):
         resp = aiohttp.web.HTTPFound(next_url)
-        resp.set_cookie(
-            "pv2_session",
-            token,
-            path="/",
-            httponly=True,
-            samesite="Lax",
-            max_age=60 * 60 * 24 * 30,  # 30 天
-        )
+        set_session_cookie(resp, token)
         return resp
 
-    err_html = '<div class="err">密钥无效，请检查后重试</div>'
+    err_html = '<div class="err">令牌无效，请检查后重试</div>'
     html = _LOGIN_HTML.replace("{error_block}", err_html)
     return aiohttp.web.Response(text=html, content_type="text/html", status=401)
 
@@ -115,5 +111,5 @@ async def login_page(request: aiohttp.web.Request) -> aiohttp.web.Response:
 async def logout_page(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """登出：清除 pv2_session Cookie 并回到登录页。"""
     resp = aiohttp.web.HTTPFound("/login")
-    resp.del_cookie("pv2_session", path="/")
+    clear_session_cookie(resp)
     return resp

@@ -11,8 +11,8 @@ Runner 进程：
 
 Worker 进程：
   - asyncio 事件循环
-  - 初始化全部子系统
-  - 永久运行直到收到退出信号或触发重启
+  - 初始化全��子系统
+  - 永久运行直到收到��出信号或触发重启
 
 IDLE 环境：
   - 检测到 IDLE 时直接以单进程 Worker 模式运行
@@ -28,7 +28,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import IO, List
+from typing import IO, List, Optional
 
 import aiohttp
 import aiohttp.web
@@ -73,6 +73,12 @@ _RAPID_RESTART_THRESHOLD = 5.0
 # 触发重启后的短暂冷却时间（秒）
 _RESTART_COOLDOWN = 1.0
 
+# Worker 错误重启等待时间（秒）
+_ERROR_RESTART_DELAY = 10.0
+
+# Worker 错误重启默认最大次数
+_DEFAULT_MAX_ERROR_RESTARTS = 3
+
 
 # ---------------------------------------------------------------------------
 # 工具函数
@@ -80,28 +86,28 @@ _RESTART_COOLDOWN = 1.0
 
 
 def _is_idle() -> bool:
-    """检测当前是否在 Python IDLE 环境中运行。
+    """检测当前是否在 Python IDLE 环境中运���。
 
     通过检查标准输出类型来判断：IDLE 将 sys.stdout 替换为自定义对象，
     而非标准的 ``TextIOWrapper``。此方法比检查 ``__main__`` 属性更可靠。
 
     Returns:
-        在 IDLE 中运行时返回 True。
+        �� IDLE 中运行时返回 True。
     """
     import io
     return not isinstance(sys.stdout, io.TextIOWrapper)
 
 
 def _read_color_config() -> bool:
-    """从 config.toml 读取 debug.color 配置项。
+    """��� config/main_config.toml 读取 debug.color 配置项��
 
     在 Python 3.11+ 使用标准库 tomllib；低版本尝试第三方 tomli；
     均不可用或文件不存在时默认返回 True（启用颜色）。
 
     Returns:
-        color 配置值，默认 True。
+        color 配置值��默认 True。
     """
-    cfg_path = _ROOT / "config.toml"
+    cfg_path = _ROOT / "config" / "main_config.toml"
     if not cfg_path.exists():
         return True
 
@@ -111,7 +117,7 @@ def _read_color_config() -> bool:
             with open(cfg_path, "rb") as fh:
                 raw = tomllib.load(fh)
             return bool(raw.get("debug", {}).get("color", True))
-        except Exception:
+        except (tomllib.TOMLDecodeError, OSError):
             return True
 
     try:
@@ -120,22 +126,20 @@ def _read_color_config() -> bool:
             raw = tomli.load(fh)
         return bool(raw.get("debug", {}).get("color", True))
     except ImportError:
-        logger.debug("tomli 未安装，跳过 color 配置读取，默认启用颜色")
+        logger.debug("tomli 未安装，跳过 color 配置读取，默认启用��色")
         return True
-    except Exception:
+    except (Exception,):  # tomli.TOMLDecodeError or OSError
         return True
 
 
 def _make_connector() -> aiohttp.TCPConnector:
-    """创建忽略 SSL 证书验证的 TCP 连接器。
+    """创建忽略 SSL 证书验证的 TCP 连接器（从配置读取连接池参数）。
 
     Returns:
-        配置好的 TCPConnector 实例。
+        配置���的 TCPConnector 实例。
     """
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return aiohttp.TCPConnector(ssl=ctx, limit=200, force_close=False)
+    from src.core.server.connector import make_connector
+    return make_connector()
 
 
 # ---------------------------------------------------------------------------
@@ -143,8 +147,116 @@ def _make_connector() -> aiohttp.TCPConnector:
 # ---------------------------------------------------------------------------
 
 
+def _setup_signal_handlers(stop_event: asyncio.Event) -> None:
+    """配置进程退出信号处理器（仅 Unix 平台）。
+
+    在 Windows 上不注册信号处理器，通过 KeyboardInterrupt 捕获退出。
+
+    Args:
+        stop_event: 用于通知主流程退出的异步事件。
+    """
+
+    def _on_signal() -> None:
+        logger.info("收到退出信号，准备优雅退出...")
+        stop_event.set()
+
+    if sys.platform != "win32":
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, _on_signal)
+    else:
+        logger.debug("Windows 平台��信号处理器通过 KeyboardInterrupt 捕获")
+
+
+async def _create_background_tasks(
+    cfg: object,
+    registry: Registry,
+    session: aiohttp.ClientSession,
+) -> List[asyncio.Task]:
+    """创建并启动后台异步任务。
+
+    Args:
+        cfg: 全局配置对象。
+        registry: 路由注册表。
+        session: aiohttp 客户端会话。
+
+    Returns:
+        已启动的后台任务列表。
+    """
+
+    async def _config_watcher_task() -> None:
+        await start_config_watcher(interval=2.0)
+
+    async def _file_watcher_task() -> None:
+        watcher = FileWatcher(_ROOT)
+        await watcher.start(registry, session)
+
+    async def _autoupdate_task() -> None:
+        updater = AutoUpdater(
+            root=_ROOT,
+            branch=cfg.autoupdate.branch,
+            interval=cfg.autoupdate.interval,
+        )
+        await updater.run()
+
+    tasks: List[asyncio.Task] = [
+        asyncio.ensure_future(_config_watcher_task()),
+    ]
+
+    is_idle_env = _is_idle()
+    if not is_idle_env:
+        tasks.append(asyncio.ensure_future(_file_watcher_task()))
+    if cfg.autoupdate.enabled and not is_idle_env:
+        tasks.append(asyncio.ensure_future(_autoupdate_task()))
+
+    return tasks
+
+
+async def _shutdown(
+    tasks: List[asyncio.Task],
+    registry: Registry,
+    session: aiohttp.ClientSession,
+    runner: aiohttp.web.AppRunner,
+) -> None:
+    """优雅关闭所有后台任务和资源。
+
+    Args:
+        tasks: 需要取消的后台任务列表。
+        registry: 路由注册表。
+        session: aiohttp 客户端会话。
+        runner: aiohttp 应用运行器。
+    """
+    logger.info("取消后台任务...")
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+    # 主动关闭所有 WebSocket 连接，避免 ProactorEventLoop 下 transport 未正确关闭
+    from src.webui.logs_ws import log_broker
+    async with log_broker._lock:
+        sockets = list(log_broker._sockets)
+        log_broker._sockets.clear()
+    for ws in sockets:
+        try:
+            await ws.close()
+        except Exception:
+            pass
+
+    logger.info("正在关闭注册表...")
+    await registry.close()
+
+    logger.info("正在关闭 HTTP Session...")
+    await session.close()
+
+    logger.info("正在停止 Web 服务器...")
+    if runner is not None:
+        await runner.cleanup()
+
+    logger.info("Provider-V2 已完全退出")
+
+
 async def _run() -> None:
-    """Worker 的异步主流程——启动所有组件，等待退出信号，优雅关闭。"""
+    """Worker 的异步主流程——启动所有��件，等待退出信号，优雅关闭。"""
     cfg = get_config()
     host = cfg.server.host
     port = cfg.server.port
@@ -162,81 +274,78 @@ async def _run() -> None:
         _logging.getLogger("aiohttp.access") if cfg.debug.access_log else None
     )
 
-    # 检查并释放端口占用
-    port_result = ensure_port_available(port, cfg.server.startup_force_kill_port)
-    if port_result.occupied and not port_result.released:
-        if cfg.server.startup_force_kill_port:
-            logger.error(
-                "端口 %d 被占用 (PIDs: %s)，已尝试强制终止但未能释放",
-                port,
-                port_result.pids,
-            )
-        else:
-            logger.error(
-                "端口 %d 被占用 (PIDs: %s)，startup_force_kill_port=false 未强制释放",
-                port,
-                port_result.pids,
-            )
+    # 检查并绑定端口（带重试）
+    # Windows 上 kill 进程后 TCP ��接字可能仍在 TIME_WAIT，
+    # netstat 看不到进程但 bind 仍会失败，因此将 ensure_port_available
+    # 和 site.start() 合并在同一个重试循环中。
+    max_port_retries = 8
+    port_retry_delay = 1.0
+    runner: Optional[aiohttp.web.AppRunner] = None
 
-    runner = aiohttp.web.AppRunner(app, access_log=_access_log)
-    await runner.setup()
-    site = aiohttp.web.TCPSite(runner, host, port)
-    await site.start()
+    for port_attempt in range(max_port_retries):
+        port_result = ensure_port_available(port, cfg.server.startup_force_kill_port)
+        if port_result.occupied and not port_result.released:
+            # 端口被占用且无法释放
+            if port_attempt < max_port_retries - 1:
+                logger.warning(
+                    "端口 %d 被占用 (PIDs: %s)，%s，等待 %.1f 秒后重试 (%d/%d)...",
+                    port,
+                    port_result.pids,
+                    "已尝试强制终止" if cfg.server.startup_force_kill_port else "未强制终止",
+                    port_retry_delay,
+                    port_attempt + 1,
+                    max_port_retries,
+                )
+                await asyncio.sleep(port_retry_delay)
+                port_retry_delay = min(port_retry_delay * 1.5, 8.0)
+                continue
+            else:
+                logger.error(
+                    "端口 %d 被占用 (PIDs: %s)，重试 %d 次后仍无法释放，退出",
+                    port, port_result.pids, max_port_retries,
+                )
+                await session.close()
+                await registry.close()
+                raise SystemExit(1)
 
-    logger.info("Provider-V2 已启动: http://%s:%d", host, port)
+        # 端口可用（或已释放），尝试绑定
+        runner = aiohttp.web.AppRunner(app, access_log=_access_log)
+        await runner.setup()
+        site = aiohttp.web.TCPSite(runner, host, port)
+        try:
+            await site.start()
+            break  # 绑定成功
+        except OSError as exc:
+            # ensure_port_available 报告空闲但实际 bind 失败（TIME_WAIT）
+            await runner.cleanup()
+            runner = None
+            if port_attempt < max_port_retries - 1:
+                logger.warning(
+                    "端口 %d 绑定失败 (%s)，等待 %.1f 秒后重试 (%d/%d)...",
+                    port, exc, port_retry_delay,
+                    port_attempt + 1, max_port_retries,
+                )
+                await asyncio.sleep(port_retry_delay)
+                port_retry_delay = min(port_retry_delay * 1.5, 8.0)
+            else:
+                logger.error(
+                    "端口 %d 绑定失败��重试 %d 次后仍无法绑定，退出: %s",
+                    port, max_port_retries, exc,
+                )
+                await session.close()
+                await registry.close()
+                raise SystemExit(1)
+    else:
+        # 循环正常结���但未 break（不应到达此处）
+        await session.close()
+        await registry.close()
+        raise SystemExit(1)
 
-    # ------------------------------------------------------------------
-    # 信号处理
-    # ------------------------------------------------------------------
+    logger.info("Worker 已启动: http://%s:%d", host, port)
 
     stop_event = asyncio.Event()
-
-    def _on_signal() -> None:
-        logger.info("收到退出信号，准备优雅退出...")
-        stop_event.set()
-
-    loop = asyncio.get_event_loop()
-
-    if sys.platform != "win32":
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, _on_signal)
-    else:
-        logger.debug("Windows 平台：信号处理器通过 KeyboardInterrupt 捕获")
-
-    # ------------------------------------------------------------------
-    # 后台任务
-    # ------------------------------------------------------------------
-
-    is_idle_env = _is_idle()
-
-    async def _config_watcher_task() -> None:
-        await start_config_watcher(interval=2.0)
-
-    async def _file_watcher_task() -> None:
-        watcher = FileWatcher(_ROOT)
-        await watcher.start(registry, session)
-
-    async def _autoupdate_task() -> None:
-        updater = AutoUpdater(
-            root=_ROOT,
-            branch=cfg.autoupdate.branch,
-            interval=cfg.autoupdate.interval,
-        )
-        await updater.run()
-
-    tasks: List[asyncio.Future] = [
-        asyncio.ensure_future(_config_watcher_task()),
-    ]
-
-    if not is_idle_env:
-        tasks.append(asyncio.ensure_future(_file_watcher_task()))
-
-    if cfg.autoupdate.enabled and not is_idle_env:
-        tasks.append(asyncio.ensure_future(_autoupdate_task()))
-
-    # ------------------------------------------------------------------
-    # 等待退出信号
-    # ------------------------------------------------------------------
+    _setup_signal_handlers(stop_event)
+    tasks = await _create_background_tasks(cfg, registry, session)
 
     try:
         if sys.platform == "win32":
@@ -245,30 +354,20 @@ async def _run() -> None:
         else:
             await stop_event.wait()
     except (KeyboardInterrupt, SystemExit):
-        logger.info("收到键盘中断，正在退出...")
+        logger.info("收到键盘中断��正在退出...")
     finally:
-        logger.info("取消后台任务...")
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
-
-        logger.info("正在关闭注册表...")
-        await registry.close()
-
-        logger.info("正在关闭 HTTP Session...")
-        await session.close()
-
-        logger.info("正在停止 Web 服务器...")
-        await runner.cleanup()
-
-        logger.info("Provider-V2 已完全退出")
+        await _shutdown(tasks, registry, session, runner)
+        # 使用 os._exit() 强制退出，避免 Python 线程关闭清理
+        # 避免 "Exception ignored on threading shutdown" 错误
+        # 在 _shutdown() 中已完成所有清理工作，此处强��退出是安全的
+        os._exit(0)
 
 
 async def _run_idle_watcher() -> None:
     """IDLE 环境下的文件监视器——只提示变更，不触发重启。"""
     watcher = FileWatcher(_ROOT)
     mtimes: dict = watcher._scan()
-    logger.info("IDLE 文件监视已启动，文件变更时将提示手动重启")
+    logger.info("IDLE 文件监��已启动，文件变更时将提示手动重启")
 
     while True:
         await asyncio.sleep(2.0)
@@ -289,7 +388,7 @@ async def _run_idle_watcher() -> None:
                     "请手动重启服务 (python main.py) ***\n",
                     flush=True,
                 )
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             logger.warning("文件监视检查失败: %s", exc)
 
 
@@ -312,9 +411,7 @@ def _run_worker() -> None:
             else:
                 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
             logger.debug("uvloop 已启用")
-        except ImportError:
-            logger.debug("uvloop 未安装，使用默认事件循环")
-        except Exception as exc:
+        except (ImportError, OSError) as exc:
             logger.debug("uvloop 初始化失败（%s），使用默认事件循环", exc)
 
     try:
@@ -344,7 +441,7 @@ def _pipe_reader(stream: IO[bytes]) -> None:
         try:
             sys.stdout.write(line.decode("utf-8", errors="replace"))
             sys.stdout.flush()
-        except Exception:
+        except (OSError, ValueError):
             pass
 
 
@@ -376,9 +473,10 @@ def _run_runner() -> None:
 
     重启策略：
     - Worker 以退出码 42 退出时触发重启，冷却 1 秒后再启动新 Worker。
-    - 若在 ``_RAPID_RESTART_THRESHOLD`` 秒内连续快速重启超过
+    - 若在 ``_RAPID_RESTART_THRESHOLD`` 秒内连续快��重启超过
       ``_MAX_RAPID_RESTARTS`` 次，Runner 放弃重启并退出。
-    - Worker 以其他退出码退出时，Runner 直接退出（不重启）。
+    - Worker 以其他退出码退出时（错误退出），等待 10 秒后重启，
+      但最多重启 ``max_restarts`` 次（默认 3 次）。
     - Runner 收到 Ctrl+C 时，立即终止 Worker 并退出。
     """
     color_enabled = _read_color_config()
@@ -387,8 +485,21 @@ def _run_runner() -> None:
     python = sys.executable
     args = [python, "-u", str(_ROOT / "main.py")]
 
+    # 读取 max_restarts 配置项
+    max_error_restarts = _DEFAULT_MAX_ERROR_RESTARTS
+    try:
+        from src.core.config import get_config
+        cfg = get_config()
+        max_error_restarts = getattr(cfg.server, "max_restarts", _DEFAULT_MAX_ERROR_RESTARTS)
+    except Exception:
+        pass
+
     rapid_restart_count = 0
+    error_restart_count = 0
     last_start_time: float = 0.0
+
+    proc: Optional[subprocess.Popen] = None
+    reader_thread: Optional[threading.Thread] = None
 
     while True:
         # ------------------------------------------------------------------
@@ -401,7 +512,7 @@ def _run_runner() -> None:
             rapid_restart_count += 1
             if rapid_restart_count > _MAX_RAPID_RESTARTS:
                 logger.error(
-                    "Worker 在 %.1f 秒内连续快速重启 %d 次，Runner 放弃重启并退出",
+                    "Worker 在 %.1f 秒内连续快速重启 %d 次，Runner 放���重启并退出",
                     _RAPID_RESTART_THRESHOLD,
                     rapid_restart_count,
                 )
@@ -430,7 +541,7 @@ def _run_runner() -> None:
                 env=worker_env,
             )
         except OSError as exc:
-            logger.error("无法启动 Worker 进程: %s", exc)
+            logger.error("无法��动 Worker 进程: %s", exc)
             break
 
         assert proc.stdout is not None, "proc.stdout 不应为 None（已指定 PIPE）"
@@ -448,36 +559,62 @@ def _run_runner() -> None:
         # ------------------------------------------------------------------
         exit_code: int
         try:
-            while True:
-                ret = proc.poll()
-                if ret is not None:
-                    exit_code = ret
-                    break
-                time.sleep(0.3)
+            exit_code = proc.wait()
         except KeyboardInterrupt:
             logger.info("Runner 收到 Ctrl+C，正在终止 Worker (PID=%d)...", proc.pid)
-            proc.kill()
-            proc.wait()
-            reader_thread.join(timeout=2.0)
+            proc.terminate()
+            try:
+                proc.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            if reader_thread is not None:
+                reader_thread.join(timeout=2.0)
             logger.info("Worker 已终止，Runner 退出")
             return
 
-        reader_thread.join(timeout=2.0)
-        logger.info("Worker 进程退出，退出码: %d (PID=%d)", exit_code, proc.pid)
+        if reader_thread is not None:
+            reader_thread.join(timeout=2.0)
 
         # ------------------------------------------------------------------
         # 根据退出码决策
         # ------------------------------------------------------------------
         if exit_code == _RESTART_EXIT_CODE:
+            # 热重载请求：冷却 1 秒后重启
             logger.info(
                 "触发自动重启（退出码 %d），冷却 %.1f 秒后重启...",
-                _RESTART_EXIT_CODE,
+                exit_code,
                 _RESTART_COOLDOWN,
             )
             time.sleep(_RESTART_COOLDOWN)
+        elif exit_code != 0:
+            # 错误退出：等待 10 秒后重启，但限制最大重启次数
+            error_restart_count += 1
+            if error_restart_count > max_error_restarts:
+                logger.error(
+                    "Worker 因错误退出 %d 次（最大 %d 次），Runner 放弃���启并退出",
+                    error_restart_count - 1,
+                    max_error_restarts,
+                )
+                break
+            logger.warning(
+                "Worker 因错误退出（退出码 %d），等待 %.1f 秒后重启（第 %d/%d 次）...",
+                exit_code,
+                _ERROR_RESTART_DELAY,
+                error_restart_count,
+                max_error_restarts,
+            )
+            time.sleep(_ERROR_RESTART_DELAY)
         else:
             logger.info("Worker 正常退出（退出码 %d），Runner 退出", exit_code)
             break
+
+    # 清理
+    if proc is not None and proc.poll() is None:
+        proc.kill()
+        proc.wait()
+    if reader_thread is not None:
+        reader_thread.join(timeout=2.0)
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +623,7 @@ def _run_runner() -> None:
 
 
 def main() -> None:
-    """程序主入口——根据运行环境选择合适的启动模式。
+    """程序主入口——根据��行环境选择合适的启动模式。
 
     启动模式优先级：
     1. ``WORKER_PROCESS=1`` 环境变量：以 Worker 模式运行（由 Runner 启动）

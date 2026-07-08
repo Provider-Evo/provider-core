@@ -1,12 +1,13 @@
 # Provider-V2 配置模板
-# 复制此文件到项目根目录并重命名为 config.toml
+# 复制此文件到 config/ 目录并重命名为 main_config.toml
 
 [server]
-version = "2.2.238"
+version = "2.2.261"
 host = "0.0.0.0"
 port = 1337
 debug = false
 startup_force_kill_port = true
+max_restarts = 3
 
 [anthropic]
 api_version = "2023-06-01"
@@ -46,6 +47,13 @@ min_tokens = 10
 # group_list 为空时视为"未配置"，所有平台均可竞速（向后兼容）。
 group_list_type = "whitelist"
 group_list = []
+
+[http_pool]
+# HTTP 连接池配置（aiohttp TCPConnector）
+limit = 200              # 总连接数上限
+limit_per_host = 20      # 单主机连接数上限
+keepalive_timeout = 30   # keepalive 超时（秒）
+connect_timeout = 10     # 连接建立超时（秒）
 
 [proxy]
 proxy_server = ""
@@ -94,3 +102,9 @@ branch = "main"
 interval = 300  # 检查间隔（秒）
 diff_update = true  # 差异更新：仅覆盖变更文件（true）或全量 pull（false）
 mirrors = ["https://github.com/"]  # 镜像源（按优先级排序）
+
+[terminal]
+# 终端配置
+max_history_lines = 5000  # 最大历史行数（默认5000）
+subprocess_monitor_interval = 1  # 子进程监控间隔（秒）
+enable_subprocess_monitoring = true  # 启用子进程监控

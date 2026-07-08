@@ -1,7 +1,12 @@
+"""Apiairforce SSE 解析（无状态层）。"""
+
 from __future__ import annotations
 
-import json
 from typing import Any, Dict, Optional, Union
+
+from src.platforms.sse_common import parse_openai_sse_line
+
+__all__ = ["parse_sse_line"]
 
 
 def parse_sse_line(data_str: str) -> Optional[Union[str, Dict[str, Any]]]:
@@ -12,28 +17,5 @@ def parse_sse_line(data_str: str) -> Optional[Union[str, Dict[str, Any]]]:
 
     Returns:
         文本增量字符串、usage 字典，或 None（无法解析/终止块）。
-
-    >>> parse_sse_line('{"choices":[{"delta":{"content":"hello"}}]}')
-    'hello'
-    >>> parse_sse_line('{"choices":[],"usage":{"prompt_tokens":10}}')
-    {'usage': {'prompt_tokens': 10}}
-    >>> parse_sse_line('[DONE]')
     """
-    try:
-        obj = json.loads(data_str)
-    except json.JSONDecodeError:
-        return None
-
-    # 终止块
-    if obj.get("choices") == [] and obj.get("usage"):
-        return {"usage": obj["usage"]}
-
-    choices = obj.get("choices") or []
-    if not choices:
-        return None
-
-    delta = choices[0].get("delta") or {}
-    content = delta.get("content")
-    if content:
-        return content
-    return None
+    return parse_openai_sse_line(data_str)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import aiohttp.web
 
-__all__ = ["reload_service", "config_get", "config_put", "config_reload", "persist_get", "persist_put"]
+__all__ = ["reload_service", "config_get", "config_put", "config_reload", "persist_get", "persist_put", "bg_image_upload", "bg_image_get"]
 
 
 async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -27,7 +27,7 @@ async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def config_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """GET /v1/config — 返回完整配置 JSON（直接读取 config.toml）。"""
+    """GET /v1/config — 返回 WebUI 配置 JSON（读取 config/webui_config.toml）。"""
     from pathlib import Path
 
     try:
@@ -35,20 +35,21 @@ async def config_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
     except ImportError:
         import tomli as tomllib  # Python < 3.11
 
-    config_path = Path(__file__).resolve().parent.parent.parent.parent / "config.toml"
+    config_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "webui_config.toml"
     try:
         with open(config_path, "rb") as f:
             data = tomllib.load(f)
         return aiohttp.web.json_response(data)
     except FileNotFoundError:
-        return aiohttp.web.json_response({"error": "config.toml not found"}, status=404)
+        return aiohttp.web.json_response({})
     except Exception as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)
 
 
 async def config_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """PUT /v1/config — 写入配置并重新加载。"""
-    from src.core.config import write_config
+    """PUT /v1/config — 写入 WebUI 配置到 webui_config.toml。"""
+    import json
+    from pathlib import Path
 
     try:
         payload = await request.json()
@@ -58,15 +59,19 @@ async def config_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
             status=400,
         )
 
-    ok = await write_config(payload)
-    if ok:
+    config_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "webui_config.toml"
+    try:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
         return aiohttp.web.json_response(
-            {"status": "ok", "message": "Config saved and reloaded"},
+            {"status": "ok", "message": "WebUI config saved"},
         )
-    return aiohttp.web.json_response(
-        {"error": "write failed"},
-        status=500,
-    )
+    except Exception as e:
+        return aiohttp.web.json_response(
+            {"error": str(e)},
+            status=500,
+        )
 
 
 async def config_reload(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -85,15 +90,20 @@ async def config_reload(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def persist_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """GET /v1/webui/persist/{filename} — read a JSON/TOML file from persist/webui/."""
+    """GET /v1/webui/persist/{filename} — read a JSON/TOML file from config/ or persist/webui/json/."""
     import json
     from pathlib import Path
 
     filename = request.match_info["filename"]
     if ".." in filename or "/" in filename or "\\" in filename:
         return aiohttp.web.json_response({"error": "invalid filename"}, status=400)
-    persist_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui"
-    filepath = persist_dir / filename
+    # config.toml 映射到 config/webui_config.toml
+    if filename == "config.toml":
+        config_dir = Path(__file__).resolve().parent.parent.parent.parent / "config"
+        filepath = config_dir / "webui_config.toml"
+    else:
+        json_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui" / "json"
+        filepath = json_dir / filename
     try:
         if filename.endswith(".toml"):
             import tomllib
@@ -110,16 +120,22 @@ async def persist_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def persist_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """POST /v1/webui/persist/{filename} — write JSON/TOML to persist/webui/."""
+    """POST /v1/webui/persist/{filename} — write JSON/TOML to config/ or persist/webui/json/."""
     import json
     from pathlib import Path
 
     filename = request.match_info["filename"]
     if ".." in filename or "/" in filename or "\\" in filename:
         return aiohttp.web.json_response({"error": "invalid filename"}, status=400)
-    persist_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui"
-    persist_dir.mkdir(parents=True, exist_ok=True)
-    filepath = persist_dir / filename
+    # config.toml 映射到 config/webui_config.toml
+    if filename == "config.toml":
+        config_dir = Path(__file__).resolve().parent.parent.parent.parent / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        filepath = config_dir / "webui_config.toml"
+    else:
+        json_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui" / "json"
+        json_dir.mkdir(parents=True, exist_ok=True)
+        filepath = json_dir / filename
     try:
         body = await request.json()
         if filename.endswith(".toml"):
@@ -147,3 +163,49 @@ async def persist_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         return aiohttp.web.json_response({"status": "ok"})
     except Exception as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)
+
+
+async def bg_image_upload(request: aiohttp.web.Request) -> aiohttp.web.Response:
+    """POST /v1/webui/bg-image — upload a terminal background image to persist/webui/img/."""
+    import hashlib
+    from pathlib import Path
+
+    reader = await request.multipart()
+    field = await reader.next()
+    if field is None or field.name != "file":
+        return aiohttp.web.json_response({"error": "missing file field"}, status=400)
+
+    img_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui" / "img"
+    img_dir.mkdir(parents=True, exist_ok=True)
+
+    data = await field.read()
+    if len(data) > 5 * 1024 * 1024:
+        return aiohttp.web.json_response({"error": "file too large (max 5MB)"}, status=400)
+
+    content_type = field.headers.get("Content-Type", "image/png")
+    ext_map = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
+    ext = ext_map.get(content_type, ".png")
+    file_hash = hashlib.md5(data).hexdigest()[:12]
+    filename = f"terminal-bg-{file_hash}{ext}"
+    filepath = img_dir / filename
+
+    filepath.write_bytes(data)
+    url = f"/v1/webui/bg-image/{filename}"
+    return aiohttp.web.json_response({"url": url, "filename": filename})
+
+
+async def bg_image_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
+    """GET /v1/webui/bg-image/{filename} — serve a terminal background image."""
+    from pathlib import Path
+
+    filename = request.match_info["filename"]
+    if ".." in filename or "/" in filename or "\\" in filename:
+        return aiohttp.web.json_response({"error": "invalid filename"}, status=400)
+
+    img_dir = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui" / "img"
+    filepath = img_dir / filename
+
+    if not filepath.exists():
+        return aiohttp.web.json_response({"error": "not found"}, status=404)
+
+    return aiohttp.web.FileResponse(filepath)

@@ -43,7 +43,7 @@ _VALID_LOG_LEVELS = set(LEVEL_ABBR.keys())
 def _resolve_log_level() -> str:
     """解析日志级别，非法值回退 INFO。
 
-    直接读取 config.toml 避免循环导入（src.core.config 导入 src.logger）。
+    直接读取 config/main_config.toml 避免循环导入（src.core.config 导入 src.logger）。
 
     Returns:
         有效的日志级别字符串。
@@ -52,9 +52,9 @@ def _resolve_log_level() -> str:
         import tomllib
         from pathlib import Path
 
-        # 查找 config.toml
+        # 查找 config/main_config.toml
         root = Path(__file__).parent.parent
-        config_path = root / "config.toml"
+        config_path = root / "config" / "main_config.toml"
         if config_path.exists():
             with open(config_path, "rb") as f:
                 raw = tomllib.load(f)
@@ -62,17 +62,17 @@ def _resolve_log_level() -> str:
             if level in _VALID_LOG_LEVELS:
                 return level
     except Exception as exc:
-        _loguru_logger.debug("读取 config.toml 日志级别失败: %s", exc)
+        _loguru_logger.debug("读取 config/main_config.toml 日志级别失败: %s", exc)
     return "INFO"
 
 
 def _resolve_log_name() -> str:
-    """从 config.toml 读取日志名称，默认 provider-v2。"""
+    """从 config/main_config.toml 读取日志名称，默认 provider-v2。"""
     try:
         import tomllib
 
         root = Path(__file__).parent.parent
-        config_path = root / "config.toml"
+        config_path = root / "config" / "main_config.toml"
         if config_path.exists():
             with open(config_path, "rb") as f:
                 raw = tomllib.load(f)
@@ -359,7 +359,7 @@ def _setup_handlers() -> None:
     _early_color = None
     try:
         import tomllib
-        _cfg = Path(__file__).parent.parent / "config.toml"
+        _cfg = Path(__file__).parent.parent / "config" / "main_config.toml"
         if _cfg.exists():
             with open(_cfg, "rb") as _f:
                 _raw = tomllib.load(_f)
@@ -398,7 +398,7 @@ def _setup_handlers() -> None:
     # 文件输出处理器 - 详细格式，记录所有 TRACE 级别
     log_name = _resolve_log_name()
     _loguru_logger.add(
-        str(_LOG_DIR / f"{log_name}_{{time:YYYYMMDD_HHmmss}}.log"),
+        str(_LOG_DIR / f"{log_name}-{{time:YYYYMMDD-HHmmss}}.log"),
         level="TRACE",
         format=(
             "{time:YYYY-MM-DD HH:mm:ss.SSS} | "

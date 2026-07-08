@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=64.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "provider-guide"
+version = "2.2.237"
+description = "Unified AI model gateway aggregating 17+ platforms behind a single OpenAI/Anthropic-compatible API"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+dependencies = [
+    "aiohttp>=3.9.0",
+    "aiohttp-socks>=0.8.0",
+    "beautifulsoup4>=4.12.0",
+    "requests>=2.31.0",
+    "pycryptodome>=3.20.0",
+    "loguru>=0.7.0",
+    "tomlkit>=0.12.0",
+    "watchdog>=4.0.0",
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.7.0",
+    "echotools>=1.0.32",
+    "tomli>=2.0.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+deepseek = ["wasmtime>=0.40.0"]
+cerebras = ["cerebras-cloud-sdk>=1.0.0"]
+ssh = ["paramiko>=3.0.0"]
+async-perf = ["uvloop>=0.19.0"]
+all = [
+    "provider-guide[deepseek,cerebras,ssh,async-perf]",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "coverage>=7.0.0",
+]
+
+[project.scripts]
+provider = "main:main"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: requires network or external services",
+    "platform: platform adapter contract tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/platforms/*/core/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 60

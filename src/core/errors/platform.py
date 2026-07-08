@@ -110,7 +110,7 @@ class StreamError(PlatformError):
 
 
 class ServerError(PlatformError):
-    """平台服务器错误——平台侧 5xx 错误。"""
+    """Platform server error — upstream 5xx error."""
 
     def __init__(
         self,
@@ -118,7 +118,7 @@ class ServerError(PlatformError):
         http_status: int = 500,
         original: Optional[Exception] = None,
     ) -> None:
-        super().__init__(message, original=original, status_code=502)
+        super().__init__(message, original=original, status_code=http_status)
         self.http_status = http_status
 
 

@@ -85,12 +85,30 @@ class ProxyInfo:
 
 @dataclass
 class ProxyPool:
-    """Collection of proxies with deduplication."""
+    """Collection of proxies with deduplication.
+
+    Attributes:
+        proxies: List of proxy entries.
+        fetch_time: ISO-8601 timestamp string of when the pool was fetched.
+        fetch_time_epoch: Unix timestamp (float) for age calculations.
+        total_available: Total available proxies reported by source.
+    """
 
     proxies: List[ProxyInfo] = field(default_factory=list)
     _seen: set = field(default_factory=set)
     fetch_time: str = ""
+    fetch_time_epoch: float = 0.0
     total_available: int = 0
+
+    def __post_init__(self) -> None:
+        """Set fetch_time_epoch from fetch_time if not already set."""
+        if self.fetch_time_epoch == 0.0 and self.fetch_time:
+            try:
+                self.fetch_time_epoch = time.mktime(
+                    time.strptime(self.fetch_time, "%Y-%m-%dT%H:%M:%SZ")
+                )
+            except (ValueError, OverflowError):
+                self.fetch_time_epoch = 0.0
 
     def add(self, p: ProxyInfo) -> None:
         """Add a proxy, skipping duplicates by address."""
@@ -116,6 +134,7 @@ class ProxyPool:
     def to_dict(self) -> dict:
         return {
             "fetch_time": self.fetch_time,
+            "fetch_time_epoch": self.fetch_time_epoch,
             "total_available": self.total_available,
             "proxies": [
                 {
@@ -135,6 +154,7 @@ class ProxyPool:
     def from_dict(cls, data: dict) -> "ProxyPool":
         pool = cls(
             fetch_time=data.get("fetch_time", ""),
+            fetch_time_epoch=data.get("fetch_time_epoch", 0.0),
             total_available=data.get("total_available", 0),
         )
         for item in data.get("proxies", []):
@@ -480,7 +500,12 @@ def fetch_all_proxies(
     Returns:
         ProxyPool with deduplicated proxies sorted by speed.
     """
-    pool = ProxyPool(fetch_time=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+    now = time.time()
+    fetch_time_str = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now))
+    pool = ProxyPool(
+        fetch_time=fetch_time_str,
+        fetch_time_epoch=now,
+    )
     sess = _make_session()
     try:
         if include_api:

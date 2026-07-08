@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """共享工具导出 → echotools 重导出。"""
 from echotools.fncall.shared import *  # noqa: F401,F403
 from echotools.fncall.shared import (

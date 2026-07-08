@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 """WebUI 导出。"""
+from __future__ import annotations
 
 from .app import WEBUI_CONFIG_KEY, create_app
 from .server import ThreadedWebUIServer, WebUIServer

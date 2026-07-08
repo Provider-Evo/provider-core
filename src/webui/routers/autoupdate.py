@@ -3,22 +3,18 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp.web
 
 from src.core.config import get_config, reload_config
 from src.logger import get_logger
+from src.paths import project_root as _project_root
 
 logger = get_logger(__name__)
 
 # 上次检查结果缓存
 _last_check: Dict[str, Any] = {}
-
-
-def _project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent.parent
 
 
 def _get_autoupdate_config() -> Dict[str, Any]:
@@ -34,7 +30,7 @@ def _get_autoupdate_config() -> Dict[str, Any]:
 
 
 async def _run_git(*args: str, timeout: int = 30) -> Tuple[bool, str, str]:
-    root = _project_root()
+    root = _project_root
     try:
         proc = await asyncio.create_subprocess_exec(
             "git", *args,
@@ -164,9 +160,9 @@ async def autoupdate_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         body = await request.json()
         import tomlkit
 
-        config_path = _project_root() / "config.toml"
+        config_path = _project_root / "config" / "main_config.toml"
         if not config_path.exists():
-            return aiohttp.web.json_response({"success": False, "error": "config.toml not found"}, status=404)
+            return aiohttp.web.json_response({"success": False, "error": "config/main_config.toml not found"}, status=404)
 
         with open(str(config_path), "r", encoding="utf-8") as f:
             doc = tomlkit.load(f)

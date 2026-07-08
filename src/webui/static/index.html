@@ -43,6 +43,7 @@
     }
   </script>
   <link rel="stylesheet" href="/static/ui/styles.css">
+  <link rel="stylesheet" href="/static/ui/datepicker.css">
 </head>
 <body data-initial-tab="overview">
   <div class="max-w-[1440px] mx-auto p-3 md:p-4 grid gap-4">
@@ -60,37 +61,32 @@
         </div>
       </div>
       <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(130px,1fr))]">
-        <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] bg-accent text-white border border-transparent hover:opacity-90 transition" id="refreshButton" type="button">刷新状态</button>
-        <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-border bg-panel text-text hover:bg-panel-alt transition" id="refreshModelsButton" type="button">刷新模型缓存</button>
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-border bg-panel text-text hover:bg-panel-alt transition" id="portableButton" type="button">便携设置</button>
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-warn text-warn bg-panel hover:bg-warn hover:text-white transition" id="reloadServerButton" type="button">重启服务</button>
         <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-border bg-panel text-text hover:bg-panel-alt transition" id="reloadConfigButton" type="button">重载配置</button>
       </div>
-      <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">平台数量</div><div class="text-2xl font-bold" id="platformCount">-</div></div>
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">模型数量</div><div class="text-2xl font-bold" id="modelCount">-</div></div>
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">可用平台</div><div class="text-2xl font-bold" id="availablePlatformCount">-</div></div>
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">最近刷新</div><div class="text-2xl font-bold" id="lastRefresh">-</div></div>
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">服务状态</div><div class="text-2xl font-bold" id="healthValue">-</div></div>
-      </div>
       <div class="flex flex-wrap gap-2 items-center">
-        <div class="px-3 py-2.5 bg-accent-soft rounded-xl leading-relaxed text-[14px]">该页面优先使用只读摘要接口，单个接口失败时会自动降级，不会导致整页失效。</div>
         <div class="px-3 py-2.5 bg-accent-soft rounded-xl leading-relaxed text-[14px]" id="socketNotice">日志 WebSocket: /v1/webui/ws/logs</div>
       </div>
     </section>
 
     <div class="webui-body">
     <aside class="webui-sidebar" id="sidebar">
-      <button class="sidebar-nav-item tab-button" data-tab="overview" type="button">概览</button>
-      <button class="sidebar-nav-item tab-button" data-tab="stats" type="button">统计</button>
-      <button class="sidebar-nav-item tab-button" data-tab="platforms" type="button">平台</button>
-      <button class="sidebar-nav-item tab-button" data-tab="models" type="button">模型</button>
-      <button class="sidebar-nav-item tab-button" data-tab="config" type="button">配置</button>
-      <button class="sidebar-nav-item tab-button" data-tab="autoupdate" type="button">更新</button>
-      <button class="sidebar-nav-item tab-button" data-tab="chat" type="button">聊天</button>
-      <button class="sidebar-nav-item tab-button" data-tab="logs" type="button">日志</button>
-      <button class="sidebar-nav-item tab-button" data-tab="terminal" type="button">终端</button>
-      <button class="sidebar-nav-item tab-button" data-tab="files" type="button">文件</button>
+      <button class="sidebar-nav-item tab-button" data-tab="overview" data-tooltip="概览" type="button">概览</button>
+      <button class="sidebar-nav-item tab-button" data-tab="stats" data-tooltip="统计" type="button">统计</button>
+      <button class="sidebar-nav-item tab-button" data-tab="platforms" data-tooltip="平台" type="button">平台</button>
+      <button class="sidebar-nav-item tab-button" data-tab="models" data-tooltip="模型" type="button">模型</button>
+      <button class="sidebar-nav-item tab-button" data-tab="config" data-tooltip="配置" type="button">配置</button>
+      <button class="sidebar-nav-item tab-button" data-tab="autoupdate" data-tooltip="更新" type="button">更新</button>
+      <button class="sidebar-nav-item tab-button" data-tab="chat" data-tooltip="聊天" type="button">聊天</button>
+      <button class="sidebar-nav-item tab-button" data-tab="logs" data-tooltip="日志" type="button">日志</button>
+      <button class="sidebar-nav-item tab-button" data-tab="terminal" data-tooltip="终端" type="button">终端</button>
+      <button class="sidebar-nav-item tab-button" data-tab="files" data-tooltip="文件" type="button">文件</button>
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" title="折叠/展开侧边���">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
     </aside>
 
     <section class="bg-panel border border-border rounded-2xl shadow-panel grid gap-0 overflow-hidden" id="mainTabSection">
@@ -109,6 +105,13 @@
           </div>
         </div>
         <div class="px-3 py-2.5 bg-accent-soft rounded-xl leading-relaxed text-[14px]" id="overviewNotice">等待状态刷新后展示摘要提示。</div>
+        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">平台数量</div><div class="text-2xl font-bold" id="platformCount">-</div></div>
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">模型数量</div><div class="text-2xl font-bold" id="modelCount">-</div></div>
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">可用平台</div><div class="text-2xl font-bold" id="availablePlatformCount">-</div></div>
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">最近刷新</div><div class="text-2xl font-bold" id="lastRefresh">-</div></div>
+          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift"><div class="text-[13px] text-muted m-0 mb-2">服务状态</div><div class="text-2xl font-bold" id="healthValue">-</div></div>
+        </div>
         <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]" id="overviewGrid"></div>
       </section>
 
@@ -371,23 +374,79 @@
       </section>
 
       <section class="tab-panel hidden" id="tab-logs" aria-labelledby="tab-logs-button">
-        <div class="flex flex-wrap justify-between items-end gap-3">
-          <div>
-            <h2>运行日志</h2>
-            <p class="m-0 text-muted leading-relaxed">显示当前页面交互与接口调用反馈，不替代服务端真实日志文件。</p>
+        <div class="flex flex-wrap justify-between items-center gap-3">
+          <div class="min-w-0">
+            <h2 class="m-0">运行日志</h2>
+            <p class="m-0 text-muted leading-relaxed">实时日志流，支持搜索、级别过滤和导出。</p>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-border bg-panel text-text hover:bg-panel-alt transition" id="clearLogButton" type="button">清空日志</button>
+          <div class="flex items-center gap-3 flex-shrink-0 ml-auto">
+            <span class="log-count" id="logCount">0 条</span>
+            <span class="log-conn-status" id="logConnStatus">
+              <span class="log-conn-dot disconnected" id="logConnDot"></span>
+              <span id="logConnText">未连接</span>
+            </span>
           </div>
         </div>
-        <pre class="border border-border rounded-xl p-3.5 bg-panel-soft min-h-[200px] max-h-[400px] overflow-auto text-[13px] leading-relaxed font-mono card-hover-lift" id="logBox"></pre>
+        <div class="log-toolbar">
+          <input type="text" class="log-search" id="logSearchInput" placeholder="搜索日志...">
+          <button class="log-toolbar-btn" id="logRegexBtn" type="button" title="正则表达式搜索已关闭">.*</button>
+          <button class="log-toolbar-btn" id="logAutoScrollBtn" type="button" title="自动滚动">
+            <span id="logAutoScrollIcon">&#9654;</span> 滚动
+          </button>
+          <button class="log-toolbar-btn" id="logExportBtn" type="button" title="导出日志">导出</button>
+          <button class="log-toolbar-btn log-toolbar-btn-danger" id="clearLogButton" type="button" title="清空日志">清空</button>
+          <button class="log-toolbar-btn" id="logFilterToggleBtn" type="button" title="展开/收起高级过滤">
+            <span id="logFilterToggleIcon">&#9660;</span> 过滤
+          </button>
+        </div>
+        <div class="log-toolbar log-toolbar-advanced" id="logAdvancedFilters" style="display:none;">
+          <select class="log-level-select" id="logLevelSelect">
+            <option value="all">全部级别</option>
+            <option value="DEBUG">DEBUG+</option>
+            <option value="INFO">INFO+</option>
+            <option value="WARNING">WARNING+</option>
+            <option value="ERROR">ERROR+</option>
+            <option value="CRITICAL">CRITICAL</option>
+          </select>
+          <select class="log-level-select" id="logModuleSelect">
+            <option value="all">全部模块</option>
+          </select>
+          <label class="log-date-label">
+            <span class="log-toolbar-label">从</span>
+            <input type="date" class="log-date-input" id="logDateFrom" title="起始日期">
+          </label>
+          <label class="log-date-label">
+            <span class="log-toolbar-label">至</span>
+            <input type="date" class="log-date-input" id="logDateTo" title="截止日期">
+          </label>
+          <button class="log-toolbar-btn log-toolbar-btn-danger" id="logClearDateBtn" type="button" title="清除日期过滤" style="display:none;">清除日期</button>
+          <div class="log-toolbar-group">
+            <label class="log-toolbar-label">字号</label>
+            <button class="log-toolbar-btn log-font-btn active" data-size="small" type="button">小</button>
+            <button class="log-toolbar-btn log-font-btn" data-size="medium" type="button">中</button>
+            <button class="log-toolbar-btn log-font-btn" data-size="large" type="button">大</button>
+          </div>
+        </div>
+        <div class="log-viewer log-font-small" id="logBox"></div>
       </section>
 
       <section class="tab-panel hidden" id="tab-terminal" aria-labelledby="tab-terminal-button">
-        <div class="flex flex-wrap justify-between items-end gap-3">
-          <div>
-            <h2>终端</h2>
+        <div class="flex flex-wrap justify-between items-center gap-3">
+          <div class="min-w-0">
+            <h2 class="m-0">终端</h2>
             <p class="m-0 text-muted leading-relaxed">本地终端与 SSH 远程终端，支持多标签管理。</p>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
+            <div id="terminalCustomBgControls" class="terminal-custom-bg-controls" style="display:none;">
+              <button type="button" id="terminalBgImageBtn" class="terminal-bg-mode-btn" title="选择背景图片">
+                <span>&#128444;</span>
+              </button>
+              <input type="range" id="terminalBgOpacityRange" min="10" max="90" value="30" class="terminal-bg-opacity-range" title="调整透明度">
+            </div>
+            <button type="button" id="terminalBgModeBtn" class="terminal-bg-mode-btn" title="切换终端背景模式">
+              <span id="terminalBgModeIcon">&#9788;</span>
+              <span id="terminalBgModeLabel">Provider 主题</span>
+            </button>
           </div>
         </div>
         <div class="terminal-container" id="terminalContainer">
@@ -491,8 +550,47 @@
             <textarea id="voiceTtsPrompt" rows="2" placeholder="引导语音输出的风格和指令..." class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]" style="resize:vertical;"></textarea>
           </label>
         </div>
-        <p class="m-0 text-muted leading-relaxed">设置不写回服务端配置文件，避免对线上进程产生意外副作用。</p>
+        <p class="m-0 text-muted leading-relaxed">设置保存到 webui_config.toml，不影响服务端运行配置。</p>
       </section>
+  </div>
+
+  <!-- Restart Overlay -->
+  <div id="restartOverlay" class="restart-overlay">
+    <div class="restart-bg-rings">
+      <div class="restart-ring restart-ring-1"></div>
+      <div class="restart-ring restart-ring-2"></div>
+      <div class="restart-ring restart-ring-3"></div>
+    </div>
+    <div class="restart-card">
+      <div class="restart-icon-wrap">
+        <div class="restart-pulse" id="restartPulse"></div>
+        <svg class="restart-icon restart-spinner" id="restartSpinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+        <svg class="restart-icon restart-check" id="restartCheck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <svg class="restart-icon restart-fail" id="restartFail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+      </div>
+      <div class="restart-title" id="restartTitle">准备重启</div>
+      <div class="restart-desc" id="restartDesc">正在发送重启请求...</div>
+      <div class="restart-progress-wrap">
+        <div class="restart-progress-bar" id="restartProgressBar" style="width:0%"></div>
+      </div>
+      <div class="restart-meta">
+        <span id="restartElapsed">已用时 0s</span>
+        <span id="restartPercent">0%</span>
+      </div>
+      <div class="restart-actions" id="restartActions" style="display:none;">
+        <button class="restart-btn restart-btn-primary" id="restartRefreshBtn" type="button">刷新页面</button>
+        <button class="restart-btn" id="restartRetryBtn" type="button">重新检查</button>
+      </div>
+    </div>
   </div>
 
   <script src="/static/core/api.js"></script>
@@ -503,6 +601,7 @@
   <script src="/static/dashboard/render.js"></script>
   <script src="/static/config/actions.js"></script>
   <script src="/static/ui/dropdown.js"></script>
+  <script src="/static/ui/datepicker.js"></script>
   <script src="/static/ui/bootstrap.js"></script>
 </body>
 </html>

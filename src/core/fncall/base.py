@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """ToolProtocol + 注册表 → echotools.protocol.base 重导出。"""
 from echotools.protocol.base import *  # noqa: F401,F403
 from echotools.protocol.base import (

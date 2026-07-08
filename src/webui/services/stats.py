@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import json
 import threading
-from pathlib import Path
 
 from echotools.web.stats import RequestStats, get_stats
 from src.logger import get_logger
+from src.paths import persist_json_dir
 
 __all__ = ["RequestStats", "get_stats", "save_stats", "load_stats", "start_persist"]
 
 _log = get_logger(__name__)
 
-_PERSIST_DIR = Path(__file__).resolve().parent.parent.parent.parent / "persist" / "webui"
-_PERSIST_FILE = _PERSIST_DIR / "stats.json"
+_PERSIST_FILE = persist_json_dir() / "stats.json"
 _persist_timer: threading.Timer | None = None
 _PERSIST_INTERVAL = 30  # seconds
 
@@ -22,7 +21,7 @@ _PERSIST_INTERVAL = 30  # seconds
 def save_stats() -> None:
     """Persist current stats snapshot to disk."""
     try:
-        _PERSIST_DIR.mkdir(parents=True, exist_ok=True)
+        persist_json_dir()  # ensure exists
         data = get_stats().to_dict()
         _PERSIST_FILE.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     except Exception:

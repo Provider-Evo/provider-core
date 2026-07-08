@@ -627,6 +627,7 @@ function clearChatMessages() {
     container.innerHTML = "";
   }
   _userMsgCount = 0;
+  chatConversationHistory = [];
   var report = document.getElementById("chatTestReport");
   if (report) { report.innerHTML = ""; report.classList.add("hidden"); }
   // 确保不清空其他元素

@@ -57,6 +57,7 @@ class _TerminalSession:
         self._store: Optional[TerminalSessionStore] = None
         self.alive: bool = False
         self.name: Optional[str] = None
+        self.reattachable: bool = True  # False for recovered sessions that lost PTY handles
 
     # ------------------------------------------------------------------
     # Start helpers
@@ -134,8 +135,19 @@ class _TerminalSession:
         Returns the buffered offline output (if any) that should be
         sent to the newly attached client.  Returns ``None`` if there
         is no buffered output.
+
+        For non-reattachable sessions (recovered after server restart),
+        returns the persisted offline output and marks the session as
+        read-only.
         """
         self._clients.add(ws)
+
+        # Non-reattachable session: serve offline output only
+        if not self.reattachable:
+            if self._store:
+                offline = self._store.consume_offline_output(self.session_id)
+                return offline if offline else None
+            return None
 
         if self._terminal is not None:
             # Create a callback for this client and attach it
@@ -143,6 +155,7 @@ class _TerminalSession:
                 on_output=self._broadcast_output,
                 on_error=self._broadcast_error,
                 on_exit=self._broadcast_exit,
+                on_metadata=self._broadcast_metadata,
             )
             buffered = self._terminal.attach(callback)
 
@@ -237,6 +250,86 @@ class _TerminalSession:
         for ws in dead_clients:
             self._clients.discard(ws)
 
+    async def _broadcast_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Forward metadata events to all attached WebSocket clients."""
+        dead_clients = []
+        for ws in list(self._clients):
+            try:
+                if not ws.closed:
+                    await ws.send_json({"type": "metadata", **metadata})
+            except Exception:
+                dead_clients.append(ws)
+        for ws in dead_clients:
+            self._clients.discard(ws)
+
+    # ------------------------------------------------------------------
+    # New operations (same as T3 Code)
+    # ------------------------------------------------------------------
+
+    async def clear(self) -> None:
+        """Clear terminal history and notify all clients."""
+        if self._terminal:
+            await self._terminal.clear_history()
+
+        # Notify all clients
+        dead_clients = []
+        for ws in list(self._clients):
+            try:
+                if not ws.closed:
+                    await ws.send_json({"type": "history_cleared"})
+            except Exception:
+                dead_clients.append(ws)
+        for ws in dead_clients:
+            self._clients.discard(ws)
+
+    async def restart(self, cols: int = 80, rows: int = 24) -> bool:
+        """Restart the terminal session (keep same tab).
+
+        Kills the current process and starts a new one.
+        Returns True if restart was successful.
+        """
+        if self._terminal:
+            # Kill existing terminal
+            await self._terminal.kill()
+
+            # Start new terminal
+            if self.kind == "ssh":
+                # For SSH, we need the original connection params
+                # For now, just return False as SSH restart requires storing params
+                return False
+            else:
+                self._terminal = LocalTerminal(self.session_id)
+                ok = await self._terminal.start(cols, rows)
+
+                if ok:
+                    # Re-attach all clients
+                    for ws in list(self._clients):
+                        callback = TerminalCallback(
+                            on_output=self._broadcast_output,
+                            on_error=self._broadcast_error,
+                            on_exit=self._broadcast_exit,
+                            on_metadata=self._broadcast_metadata,
+                        )
+                        self._terminal.attach(callback)
+
+                    # Send snapshot to all clients
+                    snapshot = self._terminal.history
+                    dead_clients = []
+                    for ws in list(self._clients):
+                        try:
+                            if not ws.closed:
+                                await ws.send_json({
+                                    "type": "snapshot",
+                                    "history": snapshot,
+                                })
+                        except Exception:
+                            dead_clients.append(ws)
+                    for ws in dead_clients:
+                        self._clients.discard(ws)
+
+                    return True
+        return False
+
     # ------------------------------------------------------------------
     # Client -> session delegation
     # ------------------------------------------------------------------
@@ -310,6 +403,10 @@ async def recover_sessions(store: TerminalSessionStore) -> None:
 
     Called during server startup.  Scans the persist directory for
     saved sessions and attempts to reattach to any that are still alive.
+
+    Note: PTY handles (ConPTY on Windows, pty fd on Unix) are lost across
+    server restarts.  Recovered sessions are marked as non-reattachable
+    and can only display persisted offline output in read-only mode.
     """
     persist_dir = store.persist_dir
     if not persist_dir.exists():
@@ -327,15 +424,35 @@ async def recover_sessions(store: TerminalSessionStore) -> None:
 
     recovered = await LocalTerminal.recover_sessions(persist_dir, callback_factory)
 
+    import time
+    now = time.time()
+
     for session_id, terminal in recovered.items():
         session = _TerminalSession(session_id, "local")
         session._terminal = terminal
-        session.alive = terminal.alive
         session._store = store
+
+        # Load metadata from store for additional info
+        meta = store.load(session_id) if store else None
+        if meta:
+            session.name = meta.get("name")
+            created_at = meta.get("created_at", 0)
+            # If session is older than 24 hours, PID reuse is likely — treat as dead
+            if terminal.alive and (now - created_at) > 86400:
+                terminal.alive = False
+                logger.warning(
+                    "Session %s too old (age=%.0fs), treating as dead to avoid PID reuse",
+                    session_id, now - created_at,
+                )
+
+        session.alive = terminal.alive
+
+        # All recovered sessions are non-reattachable (PTY handles lost)
+        session.reattachable = False
         _sessions[session_id] = session
 
         if terminal.alive:
-            logger.info("Recovered alive session: %s", session_id)
+            logger.info("Recovered alive session (read-only): %s", session_id)
         else:
             logger.info("Recovered dead session: %s", session_id)
 
@@ -412,7 +529,22 @@ async def terminal_ws(request: aiohttp.web.Request) -> aiohttp.web.WebSocketResp
 
                 # Check if session already exists (reattach)
                 existing_session = _sessions.get(session_id)
-                if existing_session and existing_session.alive:
+                if existing_session and existing_session.alive and not existing_session.reattachable:
+                    # Non-reattachable session: serve offline output only
+                    session = existing_session
+                    session.attach_client(ws)
+                    await ws.send_json({"type": "ready", "session_id": session_id})
+                    await ws.send_json({"type": "mode", "mode": "pipe"})
+                    # Deliver offline history
+                    if session._store:
+                        offline = session._store.consume_offline_output(session_id)
+                        if offline:
+                            await ws.send_json({"type": "output", "data": offline})
+                    # Signal that the process is no longer interactive
+                    await ws.send_json({"type": "exit", "code": -1})
+                    initialized = True
+
+                elif existing_session and existing_session.alive:
                     # Reattach to existing session
                     session = existing_session
                     buffered = session.attach_client(ws)
@@ -511,6 +643,21 @@ async def terminal_ws(request: aiohttp.web.Request) -> aiohttp.web.WebSocketResp
                     await session.kill()
                     session = None
                     initialized = False
+
+            elif msg_type == "clear" and session:
+                # Clear terminal history
+                await session.clear()
+
+            elif msg_type == "restart" and session:
+                # Restart terminal session
+                cols = int(payload.get("cols", 80))
+                rows = int(payload.get("rows", 24))
+                ok = await session.restart(cols, rows)
+                if not ok:
+                    await ws.send_json({
+                        "type": "error",
+                        "message": "Failed to restart terminal",
+                    })
 
             elif msg_type == "ping":
                 await ws.send_json({"type": "pong"})

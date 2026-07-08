@@ -1,9 +1,6 @@
-"""Qwen 用户设置默认载荷。
-
-用于首次登录后将云端设置同步为 "关闭记忆 / 关闭非必要工具"。
-"""
-
 from __future__ import annotations
+
+"""Default account settings payload synced after login."""
 
 from typing import Any, Dict, Final
 

@@ -47,12 +47,7 @@ var RequestInspector = (function () {
     if (!panel) return;
     connect();
     bindFilters();
-    setInterval(function () {
-      var tab = document.getElementById('tab-stats');
-      if (tab && tab.classList.contains('active')) {
-        renderList();
-      }
-    }, 2000);
+    // No polling needed — WebSocket messages trigger renderList() via handleMessage()
   }
 
   function bindFilters() {
@@ -159,7 +154,25 @@ var RequestInspector = (function () {
       }
     } else if (msg.type === 'request_end') {
       var req = _requests[msg.id];
-      if (req) {
+      if (!req) {
+        // History entry from SQLite — create record directly
+        req = {
+          id: msg.id, ts: msg.ts, model: msg.model || '',
+          messages_count: msg.messages_count || 0,
+          messages: msg.messages || [],
+          has_tools: msg.has_tools || false,
+          stream: msg.stream || false,
+          status: msg.status, latency_ms: msg.latency_ms,
+          platform: msg.platform || '',
+          chunks: [], content: ''
+        };
+        _requests[msg.id] = req;
+        _order.unshift(msg.id);
+        if (_order.length > _maxItems) {
+          var old = _order.pop();
+          delete _requests[old];
+        }
+      } else {
         req.status = msg.status;
         req.latency_ms = msg.latency_ms;
         req.platform = msg.platform || '';
