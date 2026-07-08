@@ -137,6 +137,7 @@
   cursor: pointer;
   flex-shrink: 0;
   color: var(--muted);
+  margin-left: auto;
   transition: opacity 0.12s ease, background 0.1s ease, color 0.1s ease;
 }
 

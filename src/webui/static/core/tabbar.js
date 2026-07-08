@@ -155,11 +155,15 @@ var TabBar = (function () {
         el.appendChild(statusEl);
       }
 
-      // Icon slot -- shown for tabs without status (e.g., file tabs in compressed mode)
-      var iconEl = document.createElement('span');
-      iconEl.className = 'unified-tab-icon';
-      iconEl.innerHTML = tab.icon || '';
-      el.appendChild(iconEl);
+      // Icon slot -- skip when status dot is present and icon is empty
+      if (tab.status && !tab.icon) {
+        // no icon element needed
+      } else {
+        var iconEl = document.createElement('span');
+        iconEl.className = 'unified-tab-icon';
+        iconEl.innerHTML = tab.icon || '';
+        el.appendChild(iconEl);
+      }
 
       // Title text
       var titleEl = document.createElement('span');
