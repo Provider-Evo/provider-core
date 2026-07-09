@@ -9,6 +9,12 @@ import aiohttp
 
 from src.core import Candidate
 from src.logger import get_logger
+from src.platforms.capabilities import (
+    DefaultAudioMixin,
+    DefaultEmbeddingMixin,
+    DefaultImageMixin,
+    DefaultModerationMixin,
+)
 
 __all__ = ["PlatformAdapter"]
 logger = get_logger(__name__)
@@ -45,7 +51,13 @@ MODERATION_CATEGORY_SCORES = {
 }
 
 
-class PlatformAdapter(ABC):
+class PlatformAdapter(
+    DefaultEmbeddingMixin,
+    DefaultImageMixin,
+    DefaultAudioMixin,
+    DefaultModerationMixin,
+    ABC,
+):
     """所有平台适配器的抽象基类。
 
     设计原则：
@@ -157,242 +169,11 @@ class PlatformAdapter(ABC):
         """关闭适配器，释放资源（后台 Task 需取消）。"""
         ...
 
-    # ── 可选能力方法（默认返回标准空结果，子类覆盖实现真实逻辑）──────────────
+    # ── 可选能力方法（Default*Mixin 提供 no-op 默认实现）────────────────────
 
     async def fetch_remote_models(self) -> List[str]:
-        """拉取远程模型列表（子类按需覆盖）。
-
-        Returns:
-            远程模型名列表，失败时返回空列表。
-        """
+        """拉取远程模型列表（子类按需覆盖）。"""
         return []
-
-    async def create_embedding(
-        self,
-        candidate: Candidate,
-        input_data: Union[str, List[str]],
-        model: str,
-        **kw: Any,
-    ) -> Dict[str, Any]:
-        """嵌入向量生成（默认返回空结果，子类覆盖实现）。
-
-        Args:
-            candidate: 候选项。
-            input_data: 输入文本。
-            model: 模型名。
-            **kw: 额外参数。
-
-        Returns:
-            嵌入结果字典（object/data/model/usage 标准格式）。
-        """
-        inputs = [input_data] if isinstance(input_data, str) else list(input_data)
-        return {
-            "object": "list",
-            "data": [
-                {
-                    "object": "embedding",
-                    "index": i,
-                    "embedding": [],
-                }
-                for i, _ in enumerate(inputs)
-            ],
-            "model": model,
-            "usage": {"prompt_tokens": 0, "total_tokens": 0},
-        }
-
-    async def create_image(
-        self,
-        candidate: Candidate,
-        prompt: str,
-        model: str,
-        **kw: Any,
-    ) -> Dict[str, Any]:
-        """图片生成（默认返回空结果，子类覆盖实现）。
-
-        Args:
-            candidate: 候选项。
-            prompt: 提示词。
-            model: 模型名。
-            **kw: 额外参数（size、n、quality 等）。
-
-        Returns:
-            图片生成结果字典（created/data 标准格式）。
-        """
-
-        return {
-            "created": int(time.time()),
-            "data": [],
-        }
-
-    async def edit_image(
-        self,
-        candidate: Candidate,
-        image: bytes,
-        prompt: str,
-        model: str,
-        **kw: Any,
-    ) -> Dict[str, Any]:
-        """图片编辑（默认返回空结果，子类覆盖实现）。
-
-        Args:
-            candidate: 候选项。
-            image: 原始图片字节。
-            prompt: 编辑提示词。
-            model: 模型名。
-            **kw: 额外参数。
-
-        Returns:
-            编辑结果字典（created/data 标准格式）。
-        """
-
-        return {
-            "created": int(time.time()),
-            "data": [],
-        }
-
-    async def create_image_variation(
-        self,
-        candidate: Candidate,
-        image: bytes,
-        model: str,
-        **kw: Any,
-    ) -> Dict[str, Any]:
-        """图片变体（默认返回空结果，子类覆盖实现）。
-
-        Args:
-            candidate: 候选项。
-            image: 原始图片字节。
-            model: 模型名。
-            **kw: 额外参数。
-
-        Returns:
-            变体结果字典（created/data 标准格式）。
-        """
-
-        return {
-            "created": int(time.time()),
-            "data": [],
-        }
-
-    async def create_speech(
-        self,
-        candidate: Candidate,
-        input_text: str,
-        model: str,
-        voice: str,
-        **kw: Any,
-    ) -> bytes:
-        """语音合成（默认返回空字节，子类覆盖实现）。
-
-        Args:
-            candidate: 候选项。
-            input_text: 输入文本。
-            model: 模型名。
-            voice: 声音名。
-            **kw: 额外参数。
-
-        Returns:
-            音频字节数据（空字节表示平台不支持）。
-        """
-        return b""
-
-    async def create_transcription(
-        self,
-        candidate: Candidate,
-        audio: bytes,
-        model: str,
-        **kw: Any,
-    ) -> Dict[str, Any]:
-        """语音转录（默认返回空结果，子类覆盖实现）。
-
-        Args:
-            candidate: 候选项。
-            audio: 音频字节数据。
-            model: 模型名。
-            **kw: 额外参数。
-
-        Returns:
-            转录结果字典（text 字段标准格式）。
-        """
-        return {"text": ""}
-
-    async def create_translation(
-        self,
-        candidate: Candidate,
-        audio: bytes,
-        model: str,
-        **kw: Any,
-    ) -> Dict[str, Any]:
-        """语音翻译（默认返回空结果，子类覆盖实现）。
-
-        Args:
-            candidate: 候选项。
-            audio: 音频字节数据。
-            model: 模型名。
-            **kw: 额外参数。
-
-        Returns:
-            翻译结果字典（text 字段标准格式）。
-        """
-        return {"text": ""}
-
-    async def create_moderation(
-        self,
-        candidate: Candidate,
-        input_data: Union[str, List[str]],
-        model: str,
-        **kw: Any,
-    ) -> Dict[str, Any]:
-        """内容审核（默认返回通过结果，子类覆盖实现）。
-
-        Args:
-            candidate: 候选项。
-            input_data: 输入文本。
-            model: 模型名。
-            **kw: 额外参数。
-
-        Returns:
-            审核结果字典（OpenAI moderation 标准格式）。
-        """
-        import uuid as _uuid
-
-        inputs = [input_data] if isinstance(input_data, str) else list(input_data)
-        return {
-            "id": "modr-{}".format(_uuid.uuid4().hex[:24]),
-            "model": model,
-            "results": [
-                {
-                    "flagged": False,
-                    "categories": {
-                        "sexual": False,
-                        "hate": False,
-                        "harassment": False,
-                        "self-harm": False,
-                        "sexual/minors": False,
-                        "hate/threatening": False,
-                        "violence/graphic": False,
-                        "self-harm/intent": False,
-                        "self-harm/instructions": False,
-                        "harassment/threatening": False,
-                        "violence": False,
-                    },
-                    "category_scores": {
-                        "sexual": 0.0,
-                        "hate": 0.0,
-                        "harassment": 0.0,
-                        "self-harm": 0.0,
-                        "sexual/minors": 0.0,
-                        "hate/threatening": 0.0,
-                        "violence/graphic": 0.0,
-                        "self-harm/intent": 0.0,
-                        "self-harm/instructions": 0.0,
-                        "harassment/threatening": 0.0,
-                        "violence": 0.0,
-                    },
-                }
-                for _ in inputs
-            ],
-        }
 
     async def create_rerank(
         self,

@@ -195,12 +195,7 @@ logger = get_logger(__name__)
 # ════════════════════════════════════════════════════════════════
 
 
-def setup_routes(app: aiohttp.web.Application) -> None:
-    """注册所有 OpenAI 兼容路由。
-
-    Args:
-        app: aiohttp.web.Application 实例。
-    """
+def _register_openai_core_routes(app: aiohttp.web.Application) -> None:
     app.router.add_route("*", "/v1/chat/completions", chat_completions)
     app.router.add_post("/v1/responses", create_response)
     app.router.add_post("/v1/embeddings", create_embeddings)
@@ -213,11 +208,17 @@ def setup_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/videos/generations", create_video)
     app.router.add_post("/v1/moderations", create_moderation)
     app.router.add_post("/v1/rerank", create_rerank)
+
+
+def _register_openai_files_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/files", upload_file)
     app.router.add_get("/v1/files", list_files)
     app.router.add_get("/v1/files/{file_id}", retrieve_file)
     app.router.add_delete("/v1/files/{file_id}", delete_file)
     app.router.add_get("/v1/files/{file_id}/content", retrieve_file_content)
+
+
+def _register_openai_beta_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/fine_tuning/jobs", create_fine_tuning_job)
     app.router.add_get("/v1/fine_tuning/jobs", list_fine_tuning_jobs)
     app.router.add_get("/v1/fine_tuning/jobs/{job_id}", retrieve_fine_tuning_job)
@@ -255,3 +256,10 @@ def setup_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/uploads/{upload_id}/parts", add_upload_part)
     app.router.add_post("/v1/uploads/{upload_id}/complete", complete_upload)
     app.router.add_post("/v1/uploads/{upload_id}/cancel", cancel_upload)
+
+
+def setup_routes(app: aiohttp.web.Application) -> None:
+    """注册所有 OpenAI 兼容路由。"""
+    _register_openai_core_routes(app)
+    _register_openai_files_routes(app)
+    _register_openai_beta_routes(app)

@@ -19,7 +19,9 @@ _PERSIST_INTERVAL = 30  # seconds
 
 
 def save_stats() -> None:
-    """Persist current stats snapshot to disk."""
+    """中文说明：save_stats。
+
+Persist current stats snapshot to disk."""
     try:
         persist_json_dir()  # ensure exists
         data = get_stats().to_dict()
@@ -29,7 +31,9 @@ def save_stats() -> None:
 
 
 def load_stats() -> None:
-    """Restore stats from persisted file on startup."""
+    """中文说明：load_stats。
+
+Restore stats from persisted file on startup."""
     try:
         if _PERSIST_FILE.exists():
             raw = _PERSIST_FILE.read_text(encoding="utf-8")
@@ -54,7 +58,9 @@ def _persist_loop() -> None:
 
 
 def start_persist() -> None:
-    """Start the periodic persistence loop. Call once at app startup."""
+    """中文说明：start_persist。
+
+Start the periodic persistence loop. Call once at app startup."""
     global _persist_timer
     if _persist_timer is not None:
         return  # already started

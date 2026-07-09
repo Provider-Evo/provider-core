@@ -1,6 +1,7 @@
 """Selector with SQLite persistence and stale candidate pruning."""
 from __future__ import annotations
 
+import asyncio
 import json
 import sqlite3
 import threading
@@ -44,6 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_updated ON records(updated_at);
 
 
 class Selector(_BaseSelector):
+    """类 Selector。"""
     """AdaptiveSelector with SQLite persistence and stale candidate pruning.
 
     Replaces the default JSON file persistence with a single SQLite database,
@@ -72,7 +74,7 @@ class Selector(_BaseSelector):
         """
         self._prune_days = prune_days
         self._db_path = Path(persist_dir) / "gateway.db"
-        self._dirty: Dict[str, TASRecord] = {}
+        self._sqlite_dirty: Dict[str, TASRecord] = {}
         self._flush_interval = _FLUSH_INTERVAL
         self._lock = threading.Lock()
         self._closed = False
@@ -280,7 +282,24 @@ class Selector(_BaseSelector):
             self._flush_one(key, r)
             return
         with self._lock:
-            self._dirty[key] = r
+            self._sqlite_dirty[key] = r
+
+    async def flush(self) -> None:
+        """中文说明：flush。
+
+Flush pending SQLite writes and sync echotools dirty state."""
+        if self._flush_task is not None and not self._flush_task.done():
+            self._flush_task.cancel()
+            try:
+                await self._flush_task
+            except asyncio.CancelledError:
+                pass
+        self._flush()
+
+    def _flush_dirty_sync(self) -> None:
+        """Sync echotools dirty keys into SQLite."""
+        super()._flush_dirty_sync()
+        self._flush_sqlite()
 
     # ------------------------------------------------------------------
     # Batched flush
@@ -288,11 +307,15 @@ class Selector(_BaseSelector):
 
     def _flush(self) -> None:
         """Flush all dirty records to SQLite in a single batch."""
+        self._flush_dirty_sync()
+
+    def _flush_sqlite(self) -> None:
+        """Write buffered SQLite dirty records in one transaction."""
         with self._lock:
-            if not self._dirty:
+            if not self._sqlite_dirty:
                 return
-            items = dict(self._dirty)
-            self._dirty.clear()
+            items = dict(self._sqlite_dirty)
+            self._sqlite_dirty.clear()
 
         conn = sqlite3.connect(str(self._db_path))
         try:
@@ -336,6 +359,7 @@ class Selector(_BaseSelector):
     def _start_flush_thread(self) -> None:
         """Start a daemon thread that periodically flushes dirty records."""
         def loop() -> None:
+            """公开方法 loop。"""
             while not self._closed:
                 time.sleep(self._flush_interval)
                 try:
@@ -356,14 +380,15 @@ class Selector(_BaseSelector):
     # ------------------------------------------------------------------
 
     def prune_stale(self) -> int:
-        """Remove stale candidate records from SQLite and the in-memory pool.
+        """中文说明：prune_stale。
 
-        Deletes records whose last_used time exceeds the configured threshold
-        and that have never successfully completed a call.
+Remove stale candidate records from SQLite and the in-memory pool.
 
-        Returns:
-            Number of candidate records pruned.
-        """
+Deletes records whose last_used time exceeds the configured threshold
+and that have never successfully completed a call.
+
+Returns:
+    Number of candidate records pruned."""
         if not self._db_path.exists():
             return 0
 
@@ -399,6 +424,8 @@ class Selector(_BaseSelector):
     # ------------------------------------------------------------------
 
     def close(self) -> None:
-        """Flush all pending writes and close the selector."""
+        """中文说明：close。
+
+Flush all pending writes and close the selector."""
         self._closed = True
         self._flush()

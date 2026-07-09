@@ -12,7 +12,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import aiohttp
 
 from src.core.dispatch.candidate import Candidate
-from src.core.models_cache import ModelsCache
+from src.core.utils.compat.models_cache import ModelsCache
 from src.logger import get_logger
 from src.platforms.base import PlatformAdapter
 from src.platforms.ollama.core.constants import (
@@ -28,6 +28,7 @@ logger = get_logger(__name__)
 class OllamaAdapter(PlatformAdapter):
     """Ollama 平台适配器。
 
+    实现 :class:`~src.platforms.capabilities.EmbeddingCapable`（覆盖 ``create_embedding``）。
     负责初始化客户端、管理模型缓存、委托聊天请求。
     """
 

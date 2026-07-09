@@ -1,5 +1,5 @@
 /**
- * SortableList — 可排序列表组件（带上下箭头 + 删除按钮）
+ * SortableList — reorderable list with up/down/remove controls.
  *
  * Usage:
  *   var list = new SortableList(container, {
@@ -15,6 +15,12 @@
 (function(global) {
   'use strict';
 
+  var _registry = [];
+
+  function _t(key) {
+    return (typeof t === 'function') ? t(key) : key;
+  }
+
   function SortableList(container, opts) {
     if (typeof container === 'string') container = document.querySelector(container);
     if (!container) throw new Error('SortableList: container not found');
@@ -24,8 +30,10 @@
     this._renderItem = (opts && opts.renderItem) || function(v) { return '<span>' + String(v) + '</span>'; };
     this._getItemValue = (opts && opts.getItemValue) || null;
     this._onChange = (opts && opts.onChange) || null;
-    this._placeholder = (opts && opts.placeholder) || 'No items';
+    this._customPlaceholder = (opts && opts.placeholder) || null;
+    this._placeholder = this._customPlaceholder || _t('sortable.empty');
     this._render();
+    _registry.push(this);
   }
 
   SortableList.prototype.setItems = function(items) {
@@ -46,6 +54,13 @@
     return this._items.slice();
   };
 
+  SortableList.prototype._onLocaleChange = function() {
+    if (!this._customPlaceholder) {
+      this._placeholder = _t('sortable.empty');
+    }
+    this._render();
+  };
+
   SortableList.prototype._render = function() {
     var self = this;
     var list = this._container;
@@ -58,13 +73,13 @@
       var isFirst = (i === 0);
       var isLast = (i === this._items.length - 1);
       html += '<div class="sl-item" data-index="' + i + '" draggable="true">';
-      html += '<div class="sl-drag-handle" title="Drag to reorder">&#x2630;</div>';
+      html += '<div class="sl-drag-handle" title="' + _t('sortable.dragHandle') + '">&#x2630;</div>';
       html += '<div class="sl-controls">';
-      html += '<button type="button" class="sl-btn sl-up' + (isFirst ? ' sl-disabled' : '') + '" data-action="up" data-index="' + i + '" title="上移"' + (isFirst ? ' disabled' : '') + '>&#9650;</button>';
-      html += '<button type="button" class="sl-btn sl-down' + (isLast ? ' sl-disabled' : '') + '" data-action="down" data-index="' + i + '" title="下移"' + (isLast ? ' disabled' : '') + '>&#9660;</button>';
+      html += '<button type="button" class="sl-btn sl-up' + (isFirst ? ' sl-disabled' : '') + '" data-action="up" data-index="' + i + '" title="' + _t('sortable.moveUp') + '"' + (isFirst ? ' disabled' : '') + '>&#9650;</button>';
+      html += '<button type="button" class="sl-btn sl-down' + (isLast ? ' sl-disabled' : '') + '" data-action="down" data-index="' + i + '" title="' + _t('sortable.moveDown') + '"' + (isLast ? ' disabled' : '') + '>&#9660;</button>';
       html += '</div>';
       html += '<div class="sl-content">' + this._renderItem(this._items[i], i) + '</div>';
-      html += '<button type="button" class="sl-btn sl-remove" data-action="remove" data-index="' + i + '" title="删除">&times;</button>';
+      html += '<button type="button" class="sl-btn sl-remove" data-action="remove" data-index="' + i + '" title="' + _t('sortable.remove') + '">&times;</button>';
       html += '</div>';
     }
     list.innerHTML = html;
@@ -174,6 +189,14 @@
   SortableList.prototype._fireChange = function() {
     if (this._onChange) this._onChange(this.getItems());
   };
+
+  if (typeof i18n !== 'undefined' && i18n.onLanguageChanged) {
+    i18n.onLanguageChanged(function() {
+      for (var i = 0; i < _registry.length; i++) {
+        _registry[i]._onLocaleChange();
+      }
+    });
+  }
 
   global.SortableList = SortableList;
 })(typeof window !== 'undefined' ? window : this);

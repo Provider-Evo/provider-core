@@ -5,12 +5,18 @@ from __future__ import annotations
 提供 `get_logger` 以统一项目日志输出（控制台 + 文件）。
 """
 
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from loguru import logger as _loguru_logger
+
+_SENSITIVE_RE = re.compile(
+    r"(?i)(api[_-]?key|token|password|authorization|secret|bearer)\s*[:=]\s*\S+",
+)
+_BEARER_RE = re.compile(r"(?i)(Bearer\s+)\S+")
 
 # 当 CLICOLOR_FORCE=1 时，loguru 的 colorize=True 在管道下仍然会输出 ANSI 代码
 # 通过自定义 sink 强制 loguru 始终渲染颜色标记
@@ -156,6 +162,12 @@ def clean_old_logs(days: int = 30) -> None:
         _loguru_logger.debug("清理过期日志失败: %s", exc)
 
 
+def _redact_message(message: str) -> str:
+    """遮蔽日志中的敏感凭据片段。"""
+    redacted = _BEARER_RE.sub(r"\1***", message)
+    return _SENSITIVE_RE.sub(lambda m: m.group(0).split("=")[0] + "=***", redacted)
+
+
 def _format_log(record: dict) -> bool:
     """格式化日志记录，确保 extra 字段存在。
 
@@ -168,6 +180,10 @@ def _format_log(record: dict) -> bool:
     record["extra"]["level_abbr"] = get_level_abbr(record)
     if "module_name" not in record["extra"]:
         record["extra"]["module_name"] = "Adapter"
+    try:
+        record["message"] = _redact_message(str(record["message"]))
+    except Exception:
+        pass
     return True
 
 
@@ -418,6 +434,28 @@ def _setup_handlers() -> None:
 
 
 _setup_handlers()
+
+
+def _cleanup_loguru() -> None:
+    """在进程退出前移除所有 loguru handler，避免 atexit 回调中 join 线程阻塞。
+
+    loguru 的文件处理器若使用 enqueue=True，会在后台启动线程。
+    Python 退出时 atexit 回调尝试 join 该线程，可能被 KeyboardInterrupt 中断。
+    ��前移除所有 handler 可避免此问题。
+    """
+    try:
+        _loguru_logger.remove()
+    except Exception:
+        pass
+
+
+def shutdown_logging() -> None:
+    """优雅关闭日志系统，释放文件句柄与后台线程。"""
+    _cleanup_loguru()
+
+
+import atexit as _atexit
+_atexit.register(_cleanup_loguru)
 
 
 def get_logger(module_name: str) -> CompatLogger:

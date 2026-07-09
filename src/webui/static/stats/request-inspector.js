@@ -248,7 +248,7 @@ var RequestInspector = (function () {
     var totalCount = document.getElementById('reqTotalCount');
     if (pageInput) { pageInput.value = _currentPage; pageInput.max = totalPages; }
     if (pageTotal) { pageTotal.textContent = '/' + totalPages; }
-    if (totalCount) { totalCount.textContent = totalItems + ' 条'; }
+    if (totalCount) { totalCount.textContent = t('requests.totalCount', { count: totalItems }); }
 
     // Render current page items
     var start = (_currentPage - 1) * _pageSize;
@@ -325,7 +325,7 @@ var RequestInspector = (function () {
       html += '<div class="req-modal-section">';
       html += '<div class="req-modal-section-header">';
       html += '<div class="req-modal-label">Response (' + content.length + ' chars)</div>';
-      html += '<button type="button" class="req-copy-btn" data-copy-target="response" title="复制">复制</button>';
+      html += '<button type="button" class="req-copy-btn" data-copy-target="response" title="' + t('common.copy') + '">' + t('common.copy') + '</button>';
       html += '</div>';
       html += '<pre class="req-modal-content" id="req-response-content">' + escapeHtml(content) + '</pre>';
       html += '</div>';
@@ -341,7 +341,7 @@ var RequestInspector = (function () {
       html += '<div class="req-modal-section">';
       html += '<div class="req-modal-section-header">';
       html += '<div class="req-modal-label">Request Messages (' + req.messages.length + ')</div>';
-      html += '<button type="button" class="req-copy-btn" data-copy-target="messages" title="复制">复制</button>';
+      html += '<button type="button" class="req-copy-btn" data-copy-target="messages" title="' + t('common.copy') + '">' + t('common.copy') + '</button>';
       html += '</div>';
       html += '<pre class="req-modal-content" id="req-messages-content">' + escapeHtml(messagesJson) + '</pre>';
       html += '</div>';
@@ -380,11 +380,11 @@ var RequestInspector = (function () {
         if (!el) return;
         var text = el.textContent || '';
         copyToClipboard(text).then(function() {
-          btn.textContent = '已复制';
-          setTimeout(function() { btn.textContent = '复制'; }, 1500);
+          btn.textContent = t('toast.copied');
+          setTimeout(function() { btn.textContent = t('common.copy'); }, 1500);
         }, function() {
-          btn.textContent = '失败';
-          setTimeout(function() { btn.textContent = '复制'; }, 1500);
+          btn.textContent = t('common.failed');
+          setTimeout(function() { btn.textContent = t('common.copy'); }, 1500);
         });
       });
     });
@@ -405,7 +405,7 @@ var RequestInspector = (function () {
       if (content) {
         firstSection.innerHTML = '<div class="req-modal-section-header">'
           + '<div class="req-modal-label">Response (' + content.length + ' chars)</div>'
-          + '<button type="button" class="req-copy-btn" data-copy-target="response" title="复制">复制</button>'
+          + '<button type="button" class="req-copy-btn" data-copy-target="response" title="' + t('common.copy') + '">' + t('common.copy') + '</button>'
           + '</div>'
           + '<pre class="req-modal-content" id="req-response-content">' + escapeHtml(content) + '</pre>';
         // Re-bind copy button
@@ -415,11 +415,11 @@ var RequestInspector = (function () {
             var el = document.getElementById('req-response-content');
             if (!el) return;
             copyToClipboard(el.textContent || '').then(function() {
-              newBtn.textContent = '已复制';
-              setTimeout(function() { newBtn.textContent = '复制'; }, 1500);
+              newBtn.textContent = t('toast.copied');
+              setTimeout(function() { newBtn.textContent = t('common.copy'); }, 1500);
             }, function() {
-              newBtn.textContent = '失败';
-              setTimeout(function() { newBtn.textContent = '复制'; }, 1500);
+              newBtn.textContent = t('common.failed');
+              setTimeout(function() { newBtn.textContent = t('common.copy'); }, 1500);
             });
           });
         }

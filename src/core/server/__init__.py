@@ -20,6 +20,7 @@ from echotools.process.port import *  # noqa: F401, F403
 from echotools.web.utils import json_response
 
 from src.core.server.app import REGISTRY_KEY, SESSION_KEY, create_app
+from src.core.server.app_host import AppHost
 from src.core.server.http_utils import clean_fncall, get_json, safe_flush
 from src.core.server.proxy import (
     activate,
@@ -28,7 +29,8 @@ from src.core.server.proxy import (
     get_proxy_server,
     is_active,
 )
-from src.core.server.watcher import FileWatcher
+from src.core.server.infra.reload import HotReloadService, ReloadCoordinator
+from src.core.server.infra.watcher import FileWatcher
 
 __all__ = [
     # --- autoupdate ---
@@ -47,9 +49,13 @@ __all__ = [
     "get_proxy_dict",
     # --- server ---
     "create_app",
+    "AppHost",
     "json_response",
     "REGISTRY_KEY",
     "SESSION_KEY",
+    # --- reload ---
+    "HotReloadService",
+    "ReloadCoordinator",
     # --- watcher ---
     "FileWatcher",
 ]

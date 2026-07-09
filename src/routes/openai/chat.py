@@ -265,8 +265,11 @@ async def _stream_chat(
                     _log_id = request.get("_req_log_id")
                     if _log_id:
                         try:
-                            from src.webui.services.request_log import request_broker
-                            request_broker.push_event({"type": "request_chunk", "id": _log_id, "delta": safe_part})
+                            from src.core.observability import get_observability_services
+
+                            get_observability_services().push_request_event(
+                                {"type": "request_chunk", "id": _log_id, "delta": safe_part},
+                            )
                         except Exception:
                             pass
                     await _send_init()
@@ -411,19 +414,114 @@ async def _stream_chat(
     return resp
 
 
+async def _collect_nonstream_chat(
+    request: aiohttp.web.Request,
+    body: Dict[str, Any],
+    messages: List[Dict[str, Any]],
+    mdl: str,
+) -> tuple[List[str], List[str], List[Dict], Optional[Dict], str]:
+    """非流式补全：调用网关并聚合文本、thinking、tool_calls。"""
+    from src.core import gateway
+
+    extra = body.get("extra_body") or body.get("extra") or {}
+    cp: List[str] = []
+    tp: List[str] = []
+    tcs: List[Dict] = []
+    usage_d: Optional[Dict] = None
+    platform_id = ""
+    upload_files = _extract_upload_files(messages)
+    proto_override = body.get("protocol", "")
+
+    async for ch in gateway.dispatch(
+        registry=request.app[REGISTRY_KEY],
+        messages=_normalize_messages(messages),
+        model=mdl,
+        stream=False,
+        tools=body.get("tools"),
+        thinking=bool(extra.get("thinking")),
+        search=bool(extra.get("search")),
+        temperature=body.get("temperature"),
+        top_p=body.get("top_p"),
+        max_tokens=body.get("max_tokens"),
+        stop=_sl(body.get("stop")),
+        upload_files=upload_files if upload_files else None,
+        protocol_id=proto_override,
+        tool_choice=body.get("tool_choice"),
+        platform=extra.get("platform", ""),
+    ):
+        if isinstance(ch, str):
+            cp.append(ch)
+        elif isinstance(ch, dict):
+            if "_meta" in ch:
+                platform_id = ch["_meta"].get("platform", "")
+            elif "thinking" in ch:
+                tp.append(ch["thinking"])
+            elif "tool_calls" in ch:
+                tcs = ch["tool_calls"]
+            elif "usage" in ch:
+                usage_d = ch["usage"]
+    return cp, tp, tcs, usage_d, platform_id
+
+
+def _fallback_parse_tool_calls(
+    content: str,
+    tcs: List[Dict],
+    platform_id: str,
+    proto_override: str,
+    tools: Any,
+) -> tuple[str, List[Dict]]:
+    """非流式兜底：从完整文本中解析 tool_calls。"""
+    if tcs or not content:
+        return content, tcs
+    try:
+        from src.core.fncall.registry import get_protocol
+        proto = get_protocol(platform_id=platform_id)
+        cleaned, extracted = proto.parse(content, tools)
+        if extracted:
+            return cleaned, extracted
+    except Exception as exc:
+        logger.debug("非流式兜底 fncall 解析失败: %s", exc)
+    return content, tcs
+
+
+def _build_chat_completion_payload(
+    mdl: str,
+    content: str,
+    tp: List[str],
+    tcs: List[Dict],
+    usage_d: Optional[Dict],
+) -> Dict[str, Any]:
+    """组装非流式 chat.completion JSON 载荷。"""
+    u = usage_d or {
+        "prompt_tokens": 0,
+        "completion_tokens": len(content) // 3 if content else 0,
+        "total_tokens": len(content) // 3 if content else 0,
+    }
+    msg: Dict[str, Any] = {"role": "assistant"}
+    if content:
+        msg["content"] = content
+    if tp:
+        msg["reasoning_content"] = "".join(tp)
+    if tcs:
+        msg["tool_calls"] = tcs
+    return {
+        "id": _cid(),
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": mdl,
+        "choices": [{
+            "index": 0,
+            "message": msg,
+            "finish_reason": "tool_calls" if tcs else "stop",
+        }],
+        "usage": u,
+    }
+
+
 async def chat_completions(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.StreamResponse:
-    """聊天补全端点 /v1/chat/completions。
-
-    Args:
-        request: 请求对象。
-
-    Returns:
-        响应对象。
-    """
-    from src.core import gateway
-
+    """聊天补全端点 /v1/chat/completions。"""
     if request.method != "POST":
         return _err(
             405,
@@ -444,53 +542,15 @@ async def chat_completions(
     if not messages:
         return _err(400, "messages is required", "missing_field", param="messages")
 
-    mdl = body.get("model", "")
-    mdl = resolve_model(mdl, "openai")
-    stream = bool(body.get("stream", False))
-
-    if stream:
+    mdl = resolve_model(body.get("model", ""), "openai")
+    if bool(body.get("stream", False)):
         return await _stream_chat(request, body)
 
-    cid = _cid()
-    ct = int(time.time())
-    extra = body.get("extra_body") or body.get("extra") or {}
-    cp: List[str] = []
-    tp: List[str] = []
-    tcs: List[Dict] = []
-    usage_d: Optional[Dict] = None
-    upload_files = _extract_upload_files(messages)
-    platform_id: str = ""
     proto_override = body.get("protocol", "")
-
     try:
-        async for ch in gateway.dispatch(
-            registry=request.app[REGISTRY_KEY],
-            messages=_normalize_messages(messages),
-            model=mdl,
-            stream=False,
-            tools=body.get("tools"),
-            thinking=bool(extra.get("thinking")),
-            search=bool(extra.get("search")),
-            temperature=body.get("temperature"),
-            top_p=body.get("top_p"),
-            max_tokens=body.get("max_tokens"),
-            stop=_sl(body.get("stop")),
-            upload_files=upload_files if upload_files else None,
-            protocol_id=proto_override,
-            tool_choice=body.get("tool_choice"),
-            platform=extra.get("platform", ""),
-        ):
-            if isinstance(ch, str):
-                cp.append(ch)
-            elif isinstance(ch, dict):
-                if "_meta" in ch:
-                    platform_id = ch["_meta"].get("platform", "")
-                elif "thinking" in ch:
-                    tp.append(ch["thinking"])
-                elif "tool_calls" in ch:
-                    tcs = ch["tool_calls"]
-                elif "usage" in ch:
-                    usage_d = ch["usage"]
+        cp, tp, tcs, usage_d, platform_id = await _collect_nonstream_chat(
+            request, body, messages, mdl
+        )
     except NoCandidateError as e:
         return _err(503, str(e), "no_candidate", "service_unavailable")
     except ProviderError as e:
@@ -500,49 +560,8 @@ async def chat_completions(
         return _err(500, str(e), "internal_error", "server_error")
 
     content = "".join(cp)
-
-    # 兜底：若网关未产出 tool_calls 块（请求未带 tools，或流式解析器
-    # 漏掉变体标签），对完整内容再跑一次协议解析，把 antml / bracket /
-    # 其它协议的 tool_calls 抠出来。
-    if not tcs and content:
-        try:
-            from src.core.fncall.registry import get_protocol
-            proto = get_protocol(platform_id=platform_id)
-            cleaned, extracted = proto.parse(content, body.get("tools"))
-            if extracted:
-                tcs = extracted
-                content = cleaned
-        except Exception as exc:
-            logger.debug("非流式兜底 fncall 解析失败: %s", exc)
-
-    content = _clean_fncall(content, platform_id=platform_id, protocol_id=proto_override)
-
-    u = usage_d or {
-        "prompt_tokens": 0,
-        "completion_tokens": len(content) // 3 if content else 0,
-        "total_tokens": len(content) // 3 if content else 0,
-    }
-    msg: Dict[str, Any] = {"role": "assistant"}
-    if content:
-        msg["content"] = content
-    if tp:
-        msg["reasoning_content"] = "".join(tp)
-    if tcs:
-        msg["tool_calls"] = tcs
-
-    return _json(
-        {
-            "id": cid,
-            "object": "chat.completion",
-            "created": ct,
-            "model": mdl,
-            "choices": [
-                {
-                    "index": 0,
-                    "message": msg,
-                    "finish_reason": "tool_calls" if tcs else "stop",
-                }
-            ],
-            "usage": u,
-        }
+    content, tcs = _fallback_parse_tool_calls(
+        content, tcs, platform_id, proto_override, body.get("tools")
     )
+    content = _clean_fncall(content, platform_id=platform_id, protocol_id=proto_override)
+    return _json(_build_chat_completion_payload(mdl, content, tp, tcs, usage_d))

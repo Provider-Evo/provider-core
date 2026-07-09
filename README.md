@@ -18,11 +18,11 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.262-blue)
-![Version](https://img.shields.io/badge/version-v2.2.262-blue)
+![Status](https://img.shields.io/badge/status-v2.2.264-blue)
+![Version](https://img.shields.io/badge/version-v2.2.264-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Platforms](https://img.shields.io/badge/platforms-17+-orange)
+![Platforms](https://img.shields.io/badge/platforms-24-orange)
 
 [![GitHub stars](https://img.shields.io/github/stars/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/nichengfuben/provider-v2)](https://github.com/nichengfuben/provider-v2/issues)
@@ -69,7 +69,7 @@
 
 ### 核心功能
 
-- 🔌 **多平台聚合**：统一接入 Qwen、DeepSeek、GLM、Cerebras、Ollama、ChatMoe、Cursor、CodeBuddy、NVIDIA 等 11+ 平台
+- 🔌 **多平台聚合**：统一接入 Qwen、DeepSeek、Cerebras、Ollama、OpenRouter、OpenCode 等 24 个平台适配器
 - 🔄 **API 兼容性**：同时兼容 OpenAI 和 Anthropic API 规范，无缝迁移现有项目
 - ⚡ **并发竞速**：智能选择最快响应的候选项，显著降低延迟
 - 🛠️ **工具调用支持**：完整的 function calling 功能，支持 7 种协议（xml/original/antml/bracket/custom/nous/dsml），中英文模板自定义
@@ -113,7 +113,7 @@
 
 | 功能 | 状态 | 说明 |
 |------|:----:|------|
-| **多平台聚合** | ✅ | 支持 11+ AI 平台 |
+| **多平台聚合** | ✅ | 24 个平台适配器（`src/platforms/*/core/adaptercore.py`） |
 | **OpenAI 兼容 API** | ✅ | 完整支持 `/v1/chat/completions`、`/v1/models` 等接口 |
 | **Anthropic 兼容 API** | ✅ | 完整支持 `/v1/messages`、`/v1/models` 等接口 |
 | **并发竞速模式** | ✅ | 同时请求多个候选项，选择最快响应 |
@@ -121,7 +121,7 @@
 | **推理增强** | ✅ | 支持 thinking 和 search 参数增强 |
 | **流式响应** | ✅ | 完整支持 SSE 流式输出 |
 | **鉴权中间件** | ✅ | 可配置的 API Key 鉴权 |
-| **配置热加载** | ✅ | 修改 config.toml 自动重载，无需重启 |
+| **配置热加载** | ✅ | 修改 `config/main_config.toml` 自动重载，无需重启 |
 | **平台热重载** | ✅ | 修改平台代码自动重载适配器 |
 | **代理支持** | ✅ | 全局代理配置，自动禁用 SSL 验证 |
 
@@ -132,7 +132,6 @@
 | **智能 Token 回退** | ✅ | 平台返回 usage 为 0 时自动估算 |
 | **模型映射** | ✅ | 支持自定义模型名称映射 |
 | **健康检查** | ✅ | 内置 `/health` 健康检查端点 |
-| **自动文档** | ✅ | 集成 Swagger UI 和 ReDoc |
 | **WASM PoW** | ✅ | DeepSeek 平台自动管理 PoW 求解 |
 | **账号池管理** | ✅ | 支持多账号轮询和自动登录 |
 | **TAS 选择器** | ✅ | Thompson Sampling + 冷却机制，智能选择候选项 |
@@ -145,7 +144,6 @@
 |------|:----:|------|
 | Qwen | ✅ | chat, tools, vision, search |
 | DeepSeek | ✅ | chat, thinking, search |
-| GLM | ✅ | chat, tools, vision |
 | Cerebras | ✅ | chat |
 | Ollama | ✅ | chat, embedding |
 | ChatMoe | ✅ | chat |
@@ -154,7 +152,11 @@
 | NVIDIA | ✅ | chat |
 | NoobKeys | ✅ | chat |
 | OpenCode | ✅ | chat, tools, vision, native_tools |
-| 更多平台 | 🚧 | 持续开发中 |
+| OpenRouter | ✅ | chat |
+| Chutes | ✅ | chat |
+| N1N / Zen / Caiyuesbk 等 | ✅ | chat 或专项能力 |
+| 翻译 / TTS（DeepL、Google、Edge TTS 等） | ✅ | translate, tts |
+| 更多平台 | 🚧 | 持续开发中（当前共 24 个 adaptercore 适配器） |
 
 ---
 
@@ -166,10 +168,10 @@
 $ python main.py
 
 2026-04-05 10:30:15 | INFO     | main | Provider-V2 已启动: http://0.0.0.0:1337
-2026-04-05 10:30:15 | INFO     | registry | 发现 11 个平台适配器，开始注册
+2026-04-05 10:30:15 | INFO     | registry | 发现 24 个平台适配器，开始注册
 2026-04-05 10:30:16 | INFO     | registry | 平台 [qwen] 已注册 (3 模型)
 2026-04-05 10:30:16 | INFO     | registry | 平台 [deepseek] 已注册 (2 模型)
-2026-04-05 10:30:16 | INFO     | registry | 注册完成: ['qwen', 'deepseek', 'glm', ...]
+2026-04-05 10:30:16 | INFO     | registry | 注册完成: ['qwen', 'deepseek', 'openrouter', ...]
 ```
 
 ### API 调用示例
@@ -212,7 +214,7 @@ curl -X POST http://localhost:1337/v1/chat/completions \
 
 ### 内置 WebUI
 
-启动服务后直接访问 `http://localhost:1337/` 即可打开内置管理界面，支持主题切换、状态刷新、模型清单、配置管理与便携设置。
+启动服务后直接访问 `http://localhost:1337/` 即可打开内置 WebUI，包含聊天、终端、文件管理、统计与配置等面板；启用鉴权时需先访问 `/login`。
 
 ---
 
@@ -237,7 +239,7 @@ cd provider-v2
 pip install -r requirements.txt
 
 # 3. 配置平台账号
-# 编辑 config.toml 文件，填入各平台的 API Key
+# 编辑 config/main_config.toml（首次启动可由 template/template_config.toml 自动生成）
 
 # 4. 启动服务
 python main.py
@@ -305,7 +307,7 @@ CMD ["python", "main.py"]
 docker build -t provider-v2:latest .
 
 # 运行容器
-docker run -d -p 1337:1337 -v $(pwd)/config.toml:/app/config.toml provider-v2:latest
+docker run -d -p 1337:1337 -v $(pwd)/config:/app/config provider-v2:latest
 ```
 
 ### 系统特定说明
@@ -500,7 +502,7 @@ asyncio.run(function_calling_example())
 
 **自定义模板：**
 
-可以在 `config.toml` 中自定义中英文提示模板：
+可以在 `config/main_config.toml` 中自定义中英文提示模板：
 
 ```toml
 [fncall.templates]
@@ -665,51 +667,36 @@ asyncio.run(thinking_example())
 
 ```
 provider-v2/
-├── 📁 persist/                  # 持久化数据目录
-│   ├── 📁 deepseek/           # DeepSeek WASM 文件和状态
-│   ├── 📁 ollama/             # Ollama 模型缓存
-│   └── 📁 qwen/               # Qwen 账号状态
-├── 📁 src/                     # 源代码目录
-│   ├── 📁 core/               # 核心模块
-│   │   ├── 📁 config/         # 配置管理（base/manager/resolver/sections）
-│   │   ├── 📁 dispatch/       # 请求分发（candidate/gateway/registry/selector/runtime_view）
-│   │   ├── 📁 errors/         # 异常层级（base/platform/business）
-│   │   ├── 📁 fncall/         # 工具调用（protocols: xml/original/antml/bracket/custom/nous/dsml）
-│   │   ├── 📁 server/         # 服务器管理（http/process/proxy/server/autoupdate/watcher）
-│   │   ├── 📁 utils/          # 工具函数（files/ids/io_utils/retry/scheduler）
-│   │   ├── 📄 __init__.py     # 统一导出入口
-│   │   ├── 📄 shims.py        # 兼容 shim 集合（整合 16 个旧模块）
-│   │   ├── 📄 models_cache.py # 模型缓存
-│   │   ├── 📄 proxy_selector.py # 代理选择器
-│   │   ├── 📄 terminal_sessions.py # 终端会话持久化
-│   │   └── 📄 tools.py        # 工具调用统一接口
-│   ├── 📁 platforms/          # 平台适配器
-│   │   ├── 📄 base.py         # 适配器基类
-│   │   ├── 📁 qwen/           # Qwen 平台
-│   │   ├── 📁 deepseek/       # DeepSeek 平台
-│   │   ├── 📁 glm/            # GLM 平台
-│   │   ├── 📁 cerebras/       # Cerebras 平台
-│   │   ├── 📁 ollama/         # Ollama 平台
-│   │   ├── 📁 chatmoe/        # ChatMoe 平台
-│   │   ├── 📁 cursor/         # Cursor 平台
-│   │   ├── 📁 codebuddy/      # CodeBuddy 平台
-│   │   └── 📁 nvidia/         # NVIDIA 平台
-│   └── 📁 routes/             # 路由层
-│       ├── 📄 anthropic.py    # Anthropic API 路由
-│       ├── 📄 function_call.py # 工具调用路由
-│       ├── 📄 health.py       # 健康检查路由
-│       ├── 📄 models.py       # 模型列表路由
-│       ├── 📄 openai.py       # OpenAI API 聚合入口
-│       ├── 📄 openai_chat.py  # Chat Completions 端点
-│       ├── 📄 openai_helpers.py # 共享工具、常量、ID 生成器
-│       ├── 📄 openai_media.py # 媒体端点（图像/音频/视频/嵌入）
-│       ├── 📄 openai_stubs.py # 存根/未实现处理器
-│       └── 📄 static.py       # 静态路由
-├── 📄 config.toml             # 配置文件
-├── 📄 main.py                 # 应用入口
-├── 📄 requirements.txt        # Python 依赖
-├── 📄 README.md               # 项目文档
-└── 📄 LICENSE                 # MIT 许可证
+├── 📁 config/                   # 运行时配置（main_config.toml，通常不提交）
+├── 📁 template/                 # 配置模板 template_config.toml
+├── 📁 persist/                  # 持久化数据（账号状态、WebUI、缓存等）
+├── 📁 src/
+│   ├── 📁 bootstrap/            # 单一组合根（app_factory、lifecycle、webui_bindings）
+│   ├── 📁 core/
+│   │   ├── 📁 auth/             # 会话 cookie 常量（core 不依赖 webui）
+│   │   ├── 📁 config/           # 配置管理（sections/manager）
+│   │   ├── 📁 dispatch/         # 网关分发（gateway/executors/fncall_context）
+│   │   ├── 📁 errors/           # 分层异常 + classify_http_error
+│   │   ├── 📁 fncall/           # 工具调用（protocols/parsers/prompt）
+│   │   ├── 📁 observability/    # 观测 Protocol + AppKey（stats/logs/terminal）
+│   │   ├── 📁 server/           # HTTP 服务（app/runner/worker/middleware）
+│   │   │   └── 📁 infra/        # connector、reload、terminal_sessions
+│   │   └── 📁 utils/
+│   │       └── 📁 compat/       # models_cache、tools、scriptgen 等兼容层
+│   ├── 📁 platforms/            # 平台适配器（*/core/adaptercore.py）
+│   ├── 📁 routes/
+│   │   ├── 📁 main/             # health、models、function_call
+│   │   ├── 📁 openai/           # chat、media、stubs
+│   │   └── 📁 anthropic/        # messages、streaming、convert
+│   └── 📁 webui/
+│       ├── 📁 bootstrap/        # app、routes、server
+│       ├── 📁 routers/          # admin、api、session
+│       ├── 📁 static/           # 内置 WebUI 前端资源
+│       └── 📁 services/         # stats、request_log、summaries
+├── 📄 main.py                   # Runner-Worker 双进程入口（<60 行，委托 runner/worker）
+├── 📄 pyproject.toml            # 依赖与打包 SSOT
+├── 📄 requirements.txt          # 核心依赖（与 pyproject 同步）
+└── 📄 README.md
 ```
 
 ### 核心目录说明
@@ -718,8 +705,9 @@ provider-v2/
 |------|------|
 | `src/core/` | 核心网关逻辑，包括配置管理、请求分发、TAS 候选项选择、文件监视热重载 |
 | `src/platforms/` | 各平台适配器实现，自动发现机制，支持热重载 |
-| `src/routes/` | HTTP 路由层，实现 OpenAI 和 Anthropic 兼容接口 |
-| `persist/` | 平台状态持久化，如 DeepSeek WASM 文件、账号池等 |
+| `src/routes/` | OpenAI / Anthropic 兼容 HTTP 路由 |
+| `src/core/server/infra/` | 连接器、IPC、热重载、文件监视、终端会话存储 |
+| `src/webui/` | 内置 WebUI（bootstrap 应用、session/api/admin 路由、静态资源） |
 
 ---
 
@@ -727,11 +715,10 @@ provider-v2/
 
 ### 配置文件位置
 
-Provider-V2 按以下顺序查找配置文件：
-1. 环境变量 `CONFIG_PATH` 指定的路径
-2. 项目根目录的 `config.toml`
-3. 当前目录的 `config.toml`
-4. 向上遍历 5 层目录查找 `config.toml`
+Provider-V2 默认从 `config/main_config.toml` 加载配置（`config/` 目录通常不纳入版本库）。
+
+- 若文件不存在，会基于 `template/template_config.toml` 自动生成并提示补全后重启
+- 可通过 ConfigCenter / 环境变量等方式指定其他配置文件路径
 
 ### 完整配置示例
 
@@ -886,7 +873,8 @@ keys = ["key1", "key2", "key3"]    # 允许的 API Key 列表
 **鉴权方式**：
 - 优先从 `Authorization: Bearer {key}` 头提取
 - 失败后从 `x-api-key` 头提取
-- 以下路径跳过鉴权：`/`、`/health`、`/v1/models`
+- 以下路径无条件跳过 API 鉴权：`/login`、`/logout`、`/health`、`/static/*`
+- 启用鉴权后，`/`、`/v1/*`（含 `/v1/models`）需有效 API Key 或 WebUI 会话 Cookie
 
 #### 网关配置
 
@@ -939,7 +927,7 @@ zh = "..."    # 中文模板
 
 ### 配置热加载
 
-- 修改 `config.toml` 后自动重载，无需重启服务
+- 修改 `config/main_config.toml` 后自动重载，无需重启服务
 - 配置监听器每 2 秒检查一次变更
 - 代理配置修改后需要重启服务
 
@@ -1258,13 +1246,13 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ### 添加新平台适配器
 
-参考 [平台适配器开发指南](./src/PLATFORM_GUIDE.md) 了解如何添加新平台支持。
+参考 [平台适配器开发指南](docs-src/src/platforms/guide.md) 了解如何添加新平台支持。
 
 ---
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.262
+### 当前版本：v2.2.264
 
 ✅ 已完成（v2.2.234）：
 - fix(webui): rewrite log panel with structured rendering, module colors, mobile layout, and smart auto-scroll
@@ -2067,7 +2055,7 @@ pip install -r requirements.txt
 
 **解决方案：**
 
-编辑 `config.toml` 文件：
+编辑 `config/main_config.toml` 文件：
 ```toml
 [proxy]
 proxy_server = "http://proxy.example.com:8080"
@@ -2084,7 +2072,7 @@ proxy_urls = []
 
 **解决方案：**
 
-编辑 `config.toml` 调整参数：
+编辑 `config/main_config.toml` 调整参数：
 ```toml
 [gateway]
 concurrent_enabled = true    # 启用并发竞速
@@ -2114,7 +2102,7 @@ ls -la persist/deepseek/
 mkdir -p persist/deepseek/
 
 # 检查代理配置
-# 确保 config.toml 中 [proxy] 配置正确
+# 确保 config/main_config.toml 中 [proxy] 配置正确
 ```
 
 **WASM 文件位置：**
@@ -2128,13 +2116,12 @@ mkdir -p persist/deepseek/
 
 **解决方案：**
 
-1. 在 `src/platforms/` 下创建新目录
-2. 创建 `adapter.py` 实现 `PlatformAdapter` 接口
-3. 创建 `accounts.py` 管理账号
-4. 创建 `client.py` 实现 HTTP 请求
-5. 创建 `util.py` 实现工具函数
+1. 在 `src/platforms/<name>/` 下创建目录结构
+2. 在 `core/adaptercore.py` 实现平台适配器（导出 `Adapter` / `*Adapter`）
+3. 按需添加 `accounts.py`、`core/client.py` 等模块
+4. 确保注册表能自动发现 `src/platforms/<name>/__init__.py` 中的 `Adapter`
 
-详细步骤请参考 [平台适配器开发指南](./src/PLATFORM_GUIDE.md)。
+详细步骤请参考 [平台适配器开发指南](docs-src/src/platforms/guide.md)。
 </details>
 
 <details>
@@ -2177,11 +2164,11 @@ Provider-V2 要求模型返回的 XML 遵循以下格式：
 python main.py
 
 # 方法三：检查配置文件语法
-python -c "import tomllib; print(tomllib.load(open('config.toml', 'rb')))"
+python -c "import tomllib; print(tomllib.load(open('config/main_config.toml', 'rb')))"
 ```
 
 **代理配置需要重启**：
-- `config.toml` 中的 `[proxy]` 配置在模块导入时生效
+- `config/main_config.toml` 中的 `[proxy]` 配置在模块导入时生效
 - 修改代理配置后必须重启服务
 </details>
 
@@ -2190,17 +2177,15 @@ python -c "import tomllib; print(tomllib.load(open('config.toml', 'rb')))"
 
 **解决方案：**
 
-编辑 `config.toml`：
+编辑 `config/main_config.toml`：
 ```toml
 [auth]
 enabled = false  # 设置为 false
 keys = []
 ```
 
-**跳过鉴权的路径**：
-- `/`
-- `/health`
-- `/v1/models`
+**无条件跳过鉴权的路径**：
+- `/login`、`/logout`、`/health`、`/static/*`
 </details>
 
 ### 更多问题

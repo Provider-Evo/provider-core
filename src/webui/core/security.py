@@ -19,6 +19,7 @@ _WEBUI_AUTH_FILE = "webui_auth.json"
 
 
 class TokenManager:
+    """类 TokenManager。"""
     """Manages the WebUI access token (webui_token).
 
     The token is stored in ``persist/webui/webui_auth.json`` and is
@@ -37,18 +38,24 @@ class TokenManager:
 
     @property
     def token(self) -> str:
-        """Return the current webui_token (always non-empty after init)."""
+        """中文说明：token。
+
+Return the current webui_token (always non-empty after init)."""
         assert self._token is not None
         return self._token
 
     def verify(self, candidate: str) -> bool:
-        """Constant-time compare *candidate* against the stored token."""
+        """中文说明：verify。
+
+Constant-time compare *candidate* against the stored token."""
         if not candidate or not self._token:
             return False
         return secrets.compare_digest(candidate, self._token)
 
     def update(self, new_token: str) -> str:
-        """Replace the token with *new_token* (min 10 chars). Returns the new token."""
+        """中文说明：update。
+
+Replace the token with *new_token* (min 10 chars). Returns the new token."""
         if len(new_token) < 10:
             raise ValueError("Token must be at least 10 characters")
         self._token = new_token
@@ -56,7 +63,9 @@ class TokenManager:
         return self._token
 
     def regenerate(self) -> str:
-        """Generate a fresh random token and persist it."""
+        """中文说明：regenerate。
+
+Generate a fresh random token and persist it."""
         self._token = secrets.token_hex(32)
         self._save()
         return self._token

@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Union
 import aiohttp.web
 
 from src.core.server import json_response
-from src.core.tools import normalize_content
+from src.core.utils.compat.tools import normalize_content
 from src.logger import get_logger
 
 __all__ = [

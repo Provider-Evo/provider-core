@@ -3,6 +3,8 @@ from __future__ import annotations
 """Authentication and account background-management helpers."""
 
 import asyncio
+import base64
+import json
 import logging
 import random
 import time
@@ -22,7 +24,10 @@ from .endpoints import (
     LOGIN_SELECT_MIN,
     SETTINGS_PATH,
     SIGNIN_PATH,
+    TOKEN_CHECK_INTERVAL,
     TOKEN_EXPIRY_MARGIN,
+    TOKEN_LIFETIME,
+    TOKEN_REFRESH_INTERVAL,
 )
 from .headers import build_headers, build_login_headers
 from .password import hash_password
@@ -34,6 +39,22 @@ logger = logging.getLogger(__name__)
 
 
 _PROXY_COOLDOWN_SECONDS: float = 300.0  # skip proxy for 5 minutes after failure
+
+
+def _jwt_expires_at(token: str) -> float:
+    """Return JWT ``exp`` claim as unix timestamp, or 0 when unavailable."""
+    try:
+        parts = token.split(".")
+        if len(parts) < 2:
+            return 0.0
+        payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+        exp = payload.get("exp")
+        if exp is None:
+            return 0.0
+        return float(exp)
+    except Exception:
+        return 0.0
 
 
 class AuthMixin:
@@ -95,7 +116,7 @@ class AuthMixin:
                 account.token = token
                 account.is_login = True
                 account.last_login = time.time()
-                account.token_expires = time.time() + 24 * 60 * 60
+                account.token_expires = _jwt_expires_at(token) or (time.time() + TOKEN_LIFETIME)
 
         # Try with proxy first if available and not in cooldown
         if use_proxy and self._is_proxy_available():
@@ -211,12 +232,76 @@ class AuthMixin:
             )
         await self._save_default_settings(account)
 
+    def _token_expires_at(self, account: Account) -> float:
+        """Return the effective expiry timestamp for an account token."""
+        if account.token:
+            jwt_exp = _jwt_expires_at(account.token)
+            if jwt_exp:
+                return jwt_exp
+        if account.token_expires:
+            return account.token_expires
+        if account.last_login:
+            return account.last_login + TOKEN_LIFETIME
+        return 0.0
+
     def _is_token_expired(self, account: Account) -> bool:
         if not account.token:
             return True
-        if not account.token_expires:
-            return False
-        return account.token_expires <= time.time() + TOKEN_EXPIRY_MARGIN
+        expires_at = self._token_expires_at(account)
+        if not expires_at:
+            return True
+        return expires_at <= time.time() + TOKEN_EXPIRY_MARGIN
+
+    def _sync_expired_account_states(self) -> bool:
+        """Mark accounts past TOKEN_LIFETIME / token_expires as logged out."""
+        changed = False
+        for account in self._account_states.values():
+            if not account.is_login and not account.token:
+                continue
+            if not account.token or self._is_token_expired(account):
+                if account.is_login or account.token:
+                    account.is_login = False
+                    account.token = ""
+                    changed = True
+        if changed:
+            self._rebuild_candidates()
+        return changed
+
+    async def _relogin_accounts(self, accounts: List[Account]) -> None:
+        """Refresh one or more accounts and rebuild routing candidates."""
+        if not accounts:
+            return
+        semaphore = asyncio.Semaphore(LOGIN_POOL_SIZE)
+
+        async def worker(account: Account) -> None:
+            async with semaphore:
+                try:
+                    if account.token and self._is_token_expired(account):
+                        self._log_queued_relogin(account.username[:6])
+                        account.token = ""
+                    account.is_login = False
+                    await self._login_and_configure(account)
+                except Exception as exc:
+                    account.is_login = False
+                    self._log_login_failure(account.username[:6], str(exc))
+
+        await asyncio.gather(*(worker(acc) for acc in accounts), return_exceptions=True)
+        self._rebuild_candidates()
+        self._save_persist()
+
+    def _accounts_due_for_refresh(self) -> List[Account]:
+        """Logged-in accounts whose token expires within TOKEN_REFRESH_INTERVAL."""
+        horizon = time.time() + TOKEN_REFRESH_INTERVAL
+        due: List[Account] = []
+        for account in self._account_states.values():
+            if not account.token or not account.is_login:
+                continue
+            if self._is_token_expired(account):
+                continue
+            expires_at = self._token_expires_at(account)
+            if expires_at and expires_at <= horizon:
+                due.append(account)
+        return due
 
     def _select_login_batch(self) -> List[Account]:
         pool = [acc for acc in self._account_states.values() if self._is_token_expired(acc) or not acc.is_login]
@@ -229,29 +314,11 @@ class AuthMixin:
         return pool[:size]
 
     async def _initial_login_pass(self) -> None:
+        self._sync_expired_account_states()
         batch = self._select_login_batch()
         if not batch:
             return
-        semaphore = asyncio.Semaphore(LOGIN_POOL_SIZE)
-
-        async def worker(acc: Account) -> None:
-            async with semaphore:
-                try:
-                    if acc.token and not self._is_token_expired(acc):
-                        acc.is_login = True
-                        return
-                    if acc.token and self._is_token_expired(acc):
-                        self._log_queued_relogin(acc.username[:6])
-                        acc.token = ""
-                        acc.is_login = False
-                    await self._login_and_configure(acc)
-                except Exception as exc:
-                    acc.is_login = False
-                    self._log_login_failure(acc.username[:6], str(exc))
-
-        await asyncio.gather(*(worker(acc) for acc in batch), return_exceptions=True)
-        self._rebuild_candidates()
-        self._save_persist()
+        await self._relogin_accounts(batch)
 
     async def _login_poll_loop(self) -> None:
         timers = self._load_task_timers()
@@ -264,32 +331,48 @@ class AuthMixin:
             if self._closing:
                 break
             try:
+                self._sync_expired_account_states()
                 batch = self._select_login_batch()
-                if batch:
-                    network_breaker_hit = False
-                    for acc in batch:
-                        if self._closing or network_breaker_hit:
-                            break
-                        try:
-                            if acc.token and self._is_token_expired(acc):
-                                acc.token = ""
-                                acc.is_login = False
-                            await self._login_and_configure(acc)
-                        except Exception as exc:
-                            err_str = str(exc)
-                            self._log_login_failure(acc.username[:6], err_str)
-                            if not network_breaker_hit and (
-                                "Cannot connect" in err_str
-                                or "远程计算机拒绝" in err_str
-                                or "连接" in err_str
-                            ):
-                                network_breaker_hit = True
-                    self._rebuild_candidates()
+                proactive = self._accounts_due_for_refresh()
+                targets: List[Account] = []
+                seen = set()
+                for account in batch + proactive:
+                    if account.username in seen:
+                        continue
+                    seen.add(account.username)
+                    targets.append(account)
+                if targets:
+                    await self._relogin_accounts(targets)
+                elif self._sync_expired_account_states():
                     self._save_persist()
             except Exception as exc:
                 logger.warning("Qwen 登录轮询异常: %s", exc)
             timers["login_poll"] = time.time()
             self._save_task_timers(timers)
+
+    async def _bg_token_expiry_watch(self) -> None:
+        """Periodically invalidate expired accounts and relogin immediately."""
+        while not self._closing:
+            await asyncio.sleep(TOKEN_CHECK_INTERVAL)
+            if self._closing:
+                break
+            try:
+                expired = [
+                    account
+                    for account in self._account_states.values()
+                    if account.token and self._is_token_expired(account)
+                ]
+                if expired:
+                    for account in expired:
+                        account.is_login = False
+                        account.token = ""
+                    self._rebuild_candidates()
+                    self._save_persist()
+                    await self._relogin_accounts(expired)
+                elif self._sync_expired_account_states():
+                    self._save_persist()
+            except Exception as exc:
+                logger.warning("Qwen token 过期巡检异常: %s", exc)
 
     async def _bg_cookie_refresh(self) -> None:
         while not self._closing:

@@ -31,6 +31,7 @@ def load_persist(
         account.user_id = str(payload.get("user_id", ""))
         account.password_hash = str(payload.get("password_hash", ""))
         account.token_expires = float(payload.get("token_expires", 0))
+        account.last_login = float(payload.get("last_login", 0))
         account.memory_disabled = bool(payload.get("memory_disabled", False))
         account.context_length = payload.get("context_length")
         account.is_login = bool(payload.get("is_login", False))
@@ -56,6 +57,7 @@ def save_persist(
                 "user_id": account.user_id,
                 "password_hash": account.password_hash,
                 "token_expires": account.token_expires,
+                "last_login": account.last_login,
                 "memory_disabled": account.memory_disabled,
                 "context_length": account.context_length,
                 "is_login": account.is_login,

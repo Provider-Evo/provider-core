@@ -53,17 +53,18 @@ async def collect_model_entries(registry: Any) -> List[Dict[str, Any]]:
     return await registry.all_models()
 
 
-def build_config_summary() -> Dict[str, Any]:
-    """构建安全配置摘要。"""
-    config = get_config()
+def _config_server_section(config: Any) -> Dict[str, Any]:
     return {
-        "server": {
-            "version": config.server.version,
-            "host": config.server.host,
-            "port": config.server.port,
-            "debug": config.server.debug,
-            "startup_force_kill_port": config.server.startup_force_kill_port,
-        },
+        "version": config.server.version,
+        "host": config.server.host,
+        "port": config.server.port,
+        "debug": config.server.debug,
+        "startup_force_kill_port": config.server.startup_force_kill_port,
+    }
+
+
+def _config_auth_gateway_proxy(config: Any) -> Dict[str, Any]:
+    return {
         "auth": {
             "enabled": config.auth.enabled,
             "keys_count": len(config.auth.keys),
@@ -82,6 +83,15 @@ def build_config_summary() -> Dict[str, Any]:
             "proxy_server": config.proxy.proxy_server,
             "proxy_rules": len(config.proxy.proxy_urls),
         },
+    }
+
+
+def build_config_summary() -> Dict[str, Any]:
+    """构建安全配置摘要。"""
+    config = get_config()
+    summary = {"server": _config_server_section(config)}
+    summary.update(_config_auth_gateway_proxy(config))
+    summary.update({
         "platforms_proxy": {
             "enabled_platforms": list(config.platforms_proxy.enabled_platforms),
             "group_list_type": config.platforms_proxy.group_list_type,
@@ -107,7 +117,8 @@ def build_config_summary() -> Dict[str, Any]:
             "diff_update": config.autoupdate.diff_update,
             "mirrors": list(config.autoupdate.mirrors),
         },
-    }
+    })
+    return summary
 
 
 async def build_runtime_summary(registry: Any) -> Dict[str, Any]:

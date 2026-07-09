@@ -22,6 +22,7 @@ def _error_type_name(cls: type) -> str:
 
 
 class ProviderError(Exception):
+    """类 ProviderError。"""
     """Base gateway exception. Root of the Provider-V2 error hierarchy."""
 
     def __init__(
@@ -36,18 +37,21 @@ class ProviderError(Exception):
 
     @property
     def error_type(self) -> str:
-        """Return the snake_case error type name."""
+        """中文说明：error_type。
+
+Return the snake_case error type name."""
         cls = type(self)
         if cls not in _ERROR_TYPE_MAP:
             _ERROR_TYPE_MAP[cls] = _error_type_name(cls)
         return _ERROR_TYPE_MAP[cls]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize error to a JSON-compatible dictionary.
+        """中文说明：to_dict。
 
-        Returns:
-            ``{"error": {"type": ..., "message": ..., "status_code": ...}}``
-        """
+Serialize error to a JSON-compatible dictionary.
+
+Returns:
+    ``{"error": {"type": ..., "message": ..., "status_code": ...}}``"""
         return {
             "error": {
                 "type": self.error_type,

@@ -27,7 +27,7 @@ from src.core.server import (
     get_json as _get_json,
 )
 from src.core.server import REGISTRY_KEY
-from src.core.tools import normalize_content
+from src.core.utils.compat.tools import normalize_content
 from src.logger import get_logger
 from src.routes.openai.helpers import (
     _err,
@@ -58,90 +58,90 @@ logger = get_logger(__name__)
 # Responses API
 # =======================================================================
 
-async def create_response(
-    request: aiohttp.web.Request,
-) -> aiohttp.web.Response:
-    """Responses API 端点 /v1/responses。
-
-    Args:
-        request: 请求对象。
-
-    Returns:
-        响应对象。
-    """
-    from src.core import gateway
-
-    body = await _get_json(request)
-    if body is None:
-        return _err(400, "Invalid JSON", "invalid_json")
-
-    mdl = body.get("model", "")
+def _response_messages(body: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """从 Responses API 请求体构造 OpenAI 风格 messages。"""
     input_data = body.get("input", "")
-
     if isinstance(input_data, str):
         messages: List[Dict[str, Any]] = [{"role": "user", "content": input_data}]
     elif isinstance(input_data, list):
         messages = _normalize_messages(input_data)
     else:
         messages = [{"role": "user", "content": str(input_data)}]
-
     instructions = body.get("instructions")
     if instructions:
         instructions_str = normalize_content(instructions)
         if instructions_str:
             messages.insert(0, {"role": "system", "content": instructions_str})
+    return messages
 
+
+async def _dispatch_response_content(
+    registry: Any,
+    messages: List[Dict[str, Any]],
+    mdl: str,
+    tools: Optional[List[Dict]],
+) -> tuple[str, Optional[Dict]]:
+    """调用网关并返回拼接内容与 usage。"""
+    from src.core import gateway
+
+    cp: List[str] = []
+    usage_d: Optional[Dict] = None
+    async for ch in gateway.dispatch(
+        registry=registry,
+        messages=messages,
+        model=mdl,
+        stream=False,
+        tools=tools,
+    ):
+        if isinstance(ch, str):
+            cp.append(ch)
+        elif isinstance(ch, dict) and "usage" in ch:
+            usage_d = ch["usage"]
+    return _clean_fncall("".join(cp)), usage_d
+
+
+async def create_response(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
+    """Responses API 端点 /v1/responses。"""
+    body = await _get_json(request)
+    if body is None:
+        return _err(400, "Invalid JSON", "invalid_json")
+
+    mdl = body.get("model", "")
+    messages = _response_messages(body)
     tools_raw = body.get("tools")
     tools: Optional[List[Dict]] = None
     if tools_raw:
         tools = [t for t in tools_raw if t.get("type") == "function"]
 
-    cp: List[str] = []
-    usage_d: Optional[Dict] = None
     try:
-        async for ch in gateway.dispatch(
-            registry=request.app[REGISTRY_KEY],
-            messages=messages,
-            model=mdl,
-            stream=False,
-            tools=tools,
-        ):
-            if isinstance(ch, str):
-                cp.append(ch)
-            elif isinstance(ch, dict) and "usage" in ch:
-                usage_d = ch["usage"]
+        content, usage_d = await _dispatch_response_content(
+            request.app[REGISTRY_KEY], messages, mdl, tools
+        )
     except NoCandidateError as e:
         return _err(503, str(e), "no_candidate")
     except ProviderError as e:
         return _err(502, str(e), "provider_error")
 
-    content = _clean_fncall("".join(cp))
     resp_id = "resp_{}".format(uuid.uuid4().hex[:24])
-
-    return _json(
-        {
-            "id": resp_id,
-            "object": "response",
-            "created_at": int(time.time()),
-            "model": mdl,
-            "output": [
-                {
-                    "type": "message",
-                    "id": "msg_{}".format(uuid.uuid4().hex[:16]),
-                    "role": "assistant",
-                    "content": [{"type": "output_text", "text": content}],
-                }
-            ],
-            "usage": usage_d
-            or {
-                "input_tokens": sum(
-                    len(str(m.get("content", ""))) // 3 for m in messages
-                ),
-                "output_tokens": len(content) // 3,
-                "total_tokens": 0,
-            },
-        }
-    )
+    return _json({
+        "id": resp_id,
+        "object": "response",
+        "created_at": int(time.time()),
+        "model": mdl,
+        "output": [{
+            "type": "message",
+            "id": "msg_{}".format(uuid.uuid4().hex[:16]),
+            "role": "assistant",
+            "content": [{"type": "output_text", "text": content}],
+        }],
+        "usage": usage_d or {
+            "input_tokens": sum(len(str(m.get("content", ""))) // 3 for m in messages),
+            "output_tokens": len(content) // 3,
+            "total_tokens": 0,
+        },
+    })
 
 
 # =======================================================================

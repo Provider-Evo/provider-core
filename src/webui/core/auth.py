@@ -18,7 +18,9 @@ COOKIE_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 
 
 def set_session_cookie(resp: aiohttp.web.Response, token: str) -> None:
-    """Set the HttpOnly session cookie on *resp*."""
+    """中文说明：set_session_cookie。
+
+Set the HttpOnly session cookie on *resp*."""
     resp.set_cookie(
         COOKIE_NAME,
         token,
@@ -30,11 +32,15 @@ def set_session_cookie(resp: aiohttp.web.Response, token: str) -> None:
 
 
 def clear_session_cookie(resp: aiohttp.web.Response) -> None:
-    """Delete the session cookie."""
+    """中文说明：clear_session_cookie。
+
+Delete the session cookie."""
     resp.del_cookie(COOKIE_NAME, path="/")
 
 
 def verify_session_cookie(request: aiohttp.web.Request) -> bool:
-    """Return True if the request carries a valid session cookie."""
+    """中文说明：verify_session_cookie。
+
+Return True if the request carries a valid session cookie."""
     cookie_val = request.cookies.get(COOKIE_NAME, "")
     return token_manager.verify(cookie_val)

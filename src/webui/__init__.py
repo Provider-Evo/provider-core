@@ -1,8 +1,8 @@
 """WebUI 导出。"""
 from __future__ import annotations
 
-from .app import WEBUI_CONFIG_KEY, create_app
-from .server import ThreadedWebUIServer, WebUIServer
+from .bootstrap.app import WEBUI_CONFIG_KEY, create_app
+from .bootstrap.server import ThreadedWebUIServer, WebUIServer
 
 __all__ = [
     "ThreadedWebUIServer",
