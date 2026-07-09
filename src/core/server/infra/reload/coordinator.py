@@ -6,7 +6,7 @@ import asyncio
 from pathlib import Path
 from typing import Any, Optional, Set
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 from src.core.server.infra.reload.classifier import ClassifyResult, classify_paths
 from src.core.server.infra.reload.internal.pre_restart import prepare_graceful_restart
@@ -67,6 +67,9 @@ class ReloadCoordinator:
         if result.platforms:
             await self._reload_platforms(result.platforms)
 
+        if result.plugins:
+            await self._reload_plugins(result.plugins)
+
         if result.application:
             await self._reload_application(names)
 
@@ -75,6 +78,9 @@ class ReloadCoordinator:
 
     async def _reload_platforms(self, platforms: frozenset[str]) -> None:
         await self._registry.reload_platforms(sorted(platforms), self._session)
+
+    async def _reload_plugins(self, plugin_ids: frozenset[str]) -> None:
+        await self._registry.reload_plugins_by_ids(sorted(plugin_ids), self._session)
 
     async def _reload_application(self, names: list[str]) -> None:
         if self._app_host is None:
@@ -96,7 +102,7 @@ class ReloadCoordinator:
     async def _notify_static_changed(self, names: list[str]) -> None:
         logger.info("前端静态资源变更: %s", names)
         try:
-            from src.core.observability import get_observability_services
+            from src.core.utils.observability import get_observability_services
 
             await get_observability_services().broadcast_log(
                 {

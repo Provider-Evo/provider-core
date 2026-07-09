@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """文件变更分类 — 将路径映射到 L0–L4 热重载层级。"""
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import FrozenSet, Set
@@ -16,7 +17,8 @@ _WEBUI_DIR = "webui"
 _PROCESS_SRC_FILES = frozenset({"logger.py", "paths.py"})
 _PROCESS_CONFIG_FILES = frozenset({"pyproject.toml", "requirements.txt"})
 _WEBUI_CONFIG_NAMES = frozenset({"webui_config.toml", "config.toml"})
-# WebUI 配置由 API 按需读取，变更不触发任何热重载层级。
+_PLUGINS_DIR = "plugins"
+_MANIFEST_NAME = "_manifest.json"
 
 # 变更后走 L3 的 core 子目录（其余 core 默认 L4）
 _CORE_L3_PARTS = frozenset(
@@ -39,6 +41,34 @@ class ClassifyResult:
     application: bool = False
     static: bool = False
     platforms: FrozenSet[str] = field(default_factory=frozenset)
+    plugins: FrozenSet[str] = field(default_factory=frozenset)
+
+
+def _plugin_id_from_path(path: Path) -> str | None:
+    parts = path.parts
+    try:
+        idx = parts.index(_PLUGINS_DIR)
+    except ValueError:
+        return None
+    if len(parts) <= idx + 1:
+        return None
+    plugin_dir = Path(*parts[: idx + 2])
+    manifest_path = plugin_dir / _MANIFEST_NAME
+    if manifest_path.is_file():
+        try:
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            plugin_id = str(data.get("id") or "").strip()
+            if plugin_id:
+                return plugin_id
+        except Exception:
+            pass
+    return parts[idx + 1]
+
+
+def _classify_plugin_path(path: Path, plugins: Set[str]) -> None:
+    plugin_id = _plugin_id_from_path(path)
+    if plugin_id:
+        plugins.add(plugin_id)
 
 
 def _platform_name(parts: tuple[str, ...]) -> str | None:
@@ -97,9 +127,13 @@ def classify_paths(changed: Set[str]) -> ClassifyResult:
     application = False
     static = False
     platforms: Set[str] = set()
+    plugins: Set[str] = set()
 
     for fp in changed:
         p = Path(fp)
+        if _PLUGINS_DIR in p.parts:
+            _classify_plugin_path(p, plugins)
+            continue
         if p.name in _PROCESS_CONFIG_FILES or p.name == "main.py":
             process = True
             continue
@@ -122,4 +156,5 @@ def classify_paths(changed: Set[str]) -> ClassifyResult:
         application=application,
         static=static,
         platforms=frozenset(platforms),
+        plugins=frozenset(plugins),
     )

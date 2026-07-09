@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
 from src.core.server.infra.reload.classifier import classify_paths
+from src.foundation.paths import project_root
 
 
 def test_classify_platform() -> None:
@@ -47,3 +50,18 @@ def test_classify_webui_py_application() -> None:
 def test_classify_main_py_process() -> None:
     result = classify_paths({r"X:\proj\main.py"})
     assert result.process is True
+
+
+def test_classify_plugin_reload() -> None:
+    path = (
+        project_root
+        / "plugins"
+        / "Provider-Coplan-Util"
+        / "provider_coplan_util"
+        / "templates.py"
+    )
+    if not path.is_file():
+        pytest.skip("coplan plugin not present")
+    result = classify_paths({str(path)})
+    assert result.process is False
+    assert result.plugins == frozenset({"nichengfuben.provider-coplan-util"})

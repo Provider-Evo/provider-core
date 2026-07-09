@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from src.core.observability import get_observability_services
-from src.logger import get_logger
+from src.core.utils.observability import get_observability_services
+from src.foundation.logger import get_logger
 
 __all__ = ["prepare_graceful_restart"]
 

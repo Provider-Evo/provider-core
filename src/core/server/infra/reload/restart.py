@@ -6,7 +6,7 @@ import asyncio
 import os
 from typing import Optional
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 __all__ = [
     "bind_worker_shutdown",

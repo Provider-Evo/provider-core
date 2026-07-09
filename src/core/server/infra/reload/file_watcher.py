@@ -7,9 +7,9 @@ import uuid
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Awaitable, Callable, Iterable, Optional, Sequence
+from typing import Awaitable, Callable, Iterable, Optional, Sequence, Union
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 __all__ = [
     "Change",
@@ -47,7 +47,7 @@ class FileChange:
     path: Path
 
 
-ChangeCallback = Callable[[Sequence[FileChange]], Awaitable[None] | None]
+ChangeCallback = Callable[[Sequence[FileChange]], Union[Awaitable[None], None]]
 
 
 @dataclass(frozen=True)

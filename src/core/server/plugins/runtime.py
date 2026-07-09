@@ -1,11 +1,10 @@
 """Provider-Evo 统一插件运行时（容错式加载）。"""
 from __future__ import annotations
 
-import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.logger import get_logger
-from src.paths import project_root
+from src.foundation.logger import get_logger
+from src.foundation.paths import project_root
 
 __all__ = ["PluginRuntime", "get_plugin_runtime"]
 
@@ -124,56 +123,70 @@ class PluginRuntime:
                 return loader, record, plugin_id
         return None
 
-    async def reload_platform(self, platform_name: str, session: Any) -> Optional[Any]:
-        """热重载单个平台插件适配器。"""
-        found = self._find_platform_record(platform_name)
+    def _find_plugin_record(
+        self, plugin_id: str
+    ) -> Optional[Tuple[Any, Any, str]]:
+        for ptype, loader in self._loaders.items():
+            record = loader.loaded_plugins.get(plugin_id)
+            if record is not None:
+                return loader, record, ptype
+        return None
+
+    async def reload_plugin(self, plugin_id: str, session: Any) -> bool:
+        """热重载单个插件（on_unload → 清模块缓存 → on_load）。"""
+        found = self._find_plugin_record(plugin_id)
         if found is None:
-            return None
-        loader, record, plugin_id = found
-        plugin_dir = record.plugin_dir
-        manifest = record.manifest
+            return False
+        loader, record, _ptype = found
 
         if record.adapter is not None:
             try:
                 await record.adapter.close()
             except Exception as exc:
-                logger.warning("关闭旧适配器 [%s] 失败: %s", platform_name, exc)
+                logger.warning("关闭旧适配器 [%s] 失败: %s", plugin_id, exc)
 
-        module_key = record.module_name
-        prefix = module_key
-        for key in sorted(
-            [k for k in sys.modules if k == prefix or k.startswith(prefix + ".")],
-            key=lambda x: -len(x),
-        ):
-            sys.modules.pop(key, None)
+        try:
+            await record.plugin.on_unload()
+        except Exception as exc:
+            logger.warning("插件 on_unload 失败 [%s]: %s", plugin_id, exc)
 
-        pkg_roots = {str(plugin_dir.resolve())}
-        for pkg in plugin_dir.iterdir():
-            if pkg.is_dir() and (pkg / "__init__.py").is_file():
-                pkg_roots.add(str(pkg.resolve()))
-        for root in pkg_roots:
-            if root in sys.path:
-                continue
-            parent = str(plugin_dir.resolve())
-            if parent not in sys.path:
-                sys.path.insert(0, parent)
+        try:
+            loader.purge_plugin_modules(plugin_id, record.plugin_dir)
+        except Exception as exc:
+            logger.warning("清理插件模块缓存失败 [%s]: %s", plugin_id, exc)
+
+        loader.loaded_plugins.pop(plugin_id, None)
+        self._records.pop(plugin_id, None)
 
         try:
             new_record = await loader._load_one(  # noqa: SLF001
-                plugin_dir,
-                manifest,
+                record.plugin_dir,
+                record.manifest,
                 session,
             )
         except Exception as exc:
             self._failed[plugin_id] = str(exc)
-            logger.error("平台插件热重载失败 [%s]: %s", platform_name, exc)
-            loader.loaded_plugins.pop(plugin_id, None)
-            self._records.pop(plugin_id, None)
-            return None
+            logger.error("插件热重载失败 [%s]: %s", plugin_id, exc)
+            return False
 
         loader.loaded_plugins[plugin_id] = new_record
         self._records[plugin_id] = new_record
         self._failed.pop(plugin_id, None)
+        logger.info("插件已热重载: %s", plugin_id)
+        return True
+
+    async def reload_platform(self, platform_name: str, session: Any) -> Optional[Any]:
+        """热重载单个平台插件适配器。"""
+        found = self._find_platform_record(platform_name)
+        if found is None:
+            return None
+        _loader, _record, plugin_id = found
+        ok = await self.reload_plugin(plugin_id, session)
+        if not ok:
+            return None
+        new_record = self._records.get(plugin_id)
+        if new_record is None:
+            return None
         logger.info("平台插件已热重载: %s", platform_name)
         return new_record.adapter
 
