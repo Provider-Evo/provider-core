@@ -73,7 +73,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 __all__ = ["TerminalSessionStore", "get_terminal_store"]
 
@@ -525,7 +525,7 @@ def get_terminal_store(persist_dir: Optional[Path] = None) -> TerminalSessionSto
         return _store
 
     if persist_dir is None:
-        from src.paths import persist_dir as _default_persist_dir
+        from src.foundation.paths import persist_dir as _default_persist_dir
         persist_dir = _default_persist_dir("terminal")
 
     _store = TerminalSessionStore(persist_dir)

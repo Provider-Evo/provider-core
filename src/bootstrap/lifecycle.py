@@ -7,8 +7,8 @@ from typing import Any
 
 import aiohttp.web
 
-from src.core.observability import observability_from_app
-from src.logger import get_logger
+from src.core.utils.observability import observability_from_app
+from src.foundation.logger import get_logger
 
 logger = get_logger(__name__)
 

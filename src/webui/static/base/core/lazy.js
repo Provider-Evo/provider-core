@@ -4,23 +4,24 @@
  */
 var LazyLoader = (function() {
   var _loaded = new Set();
+  var _pending = new Map();
 
   var TAB_RESOURCES = {
     terminal: [
       { type: 'css', url: 'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css' },
-      { type: 'css', url: '/static/core/tabbar/tabbar.css' },
+      { type: 'css', url: '/static/base/core/tabbar/tabbar.css' },
       { type: 'css', url: '/static/ui/terminal/terminal.css' },
       { type: 'js',  url: 'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js' },
       { type: 'js',  url: 'https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js' },
-      { type: 'js',  url: '/static/core/tabbar/tabbar.js' },
+      { type: 'js',  url: '/static/base/core/tabbar/tabbar.js' },
       { type: 'js',  url: '/static/ui/terminal/terminal.js?v=20260709-4' },
     ],
     files: [
       { type: 'css', url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css' },
       { type: 'js',  url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js' },
-      { type: 'css', url: '/static/core/tabbar/tabbar.css' },
+      { type: 'css', url: '/static/base/core/tabbar/tabbar.css' },
       { type: 'css', url: '/static/files/files.css?v=20260709-5' },
-      { type: 'js',  url: '/static/core/tabbar/tabbar.js' },
+      { type: 'js',  url: '/static/base/core/tabbar/tabbar.js' },
       { type: 'js',  url: '/static/files/files.js?v=20260709-5' },
     ],
     chat: [
@@ -29,47 +30,66 @@ var LazyLoader = (function() {
       { type: 'css', url: '/static/ui/widgets/input-box.css' },
       { type: 'js',  url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js' },
       { type: 'js',  url: '/static/ui/widgets/input-box.js?v=20260709-6' },
-      { type: 'js',  url: '/static/ui/chat-attachments.js?v=20260709-10' },
-      { type: 'js',  url: '/static/ui/chat-media-persist.js?v=20260709-10' },
-      { type: 'js',  url: '/static/ui/chat.js?v=20260709-11' },
+      { type: 'js',  url: '/static/ui/chat/chat-attachments.js?v=20260709-10' },
+      { type: 'js',  url: '/static/ui/chat/chat-media-persist.js?v=20260709-10' },
+      { type: 'js',  url: '/static/ui/chat/chat.js?v=20260709-12' },
     ],
     stats: [
       { type: 'js', url: '/static/stats/stats.js' },
       { type: 'js', url: '/static/stats/request-inspector.js' },
     ],
-    config: [
-      { type: 'js', url: '/static/config/render.js' },
-    ],
+    config: [],
     autoupdate: [
       { type: 'css', url: '/static/ui/sortable-list/sortable-list.css' },
       { type: 'js',  url: '/static/ui/sortable-list/sortable-list.js' },
     ],
     plugins: [
-      { type: 'js', url: '/static/plugins/plugins.js?v=20260709-1' },
+      { type: 'css', url: '/static/plugins/plugins.css?v=20260709-2' },
+      { type: 'js', url: '/static/plugins/plugins.js?v=20260709-2' },
     ],
   };
 
   function loadScript(url) {
     if (_loaded.has(url)) return Promise.resolve();
-    return new Promise(function(resolve, reject) {
+    if (_pending.has(url)) return _pending.get(url);
+    var promise = new Promise(function(resolve, reject) {
       var el = document.createElement('script');
       el.src = url;
-      el.onload = function() { _loaded.add(url); resolve(); };
-      el.onerror = function() { reject(new Error('Failed to load script: ' + url)); };
+      el.onload = function() {
+        _loaded.add(url);
+        _pending.delete(url);
+        resolve();
+      };
+      el.onerror = function() {
+        _pending.delete(url);
+        reject(new Error('Failed to load script: ' + url));
+      };
       document.head.appendChild(el);
     });
+    _pending.set(url, promise);
+    return promise;
   }
 
   function loadCSS(url) {
     if (_loaded.has(url)) return Promise.resolve();
-    return new Promise(function(resolve, reject) {
+    if (_pending.has(url)) return _pending.get(url);
+    var promise = new Promise(function(resolve, reject) {
       var el = document.createElement('link');
       el.rel = 'stylesheet';
       el.href = url;
-      el.onload = function() { _loaded.add(url); resolve(); };
-      el.onerror = function() { reject(new Error('Failed to load CSS: ' + url)); };
+      el.onload = function() {
+        _loaded.add(url);
+        _pending.delete(url);
+        resolve();
+      };
+      el.onerror = function() {
+        _pending.delete(url);
+        reject(new Error('Failed to load CSS: ' + url));
+      };
       document.head.appendChild(el);
     });
+    _pending.set(url, promise);
+    return promise;
   }
 
   function loadTabResources(tabName) {

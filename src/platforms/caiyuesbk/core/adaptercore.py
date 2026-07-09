@@ -9,7 +9,7 @@ import aiohttp
 
 from src.core.dispatch.candidate import Candidate
 from src.core.utils.compat.models_cache import ModelsCache
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from src.platforms.base import PlatformAdapter
 from .client import CaiyuesbkClient
 from .constants import (

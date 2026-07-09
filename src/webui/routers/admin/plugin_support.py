@@ -25,10 +25,11 @@ __all__ = [
 logger = get_logger(__name__)
 
 DEFAULT_PLUGIN_REPO = {
-    "owner": "nichengfuben",
+    "owner": "Provider-Evo",
     "repo": "plugin-repo",
     "branch": "main",
     "details_file": "plugin_details.json",
+    "fallback_owner": "nichengfuben",
 }
 
 

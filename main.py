@@ -27,14 +27,14 @@ _ROOT = Path(__file__).parent.resolve()
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from src.paths import resolve_project_root as _resolve_project_root
+from src.foundation.paths import resolve_project_root as _resolve_project_root
 
 _ROOT = _resolve_project_root()
 
 import src.core.server  # noqa: F401 — 触发 proxy monkey-patch
 
-from src.core.server.runner import run_runner
-from src.core.server.worker import is_idle, run_worker
+from src.core.server.lifecycle.runner import run_runner
+from src.core.server.lifecycle.worker import is_idle, run_worker
 
 
 def main() -> None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 import aiohttp
 

@@ -6,7 +6,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_plugin_runtime_loads_enabled_plugins(aiohttp_client_session):
-    from src.core.plugins.runtime import PluginRuntime
+    from src.core.server.plugins.runtime import PluginRuntime
 
     runtime = PluginRuntime()
     await runtime.init(aiohttp_client_session)
@@ -20,7 +20,7 @@ async def test_plugin_runtime_loads_enabled_plugins(aiohttp_client_session):
 
 @pytest.mark.asyncio
 async def test_plugin_runtime_fault_tolerance(aiohttp_client_session, monkeypatch):
-    from src.core.plugins.runtime import PluginRuntime
+    from src.core.server.plugins.runtime import PluginRuntime
 
     runtime = PluginRuntime()
     await runtime.init(aiohttp_client_session)

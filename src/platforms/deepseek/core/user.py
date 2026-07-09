@@ -6,7 +6,7 @@ import secrets
 import uuid
 from typing import Any, Dict, Optional, Tuple
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 import aiohttp
 

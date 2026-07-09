@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import Any, List
 
 from echotools.web.broker import RequestBroker, request_broker
-from src.logger import get_logger
-from src.paths import persist_db_dir, persist_dir, persist_json_dir
+from src.foundation.logger import get_logger
+from src.foundation.paths import persist_db_dir, persist_dir, persist_json_dir
 
 __all__ = [
     "RequestBroker", "request_broker",

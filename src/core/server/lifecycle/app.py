@@ -7,7 +7,7 @@ from typing import Any
 import aiohttp.web
 
 from src.bootstrap.app_factory import create_application
-from src.core.server.keys import REGISTRY_KEY, SESSION_KEY
+from src.core.server.net.keys import REGISTRY_KEY, SESSION_KEY
 
 __all__ = ["create_app", "REGISTRY_KEY", "SESSION_KEY"]
 

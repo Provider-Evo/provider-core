@@ -8,7 +8,7 @@ import secrets
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 import aiohttp
 

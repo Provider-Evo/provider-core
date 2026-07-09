@@ -21,8 +21,10 @@ dependencies = [
     "watchfiles>=0.21.0",
     "pydantic>=2.0.0",
     "typing-extensions>=4.7.0",
+    "numpy>=1.21.0",
+    "paramiko>=3.0.0",
     "echotools>=2.0.0",
-    "provider-sdk>=0.3.0",
+    "provider-sdk>=0.3.1",
     "tomli>=2.0.0; python_version < '3.11'",
 ]
 
@@ -30,7 +32,7 @@ dependencies = [
 deepseek = ["wasmtime>=0.40.0"]
 cerebras = ["cerebras-cloud-sdk>=1.0.0"]
 ssh = ["paramiko>=3.0.0"]
-async-perf = ["uvloop>=0.19.0"]
+async-perf = ["uvloop>=0.22.1"]
 all = [
     "provider-guide[deepseek,cerebras,ssh,async-perf]",
 ]

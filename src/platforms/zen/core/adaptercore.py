@@ -12,7 +12,7 @@ import aiohttp
 
 from src.core.dispatch.candidate import Candidate
 from src.core.utils.compat.models_cache import ModelsCache
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from src.platforms.base import PlatformAdapter
 
 try:
@@ -51,15 +51,13 @@ class ZenAdapter(PlatformAdapter):
         if self._use_proxy_pool:
             from .proxy_client import ProxyClient
             self._client = ProxyClient()
-            plat = "zen-proxy"
         else:
             from .client import ZenClient
             self._client = ZenClient()
-            plat = "zen-key"
         await self._client.init_immediate(session)
 
         self._cache = ModelsCache(
-            platform=plat,
+            platform="zen",
             fallback_models=MODELS,
             fetch_enabled=FETCH_MODELS_ENABLED,
         )

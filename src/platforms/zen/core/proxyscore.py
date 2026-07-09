@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 log = get_logger("opencode.proxyscore")
 

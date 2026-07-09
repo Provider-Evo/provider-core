@@ -31,7 +31,7 @@ try:
 except ImportError:
     BeautifulSoup = None  # type: ignore[assignment,misc]
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from .constants import (
     PROXY_API_GET,
     PROXY_API_MAX_COUNT,

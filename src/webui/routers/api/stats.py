@@ -8,8 +8,8 @@ import time
 
 import aiohttp.web
 
-from src.webui.services.stats import get_stats
-from src.webui.services.request_log import request_broker
+from src.webui.data.services.stats import get_stats
+from src.webui.data.services.request_log import request_broker
 
 __all__ = ["stats_api", "stats_reset", "requests_ws", "requests_list"]
 

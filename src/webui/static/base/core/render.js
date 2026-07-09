@@ -87,6 +87,10 @@ function renderModels(models) {
   const capabilityValue = (document.getElementById('modelCapabilitySelect') || {}).value || '';
   document.getElementById('modelCount').textContent = String(state.models.length);
   syncModelFilterOptions(state.models);
+  if (!state.modelsLoaded) {
+    modelGrid.innerHTML = '<div class="text-muted p-[18px] border border-dashed border-border rounded-xl text-center">' + t('common.loading') + '</div>';
+    return;
+  }
   const filtered = state.models.filter(function(model) {
     const modelId = String(model.id || '');
     const ownedBy = String(model.owned_by || '');

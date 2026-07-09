@@ -7,7 +7,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import aiohttp
 
 from src.core.dispatch.candidate import Candidate, make_id
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from .constants import BASE_URL, CHAT_PATH
 from .headers import build_headers
 from .models import MODELS

@@ -72,8 +72,8 @@ JSON 文件结构
 from typing import List, Optional
 
 from echotools.cache.list_cache import ListCache
-from src.logger import get_logger
-from src.paths import persist_dir as _persist_dir
+from src.foundation.logger import get_logger
+from src.foundation.paths import persist_dir as _persist_dir
 
 __all__ = ["ModelsCache", "models"]
 

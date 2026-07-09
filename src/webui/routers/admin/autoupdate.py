@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import aiohttp.web
 
 from src.core.config import get_config, reload_config
-from src.logger import get_logger
-from src.paths import project_root as _project_root
+from src.foundation.logger import get_logger
+from src.foundation.paths import project_root as _project_root
 
 logger = get_logger(__name__)
 

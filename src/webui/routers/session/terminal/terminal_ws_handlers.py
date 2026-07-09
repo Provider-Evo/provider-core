@@ -7,14 +7,34 @@ from typing import Any, Dict, List, Optional, Tuple
 import aiohttp.web
 
 from src.core.server.infra.terminal_sessions import TerminalSessionStore
-from src.logger import get_logger
-from src.webui.routers.session.terminal_session import (
+from src.foundation.logger import get_logger
+from src.webui.routers.session.terminal.terminal_session import (
     TerminalSession,
     resolve_cwd,
     shell_cd_command,
 )
 
 logger = get_logger(__name__)
+
+_SSH_START_FALLBACK = (
+    "Failed to start SSH terminal. Check connection settings "
+    "and that the remote host is reachable."
+)
+_LOCAL_START_FALLBACK = (
+    "Failed to start local terminal. Check that a shell is "
+    "available and PTY is supported."
+)
+_RESTART_FALLBACK = "Failed to restart terminal"
+
+
+def _start_error_message(session: TerminalSession, kind: str) -> str:
+    """优先返回底层终端捕获的具体错误。"""
+    detail = session.last_start_error
+    if detail:
+        return detail
+    if kind == "ssh":
+        return _SSH_START_FALLBACK
+    return _LOCAL_START_FALLBACK
 
 
 async def _send_existing_sessions(
@@ -118,16 +138,7 @@ async def _start_new_session(
         ok = await session.start_local(cols, rows)
 
     if not ok:
-        if kind == "ssh":
-            message = (
-                "Failed to start SSH terminal. Check connection settings "
-                "and that the remote host is reachable."
-            )
-        else:
-            message = (
-                "Failed to start local terminal. Check that a shell is "
-                "available and PTY is supported."
-            )
+        message = _start_error_message(session, kind)
         await ws.send_json({"type": "error", "message": message})
         registry.pop(session_id, None)
         return None, False
@@ -194,7 +205,14 @@ async def _dispatch_session_message(
     if msg_type == "restart":
         ok = await session.restart(cols, rows)
         if not ok:
-            await ws.send_json({"type": "error", "message": "Failed to restart terminal"})
+            message = session.last_start_error or _RESTART_FALLBACK
+            await ws.send_json({"type": "error", "message": message})
+        else:
+            await ws.send_json({"type": "ready", "session_id": session_id})
+            await ws.send_json({
+                "type": "mode",
+                "mode": _terminal_mode(session, session.kind),
+            })
         return True
     return True
 

@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional, Tuple
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 from src.platforms.deepseek.core.constants import (
     WASM_META,

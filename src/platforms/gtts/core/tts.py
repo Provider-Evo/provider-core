@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 
 from src.core.dispatch.candidate import Candidate
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from .constants import (
     GTTS_DEFAULT_LANG,
     GTTS_MAX_CHARS,

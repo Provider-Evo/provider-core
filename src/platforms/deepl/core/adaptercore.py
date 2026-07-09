@@ -17,7 +17,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import aiohttp
 
 from src.core.dispatch.candidate import Candidate
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from src.platforms.base import PlatformAdapter
 from .constants import (
     CAPS,

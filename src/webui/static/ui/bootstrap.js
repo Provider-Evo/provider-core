@@ -8,58 +8,6 @@
     document.body.classList.add('webui-enhanced');
   }).catch(function() {});
 })();
-document.getElementById('fabThemeButton').addEventListener('click', function() {
-  // Portable toggle: only switches between light and dark (no auto)
-  var current = state.settings.theme;
-  state.settings.theme = (current === 'light') ? 'dark' : 'light';
-  saveSettings();
-  toast(t('toast.themeSwitched', { theme: state.settings.theme }), 'ok');
-});
-function _openPortable() {
-  portablePanel.style.display = '';
-  _refreshRecordingDevices();
-  requestAnimationFrame(function() { portablePanel.classList.add('is-visible'); });
-}
-function _closePortable() {
-  portablePanel.classList.remove('is-visible');
-  setTimeout(function() { portablePanel.style.display = 'none'; }, 200);
-}
-document.getElementById('portableButton').addEventListener('click', function() {
-  if (!portablePanel.style.display || portablePanel.style.display === 'none') _openPortable();
-  else _closePortable();
-});
-document.getElementById('portableBackdrop').addEventListener('click', _closePortable);
-document.getElementById('themeSelect').addEventListener('change', function(event) {
-  state.settings.theme = event.target.value;
-  saveSettings();
-});
-document.getElementById('refreshIntervalInput').value = String(state.settings.refreshInterval);
-document.getElementById('refreshIntervalInput').addEventListener('change', function(event) {
-  state.settings.refreshInterval = Number(event.target.value || 0);
-  saveSettings();
-});
-document.getElementById('timeoutInput').value = String(state.settings.timeoutMs);
-document.getElementById('timeoutInput').addEventListener('change', function(event) {
-  state.settings.timeoutMs = Number(event.target.value || defaultSettings.timeoutMs);
-  saveSettings();
-});
-var streamIdleTimeoutInput = document.getElementById('streamIdleTimeoutInput');
-if (streamIdleTimeoutInput) {
-  streamIdleTimeoutInput.value = String(typeof getStreamIdleTimeoutMs === 'function' ? getStreamIdleTimeoutMs() : 60000);
-  streamIdleTimeoutInput.addEventListener('change', function(event) {
-    var value = Number(event.target.value);
-    if (!Number.isFinite(value) || value < 5000) {
-      value = defaultSettings.streamIdleTimeoutMs;
-      event.target.value = String(value);
-    }
-    state.settings.streamIdleTimeoutMs = value;
-    saveSettings();
-  });
-}
-document.getElementById('compactSelect').addEventListener('change', function(event) {
-  state.settings.compact = event.target.value;
-  saveSettings();
-});
 document.getElementById('platformSearchInput').addEventListener('input', function() {
   renderPlatforms((state.summary || {}).platforms || {});
 });
@@ -77,7 +25,13 @@ document.getElementById('copySummaryButton').addEventListener('click', function(
 });
 document.getElementById('exportSummaryButton').addEventListener('click', exportSummary);
 document.getElementById('copyConfigButton').addEventListener('click', function() {
-  copyText(configJsonBox.textContent || '{}', t('overview.configCopied'));
+  var isSource = typeof getConfigEditMode === 'function' && getConfigEditMode() === 'source';
+  if (isSource) {
+    var editor = document.getElementById('configTomlEditor');
+    copyText(editor ? editor.value : '', t('overview.configCopied'));
+    return;
+  }
+  copyText(JSON.stringify(window._currentConfig || {}, null, 2), t('overview.configCopied'));
 });
 document.getElementById('clearLogButton').addEventListener('click', function() {
   clearLogs();
@@ -172,17 +126,6 @@ document.getElementById('reloadConfigButton').addEventListener('click', reloadCo
 // Restart overlay buttons
 document.getElementById('restartRefreshBtn').addEventListener('click', function() { location.reload(); });
 document.getElementById('restartRetryBtn').addEventListener('click', function() { retryHealthCheck(); });
-document.getElementById('configEditToggle').addEventListener('click', toggleConfigEdit);
-if (configEditArea) {
-  configEditArea.addEventListener('input', function() {
-    try {
-      JSON.parse(configEditArea.value);
-      scheduleConfigSave();
-    } catch (e) {
-      toast(t('config.jsonError'), 'error');
-    }
-  });
-}
 document.querySelectorAll('.tab-button[data-tab]').forEach(function(node) {
   node.id = 'tab-' + node.dataset.tab + '-button';
   node.addEventListener('click', function() {
@@ -194,29 +137,30 @@ document.querySelectorAll('.tab-button[data-tab]').forEach(function(node) {
 // (_initAutoupdateTab, _initChatTab) — called by state.js _initTab()
 
 applyTheme();
-applyCompact();
 applyVoiceSettings();
 
-// Voice settings change handlers
-['voiceSttModel', 'voiceTtsModel', 'voiceTtsPrompt'].forEach(function(id) {
-  var el = document.getElementById(id);
-  if (el) {
-    el.addEventListener('change', function() {
-      saveVoiceSettings({
-        sttModel: (document.getElementById('voiceSttModel') || {}).value || '',
-        ttsModel: (document.getElementById('voiceTtsModel') || {}).value || '',
-        ttsPrompt: (document.getElementById('voiceTtsPrompt') || {}).value || '',
-      });
-    });
-  }
-});
+var configTtsRestoreBtn = document.getElementById('configTtsRestoreBtn');
+if (configTtsRestoreBtn) {
+  configTtsRestoreBtn.addEventListener('click', async function() {
+    try {
+      var resp = await fetch('/prompts/tts_default.prompt');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var text = (await resp.text()).trim();
+      if (!window._currentConfig) window._currentConfig = {};
+      window._currentConfig.ttsPrompt = text;
+      if (typeof _renderConfigData === 'function') _renderConfigData(window._currentConfig);
+      if (typeof scheduleConfigSave === 'function') scheduleConfigSave();
+      toast(t('actions.promptRestored'), 'ok');
+    } catch (e) {
+      toast(t('actions.promptRestoreFailedDetail', { error: e.message }), 'error');
+    }
+  });
+}
 
 // ========================= Custom Dropdown Initialization =========================
 window._dropdowns = {};
 ['modelPlatformSelect', 'modelCapabilitySelect', 'chatModelSelect',
- 'chatProtocolSelect', 'themeSelect', 'compactSelect', 'tabLayoutSelect',
- 'voiceSttModel', 'voiceTtsModel', 'recordingDeviceSelect',
- 'autoupdateBranch', 'requestStatusFilter', 'requestTimeFilter',
+ 'chatProtocolSelect', 'autoupdateBranch', 'requestStatusFilter', 'requestTimeFilter',
  'logLevelSelect', 'logModuleSelect'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) {
@@ -252,14 +196,15 @@ window._dropdowns = {};
   }
 })();
 
-// Re-apply settings after dropdown initialization (needed for themeSelect/compactSelect)
+// Re-apply settings after dropdown initialization
 applyTheme();
 applyCompact();
 
-// Load portable settings from server-side config.toml (overrides localStorage)
+// Load portable settings from server-side webui_config.toml
 initSettingsFromServer();
 
 scheduleRefresh();
+if (typeof renderModels === 'function') renderModels([]);
 switchTab(initialTab);
 connectLogsSocket();
 refreshAll();
@@ -273,78 +218,26 @@ if (typeof initAllMotionEffects === 'function') {
 
 // Load models list moved to _initChatTab() (lazy)
 
-// Load voice model lists for STT/TTS dropdowns
-(async function loadVoiceModels() {
+// Load voice model lists for STT/TTS dropdowns (populateModelDropdowns in refreshAll)
+(async function bootstrapModelDropdowns() {
+  if (typeof populateModelDropdowns !== 'function') return;
+  if (state.modelsLoaded && state.models.length) {
+    populateModelDropdowns(state.models);
+    return;
+  }
   try {
-    var result = await fetchJson("/v1/models");
-    if (!result || !result.data) return;
-    var models = result.data;
-    var sttOpts = [{ value: '', text: t('common.notUsing') }];
-    var ttsOpts = [{ value: '', text: t('common.notUsing') }];
-    for (var i = 0; i < models.length; i++) {
-      var caps = models[i].capabilities || {};
-      if (caps.stt || (caps.chat && caps.vision)) sttOpts.push({ value: models[i].id, text: models[i].id });
-      if (caps.tts || caps.audio_gen) ttsOpts.push({ value: models[i].id, text: models[i].id });
-    }
-    var sttDropdown = window._dropdowns && window._dropdowns['voiceSttModel'];
-    var ttsDropdown = window._dropdowns && window._dropdowns['voiceTtsModel'];
-    if (sttDropdown) {
-      sttDropdown.setOptions(sttOpts, false);
-      var vs = loadVoiceSettings();
-      if (vs.sttModel) sttDropdown.setValue(vs.sttModel);
-    }
-    if (ttsDropdown) {
-      ttsDropdown.setOptions(ttsOpts, false);
-      var vs = loadVoiceSettings();
-      if (vs.ttsModel) ttsDropdown.setValue(vs.ttsModel);
-    }
-  } catch (e) { /* ignore */ }
+    var result = await fetchJson('/v1/webui/summary');
+    if (result && result.models) populateModelDropdowns(result.models);
+    else populateModelDropdowns(null, { error: true });
+  } catch (e) {
+    populateModelDropdowns(null, { error: true });
+  }
 })();
 
-// Voice dropdown change handlers
-['voiceSttModel', 'voiceTtsModel'].forEach(function(id) {
-  var dropdown = window._dropdowns && window._dropdowns[id];
-  if (dropdown) {
-    dropdown.onChange = function(value) {
-      saveVoiceSettings({
-        sttModel: (window._dropdowns['voiceSttModel'] || {}).value || document.getElementById('voiceSttModel').value || '',
-        ttsModel: (window._dropdowns['voiceTtsModel'] || {}).value || document.getElementById('voiceTtsModel').value || '',
-        ttsPrompt: (document.getElementById('voiceTtsPrompt') || {}).value || '',
-      });
-    };
-  }
-});
+// Voice dropdown change handlers removed — voice settings live in config panel (webui_config)
 
-// TTS prompt restore default button
-var ttsRestoreBtn = document.getElementById('voiceTtsPromptRestoreBtn');
-if (ttsRestoreBtn) {
-  ttsRestoreBtn.addEventListener('click', async function() {
-    try {
-      var resp = await fetch('/prompts/tts_default.prompt');
-      if (resp.ok) {
-        var text = await resp.text();
-        var textarea = document.getElementById('voiceTtsPrompt');
-        if (textarea) {
-          textarea.value = text.trim();
-          saveVoiceSettings({
-            sttModel: (window._dropdowns['voiceSttModel'] || {}).value || document.getElementById('voiceSttModel').value || '',
-            ttsModel: (window._dropdowns['voiceTtsModel'] || {}).value || document.getElementById('voiceTtsModel').value || '',
-            ttsPrompt: text.trim(),
-          });
-          toast(t('actions.promptRestored'), 'ok');
-        }
-      } else {
-        toast(t('actions.promptRestoreFailed'), 'error');
-      }
-    } catch (e) {
-      toast(t('actions.promptRestoreFailedDetail', { error: e.message }), 'error');
-    }
-  });
-}
-
-// Restore chat history moved to _initChatTab() (lazy)
-
-// Override switchTab to scroll to top of content container
+// Tab layout config (persisted via webui_config / config panel)
+window._tabLayoutConfig = window._tabLayoutConfig || { layout: 'horizontal', sidebarCompressed: false };
 var originalSwitchTab = window.switchTab;
 if (typeof switchTab === 'function') {
   window.switchTab = function(tabName) {
@@ -382,54 +275,6 @@ async function persistLoad(filename) {
   } catch (e) { /* ignore */ }
   return null;
 }
-
-// ========================= Recording Device =========================
-async function _refreshRecordingDevices() {
-  try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-    var devices = await navigator.mediaDevices.enumerateDevices();
-    var audioInputs = devices.filter(function(d) { return d.kind === 'audioinput'; });
-    var opts = [{ value: '', text: t('voice.defaultDevice') }];
-    for (var i = 0; i < audioInputs.length; i++) {
-      opts.push({
-        value: audioInputs[i].deviceId,
-        text: audioInputs[i].label || t('voice.micFallback', { index: i + 1 })
-      });
-    }
-    var dropdown = window._dropdowns && window._dropdowns['recordingDeviceSelect'];
-    if (dropdown) {
-      dropdown.setOptions(opts, false);
-      var saved = await persistLoad('config.toml');
-      if (saved && saved.recordingDeviceId) {
-        dropdown.setValue(saved.recordingDeviceId);
-      }
-    }
-  } catch (e) { /* ignore */ }
-}
-
-// Initial load of recording devices
-_refreshRecordingDevices();
-
-// Recording device change handler
-(function() {
-  async function _saveRecordingDevice(deviceId) {
-    var existing = await persistLoad('config.toml') || {};
-    existing.recordingDeviceId = deviceId;
-    persistSave('config.toml', existing);
-  }
-  var dropdown = window._dropdowns && window._dropdowns['recordingDeviceSelect'];
-  if (dropdown) {
-    dropdown.onChange = function(value) {
-      _saveRecordingDevice(value);
-    };
-  }
-  var el = document.getElementById('recordingDeviceSelect');
-  if (el) {
-    el.addEventListener('change', function() {
-      _saveRecordingDevice(el.value);
-    });
-  }
-})();
 
 // ========================= Lazy Per-Tab Init Functions =========================
 // Called by state.js _initTab() the first time each tab is shown.
@@ -527,13 +372,21 @@ function _initTerminalTab() {
 }
 
 function _initConfigTab() {
-  if (typeof renderConfig === 'function' && state.summary) {
-    renderConfig(state.summary);
+  if (typeof activateConfigPanel === 'function') {
+    activateConfigPanel(state.summary);
   }
 }
 
+function activateConfigPanel(summary) {
+  if (typeof _bindConfigPanel === 'function') _bindConfigPanel();
+  if (typeof forceRenderConfig === 'function') {
+    forceRenderConfig(summary);
+  }
+}
+window.activateConfigPanel = activateConfigPanel;
+
 // ========================= Tab Layout Toggle =========================
-var _tabLayoutConfig = { layout: 'horizontal', sidebarCompressed: false };
+var _tabLayoutConfig = window._tabLayoutConfig;
 
 /**
  * Global registry for TabBar instances.
@@ -566,11 +419,24 @@ function _applyTabLayout(layout) {
   var dd = window._dropdowns && window._dropdowns['tabLayoutSelect'];
   if (dd) dd.setValue(layout);
 }
+window._applyTabLayout = _applyTabLayout;
+
+async function _persistTabLayoutPatch(patch) {
+  try {
+    var existing = await fetchJson('/v1/webui/config').catch(function() { return {}; });
+    Object.assign(existing, patch);
+    await fetch('/v1/webui/config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(existing),
+    });
+  } catch (e) { /* ignore */ }
+}
 
 // Initialize tab layout from saved config
 (async function _initTabLayout() {
   try {
-    var saved = await persistLoad('config.toml');
+    var saved = await fetchJson('/v1/webui/config');
     if (saved && saved.layout) {
       _tabLayoutConfig.layout = saved.layout;
     }
@@ -580,19 +446,6 @@ function _applyTabLayout(layout) {
   } catch (e) { /* ignore */ }
   _applyTabLayout(_tabLayoutConfig.layout);
 })();
-
-// Tab layout change handler
-document.getElementById('tabLayoutSelect').addEventListener('change', async function(event) {
-  _tabLayoutConfig.layout = event.target.value;
-  _applyTabLayout(_tabLayoutConfig.layout);
-  var existing = await persistLoad('config.toml') || {};
-  existing.layout = _tabLayoutConfig.layout;
-  existing.sidebarCompressed = _tabLayoutConfig.sidebarCompressed;
-  persistSave('config.toml', existing);
-  toast(t('portable.layoutSwitched', {
-    layout: event.target.value === 'vertical' ? t('portable.layoutVertical') : t('portable.layoutHorizontal'),
-  }), 'ok');
-});
 
 if (window.i18n) {
   i18n.onLanguageChanged(function() {

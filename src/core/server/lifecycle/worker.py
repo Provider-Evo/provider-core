@@ -24,6 +24,8 @@ from src.core.server.infra.reload import (
     bind_worker_shutdown,
     consume_restart_flag,
 )
+from src.core.server.infra.shutdown import request_shutdown
+from src.core.server.infra.event_loop_policy import configure_event_loop_policy
 from src.core.server.infra.win_asyncio import apply_windows_asyncio_patches
 from src.foundation.paths import resolve_project_root
 from src.foundation.logger import get_logger, shutdown_logging
@@ -113,7 +115,8 @@ async def _create_background_tasks(
     stop_event: asyncio.Event,
 ) -> tuple[list[asyncio.Task], HotReloadService | None]:
     """创建并启动后台异步任务（单 FileWatcher 多订阅）。"""
-    is_idle_env = is_idle()
+    # Runner 子进程的 stdout 为 PIPE，不能用 is_idle() 判定 IDLE 环境。
+    is_idle_env = is_idle() and os.environ.get("WORKER_PROCESS") != "1"
     hot_reload = HotReloadService(
         _ROOT,
         registry,
@@ -228,8 +231,12 @@ async def _shutdown(
     logger.info("Provider-V2 已完全退出")
 
 
-async def _run() -> None:
-    """Worker 的异步主流程——启动所有组件，等待退出信号，优雅关闭。"""
+async def _run() -> int:
+    """Worker 的异步主流程——启动所有组件，等待退出信号，优雅关闭。
+
+    Returns:
+        进程退出码；42 表示请求 Runner 热重启。
+    """
     from src.bootstrap.webui_bindings import register_webui_bindings
 
     register_webui_bindings()
@@ -391,39 +398,30 @@ async def _run() -> None:
             logger.warning("关停过程异常，继续退出: %s", exc)
 
     exit_code = RESTART_EXIT_CODE if consume_restart_flag() else 0
-    finalize_exit(exit_code)
+    return exit_code
 
 
 def run_worker() -> None:
     """Worker 进程入口——配置事件循环策略并启动异步主流程。"""
     apply_windows_asyncio_patches()
-    if sys.platform == "win32":
-        if sys.version_info < (3, 12):
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    else:
-        try:
-            import uvloop  # type: ignore[import]
+    configure_event_loop_policy()
 
-            if sys.version_info >= (3, 14):
-                uvloop.install()
-            else:
-                asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-            logger.debug("uvloop 已启用")
-        except (ImportError, OSError) as exc:
-            logger.debug("uvloop 初始化失败（%s），使用默认事件循环", exc)
-
-    exit_code = 0
+    exit_code = 1
     global _active_main_loop
     try:
         exit_code = asyncio.run(_run())
     except KeyboardInterrupt:
         request_shutdown("keyboard_interrupt")
         logger.info("Worker 已退出")
+        exit_code = 0
     except SystemExit as exc:
         if isinstance(exc.code, int):
             exit_code = exc.code
         elif exc.code:
             exit_code = 1
+    except Exception as exc:
+        logger.error("Worker 异常退出: %s", exc, exc_info=True)
+        exit_code = 1
     finally:
         _active_main_loop = None
         finalize_exit(exit_code)

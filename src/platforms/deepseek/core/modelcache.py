@@ -8,8 +8,8 @@ import json
 import time
 from typing import Any, Awaitable, Callable, List, Optional
 
-from src.logger import get_logger
-from src.paths import persist_dir
+from src.foundation.logger import get_logger
+from src.foundation.paths import persist_dir
 
 logger = get_logger(__name__)
 

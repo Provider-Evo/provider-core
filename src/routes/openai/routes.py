@@ -103,7 +103,7 @@ from src.routes.openai.stubs import (  # noqa: F401
     upload_file,
 )
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 __all__ = [
     # 路由注册

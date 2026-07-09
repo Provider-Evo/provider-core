@@ -144,6 +144,11 @@ class HotReloadService:
         path = change.path
         if path.name in {"main_config.toml", "webui_config.toml"}:
             return False
+        if path.suffix == ".json":
+            return (
+                "plugins" in path.parts
+                and path.name in {"_manifest.json", "_manifest.json.disabled"}
+            )
         if path.suffix and path.suffix not in _SOURCE_EXTENSIONS:
             return False
         return True

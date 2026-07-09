@@ -7,9 +7,9 @@ from typing import Any, Optional
 
 import aiohttp.web
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
-from src.core.server.app import create_app
+from src.core.server.lifecycle.app import create_app
 from src.core.server.infra.reload.internal.connection_drain import close_live_connections
 
 __all__ = ["AppHost"]

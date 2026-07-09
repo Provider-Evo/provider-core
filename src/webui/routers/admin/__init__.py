@@ -2,15 +2,57 @@ from __future__ import annotations
 
 """管理类 WebUI 路由导出。"""
 
-from .admin import bg_image_get, bg_image_upload, config_get, config_put, config_reload, persist_get, persist_put, reload_service
+from .config_panel import (
+    config_get,
+    config_put,
+    config_reload,
+    config_schema_get,
+    config_raw_get,
+    config_raw_put,
+)
+from .webui_config_panel import (
+    webui_config_get,
+    webui_config_put,
+    webui_config_reload,
+    webui_config_schema_get,
+    webui_config_raw_get,
+    webui_config_raw_put,
+)
+from .admin import bg_image_get, bg_image_upload, persist_get, persist_put, reload_service
 from .system import system_status
 from .admin_auth import auth_regenerate, auth_update, auth_verify
 from .autoupdate import autoupdate_apply, autoupdate_check, autoupdate_diff, autoupdate_get, autoupdate_put
+from .plugin_catalog import (
+    plugins_fetch_raw,
+    plugins_git_status,
+    plugins_host_version,
+    plugins_icon,
+    plugins_local_changelog,
+    plugins_local_readme,
+    plugins_market_config,
+)
+from .plugin_progress import plugins_progress
+from .plugin import (
+    plugins_mirror_create,
+    plugins_mirror_delete,
+    plugins_mirror_list,
+    plugins_mirror_update,
+    plugins_runtime_components,
+    plugins_runtime_home_cards,
+    plugins_runtime_hook_specs,
+    plugins_runtime_hooks,
+    plugins_stats_proxy_summary,
+    plugins_stats_proxy_toggle_like,
+)
 from .plugins import (
+    plugins_config_bundle,
     plugins_config_get,
     plugins_config_put,
+    plugins_config_reset,
     plugins_install,
+    plugins_installed,
     plugins_list,
+    plugins_reload,
     plugins_status,
     plugins_toggle,
     plugins_uninstall,
@@ -31,12 +73,43 @@ __all__ = [
     "config_get",
     "config_put",
     "config_reload",
+    "config_schema_get",
+    "config_raw_get",
+    "config_raw_put",
+    "webui_config_get",
+    "webui_config_put",
+    "webui_config_reload",
+    "webui_config_schema_get",
+    "webui_config_raw_get",
+    "webui_config_raw_put",
     "persist_get",
     "persist_put",
+    "plugins_config_bundle",
     "plugins_config_get",
     "plugins_config_put",
+    "plugins_config_reset",
+    "plugins_fetch_raw",
+    "plugins_git_status",
+    "plugins_host_version",
+    "plugins_icon",
     "plugins_install",
+    "plugins_installed",
     "plugins_list",
+    "plugins_local_changelog",
+    "plugins_local_readme",
+    "plugins_market_config",
+    "plugins_mirror_create",
+    "plugins_mirror_delete",
+    "plugins_mirror_list",
+    "plugins_mirror_update",
+    "plugins_progress",
+    "plugins_reload",
+    "plugins_runtime_components",
+    "plugins_runtime_home_cards",
+    "plugins_runtime_hooks",
+    "plugins_runtime_hook_specs",
+    "plugins_stats_proxy_summary",
+    "plugins_stats_proxy_toggle_like",
     "plugins_status",
     "plugins_toggle",
     "plugins_uninstall",

@@ -12,8 +12,8 @@ import aiohttp.web
 from echotools.terminal import TerminalCallback
 
 from src.core.server.infra.terminal_sessions import TerminalSessionStore
-from src.logger import get_logger
-from src.webui.routers.session.terminal_output_bridge import BridgedLocalTerminal, BridgedSSHTerminal
+from src.foundation.logger import get_logger
+from src.webui.routers.session.terminal.terminal_output_bridge import BridgedLocalTerminal, BridgedSSHTerminal
 
 logger = get_logger(__name__)
 
@@ -39,6 +39,8 @@ class TerminalSession:
         self.alive: bool = False
         self.name: Optional[str] = None
         self.reattachable: bool = True
+        self._ssh_config: Optional[Dict[str, Any]] = None
+        self.last_start_error: Optional[str] = None
 
     async def start_local(self, cols: int = 80, rows: int = 24) -> bool:
         """创建并启动本地终端会话。"""
@@ -69,29 +71,51 @@ class TerminalSession:
         rows: int = 24,
     ) -> bool:
         """创建并启动 SSH 远程终端会话。"""
+        self.last_start_error = None
+        self._ssh_config = {
+            "host": host,
+            "port": port,
+            "username": username,
+            "password": password,
+            "key_data": key_data,
+        }
+        captured_errors: List[str] = []
+
+        async def _capture_start_error(message: str) -> None:
+            captured_errors.append(message)
+
         self._terminal = BridgedSSHTerminal(
             self.session_id,
             host=host,
             port=port,
             username=username,
             password=password or None,
-            key_data=key_data or None,
+            key_data=(key_data or "").strip() or None,
         )
+        self._terminal.attach(TerminalCallback(on_error=_capture_start_error))
         ok = await self._terminal.start(cols, rows)
-        if ok:
-            self.alive = True
-            if self._store:
-                self._store.save(
-                    session_id=self.session_id,
-                    pid=None,
-                    cols=cols,
-                    rows=rows,
-                    kind="ssh",
-                    ssh_config={"host": host, "port": port, "username": username},
-                    name=self.name,
-                    status="alive",
-                )
-        return ok
+        if not ok:
+            self.last_start_error = (
+                captured_errors[-1]
+                if captured_errors
+                else "SSH connection failed"
+            )
+            self.alive = False
+            return False
+
+        self.alive = True
+        if self._store:
+            self._store.save(
+                session_id=self.session_id,
+                pid=None,
+                cols=cols,
+                rows=rows,
+                kind="ssh",
+                ssh_config={"host": host, "port": port, "username": username},
+                name=self.name,
+                status="alive",
+            )
+        return True
 
     async def _shutdown_terminal(self) -> None:
         """停止底层终端进程。"""
@@ -266,11 +290,28 @@ class TerminalSession:
 
     async def restart(self, cols: int = 80, rows: int = 24) -> bool:
         """重启终端会话（保持同一标签页）。"""
+        if self.kind == "ssh":
+            if not self._ssh_config:
+                self.last_start_error = "SSH session settings are unavailable for restart"
+                return False
+            await self._shutdown_terminal()
+            cfg = self._ssh_config
+            ok = await self.start_ssh(
+                host=str(cfg.get("host", "")),
+                port=int(cfg.get("port", 22)),
+                username=str(cfg.get("username", "")),
+                password=str(cfg.get("password", "")),
+                key_data=str(cfg.get("key_data", "")),
+                cols=cols,
+                rows=rows,
+            )
+            if ok:
+                await self._reattach_clients_after_restart()
+            return ok
+
         if not self._terminal:
             return False
         await self._shutdown_terminal()
-        if self.kind == "ssh":
-            return False
         self._terminal = BridgedLocalTerminal(self.session_id)
         if not await self._terminal.start(cols, rows):
             return False

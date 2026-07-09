@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.core.observability.services import (
+from src.core.utils.observability.services import (
     OBSERVABILITY_KEY,
     ObservabilityServices,
     get_observability_services,
