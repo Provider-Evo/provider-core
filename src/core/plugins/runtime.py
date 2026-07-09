@@ -57,6 +57,7 @@ class PluginRuntime:
             from provider_sdk.runtime.loader import PluginLoader
         except ImportError:
             logger.error("provider-sdk 未安装，无法加载插件")
+            self._failed["provider-sdk"] = "provider-sdk 未安装，无法加载插件"
             return
 
         host_ver = self._host_version()

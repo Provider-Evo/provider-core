@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 # src/platforms/zen/util.py
-"""Zen 对外工具门面。
+"""Zen 对外工具门面（合并 opencode 代理池与 zen API Key 模式）。
 
-该模块只负责导出稳定接口：
+该模块只��责导出稳定接口：
 - 共享常量/函数来自 ``src.platforms.zen.core`` 子模块
-- ``ZenAdapter`` 与 ``Adapter`` 通过 ``__getattr__`` 延迟加载
+- ``ZenAdapter`` ��� ``Adapter`` 通过 ``__getattr__`` 延迟加载
 """
 
 from typing import Any
@@ -28,7 +28,7 @@ from src.platforms.zen.core.sse import parse_sse_line
 
 
 def __getattr__(name: str) -> Any:
-    """模块级懒属性，按需导入实现类。"""
+    """模块��懒属性，按需导入实现类。"""
     if name in ("ZenAdapter", "Adapter"):
         from src.platforms.zen.core.adaptercore import (  # noqa: PLC0415
             ZenAdapter as _ZenAdapter,
