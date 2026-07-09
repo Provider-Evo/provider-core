@@ -28,7 +28,7 @@ __all__ = [
 @dataclass
 class ServerCfg(ConfigBase):
     """服务器基础配置：版本、主机地址、端口和调试开关。"""
-    version: str = "2.2.21"
+    version: str = "2.2.0-alpha"
     host: str = "0.0.0.0"
     port: int = 1337
     debug: bool = False

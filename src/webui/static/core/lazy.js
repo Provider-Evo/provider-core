@@ -44,6 +44,9 @@ var LazyLoader = (function() {
       { type: 'css', url: '/static/ui/sortable-list/sortable-list.css' },
       { type: 'js',  url: '/static/ui/sortable-list/sortable-list.js' },
     ],
+    plugins: [
+      { type: 'js', url: '/static/plugins/plugins.js?v=20260709-1' },
+    ],
   };
 
   function loadScript(url) {

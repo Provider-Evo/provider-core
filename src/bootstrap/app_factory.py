@@ -44,6 +44,9 @@ async def create_application(
     setup_oai(app)
     setup_anth(app)
     setup_webui(app)
+    from src.bootstrap.plugin_routes import register_plugin_routes
+
+    register_plugin_routes(app)
 
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)

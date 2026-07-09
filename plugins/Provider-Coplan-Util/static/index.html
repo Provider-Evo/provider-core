@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entropy Coplan</title>
+  <link rel="stylesheet" href="/static/plugins/provider-coplan-util/coplan.css">
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">CodingPlan</p>
+    <h1>Entropy</h1>
+    <p class="tagline">策略组 · 密钥调度 · 策略市场</p>
+  </header>
+  <main class="grid">
+    <section class="card">
+      <h2>状态</h2>
+      <pre id="status">加载中...</pre>
+    </section>
+    <section class="card">
+      <h2>策略组</h2>
+      <div class="row">
+        <input id="groupName" placeholder="策略组名称">
+        <button id="createGroup" type="button">创建</button>
+      </div>
+      <ul id="groups"></ul>
+    </section>
+    <section class="card">
+      <h2>策略市场</h2>
+      <ul id="market"></ul>
+    </section>
+  </main>
+  <script src="/static/plugins/provider-coplan-util/coplan.js"></script>
+</body>
+</html>

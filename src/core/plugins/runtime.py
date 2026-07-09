@@ -1,7 +1,8 @@
 """Provider-Evo 统一插件运行时（容错式加载）。"""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+import sys
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.logger import get_logger
 from src.paths import project_root
@@ -27,6 +28,7 @@ class PluginRuntime:
         self._loaders: Dict[str, Any] = {}
         self._records: Dict[str, Any] = {}
         self._failed: Dict[str, str] = {}
+        self._inactive_count = 0
         self._plugins_root = project_root / "plugins"
 
     @property
@@ -48,6 +50,19 @@ class PluginRuntime:
         except Exception:
             return ""
 
+    def _count_inactive_manifests(self) -> int:
+        if not self._plugins_root.is_dir():
+            return 0
+        count = 0
+        for child in self._plugins_root.iterdir():
+            if not child.is_dir() or child.name.startswith("."):
+                continue
+            if (child / "_manifest.json.disabled").is_file() and not (
+                child / "_manifest.json"
+            ).is_file():
+                count += 1
+        return count
+
     async def init(self, session: Any) -> None:
         """初始化插件加载。容错：任意异常不向上抛出。"""
         if not self._plugins_root.is_dir():
@@ -63,7 +78,7 @@ class PluginRuntime:
         host_ver = self._host_version()
         loaded_count = 0
         failed_count = 0
-        inactive_count = 0
+        self._inactive_count = self._count_inactive_manifests()
 
         for ptype in ("fncall", "platform", "webui", "coplan", "general"):
             try:
@@ -94,8 +109,73 @@ class PluginRuntime:
             "插件初始化完成: loaded=%d failed=%d inactive=%d",
             loaded_count,
             failed_count,
-            inactive_count,
+            self._inactive_count,
         )
+
+    def _find_platform_record(
+        self, platform_name: str
+    ) -> Optional[Tuple[Any, Any, str]]:
+        loader = self._loaders.get("platform")
+        if loader is None:
+            return None
+        for plugin_id, record in loader.loaded_plugins.items():
+            adapter = record.adapter
+            if adapter is not None and getattr(adapter, "name", "") == platform_name:
+                return loader, record, plugin_id
+        return None
+
+    async def reload_platform(self, platform_name: str, session: Any) -> Optional[Any]:
+        """热重载单个平台插件适配器。"""
+        found = self._find_platform_record(platform_name)
+        if found is None:
+            return None
+        loader, record, plugin_id = found
+        plugin_dir = record.plugin_dir
+        manifest = record.manifest
+
+        if record.adapter is not None:
+            try:
+                await record.adapter.close()
+            except Exception as exc:
+                logger.warning("关闭旧适配器 [%s] 失败: %s", platform_name, exc)
+
+        module_key = record.module_name
+        prefix = module_key
+        for key in sorted(
+            [k for k in sys.modules if k == prefix or k.startswith(prefix + ".")],
+            key=lambda x: -len(x),
+        ):
+            sys.modules.pop(key, None)
+
+        pkg_roots = {str(plugin_dir.resolve())}
+        for pkg in plugin_dir.iterdir():
+            if pkg.is_dir() and (pkg / "__init__.py").is_file():
+                pkg_roots.add(str(pkg.resolve()))
+        for root in pkg_roots:
+            if root in sys.path:
+                continue
+            parent = str(plugin_dir.resolve())
+            if parent not in sys.path:
+                sys.path.insert(0, parent)
+
+        try:
+            new_record = await loader._load_one(  # noqa: SLF001
+                plugin_dir,
+                manifest,
+                session,
+            )
+        except Exception as exc:
+            self._failed[plugin_id] = str(exc)
+            logger.error("平台插件热重载失败 [%s]: %s", platform_name, exc)
+            loader.loaded_plugins.pop(plugin_id, None)
+            self._records.pop(plugin_id, None)
+            return None
+
+        loader.loaded_plugins[plugin_id] = new_record
+        self._records[plugin_id] = new_record
+        self._failed.pop(plugin_id, None)
+        logger.info("平台插件已热重载: %s", platform_name)
+        return new_record.adapter
 
     async def close(self) -> None:
         for loader in self._loaders.values():
@@ -116,6 +196,17 @@ class PluginRuntime:
                 adapters.append(rec.adapter)
         return adapters
 
+    def get_components(self, component_type: str | None = None) -> List[Dict[str, Any]]:
+        """收集已加载插件声明的组件。"""
+        out: List[Dict[str, Any]] = []
+        for rec in self._records.values():
+            for comp in rec.components:
+                if component_type is None or comp.get("type") == component_type:
+                    item = dict(comp)
+                    item["plugin_id"] = rec.manifest.id
+                    out.append(item)
+        return out
+
     def get_load_statuses(self) -> Dict[str, str]:
         """返回所有插件的加载状态。"""
         statuses: Dict[str, str] = {}
@@ -134,7 +225,11 @@ class PluginRuntime:
         """返回插件加载汇总。"""
         loaded = len(self._records)
         failed = len(self.failed_plugins)
-        return {"loaded": loaded, "failed": failed, "inactive": 0}
+        return {
+            "loaded": loaded,
+            "failed": failed,
+            "inactive": self._inactive_count,
+        }
 
 
 def get_plugin_runtime() -> PluginRuntime:

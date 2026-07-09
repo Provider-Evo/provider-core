@@ -1,0 +1,32 @@
+from __future__ import annotations
+
+import importlib
+
+from provider_sdk import ProviderPlugin
+from provider_sdk.extensions.platform.bridge import attach_platform_adapter
+
+
+def _find_adapter_class(mod: object) -> type:
+    import abc as _abc
+    for attr in dir(mod):
+        obj = getattr(mod, attr)
+        if not isinstance(obj, type) or not attr.endswith("Adapter"):
+            continue
+        # 跳过含未实现抽象方法的类（如 PlatformAdapter 基类）
+        abstract = getattr(obj, "__abstractmethods__", frozenset())
+        if abstract:
+            continue
+        if all(hasattr(obj, m) for m in ("name", "init", "candidates", "complete", "close")):
+            return obj
+    raise RuntimeError(f"no adapter class in {mod.__name__}")
+
+
+class NoobkeysPlugin(ProviderPlugin):
+    async def on_load(self) -> None:
+        mod = importlib.import_module("provider_noobkeys.core.adaptercore")
+        adapter = _find_adapter_class(mod)()
+        attach_platform_adapter(self, adapter)
+
+
+def create_plugin() -> NoobkeysPlugin:
+    return NoobkeysPlugin()

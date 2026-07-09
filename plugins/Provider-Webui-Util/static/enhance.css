@@ -1,0 +1,10 @@
+/* Provider-Webui-Util 可选增强主题 */
+:root {
+  --plugin-webui-accent-glow: 0 0 24px rgba(110, 231, 183, 0.18);
+}
+body.webui-enhanced #headerSection {
+  box-shadow: var(--plugin-webui-accent-glow);
+}
+body.webui-enhanced .sidebar-nav-item.active {
+  border-color: #6ee7b7;
+}

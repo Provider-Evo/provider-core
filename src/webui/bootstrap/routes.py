@@ -16,7 +16,7 @@ from src.webui.routers import (
     chat_media_get, chat_media_put,
     logs_ws, persist_get, persist_put, reload_service, requests_list, requests_ws,
     stats_api, stats_reset, summary_api, system_status, terminal_sessions_api, terminal_ws, webui_page,
-    plugins_install, plugins_list, plugins_status, plugins_uninstall,
+    plugins_config_get, plugins_config_put, plugins_install, plugins_list, plugins_status, plugins_toggle, plugins_uninstall, plugins_update,
 )
 from src.webui.routers.admin import auth_regenerate, auth_update, auth_verify
 
@@ -61,6 +61,11 @@ def _register_admin_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/admin/plugins/status", plugins_status)
     app.router.add_post("/v1/admin/plugins/install", plugins_install)
     app.router.add_post("/v1/admin/plugins/uninstall", plugins_uninstall)
+    app.router.add_post("/v1/admin/plugins/update", plugins_update)
+    app.router.add_post("/v1/admin/plugins/toggle", plugins_toggle)
+    app.router.add_post("/v1/admin/plugins/toggle/{plugin_id}", plugins_toggle)
+    app.router.add_get("/v1/admin/plugins/config/{plugin_id}", plugins_config_get)
+    app.router.add_put("/v1/admin/plugins/config/{plugin_id}", plugins_config_put)
 
 
 def _register_file_routes(app: aiohttp.web.Application) -> None:

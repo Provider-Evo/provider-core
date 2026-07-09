@@ -26,6 +26,8 @@ config/
 *.dll
 *.dylib
 *.json
+!_manifest.json
+!**/_manifest.json
 *.pyc
 *.pyd
 *.pyo
@@ -68,7 +70,11 @@ src/platforms/aitianhu2/
 
 # Documentation and tests
 docs-src/
-tests/
+
+# Build artifacts
+dist/
+*.egg-info/
+_scan_out.txt
 
 !template/
 
