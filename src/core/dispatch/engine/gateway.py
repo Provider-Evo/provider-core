@@ -4,7 +4,7 @@ import asyncio
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from src.core.dispatch.candidate import Candidate
+from src.core.dispatch.candidate import Candidate, filter_candidates_by_context
 from src.core.config import get_config
 from src.core.dispatch.engine.executors import run_selected
 from src.core.dispatch.engine.fncall_context import (
@@ -15,6 +15,23 @@ from src.core.dispatch.engine.fncall_context import (
 from src.core.errors import NoCandidateError
 
 __all__ = ["dispatch"]
+
+
+def _estimate_prompt_tokens(messages: List[Dict]) -> int:
+    """粗估 prompt token 数（字符/4），用于上下文筛选。"""
+    total = 0
+    for msg in messages:
+        content = msg.get("content", "")
+        if isinstance(content, str):
+            total += max(1, len(content) // 4)
+        elif isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict):
+                    if part.get("type") == "text":
+                        total += max(1, len(str(part.get("text", ""))) // 4)
+                    elif part.get("type") in ("image_url", "input_audio"):
+                        total += 256
+    return total + 64
 
 
 async def _wait_for_candidates(
@@ -100,6 +117,25 @@ async def dispatch(
     cands = await _wait_for_candidates(registry, model, timeout=15.0, platform=platform)
     if not cands:
         raise NoCandidateError("无候选项: {}".format(model))
+
+    reserve = (max_tokens or 0) + 256
+    min_ctx = _estimate_prompt_tokens(messages) + reserve
+    filtered = filter_candidates_by_context(cands, model, min_ctx)
+    if not filtered:
+        raise NoCandidateError(
+            "无满足上下文要求的候选项: {} (需要约 {} tokens)".format(model, min_ctx)
+        )
+    if len(filtered) < len(cands):
+        from src.foundation.logger import get_logger
+
+        get_logger(__name__).debug(
+            "上下文筛选: model=%s 需要≥%d tokens，%d→%d 个候选项",
+            model,
+            min_ctx,
+            len(cands),
+            len(filtered),
+        )
+    cands = filtered
 
     n, sel = await _select_dispatch_candidates(registry, cands, stream)
 

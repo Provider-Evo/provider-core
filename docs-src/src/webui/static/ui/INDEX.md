@@ -33,10 +33,12 @@ Bootstrap 框架的 JavaScript 实现。页面加载时调用 `refreshAll()` 拉
 
 ### input-box.js
 
-输入框组件的实现，包括：
-- 文本输入处理
-- 自动完成功能
-- 输入验证
+聊天输入框组件，包括：
+- 文本输入、文件附件、超长文本转文件
+- **语音录音**：`getUserMedia`（可选 `recordingDeviceId`）→ `MediaRecorder` → `POST /v1/audio/transcriptions`（`sttModel`）
+- `updateVoice()`：配置变更时热更新语音参数
+
+语音参数来自 `webui_config.toml`（经 `loadVoiceSettings()` 缓存到 localStorage）。
 
 ### sortable-list/
 

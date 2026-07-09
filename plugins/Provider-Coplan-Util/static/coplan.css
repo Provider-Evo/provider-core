@@ -5,6 +5,9 @@
       --primary: #111; --primary-text: #fff; --accent: #2563eb;
       --success: #16a34a; --warning: #f59e0b; --error: #dc2626;
       --code-bg: #f5f5f5;
+      --input-bg: #fff;
+      --placeholder: #999;
+      --sidebar-w: 240px; --sidebar-collapsed: 64px;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -36,6 +39,8 @@
     .btn-outline:hover { background: var(--code-bg); }
     .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
     .btn-danger { background: var(--error); color: #fff; }
+    .btn-accent { background: var(--accent); color: #fff; border: 1px solid transparent; }
+    .btn-accent:hover { filter: brightness(1.08); transform: translateY(-1px); }
     .btn-block { width: 100%; }
 
     /* Landing Page */
@@ -102,8 +107,9 @@
     .auth-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px 24px; width: 100%; max-width: 400px; }
     .auth-box h2 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
     .auth-box .subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
-    .auth-box input, .auth-box select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; margin-bottom: 12px; outline: none; }
-    .auth-box input:focus { border-color: var(--primary); }
+    .auth-box input, .auth-box select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; margin-bottom: 12px; outline: none; background: var(--input-bg); color: var(--text); }
+    .auth-box input::placeholder { color: var(--placeholder); opacity: 1; }
+    .auth-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
     .error-text { color: var(--error); font-size: 13px; margin-bottom: 12px; }
     .auth-switch { text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-secondary); }
     .auth-switch a { color: var(--accent); cursor: pointer; text-decoration: none; }
@@ -179,22 +185,14 @@
     }
 
 /* Admin */
-:root {
-      --bg: #fafafa; --surface: #fff; --border: #e8e8e8;
-      --text: #111; --text-secondary: #666; --text-muted: #999;
-      --primary: #111; --primary-text: #fff; --accent: #2563eb;
-      --success: #16a34a; --warning: #f59e0b; --error: #dc2626;
-      --code-bg: #f5f5f5; --sidebar-w: 240px; --sidebar-collapsed: 64px;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-
+    /* admin 与 portal 共用顶部 :root 变量 */
     .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--surface); }
     .login-box { width: 100%; max-width: 380px; padding: 32px 24px; }
     .login-box h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
     .login-box p { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
-    .login-box input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; margin-bottom: 12px; outline: none; }
-    .login-box input:focus { border-color: var(--primary); }
+    .login-box input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; margin-bottom: 12px; outline: none; background: var(--input-bg); color: var(--text); }
+    .login-box input::placeholder { color: var(--placeholder); opacity: 1; }
+    .login-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
     .btn-primary { background: var(--primary); color: var(--primary-text); }
     .btn-primary:hover { opacity: 0.85; }
@@ -203,6 +201,8 @@
     .btn-outline:hover { background: var(--code-bg); }
     .btn-danger { background: var(--error); color: #fff; }
     .btn-success { background: var(--success); color: #fff; }
+    .btn-accent { background: var(--accent); color: #fff; border: 1px solid transparent; }
+    .btn-accent:hover { filter: brightness(1.08); transform: translateY(-1px); }
     .btn-block { width: 100%; }
     .error-text { color: var(--error); font-size: 13px; margin-bottom: 12px; }
 
@@ -219,7 +219,8 @@
     .sidebar.collapsed .sidebar-brand h2, .sidebar.collapsed .sidebar-brand span { display: none; }
     .toggle-btn {
       margin-left: auto; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-      border: 1px solid var(--border); border-radius: 6px; background: transparent; cursor: pointer; flex-shrink: 0;
+      border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg); color: var(--text);
+      cursor: pointer; flex-shrink: 0;
     }
     .toggle-btn:hover { background: var(--code-bg); }
     .toggle-btn svg { width: 14px; height: 14px; transition: transform 0.3s; }
@@ -268,8 +269,10 @@
     .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
     .form-group { margin-bottom: 14px; }
     .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text-secondary); }
-    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; font-family: inherit; }
-    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--primary); }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; font-family: inherit; background: var(--input-bg); color: var(--text); }
+    .form-group input::placeholder,
+    .form-group textarea::placeholder { color: var(--placeholder); opacity: 1; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
     .form-group textarea { resize: vertical; min-height: 60px; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 
@@ -317,6 +320,9 @@
   justify-content: center;
   font-size: 16px;
   line-height: 1;
+  color: var(--text);
+  background: var(--input-bg);
+  border-color: var(--border);
 }
 .coplan-theme-btn-fixed {
   position: fixed;
@@ -339,8 +345,11 @@
   --warning: #d29922;
   --error: #f85149;
   --code-bg: #21262d;
+  --input-bg: #0d1117;
+  --placeholder: #6e7681;
   --sidebar-w: 240px;
   --sidebar-collapsed: 64px;
+  color-scheme: dark;
 }
 
 [data-theme="dark"] .landing-hero::before {
@@ -372,5 +381,91 @@
 [data-theme="dark"] .agent-logo:hover {
   filter: grayscale(0%) brightness(1.25) contrast(1.05) saturate(1.08);
   opacity: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* Coplan 表单控件（portal + admin 共用，避免内联样式与 placeholder 漏改） */
+/* ------------------------------------------------------------------ */
+.coplan-input,
+.coplan-textarea,
+.coplan-select,
+.auth-box input,
+.auth-box select,
+.login-box input,
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  background: var(--input-bg);
+  color: var(--text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.coplan-input::placeholder,
+.coplan-textarea::placeholder,
+.auth-box input::placeholder,
+.login-box input::placeholder,
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--placeholder);
+  opacity: 1;
+}
+
+.coplan-input:focus,
+.coplan-textarea:focus,
+.coplan-select:focus,
+.auth-box input:focus,
+.login-box input:focus,
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.coplan-label,
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+}
+
+.coplan-field {
+  margin-bottom: 14px;
+}
+
+.coplan-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.chart-container canvas {
+  background: transparent;
+}
+
+[data-theme="dark"] .btn-accent {
+  color: #0d1117;
+}
+
+[data-theme="dark"] .btn-primary {
+  background: var(--accent);
+  color: #0d1117;
+}
+
+[data-theme="dark"] .btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+[data-theme="dark"] .toggle-btn:hover {
+  background: var(--code-bg);
+  border-color: var(--accent);
 }
 

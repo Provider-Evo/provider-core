@@ -6,7 +6,38 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-__all__ = ["Candidate", "make_id", "ALL_CAPABILITIES"]
+__all__ = ["Candidate", "make_id", "ALL_CAPABILITIES", "context_for_model", "filter_candidates_by_context"]
+
+
+def context_for_model(candidate: "Candidate", model: str) -> Optional[int]:
+    """返回候选项对指定模型的有效上下文长度。"""
+    meta = candidate.meta if isinstance(candidate.meta, dict) else {}
+    model_context = meta.get("model_context")
+    if isinstance(model_context, dict) and model in model_context:
+        raw = model_context.get(model)
+        if raw is not None:
+            return int(raw)
+    return candidate.context_length
+
+
+def filter_candidates_by_context(
+    candidates: List["Candidate"],
+    model: str,
+    min_context: int,
+) -> List["Candidate"]:
+    """筛掉上下文不足的候选项；若全部不足则保留未知长度的候选项。"""
+    if min_context <= 0:
+        return list(candidates)
+    sufficient: List[Candidate] = []
+    unknown: List[Candidate] = []
+    for cand in candidates:
+        ctx = context_for_model(cand, model)
+        if ctx is None:
+            unknown.append(cand)
+        elif ctx >= min_context:
+            sufficient.append(cand)
+    return sufficient if sufficient else unknown
+
 
 ALL_CAPABILITIES: tuple = (
     "chat",

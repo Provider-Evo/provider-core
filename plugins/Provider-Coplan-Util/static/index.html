@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Entropy CodingPlan</title>
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="/static/plugins/provider-coplan-util/vendor/vue.global.prod.js"></script>
+  <script src="/static/plugins/provider-coplan-util/vendor/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/static/plugins/provider-coplan-util/coplan.css">
 </head>
 <body>
@@ -99,8 +98,8 @@
       <h2>欢迎回来</h2>
       <p class="subtitle">登录你的账号</p>
       <div v-if="authError" class="error-text">{{ authError }}</div>
-      <input v-model="loginForm.username" placeholder="用户名" @keyup.enter="doLogin" />
-      <input v-model="loginForm.password" type="password" placeholder="密码" @keyup.enter="doLogin" />
+      <input v-model="loginForm.username" class="coplan-input" placeholder="用户名" @keyup.enter="doLogin" />
+      <input v-model="loginForm.password" class="coplan-input" type="password" placeholder="密码" @keyup.enter="doLogin" />
       <button class="btn btn-primary btn-block" @click="doLogin" :disabled="loading">登录</button>
       <div class="auth-switch">还没有账号？ <a @click="navigate('register')">注册</a></div>
     </div>
@@ -112,9 +111,9 @@
       <h2>创建账号</h2>
       <p class="subtitle">注册 Entropy CodingPlan</p>
       <div v-if="authError" class="error-text">{{ authError }}</div>
-      <input v-model="registerForm.username" placeholder="用户名（2-32字符）" />
-      <input v-model="registerForm.email" placeholder="邮箱（可选）" />
-      <input v-model="registerForm.password" type="password" placeholder="密码（至少6位）" />
+      <input v-model="registerForm.username" class="coplan-input" placeholder="用户名（2-32字符）" />
+      <input v-model="registerForm.email" class="coplan-input" placeholder="邮箱（可选）" />
+      <input v-model="registerForm.password" class="coplan-input" type="password" placeholder="密码（至少6位）" />
       <button class="btn btn-primary btn-block" @click="doRegister" :disabled="loading">注册</button>
       <div class="auth-switch">已有账号？ <a @click="navigate('login')">登录</a></div>
     </div>
@@ -150,7 +149,7 @@
 
     <div v-if="dashTab === 'usage'">
       <div class="card">
-        <div class="card-header"><span class="card-title">用量趋势</span><select v-model="usageDays" @change="loadUsage" class="btn btn-sm btn-outline"><option value="7">近7天</option><option value="30">近30天</option><option value="90">近90天</option></select></div>
+        <div class="card-header"><span class="card-title">用量趋势</span><select v-model="usageDays" @change="loadUsage" class="coplan-select btn-sm" style="width:auto;padding:5px 10px;"><option value="7">近7天</option><option value="30">近30天</option><option value="90">近90天</option></select></div>
         <div class="chart-container"><canvas ref="usageChart"></canvas></div>
       </div>
       <div class="stats-grid" style="margin-top:16px;">
@@ -161,7 +160,7 @@
 
     <div v-if="dashTab === 'keys'">
       <div class="card">
-        <div class="card-header"><span class="card-title">API 密钥</span><button class="btn btn-sm btn-primary" @click="showGenerateKey">+ 生成密钥</button></div>
+        <div class="card-header"><span class="card-title">API 密钥</span><button class="btn btn-sm btn-accent" @click="showGenerateKey">+ 生成密钥</button></div>
         <div v-if="newKey" class="card mb-16 key-reveal-card"><div class="text-sm key-reveal-title">新密钥已生成（请妥善保存，关闭后将无法再次查看）：</div><div class="mono text-sm mt-8 key-reveal-body"><span>{{ newKey }}</span><button class="btn btn-sm btn-outline" @click="copyText(newKey)">复制</button></div></div>
         <table><thead><tr><th>密钥</th><th>备注</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
           <tbody><tr v-for="k in myKeys" :key="k.id">
@@ -202,9 +201,18 @@
       <div class="card-title mb-16">修改密码</div>
       <div v-if="passwordSuccess" class="text-sm" style="color:var(--success);margin-bottom:12px;">✓ 密码修改成功</div>
       <div v-if="passwordError" class="error-text">{{ passwordError }}</div>
-      <div style="margin-bottom:12px;"><label style="display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:var(--text-secondary);">当前密码</label><input v-model="passwordForm.current" type="password" placeholder="输入当前密码" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;" /></div>
-      <div style="margin-bottom:12px;"><label style="display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:var(--text-secondary);">新密码</label><input v-model="passwordForm.new" type="password" placeholder="至少6位" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;" /></div>
-      <div style="margin-bottom:16px;"><label style="display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:var(--text-secondary);">确认新密码</label><input v-model="passwordForm.confirm" type="password" placeholder="再次输入新密码" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;" /></div>
+      <div class="coplan-field">
+        <label class="coplan-label">当前密码</label>
+        <input v-model="passwordForm.current" class="coplan-input" type="password" placeholder="输入当前密码" />
+      </div>
+      <div class="coplan-field">
+        <label class="coplan-label">新密码</label>
+        <input v-model="passwordForm.new" class="coplan-input" type="password" placeholder="至少6位" />
+      </div>
+      <div class="coplan-field">
+        <label class="coplan-label">确认新密码</label>
+        <input v-model="passwordForm.confirm" class="coplan-input" type="password" placeholder="再次输入新密码" />
+      </div>
       <button class="btn btn-primary" @click="doChangePassword" :disabled="loading">修改密码</button>
     </div>
   </div>
@@ -212,8 +220,11 @@
   <div v-if="showKeyModal" class="modal-overlay" @click.self="showKeyModal=false">
     <div class="modal">
       <h3>生成 API 密钥</h3>
-      <div class="form-group" style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text-secondary);">备注</label><input v-model="keyLabel" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;" placeholder="如: 生产环境" /></div>
-      <div class="modal-actions"><button class="btn btn-sm btn-outline" @click="showKeyModal=false">取消</button><button class="btn btn-sm btn-primary" @click="doGenerateKey">生成</button></div>
+      <div class="form-group">
+        <label class="coplan-label">备注</label>
+        <input v-model="keyLabel" class="coplan-input" placeholder="如: 生产环境" />
+      </div>
+      <div class="modal-actions"><button class="btn btn-sm btn-outline" @click="showKeyModal=false">取消</button><button class="btn btn-sm btn-accent" @click="doGenerateKey">生成</button></div>
     </div>
   </div>
 </div>
@@ -221,5 +232,6 @@
 
 </body>
 <script src="/static/plugins/provider-coplan-util/coplan-theme.js"></script>
+<script src="/static/plugins/provider-coplan-util/coplan-charts.js"></script>
 <script src="/static/plugins/provider-coplan-util/coplan-app.js"></script>
 </html>

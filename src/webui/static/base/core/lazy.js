@@ -8,31 +8,31 @@ var LazyLoader = (function() {
 
   var TAB_RESOURCES = {
     terminal: [
-      { type: 'css', url: 'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css' },
+      { type: 'css', url: '/static/vendor/xterm/xterm.css' },
       { type: 'css', url: '/static/base/core/tabbar/tabbar.css' },
       { type: 'css', url: '/static/ui/terminal/terminal.css' },
-      { type: 'js',  url: 'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js' },
-      { type: 'js',  url: 'https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js' },
+      { type: 'js',  url: '/static/vendor/xterm/xterm.js' },
+      { type: 'js',  url: '/static/vendor/xterm/addon-fit.js' },
       { type: 'js',  url: '/static/base/core/tabbar/tabbar.js' },
       { type: 'js',  url: '/static/ui/terminal/terminal.js?v=20260709-4' },
     ],
     files: [
-      { type: 'css', url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css' },
-      { type: 'js',  url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js' },
+      { type: 'css', url: '/static/vendor/highlightjs/github-dark.min.css' },
+      { type: 'js',  url: '/static/vendor/highlightjs/highlight.min.js' },
       { type: 'css', url: '/static/base/core/tabbar/tabbar.css' },
       { type: 'css', url: '/static/files/files.css?v=20260709-5' },
       { type: 'js',  url: '/static/base/core/tabbar/tabbar.js' },
       { type: 'js',  url: '/static/files/files.js?v=20260709-5' },
     ],
     chat: [
-      { type: 'css', url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css' },
+      { type: 'css', url: '/static/vendor/highlightjs/github-dark.min.css' },
       { type: 'css', url: '/static/files/files.css?v=20260709-6' },
       { type: 'css', url: '/static/ui/widgets/input-box.css' },
-      { type: 'js',  url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js' },
-      { type: 'js',  url: '/static/ui/widgets/input-box.js?v=20260709-6' },
+      { type: 'js',  url: '/static/vendor/highlightjs/highlight.min.js' },
+      { type: 'js',  url: '/static/ui/widgets/input-box.js?v=20260709-7' },
       { type: 'js',  url: '/static/ui/chat/chat-attachments.js?v=20260709-10' },
       { type: 'js',  url: '/static/ui/chat/chat-media-persist.js?v=20260709-10' },
-      { type: 'js',  url: '/static/ui/chat/chat.js?v=20260709-12' },
+      { type: 'js',  url: '/static/ui/chat/chat.js?v=20260709-13' },
     ],
     stats: [
       { type: 'js', url: '/static/stats/stats.js' },
@@ -62,7 +62,10 @@ var LazyLoader = (function() {
       };
       el.onerror = function() {
         _pending.delete(url);
-        reject(new Error('Failed to load script: ' + url));
+        var hint = url.indexOf('http') === 0
+          ? ' 若 Network 显示「已屏蔽：Devtools」，请在开发者工具 → 网络 → 停用「请求屏蔽」规则。'
+          : '';
+        reject(new Error('Failed to load script: ' + url + hint));
       };
       document.head.appendChild(el);
     });

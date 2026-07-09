@@ -1,30 +1,28 @@
 # chat 静态资源
 
-WebUI 聊天功能的前端资源。
+WebUI 聊天功能的前端资源。实现位于 `src/webui/static/ui/chat/`。
 
 ## 目录结构
 
 ```
-chat/
-└── chat.js          # 聊天功能 JavaScript 实现
+ui/chat/
+├── chat.js              # 聊天主逻辑
+├── chat-attachments.js  # 附件与预览
+└── chat-media-persist.js
 ```
 
-## 核心功能
+## 语音能力
 
-### chat.js
+| 能力 | 配置来源 | API |
+|------|----------|-----|
+| STT 录音输入 | `webui_config.toml` → `sttModel`、`recordingDeviceId` | `POST /v1/audio/transcriptions` |
+| TTS 播放助手回复 | `webui_config.toml` → `ttsModel`、`ttsPrompt` | `POST /v1/audio/speech` |
 
-聊天功能的前端实现，包括：
-- 消息发送和接收
-- 流式响应处理
-- 界面交互逻辑
+助手消息操作栏含 **播放** 按钮（`speak`）：按 `ttsPrompt` 与正文合成语音并播放；再次点击可停止。
+
+语音配置在配置面板保存后，经 `_applyWebuiRuntime` → `saveVoiceSettings` 同步到 `InputBox`。
 
 ## 依赖关系
 
-- 依赖 `src/webui/static/core/` 中的核心模块
-- 依赖 `src/webui/static/ui/` 中的 UI 组件
-
-## 注意事项
-
-- 此文件为 WebUI 前端资源
-- 修改时需要考虑浏览器兼容性
-- 遵循项目的前端编码规范
+- `InputBox`（`ui/widgets/input-box.js`）
+- `loadVoiceSettings` / `normalizeVoiceSettings`（`base/core/state.js`）

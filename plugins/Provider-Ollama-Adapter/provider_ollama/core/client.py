@@ -19,6 +19,7 @@ import aiohttp
 from src.core.dispatch.candidate import Candidate, make_id
 from src.foundation.logger import get_logger
 from provider_ollama.accounts import ACCOUNTS
+from provider_ollama.core.detect import extract_context_length
 from provider_ollama.core.constants import (
     BASE_URL,
     CHAT_PATH,
@@ -389,6 +390,7 @@ def _verify_server(ip: str) -> Optional[Dict[str, Any]]:
             "name": name,
             "size": m.get("size", 0),
             "capabilities": detect_capabilities(detail),
+            "context_length": extract_context_length(detail),
             "family": _det.get("family") or "",
             "parameter_size": _det.get("parameter_size") or "",
         })
@@ -686,14 +688,25 @@ class OllamaClient:
                 _embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
                 if any(kw in m.lower() for m in models for kw in _embed_kw):
                     caps["embedding"] = True
+            model_context: Dict[str, int] = {}
+            for m_info in srv.get("models", []):
+                m_name = m_info.get("name")
+                m_ctx = m_info.get("context_length")
+                if m_name and m_ctx:
+                    model_context[m_name] = int(m_ctx)
+            ctx_len = max(model_context.values()) if model_context else None
             out.append(
                 Candidate(
                     id=make_id("ollama", ip),
                     platform="ollama",
                     resource_id=ip,
                     models=models,
-                    context_length=None,
-                    meta={"ip": ip, "base_url": srv["base_url"]},
+                    context_length=ctx_len,
+                    meta={
+                        "ip": ip,
+                        "base_url": srv["base_url"],
+                        "model_context": model_context,
+                    },
                     **caps,
                 )
             )

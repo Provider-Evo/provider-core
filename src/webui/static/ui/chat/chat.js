@@ -1041,6 +1041,84 @@ document.addEventListener("click", function(e) {
   }
 });
 
+// ========================= Voice (TTS) =========================
+var _chatTtsAudio = null;
+var _chatTtsObjectUrl = null;
+var _chatTtsButton = null;
+
+function _stopChatTts() {
+  if (_chatTtsAudio) {
+    try { _chatTtsAudio.pause(); } catch (e) {}
+    _chatTtsAudio = null;
+  }
+  if (_chatTtsObjectUrl) {
+    URL.revokeObjectURL(_chatTtsObjectUrl);
+    _chatTtsObjectUrl = null;
+  }
+  if (_chatTtsButton) {
+    _chatTtsButton.classList.remove('is-active');
+    _chatTtsButton = null;
+  }
+}
+
+function _buildTtsInput(text) {
+  var vs = typeof loadVoiceSettings === 'function' ? loadVoiceSettings() : {};
+  var input = String(text || '').trim();
+  if (!input) return '';
+  var prompt = (vs.ttsPrompt || '').trim();
+  if (prompt) return prompt + '\n\n' + input;
+  return input;
+}
+
+async function speakAssistantText(text, button) {
+  var vs = typeof loadVoiceSettings === 'function' ? loadVoiceSettings() : {};
+  if (!vs.ttsModel) {
+    toast(t('voice.ttsNotConfigured'), 'warning');
+    return;
+  }
+  var plain = String(text || '').trim();
+  if (!plain) return;
+
+  if (_chatTtsButton === button && _chatTtsAudio && !_chatTtsAudio.paused) {
+    _stopChatTts();
+    return;
+  }
+
+  _stopChatTts();
+  _chatTtsButton = button || null;
+  if (_chatTtsButton) _chatTtsButton.classList.add('is-active');
+
+  try {
+    toast(t('voice.speaking'), 'info');
+    var resp = await fetch('/v1/audio/speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: vs.ttsModel,
+        input: _buildTtsInput(plain),
+        response_format: 'mp3',
+      }),
+    });
+    if (!resp.ok) {
+      var errData = null;
+      try { errData = await resp.json(); } catch (e) {}
+      throw new Error((errData && errData.error) || resp.statusText || 'TTS failed');
+    }
+    var blob = await resp.blob();
+    _chatTtsObjectUrl = URL.createObjectURL(blob);
+    _chatTtsAudio = new Audio(_chatTtsObjectUrl);
+    _chatTtsAudio.onended = function() { _stopChatTts(); };
+    _chatTtsAudio.onerror = function() {
+      toast(t('voice.ttsFailed', { error: 'playback error' }), 'error');
+      _stopChatTts();
+    };
+    await _chatTtsAudio.play();
+  } catch (err) {
+    toast(t('voice.ttsFailed', { error: err.message || String(err) }), 'error');
+    _stopChatTts();
+  }
+}
+
 // ========================= Message Actions Component =========================
 function appendMessageActions(role, msg) {
   var bar = document.createElement("div");
@@ -1054,9 +1132,13 @@ function appendMessageActions(role, msg) {
       '<path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>' },
     retry: { title: t('chat.retry'), icon:
       '<polyline points="23 4 23 10 17 10"/>' +
-      '<path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>' }
+      '<path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>' },
+    speak: { title: t('voice.speak'), icon:
+      '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>' +
+      '<path d="M15.54 8.46a5 5 0 010 7.07"/>' +
+      '<path d="M19.07 4.93a10 10 0 010 14.14"/>' }
   };
-  var actions = (role === "user") ? ["copy", "edit"] : ["copy", "edit", "retry"];
+  var actions = (role === "user") ? ["copy", "edit"] : ["copy", "edit", "speak", "retry"];
   var html = "";
   for (var i = 0; i < actions.length; i++) {
     var key = actions[i];
@@ -1107,6 +1189,12 @@ document.addEventListener("click", function(e) {
         btn.classList.remove("is-active");
       }, 1500);
     });
+    return;
+  }
+
+  if (action === "speak" && role === "assistant") {
+    var speakText = bubble.getAttribute("data-raw") || bubble.textContent || "";
+    speakAssistantText(speakText, btn);
     return;
   }
 

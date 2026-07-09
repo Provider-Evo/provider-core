@@ -25,6 +25,10 @@ API 调用模块，封装与后端的 HTTP 通信。
 
 懒加载模块，实现资源的按需加载。
 
+终端（`terminal`）、文件（`files`）、聊天（`chat`）等标签页的 xterm、highlight.js 等依赖已改为 **本地 vendor**（`/static/vendor/...`），不再依赖 jsdelivr / cdnjs。
+
+若浏览器 Network 仍显示 **「已屏蔽：Devtools」**（`(blocked:devtools)`），这是 Chrome 开发者工具里启用了 **请求屏蔽（Request blocking）** 规则，与业务代码无关。打开 DevTools → **网络** → **请求屏蔽**，删除或停用相关规则后刷新页面。
+
 ### motion.js
 
 动画效果模块，提供 UI 动画支持。

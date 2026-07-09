@@ -79,6 +79,10 @@ _CONTEXT_LENGTH_KEYWORDS = frozenset({
     "prompt is too long",
     "input token",
     "context length",
+    "exceed_context",
+    "exceeds the available context",
+    "available context size",
+    "n_prompt_tokens",
     # Chinese
     "上下文",
     "超长",

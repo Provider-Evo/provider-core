@@ -384,6 +384,7 @@ class Registry:
             ctx_len = getattr(a, "context_length", None)
 
             model_caps: Dict[str, Dict[str, bool]] = {}
+            model_ctx: Dict[str, int] = {}
             try:
                 candidates = await a.candidates()
             except Exception as exc:
@@ -398,9 +399,36 @@ class Registry:
                     for cap in ALL_CAPABILITIES
                     if getattr(cand, cap, False)
                 }
+                meta = getattr(cand, "meta", None)
+                per_model_ctx = (
+                    meta.get("model_context")
+                    if isinstance(meta, dict)
+                    else None
+                )
+                per_model_caps = (
+                    meta.get("model_capabilities")
+                    if isinstance(meta, dict)
+                    else None
+                )
                 for model_name in getattr(cand, "models", []) or []:
                     merged = model_caps.setdefault(model_name, {})
                     merged.update(cand_caps)
+                    if isinstance(per_model_caps, dict):
+                        caps_for_model = per_model_caps.get(model_name)
+                        if isinstance(caps_for_model, dict):
+                            merged.update(
+                                {key: True for key, value in caps_for_model.items() if value}
+                            )
+                    ctx_val: Optional[int] = None
+                    if isinstance(per_model_ctx, dict) and model_name in per_model_ctx:
+                        ctx_val = int(per_model_ctx[model_name])
+                    elif getattr(cand, "context_length", None) is not None:
+                        ctx_val = int(cand.context_length)
+                    if ctx_val is not None:
+                        prev = model_ctx.get(model_name)
+                        model_ctx[model_name] = (
+                            max(prev, ctx_val) if prev is not None else ctx_val
+                        )
 
             try:
                 model_names = list(a.supported_models)
@@ -424,7 +452,10 @@ class Registry:
                     "owned_by": platform,
                     "capabilities": caps,
                 }
-                if ctx_len is not None:
+                per_ctx = model_ctx.get(m)
+                if per_ctx is not None:
+                    entry["context_length"] = per_ctx
+                elif ctx_len is not None:
                     entry["context_length"] = ctx_len
                 out.append(entry)
         return out

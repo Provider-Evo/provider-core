@@ -16,7 +16,7 @@ from .constants import (
     PAGE_SIZE,
     TIMEOUT,
 )
-from .detect import detect_capabilities
+from .detect import detect_capabilities, extract_context_length
 
 logger = get_logger(__name__)
 
@@ -155,6 +155,7 @@ def _verify_server(ip: str) -> Optional[Dict[str, Any]]:
             "name": name,
             "size": m.get("size", 0),
             "capabilities": detect_capabilities(detail),
+            "context_length": extract_context_length(detail),
             "family": _det.get("family") or "",
             "parameter_size": _det.get("parameter_size") or "",
         })

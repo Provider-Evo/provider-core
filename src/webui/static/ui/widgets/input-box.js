@@ -7,7 +7,7 @@
  *   maxRows / minRows: number
  *   limitThreshold: number (auto-convert to file if text exceeds)
  *   buttons: { file: bool, voice: bool, send: bool }
- *   voice: { sttModel, ttsModel, ttsPrompt }
+ *   voice: { sttModel, ttsModel, ttsPrompt, recordingDeviceId }
  *   onSend: function(text, files)
  *   onVoiceStart / onVoiceEnd: function()
  */
@@ -25,7 +25,7 @@
       maxRows: 6, minRows: 4,
       limitThreshold: 1024,
       buttons: { file: true, voice: true, send: true },
-      voice: { sttModel: '', ttsModel: '', ttsPrompt: '' },
+      voice: { sttModel: '', ttsModel: '', ttsPrompt: '', recordingDeviceId: '' },
       onSend: null,
       onVoiceStart: null,
       onVoiceEnd: null,
@@ -249,7 +249,7 @@
     }
     if (this._opts.onVoiceStart) this._opts.onVoiceStart();
 
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+    navigator.mediaDevices.getUserMedia(self._audioConstraints()).then(function(stream) {
       self._stream = stream;
       // Check if stop was requested before getUserMedia resolved
       if (self._stopRequested) {
@@ -277,6 +277,12 @@
       if (voiceBtn) {
         voiceBtn.classList.remove('ib-recording');
         voiceBtn.innerHTML = self._originalVoiceBtnHtml || '';
+      }
+      if (typeof toast === 'function') {
+        var msg = (err && err.name === 'NotAllowedError')
+          ? (typeof t === 'function' ? t('voice.micDenied') : 'Microphone permission denied')
+          : (err && err.message ? err.message : String(err));
+        toast(msg, 'error');
       }
     });
   };
@@ -378,27 +384,62 @@
     this._silenceDetected = false;
   };
 
+  InputBox.prototype._audioConstraints = function() {
+    var deviceId = (this._opts.voice && this._opts.voice.recordingDeviceId) || '';
+    if (!deviceId) return { audio: true };
+    return { audio: { deviceId: { exact: deviceId } } };
+  };
+
+  InputBox.prototype.updateVoice = function(voice) {
+    this._opts.voice = Object.assign({}, this._opts.voice, voice || {});
+  };
+
   InputBox.prototype._processVoiceAudio = function(blob) {
-    // Send to STT endpoint if configured
     var sttModel = this._opts.voice.sttModel;
     if (!sttModel) {
-      // No STT model configured, just notify
-      console.log('InputBox: No STT model configured, audio captured but not transcribed');
+      if (typeof toast === 'function') {
+        toast(typeof t === 'function' ? t('voice.sttNotConfigured') : 'STT model not configured', 'warning');
+      }
       return;
     }
     var self = this;
+    if (typeof toast === 'function') {
+      toast(typeof t === 'function' ? t('voice.transcribing') : 'Transcribing...', 'info');
+    }
     var fd = new FormData();
     fd.append('file', blob, 'voice.webm');
     fd.append('model', sttModel);
-    fetch('/v1/audio/transcriptions', { method: 'POST', body: fd })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.text) {
-          var ta = self._el('textarea');
-          if (ta) { ta.value += data.text; self._syncHeight(); }
+
+    var request = (typeof Api !== 'undefined' && Api.postForm)
+      ? Api.postForm('/v1/audio/transcriptions', fd)
+      : fetch('/v1/audio/transcriptions', { method: 'POST', body: fd }).then(function(r) {
+          return r.json().then(function(data) {
+            if (!r.ok) throw new Error((data && data.error) || r.statusText);
+            return data;
+          });
+        });
+
+    request.then(function(data) {
+      var text = data && data.text ? String(data.text).trim() : '';
+      if (!text) {
+        if (typeof toast === 'function') {
+          toast(typeof t === 'function' ? t('voice.transcribeFailed', { error: 'empty result' }) : 'Empty transcription', 'warning');
         }
-      })
-      .catch(function(err) { console.error('InputBox STT error:', err); });
+        return;
+      }
+      var ta = self._el('textarea');
+      if (ta) {
+        if (ta.value && !/\s$/.test(ta.value)) ta.value += ' ';
+        ta.value += text;
+        self._syncHeight();
+        ta.focus();
+      }
+    }).catch(function(err) {
+      console.error('InputBox STT error:', err);
+      if (typeof toast === 'function') {
+        toast(typeof t === 'function' ? t('voice.transcribeFailed', { error: err.message || String(err) }) : String(err), 'error');
+      }
+    });
   };
 
   InputBox.prototype.getText = function() { return (this._el('textarea') || {}).value || ''; };
