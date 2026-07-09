@@ -18,6 +18,8 @@ logger = get_logger(__name__)
 
 _RUNNER_SHUTDOWN_TIMEOUT_S = 3.0
 _RELOAD_TEARDOWN_TIMEOUT_S = 8.0
+_SHUTDOWN_LOCK_WAIT_S = 2.0
+_SHUTDOWN_STEP_TIMEOUT_S = 3.0
 
 
 class AppHost:
@@ -65,7 +67,12 @@ class AppHost:
         runner.cleanup() 默认最多等待 shutdown_timeout 秒让活跃 handler 结束。
         若不先关闭 WebSocket / 流式连接，会在 file watcher 回调超时内卡住，
         导致站点已 stop 但新 Runner 未起来（1337 不可达）。
+
+        进程级回退重启须在释放 ``_reload_lock`` 之后触发，否则 Worker 关停
+        会在 ``shutdown()`` 中永久等待该锁。
         """
+        restart_reason: str | None = None
+
         async with self._reload_lock:
             if self._runner is None or self._site is None:
                 raise RuntimeError("AppHost 尚未启动")
@@ -85,25 +92,26 @@ class AppHost:
                 )
             except Exception as exc:
                 logger.error("L3 停止旧 Runner 失败 (%s)，回退进程重启", exc)
-                await self._fallback_process_restart("L3 teardown failed")
-                return
+                restart_reason = "L3 teardown failed"
+            else:
+                try:
+                    self._app = await create_app(self._registry, self._session)
+                    self._runner = aiohttp.web.AppRunner(
+                        self._app,
+                        access_log=self._access_log,
+                        shutdown_timeout=_RUNNER_SHUTDOWN_TIMEOUT_S,
+                    )
+                    await self._runner.setup()
+                    self._site = aiohttp.web.TCPSite(self._runner, self._host, self._port)
+                    await self._site.start()
+                except Exception as exc:
+                    logger.error("L3 重建 Runner 失败 (%s)，回退进程重启", exc)
+                    restart_reason = "L3 rebuild failed"
+                else:
+                    logger.info("应用路由热重载完成")
 
-            try:
-                self._app = await create_app(self._registry, self._session)
-                self._runner = aiohttp.web.AppRunner(
-                    self._app,
-                    access_log=self._access_log,
-                    shutdown_timeout=_RUNNER_SHUTDOWN_TIMEOUT_S,
-                )
-                await self._runner.setup()
-                self._site = aiohttp.web.TCPSite(self._runner, self._host, self._port)
-                await self._site.start()
-            except Exception as exc:
-                logger.error("L3 重建 Runner 失败 (%s)，回退进程重启", exc)
-                await self._fallback_process_restart("L3 rebuild failed")
-                return
-
-            logger.info("应用路由热重载完成")
+        if restart_reason is not None:
+            await self._fallback_process_restart(restart_reason)
 
     async def _teardown_runner(
         self,
@@ -122,11 +130,33 @@ class AppHost:
 
     async def shutdown(self) -> None:
         """停止站点并清理 Runner。"""
-        await close_live_connections()
-        if self._site is not None:
-            await self._site.stop()
-            self._site = None
-        if self._runner is not None:
-            await self._runner.cleanup()
-            self._runner = None
-        self._app = None
+        lock_acquired = False
+        try:
+            await asyncio.wait_for(
+                self._reload_lock.acquire(),
+                timeout=_SHUTDOWN_LOCK_WAIT_S,
+            )
+            lock_acquired = True
+        except asyncio.TimeoutError:
+            logger.warning(
+                "热重载仍在进行，跳过锁等待并强制关停 Web 服务器",
+            )
+
+        try:
+            await close_live_connections()
+            if self._site is not None:
+                await asyncio.wait_for(
+                    self._site.stop(),
+                    timeout=_SHUTDOWN_STEP_TIMEOUT_S,
+                )
+                self._site = None
+            if self._runner is not None:
+                await asyncio.wait_for(
+                    self._runner.cleanup(),
+                    timeout=_SHUTDOWN_STEP_TIMEOUT_S,
+                )
+                self._runner = None
+            self._app = None
+        finally:
+            if lock_acquired:
+                self._reload_lock.release()

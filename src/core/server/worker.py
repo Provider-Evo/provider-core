@@ -228,7 +228,7 @@ async def _shutdown(
     logger.info("Provider-V2 已完全退出")
 
 
-async def _run() -> int:
+async def _run() -> None:
     """Worker 的异步主流程——启动所有组件，等待退出信号，优雅关闭。"""
     from src.bootstrap.webui_bindings import register_webui_bindings
 
@@ -370,7 +370,8 @@ async def _run() -> int:
         except Exception as exc:
             logger.warning("关停过程异常，继续退出: %s", exc)
 
-    return RESTART_EXIT_CODE if consume_restart_flag() else 0
+    exit_code = RESTART_EXIT_CODE if consume_restart_flag() else 0
+    finalize_exit(exit_code)
 
 
 def run_worker() -> None:
