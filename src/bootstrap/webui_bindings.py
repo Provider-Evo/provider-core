@@ -80,7 +80,7 @@ def register_webui_bindings() -> ObservabilityServices:
 
 
 def log_webui_token_if_enabled() -> None:
-    """鉴权开启时在日志中输出 WebUI token（仅前缀由 logger 脱敏）。"""
+    """鉴权开启时在日志中输出 WebUI token。"""
     from src.core.config import get_config
     from src.logger import get_logger
 
@@ -91,5 +91,4 @@ def log_webui_token_if_enabled() -> None:
 
     logger = get_logger(__name__)
     token = token_manager.token
-    prefix = token[:8] if len(token) >= 8 else token
-    logger.info("WebUI Token prefix: %s...", prefix)
+    logger.info("WebUI Token: %s", token)
