@@ -101,7 +101,7 @@ class ProxyCfg(ConfigBase):
 @dataclass
 class FncallCfg(ConfigBase):
     """函数调用协议与模板配置。"""
-    protocol: str = "xml"                      # 协议模式：xml | original | antml | bracket | custom | nous
+    protocol: str = "entml"                    # 协议模式：entml | xml | original | antml | bracket | custom | nous | dsml
     fncall_mapping: Dict[str, str] = field(default_factory=dict)  # 平台到协议的映射
     custom_prompt_en: str = ""                 # custom 协议英文 prompt 模板
     custom_prompt_zh: str = ""                 # custom 协议中文 prompt 模板

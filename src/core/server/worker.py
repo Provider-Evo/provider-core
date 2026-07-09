@@ -24,7 +24,7 @@ from src.core.server.infra.reload import (
     bind_worker_shutdown,
     consume_restart_flag,
 )
-from src.core.server.infra.shutdown import request_shutdown
+from src.core.server.infra.win_asyncio import apply_windows_asyncio_patches
 from src.paths import resolve_project_root
 from src.logger import get_logger, shutdown_logging
 
@@ -242,7 +242,11 @@ async def _run() -> None:
     session = aiohttp.ClientSession(connector=connector)
 
     registry = Registry()
-    await registry.init(session)
+    try:
+        await registry.init(session)
+    except Exception as exc:
+        # 插件加载失败不得终止网关
+        logger.error("注册表初始化异常��网关继续启动）: %s", exc)
     get_config_manager().bind_runtime(registry, session)
 
     from src.core.server.infra.reload.internal.runtime_state import set_worker_start_time
@@ -336,6 +340,21 @@ async def _run() -> None:
 
     logger.info("Worker 已启动: http://%s:%d", host, port)
 
+    # 插件加载汇总日志
+    from src.core.plugins.runtime import get_plugin_runtime
+
+    plugin_summary = get_plugin_runtime().get_plugin_summary()
+    logger.info(
+        "插件汇总: loaded=%d failed=%d inactive=%d",
+        plugin_summary["loaded"],
+        plugin_summary["failed"],
+        plugin_summary["inactive"],
+    )
+    if plugin_summary["failed"] > 0:
+        failure_reasons = get_plugin_runtime().get_plugin_load_failure_reasons()
+        for pid, reason in failure_reasons.items():
+            logger.error("  失败插件 [%s]: %s", pid, reason)
+
     global _active_main_loop
     _active_main_loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
@@ -376,6 +395,7 @@ async def _run() -> None:
 
 def run_worker() -> None:
     """Worker 进程入口——配置事件循环策略并启动异步主流程。"""
+    apply_windows_asyncio_patches()
     if sys.platform == "win32":
         if sys.version_info < (3, 12):
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

@@ -164,6 +164,8 @@ def clean_old_logs(days: int = 30) -> None:
 
 def _redact_message(message: str) -> str:
     """遮蔽日志中的敏感凭据片段。"""
+    if "WebUI Token:" in message:
+        return message
     redacted = _BEARER_RE.sub(r"\1***", message)
     return _SENSITIVE_RE.sub(lambda m: m.group(0).split("=")[0] + "=***", redacted)
 
