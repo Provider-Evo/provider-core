@@ -25,6 +25,8 @@ QwenAdapter (adaptercore.py)
       ├── 模型刷新 (_models_cache, ModelsCache)
       ├── 持久化 (_bg_persist, 60s 间隔)
       └── 请求处理 (_do_request, SSE 解析)
+
+关停时 `QwenClient.close()` 先置 `_closing`、等待进行中的 chat cleanup，再关闭专用 `aiohttp.ClientSession`；上传与补全在 session 已关闭时快速失败，避免 `Session is closed` 未处理异常。
 ```
 
 ### 新增模块
@@ -33,7 +35,7 @@ QwenAdapter (adaptercore.py)
    - `create()`: 创建新对话
    - `stop()`: 停止生成
    - `delete()`: 删除对话
-   - `cleanup()`: 清理对话（抑制传输故障）
+   - `cleanup()`: 清理对话（抑制传输故障与 session 已关闭）
    - `download_image()`: 下载图片资源
    - `send_placeholder_message()`: 发送占位符消息
 

@@ -49,9 +49,10 @@ class UploadMixin:
         }
         payload = {"filename": filename, "filesize": filesize, "filetype": filetype}
         last_error: Optional[Exception] = None
+        session = self._require_session()
         for path in STS_TOKEN_PATHS:
             try:
-                async with self._session.post(
+                async with session.post(
                     f"{BASE_URL}{path}",
                     json=payload,
                     headers=headers,
@@ -104,7 +105,7 @@ class UploadMixin:
             "x-oss-security-token": str(creds.get("security_token", "")),
             "User-Agent": USER_AGENT,
         }
-        async with self._session.put(
+        async with self._require_session().put(
             f"https://{bucket_host}/{object_key}",
             data=file_data,
             headers=headers,
@@ -181,7 +182,7 @@ class UploadMixin:
 
     async def download_image(self, image_url: str, save_dir: str = GENERATED_IMAGE_DIR) -> Optional[str]:
         """Download an image and return the saved local path."""
-        async with self._session.get(
+        async with self._require_session().get(
             image_url,
             headers={
                 "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",

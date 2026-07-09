@@ -2,10 +2,9 @@ from __future__ import annotations
 
 """TTS service for the current Qwen web protocol."""
 
-import asyncio
 import base64
 import json
-from typing import Awaitable, Callable, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import aiohttp
 
@@ -25,8 +24,8 @@ class TtsService:
         cookies_provider: Callable[[], dict],
         fingerprint_provider: Callable[[], str],
         create_chat: Callable[[str, str, str], Awaitable[str]],
-        get_response_id: Callable[[str, str, str], Awaitable[Tuple[Optional[str], str]]],
-        cleanup_chat: Callable[[str, str], Awaitable[None]],
+        get_response_id: Callable[[str, str, str], Awaitable[tuple[Optional[str], str]]],
+        schedule_cleanup: Callable[[str, str], None],
     ) -> None:
         self._session = session
         self._resolve_proxy = proxy_resolver
@@ -34,7 +33,7 @@ class TtsService:
         self._fingerprint = fingerprint_provider
         self._create_chat = create_chat
         self._get_response_id = get_response_id
-        self._cleanup_chat = cleanup_chat
+        self._schedule_cleanup = schedule_cleanup
 
     async def synthesize(
         self,
@@ -54,7 +53,7 @@ class TtsService:
             return await self.request_tts(chat_id, response_id, token, save_dir)
         finally:
             if "chat_id" in locals():
-                asyncio.ensure_future(self._cleanup_chat(chat_id, token))
+                self._schedule_cleanup(chat_id, token)
 
     async def replace_message_content(
         self,

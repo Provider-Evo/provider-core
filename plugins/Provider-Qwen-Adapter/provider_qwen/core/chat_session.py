@@ -86,7 +86,7 @@ class ChatSession:
         """Delete a chat, suppressing transport failures."""
         try:
             await self.delete(chat_id, token)
-        except (aiohttp.ClientError, asyncio.TimeoutError):
+        except (aiohttp.ClientError, asyncio.TimeoutError, RuntimeError):
             return
 
     async def download_image(self, image_url: str, save_dir: str = GENERATED_IMAGE_DIR) -> Optional[str]:

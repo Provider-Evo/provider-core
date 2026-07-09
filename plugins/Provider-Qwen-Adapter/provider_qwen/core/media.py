@@ -113,11 +113,11 @@ class MediaMixin:
             ) as resp:
                 if resp.status != 200:
                     err = await resp.text()
-                    asyncio.ensure_future(self._cleanup_chat(chat_id, token))
+                    self._schedule_chat_cleanup(chat_id, token)
                     return {"success": False, "error": f"HTTP {resp.status}: {err[:300]}"}
                 data = await resp.json()
                 if not data.get("success"):
-                    asyncio.ensure_future(self._cleanup_chat(chat_id, token))
+                    self._schedule_chat_cleanup(chat_id, token)
                     return {"success": False, "error": str(data)}
                 result_data = data.get("data", {})
                 message_id = result_data.get("message_id", "")
@@ -126,16 +126,16 @@ class MediaMixin:
                 if messages:
                     task_id = ((messages[0].get("extra") or {}).get("wanx") or {}).get("task_id", "")
                 if not task_id:
-                    asyncio.ensure_future(self._cleanup_chat(chat_id, token))
+                    self._schedule_chat_cleanup(chat_id, token)
                     return {"success": False, "error": "响应中未找到 task_id"}
         except Exception as exc:
-            asyncio.ensure_future(self._cleanup_chat(chat_id, token))
+            self._schedule_chat_cleanup(chat_id, token)
             return {"success": False, "error": str(exc)}
 
         try:
             task_result = await self._poll_task_status(task_id, token, chat_id)
         except Exception as exc:
-            asyncio.ensure_future(self._cleanup_chat(chat_id, token))
+            self._schedule_chat_cleanup(chat_id, token)
             return {"success": False, "task_id": task_id, "error": str(exc)}
 
         video_url = task_result.get("content") or build_cdn_video_url(
@@ -173,7 +173,7 @@ class MediaMixin:
                             result["local_path"] = local_path
             except Exception as exc:
                 logger.debug("视频下载失败: %s", exc)
-        asyncio.ensure_future(self._cleanup_chat(chat_id, token))
+        self._schedule_chat_cleanup(chat_id, token)
         return result
 
     async def _replace_message_content(
@@ -291,4 +291,4 @@ class MediaMixin:
             return await self.request_tts(chat_id, response_id, token, save_dir)
         finally:
             if chat_id:
-                asyncio.ensure_future(self._cleanup_chat(chat_id, token))
+                self._schedule_chat_cleanup(chat_id, token)

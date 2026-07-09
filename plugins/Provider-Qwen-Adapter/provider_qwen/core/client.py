@@ -65,6 +65,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         self._fp = generate_fingerprint()
         self._cookies: Dict[str, Any] = generate_cookies(self._fp)
         self._bg_tasks: List[asyncio.Task] = []
+        self._pending_cleanups: set[asyncio.Task] = set()
         self._closing = False
         self._active_chats: Dict[str, str] = {}
         self._models_cache = ModelsCache("qwen", MODELS, fetch_enabled=False)
@@ -127,15 +128,39 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
             lambda: self._fp,
             self._chat_session.create,
             self._chat_session.send_placeholder_message,
-            self._chat_session.cleanup,
+            self._schedule_chat_cleanup,
         )
         self._video_service = VideoService(
             session,
             self._get_proxy_kwarg,
             lambda: self._cookies,
             self._chat_session.create,
-            self._chat_session.cleanup,
+            self._schedule_chat_cleanup,
         )
+
+    def _require_session(self) -> aiohttp.ClientSession:
+        session = self._session
+        if self._closing or session is None or session.closed:
+            raise RuntimeError("Qwen client session is closed")
+        return session
+
+    def _schedule_chat_cleanup(self, chat_id: str, token: str) -> None:
+        if self._closing or not chat_id or not token:
+            return
+        session = self._session
+        if session is None or session.closed:
+            return
+
+        async def _run() -> None:
+            await self._chat_session.cleanup(chat_id, token)
+
+        task = asyncio.create_task(_run())
+        self._pending_cleanups.add(task)
+
+        def _done(done_task: asyncio.Task) -> None:
+            self._pending_cleanups.discard(done_task)
+
+        task.add_done_callback(_done)
 
     async def background_setup(self) -> None:
         await self._initial_login_pass()
@@ -185,6 +210,13 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
             except asyncio.CancelledError:
                 continue
         self._bg_tasks.clear()
+        if self._pending_cleanups:
+            done, pending = await asyncio.wait(self._pending_cleanups, timeout=5)
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            self._pending_cleanups.clear()
         self._save_persist()
 
     def _rebuild_candidates(self) -> None:
@@ -265,7 +297,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         }
         for endpoint in endpoints:
             try:
-                async with self._session.get(
+                async with self._require_session().get(
                     endpoint,
                     headers=headers,
                     ssl=False,
@@ -366,6 +398,8 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         tts: bool = False,
         upload_files: Optional[List[Tuple[bytes, str]]] = None,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        if self._closing:
+            raise RuntimeError("Qwen client is shutting down")
         email = str(candidate.meta.get("email", ""))
         account = self._account_states.get(email)
         if (
@@ -408,7 +442,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
                 stream=True,
             )
             headers = build_headers(token, chat_id=chat_id, include_sse=True, fingerprint=self._fp, cookies=self._cookies)
-            async with self._session.post(
+            async with self._require_session().post(
                 f"{BASE_URL}{CHAT_PATH}?chat_id={chat_id}",
                 json=payload,
                 headers=headers,
@@ -432,7 +466,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
                 success = True
         finally:
             self._active_chats.pop(candidate.id, None)
-            asyncio.ensure_future(self._chat_session.cleanup(chat_id, token))
+            self._schedule_chat_cleanup(chat_id, token)
             if SMART_PROXY_ENABLED:
                 if success:
                     self._proxy_selector.record(proxy_used, True, (time.time() - request_start) * 1000)

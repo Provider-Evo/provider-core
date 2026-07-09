@@ -24,13 +24,13 @@ class VideoService:
         proxy_resolver: Callable[[], Optional[str]],
         cookies_provider: Callable[[], dict],
         create_chat: Callable[[str, str, str], Awaitable[str]],
-        cleanup_chat: Callable[[str, str], Awaitable[None]],
+        schedule_cleanup: Callable[[str, str], None],
     ) -> None:
         self._session = session
         self._resolve_proxy = proxy_resolver
         self._cookies = cookies_provider
         self._create_chat = create_chat
-        self._cleanup_chat = cleanup_chat
+        self._schedule_cleanup = schedule_cleanup
 
     async def generate(
         self,
@@ -76,7 +76,7 @@ class VideoService:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
         finally:
-            asyncio.ensure_future(self._cleanup_chat(chat_id, token))
+            self._schedule_cleanup(chat_id, token)
 
     async def _submit_task(
         self,
