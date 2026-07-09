@@ -1,0 +1,15 @@
+# WebUI 前端配置模板
+# 复制到 config/webui_config.toml
+# 字段与 WEBUI_CONFIG_PANEL_SCHEMA 对齐
+
+theme = "auto"                  # auto | light | dark
+compact = "0"                   # "0" 关 | "1" 开
+refreshInterval = 5
+timeoutMs = 3000
+streamIdleTimeoutMs = 120000
+layout = "horizontal"           # horizontal | vertical
+sidebarCompressed = false
+sttModel = ""
+ttsModel = ""
+recordingDeviceId = ""
+ttsPrompt = ""

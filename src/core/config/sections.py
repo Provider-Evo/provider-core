@@ -34,6 +34,7 @@ class ServerCfg(ConfigBase):
     debug: bool = False
     startup_force_kill_port: bool = True
     fast_restart: bool = True
+    max_restarts: int = 3
 
 
 @dataclass
@@ -126,6 +127,7 @@ class DebugCfg(ConfigBase):
     level: str = "INFO"
     color: bool = True
     access_log: bool = True
+    log_name: str = "provider-v2"
 
 
 @dataclass

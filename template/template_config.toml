@@ -1,112 +1,104 @@
-# Provider-V2 配置模板
-# 复制此文件到 config/ 目录并重命名为 main_config.toml
+# Provider-Evo 主配置模板
+# 复制到 config/main_config.toml 后按需修改。
+# 字段与 WebUI 配置面板（config_panel_schema）及 src/core/config/sections.py 对齐。
 
 [server]
-version = "2.2.284"               # 与 pyproject.toml / 打包脚本一致
+version = "2.2.285"               # 与 pyproject.toml / 打包脚本一致
 host = "0.0.0.0"
 port = 1337
 debug = false
-startup_force_kill_port = true  # 启动时端口被占用则尝试终止占用进程
-fast_restart = true             # true：WebUI/L4 重启走快速 exit 42；false：完整 Worker 关停链
+startup_force_kill_port = true  # 端口被占用时尝试终止占用进程
+fast_restart = true             # WebUI/L4 重启：true 快速 exit 42，false 完整关停链
 max_restarts = 3                # Runner 在 Worker 异常退出时的最大自动重启次数
 
 [anthropic]
 api_version = "2023-06-01"
 
 [anthropic.model_mapping]
-# 协议级模型映射（最高优先级，仅影响 Anthropic 路由）
-# "claude-haiku" = "qwen3-coder-plus"
+# 协议级映射（仅 Anthropic 路由，优先级最高）
+# "claude-sonnet-4-6" = "qwen3-coder-plus"
 
-# 全局模型映射（最低优先级，所有协议的 fallback）
-# [model_mapping]
-# "my-alias" = "actual-model-name"
+[openai.model_mapping]
+# 协议级映射（仅 OpenAI 路由，优先级最高）
+# "gpt-4o" = "qwen-plus"
 
-# 根级协议模型映射（中等优先级）
-# [model_mapping.anthropic]
+[model_mapping.anthropic]
+# 根级 Anthropic 映射（中等优先级）
 # "claude-fast" = "qwen-plus"
-# [model_mapping.openai]
-# "gpt-fast" = "qwen-plus"
 
-# OpenAI 协议级模型映射（最高优先级，仅影响 OpenAI 路由）
-# [openai.model_mapping]
-# "gpt-4" = "qwen3-coder-plus"
+[model_mapping.openai]
+# 根级 OpenAI 映射（中等优先级）
+# "gpt-fast" = "qwen-plus"
 
 [auth]
 enabled = false
-keys = []
-group_list_type = "blacklist"  # "blacklist" 或 "whitelist"
+keys = []                       # 示例: ["sk-your-api-key"]
+group_list_type = "blacklist"   # "blacklist" | "whitelist"
 group_list = []
 
 [gateway]
 concurrent_enabled = true
 concurrent_count = 3
 min_tokens = 10
-# 并发竞速平台名单。不在名单内的平台仍可路由，只是该请求强制单发（n=1）；
-# concurrent_enabled = false 时竞速关闭（n=1），但名单仍影响竞速池。
-# "whitelist"：仅 group_list 中的平台可参与竞速。
-# "blacklist"：除 group_list 外的平台均可参与竞速。
-# group_list 为空时视为"未配置"，所有平台均可竞速（向后兼容）。
+# 并发竞速平台名单（插件平台名，非 legacy src/platforms 目录名）
+# group_list 为空：所有平台均可竞速
 group_list_type = "whitelist"
-group_list = []
+group_list = ["qwen", "ollama", "zen"]
 
 [http_pool]
-# HTTP 连接池配置（aiohttp TCPConnector）
-limit = 200              # 总连接数上限
-limit_per_host = 20      # 单主机连接数上限
-keepalive_timeout = 30   # keepalive 超时（秒）
-connect_timeout = 10     # 连接建立超时（秒）
+limit = 200
+limit_per_host = 20
+keepalive_timeout = 30
+connect_timeout = 10
 
 [proxy]
 proxy_server = ""
 proxy_enabled = false
-proxy_urls = []  # 支持正则表达式，为空时所有非 IP URL 都走代理
+proxy_urls = []                 # 正则；非空时匹配 URL 走 proxy_server
 
 [platforms_proxy]
-# 允许使用代理切换的平台列表（语义由 group_list_type 决定）。
-# Qwen 的 WAF 自动触发也受此控制。
-# "whitelist"（默认，向后兼容）：仅 enabled_platforms 中的平台可切换代理。
-# "blacklist"：除 enabled_platforms 外的平台均可切换代理。
-enabled_platforms = ["qwen"]
-group_list_type = "whitelist"
+# 允许代理切换的插件平台（语义由 group_list_type 决定）
+enabled_platforms = ["qwen", "ollama"]
+group_list_type = "whitelist"   # "whitelist" | "blacklist"
 
 [platforms]
-platform_list_type = "blacklist"  # "blacklist": 排除列表中的平台; "whitelist": 仅使用列表中的平台
+# 启用的平台插件（plugins/ 下目录名 / manifest id）
+platform_list_type = "blacklist"  # "blacklist": 排除列表; "whitelist": 仅列表内
 platform_list = []
+# 示例：排除未安装或废弃插件
+# platform_list = ["legacy-platform-name"]
 
 [fncall]
-# 协议模式: "entml" | "xml" | "original" | "antml" | "bracket" | "custom" | "nous" | "dsml"
+# entml | xml | antml | original | nous | bracket | dsml | custom
 protocol = "entml"
-# 平台到协议的映射（可选）
-# [fncall.fncall_mapping]
-# "qwen" = "nous"
-# "ollama" = "xml"
-
-# custom 协议专用（仅 protocol="custom" 时生效）
+record_prompt = false
+print_prompt = false            # true 时将注入后的 prompt 写入 logs/prompts/
 custom_prompt_en = ""
 custom_prompt_zh = ""
 
-record_prompt = false
-print_prompt = false  # 为 true 时将注入后的 fncall prompt 写入 logs/prompts/
-# 自定义模板（可选，仅 xml 协议时使用）
+[fncall.fncall_mapping]
+# 按平台覆盖协议
+# "qwen" = "nous"
+# "ollama" = "xml"
+
 # [fncall.templates]
 # usage_en = "..."
 # usage_zh = "..."
 
 [debug]
-level = "INFO"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
-color = true    # 日志颜色输出：true 开启，false 关闭
-access_log = true  # aiohttp 访问日志：true 显示，false 关闭
-log_name = "provider-v2"  # 日志文件名前缀
+level = "INFO"                  # DEBUG | INFO | WARNING | ERROR | CRITICAL
+color = true
+access_log = true
+log_name = "provider-v2"        # 日志文件名前缀（logs/{log_name}-*.log）
 
 [autoupdate]
 enabled = false
-branch = "main"
-interval = 300  # 检查间隔（秒）
-diff_update = true  # 差异更新：仅覆盖变更文件（true）或全量 pull（false）
-mirrors = ["https://github.com/"]  # 镜像源（按优先级排序）
+branch = "dev"
+interval = 300
+diff_update = true
+mirrors = ["https://github.com/"]
 
 [terminal]
-# 终端配置
-max_history_lines = 5000  # 最大历史行数（默认5000）
-subprocess_monitor_interval = 1  # 子进程监控间隔（秒）
-enable_subprocess_monitoring = true  # 启用子进程监控
+max_history_lines = 5000
+subprocess_monitor_interval = 1
+enable_subprocess_monitoring = true
