@@ -40,6 +40,15 @@ _MAX_BUFFER = 200     # 内存 buffer 最大条数
 _FLUSH_INTERVAL = 10  # 批量写入间隔（秒）
 _FLUSH_BATCH = 20     # 脏数据达到此数量时立即刷盘
 
+_MAX_COLUMN_BYTES = 32 * 1024
+
+
+def _truncate_column(value: str, limit: int = _MAX_COLUMN_BYTES) -> str:
+    if len(value) <= limit:
+        return value
+    return value[: limit - 3] + "..."
+
+
 _DB_SCHEMA = """
 CREATE TABLE IF NOT EXISTS request_logs (
     id TEXT PRIMARY KEY,
@@ -109,15 +118,16 @@ def _flush() -> None:
                     e.get("status", 0),
                     e.get("latency_ms", 0.0),
                     e.get("messages_count", 0),
-                    json.dumps(e.get("messages", []), ensure_ascii=False),
+                    json.dumps(e.get("messages", []), ensure_ascii=False)[:_MAX_COLUMN_BYTES],
                     1 if e.get("has_tools") else 0,
                     1 if e.get("stream") else 0,
-                    e.get("response", ""),
+                    _truncate_column(str(e.get("response", ""))),
                 )
                 for e in items
             ],
         )
         conn.commit()
+        _prune_old()
     except Exception:
         _log.warning("Failed to flush request logs to SQLite", exc_info=True)
     finally:

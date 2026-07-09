@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-from echotools.logger.manager import get_logger
+from src.logger import get_logger
 
 from src.core.server.infra.reload.coordinator import ReloadCoordinator
 from src.core.server.infra.reload.file_watcher import FileChange, FileWatcher

@@ -52,13 +52,27 @@ def _walk_search(
     exact: List[Dict[str, Any]],
     prefix: List[Dict[str, Any]],
     substring: List[Dict[str, Any]],
+    max_results: int,
 ) -> None:
+    found = 0
+
+    def _maybe_add(entry_path: Path) -> bool:
+        nonlocal found
+        before = found
+        _match_search_entry(entry_path, query_lower, exact, prefix, substring)
+        found = len(exact) + len(prefix) + len(substring)
+        return found > before
+
     if recursive:
         for dirpath, dirnames, filenames in os.walk(str(target)):
+            if len(exact) + len(prefix) + len(substring) >= max_results:
+                return
             dirnames[:] = [d for d in dirnames if d not in SEARCH_SKIP_DIRS]
             dp = Path(dirpath)
             for name in filenames + dirnames:
-                _match_search_entry(dp / name, query_lower, exact, prefix, substring)
+                _maybe_add(dp / name)
+                if len(exact) + len(prefix) + len(substring) >= max_results:
+                    return
         return
     try:
         for child in target.iterdir():
@@ -97,7 +111,7 @@ async def files_search(request: aiohttp.web.Request) -> aiohttp.web.Response:
     query_lower = query.lower()
 
     try:
-        _walk_search(target, query_lower, recursive, exact, prefix, substring)
+        _walk_search(target, query_lower, recursive, exact, prefix, substring, max_results)
     except PermissionError:
         return aiohttp.web.json_response({"error": "permission denied"}, status=403)
 

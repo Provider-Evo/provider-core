@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List, Optional, Sequence
 
-from echotools.logger.manager import get_logger
+from src.logger import get_logger
 from echotools.plugin.registry import PluginRegistry
 
 from src.core.config import get_config

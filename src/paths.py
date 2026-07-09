@@ -2,12 +2,31 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-__all__ = ["project_root", "config_dir", "persist_dir", "persist_db_dir", "persist_json_dir"]
+__all__ = [
+    "project_root",
+    "resolve_project_root",
+    "config_dir",
+    "persist_dir",
+    "persist_db_dir",
+    "persist_json_dir",
+]
 
-# Project root: src/paths.py -> project root
-project_root: Path = Path(__file__).resolve().parent.parent
+
+def resolve_project_root() -> Path:
+    """解析项目根目录，兼容 PyInstaller 冻结环境。"""
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            return Path(meipass).resolve().parent
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent.parent
+
+
+# Project root: src/paths.py -> project root (dev) or frozen bundle parent
+project_root: Path = resolve_project_root()
 
 
 def config_dir() -> Path:

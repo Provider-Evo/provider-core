@@ -21,7 +21,12 @@ from .client import QwenClient
 
 
 class QwenAdapter(PlatformAdapter):
-    """Expose the Qwen client through the platform adapter interface."""
+    """Expose the Qwen client through the platform adapter interface.
+
+    媒体能力通过 ``QwenClient`` 提供，路由层可按需调用
+    :class:`~src.platforms.capabilities.ImageCapable` /
+    :class:`~src.platforms.capabilities.AudioCapable` 约定。
+    """
 
     @property
     def name(self) -> str:
@@ -48,8 +53,10 @@ class QwenAdapter(PlatformAdapter):
         async with self._init_lock:
             if self._initialized:
                 return
+            from src.core.server.infra.connector import make_connector
+
             timeout = aiohttp.ClientTimeout(total=None, connect=20, sock_connect=20, sock_read=None)
-            connector = aiohttp.TCPConnector(ssl=False, limit=100)
+            connector = make_connector()
             self._session = aiohttp.ClientSession(timeout=timeout, connector=connector)
             await self._client.init_immediate(self._session)
             asyncio.create_task(self._client.background_setup())

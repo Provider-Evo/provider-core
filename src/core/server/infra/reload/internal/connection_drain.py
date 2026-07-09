@@ -7,7 +7,8 @@ from typing import Iterable
 
 import aiohttp.web
 
-from echotools.logger.manager import get_logger
+from src.core.observability import get_observability_services
+from src.logger import get_logger
 
 __all__ = ["close_live_connections"]
 
@@ -32,38 +33,19 @@ async def _close_sockets(sockets: Iterable[aiohttp.web.WebSocketResponse]) -> in
 
 async def close_live_connections() -> None:
     """关闭 WebUI 日志、终端、请求监控等 WebSocket，释放 aiohttp shutdown 等待。"""
+    obs = get_observability_services()
     total = 0
 
-    try:
-        from src.webui.core.logs_ws import log_broker
-
-        async with log_broker._lock:
-            sockets = list(log_broker._sockets)
-            log_broker._sockets.clear()
-        total += await _close_sockets(sockets)
-    except Exception as exc:
-        logger.debug("关闭日志 WebSocket 失败: %s", exc)
-
-    try:
-        from src.webui.routers.session.terminal import list_sessions
-
-        terminal_sockets: list[aiohttp.web.WebSocketResponse] = []
-        for session in list_sessions():
-            terminal_sockets.extend(list(session._clients))
-        total += await _close_sockets(terminal_sockets)
-    except Exception as exc:
-        logger.debug("关闭终端 WebSocket 失败: %s", exc)
-
-    try:
-        from src.webui.services.request_log import request_broker
-
-        broker_sockets = getattr(request_broker, "_sockets", None)
-        if broker_sockets is not None:
-            sockets = list(broker_sockets)
-            broker_sockets.clear()
+    for closer_name, closer in (
+        ("日志", obs.close_log_sockets),
+        ("终端", obs.close_terminal_sockets),
+        ("请求监控", obs.close_request_monitor_sockets),
+    ):
+        try:
+            sockets = await closer()
             total += await _close_sockets(sockets)
-    except Exception as exc:
-        logger.debug("关闭请求监控 WebSocket 失败: %s", exc)
+        except Exception as exc:
+            logger.debug("关闭%s WebSocket 失败: %s", closer_name, exc)
 
     if total:
         logger.info("L3 热重载前已关闭 %d 个 WebSocket 连接", total)

@@ -9,7 +9,7 @@ import aiohttp.web
 from echotools.web.utils import cors_middleware, error_middleware, json_response
 
 from src.core.config import get_config
-from src.core.errors import AuthError
+from src.core.errors import AuthError, RateLimitError
 
 __all__ = ["_cors", "_auth_middleware", "_error"]
 
@@ -126,11 +126,15 @@ def _has_valid_credentials(request: aiohttp.web.Request, cfg: Any) -> bool:
     if token and token in cfg.auth.keys:
         return True
 
-    from src.webui.core.auth import COOKIE_NAME
-    from src.webui.core.security import token_manager
+    from src.core.auth import COOKIE_NAME, verify_session_token
 
     cookie_val = request.cookies.get(COOKIE_NAME, "")
-    return bool(cookie_val and token_manager.verify(cookie_val))
+    return verify_session_token(cookie_val)
 
 
-_error = error_middleware(error_map={AuthError: (401, "authentication_error")})
+_error = error_middleware(
+    error_map={
+        AuthError: (401, "authentication_error"),
+        RateLimitError: (429, "rate_limit_error"),
+    },
+)

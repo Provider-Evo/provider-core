@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 import aiohttp.web
 
-from echotools.logger.manager import get_logger
+from src.logger import get_logger
 
 from src.core.server.app import create_app
 from src.core.server.infra.reload.internal.connection_drain import close_live_connections

@@ -52,16 +52,21 @@ def _drive_entries() -> List[Dict[str, Any]]:
     return entries
 
 
-def _list_dir_entries(target: Path, offset: int, limit: int) -> Tuple[List[Dict[str, Any]], int]:
-    all_entries = list(os.scandir(str(target)))
-    all_entries.sort(key=lambda e: (not e.is_dir(), e.name.lower()))
-    total = len(all_entries)
+def _list_dir_entries(target: Path, offset: int, limit: int) -> Tuple[List[Dict[str, Any]], int, bool]:
+    """列出目录项；单次 scandir 后仅对当前页排序。"""
+    raw: List[os.DirEntry] = []
+    for entry in os.scandir(str(target)):
+        raw.append(entry)
+    raw.sort(key=lambda e: (not e.is_dir(), e.name.lower()))
+    total = len(raw)
+    end = offset + limit
+    page = raw[offset:end]
     entries = []
-    for entry in all_entries[offset:offset + limit]:
+    for entry in page:
         info = entry_info_from_scandir(entry)
         if info:
             entries.append(info)
-    return entries, total
+    return entries, total, end < total
 
 
 async def files_list(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -90,13 +95,14 @@ async def files_list(request: aiohttp.web.Request) -> aiohttp.web.Response:
         return aiohttp.web.json_response({"error": "path is not a directory"}, status=400)
 
     try:
-        entries, total = _list_dir_entries(target, offset, limit)
+        entries, total, has_more = _list_dir_entries(target, offset, limit)
     except PermissionError:
         return aiohttp.web.json_response({"error": "permission denied"}, status=403)
 
     return aiohttp.web.json_response({
         "entries": entries,
         "total": total,
+        "has_more": has_more,
         "offset": offset,
         "limit": limit,
         "path": str(target),
@@ -130,27 +136,23 @@ def _read_image_preview(target: Path, total_size: int) -> aiohttp.web.Response:
 
 def _read_text_preview(target: Path, total_size: int, offset: int, limit: int) -> aiohttp.web.Response:
     try:
+        lines: List[str] = []
+        has_more = False
         with open(target, "r", encoding="utf-8", errors="replace") as f:
-            if offset > 0:
-                for _ in range(offset):
-                    f.readline()
-            lines: List[str] = []
-            for _ in range(limit):
-                line = f.readline()
-                if not line:
+            for line_no, line in enumerate(f):
+                if line_no < offset:
+                    continue
+                if len(lines) >= limit:
+                    has_more = True
                     break
                 lines.append(line)
-        total_lines = 0
-        with open(target, "r", encoding="utf-8", errors="replace") as f:
-            for _ in f:
-                total_lines += 1
         return aiohttp.web.json_response({
             "content": "".join(lines),
             "encoding": "utf-8",
             "total_size": total_size,
-            "total_lines": total_lines,
             "offset": offset,
             "limit": limit,
+            "has_more": has_more,
             "truncated": total_size > MAX_PREVIEW_SIZE,
         })
     except OSError as e:

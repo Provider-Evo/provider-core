@@ -161,7 +161,10 @@ class DeepseekClient:
     def _get_proxy_kwarg(self) -> Optional[str]:
         """获取应传递给 session.request 的 proxy 值。"""
         if self._proxy_override is True:
-            from src.core.server import get_proxy_server
+            try:
+                from src.core.server import get_proxy_server
+            except ModuleNotFoundError:
+                from .runtime import get_proxy_server
             return get_proxy_server()
         return None
 

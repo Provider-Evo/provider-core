@@ -9,7 +9,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Awaitable, Callable, Iterable, Optional, Sequence
 
-from echotools.logger.manager import get_logger
+from src.logger import get_logger
 
 __all__ = [
     "Change",

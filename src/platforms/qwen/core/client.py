@@ -93,11 +93,11 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         try:
             from src.core.config import get_config
         except ModuleNotFoundError:
-            from .runtime_compat import get_config
+            from .runtime import get_config
         try:
             from src.core.server import get_proxy_server
         except ModuleNotFoundError:
-            from .runtime_compat import get_proxy_server
+            from .runtime import get_proxy_server
 
         config = get_config()
         if not config.proxy.proxy_enabled:

@@ -1,6 +1,5 @@
-"""跨进程通信（IPC）模块。"""
+"""IPC 模块 — 终端通信已迁移至 WebSocket + 文件持久化（ADR-046）。"""
+
 from __future__ import annotations
 
-from src.core.server.infra.ipc.shared_memory import SharedMemoryManager
-
-__all__ = ["SharedMemoryManager"]
+__all__: list[str] = []

@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 import aiohttp.web
-from echotools.terminal import LocalTerminal, SSHTerminal, TerminalCallback
+from echotools.terminal import TerminalCallback
 
 from src.core.server.infra.terminal_sessions import TerminalSessionStore
 from src.logger import get_logger
+from src.webui.routers.session.terminal_output_bridge import BridgedLocalTerminal, BridgedSSHTerminal
 
 logger = get_logger(__name__)
 
@@ -25,51 +26,13 @@ __all__ = [
 ]
 
 
-def _patch_echotools_fire_output() -> None:
-    """在 history 追加之前投递实时终端输出，避免 ConPTY 读循环阻塞。"""
-    from echotools.terminal.session import MAX_OFFLINE_BUFFER_BYTES, TerminalSession as EtoolSession
-
-    if getattr(EtoolSession, "_provider_live_output_patch", False):
-        return
-
-    async def _fire_output(self, data: str) -> None:
-        if self._callbacks:
-            for cb in list(self._callbacks):
-                if cb.on_output is not None:
-                    try:
-                        await cb.on_output(data)
-                    except Exception:
-                        logger.exception("on_output callback raised")
-        else:
-            self._offline_buffer += data
-            self._offline_buffer_size += len(data)
-            if self._offline_buffer_size > MAX_OFFLINE_BUFFER_BYTES:
-                excess = self._offline_buffer_size - MAX_OFFLINE_BUFFER_BYTES
-                self._offline_buffer = self._offline_buffer[excess:]
-                self._offline_buffer_size = len(self._offline_buffer)
-
-        lock = self.__dict__.setdefault("_history_append_lock", asyncio.Lock())
-
-        async def _append_history_bg() -> None:
-            async with lock:
-                await asyncio.to_thread(self._append_history, data)
-
-        asyncio.create_task(_append_history_bg())
-
-    EtoolSession._fire_output = _fire_output  # type: ignore[method-assign]
-    EtoolSession._provider_live_output_patch = True
-
-
-_patch_echotools_fire_output()
-
-
 class TerminalSession:
     """服务端终端会话：管理底层进程与已连接的 WebSocket 客户端。"""
 
     def __init__(self, session_id: str, kind: str) -> None:
         self.session_id = session_id
         self.kind = kind
-        self._terminal: Optional[LocalTerminal | SSHTerminal] = None
+        self._terminal: Optional[BridgedLocalTerminal | BridgedSSHTerminal] = None
         self._clients: Set[aiohttp.web.WebSocketResponse] = set()
         self._client_callbacks: Dict[aiohttp.web.WebSocketResponse, TerminalCallback] = {}
         self._store: Optional[TerminalSessionStore] = None
@@ -79,7 +42,7 @@ class TerminalSession:
 
     async def start_local(self, cols: int = 80, rows: int = 24) -> bool:
         """创建并启动本地终端会话。"""
-        self._terminal = LocalTerminal(self.session_id)
+        self._terminal = BridgedLocalTerminal(self.session_id)
         ok = await self._terminal.start(cols, rows)
         if ok:
             self.alive = True
@@ -106,7 +69,7 @@ class TerminalSession:
         rows: int = 24,
     ) -> bool:
         """创建并启动 SSH 远程终端会话。"""
-        self._terminal = SSHTerminal(
+        self._terminal = BridgedSSHTerminal(
             self.session_id,
             host=host,
             port=port,
@@ -308,7 +271,7 @@ class TerminalSession:
         await self._shutdown_terminal()
         if self.kind == "ssh":
             return False
-        self._terminal = LocalTerminal(self.session_id)
+        self._terminal = BridgedLocalTerminal(self.session_id)
         if not await self._terminal.start(cols, rows):
             return False
         await self._reattach_clients_after_restart()
@@ -396,7 +359,7 @@ async def recover_sessions(store: TerminalSessionStore) -> None:
             )
         return TerminalCallback()
 
-    recovered = await LocalTerminal.recover_sessions(persist_dir, callback_factory)
+    recovered = await BridgedLocalTerminal.recover_sessions(persist_dir, callback_factory)
     now = time.time()
 
     for session_id, terminal in recovered.items():

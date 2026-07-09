@@ -6,7 +6,7 @@ import asyncio
 from pathlib import Path
 from typing import Any, Optional, Set
 
-from echotools.logger.manager import get_logger
+from src.logger import get_logger
 
 from src.core.server.infra.reload.classifier import ClassifyResult, classify_paths
 from src.core.server.infra.reload.internal.pre_restart import prepare_graceful_restart
@@ -96,9 +96,9 @@ class ReloadCoordinator:
     async def _notify_static_changed(self, names: list[str]) -> None:
         logger.info("前端静态资源变更: %s", names)
         try:
-            from src.webui.core.logs_ws import log_broker
+            from src.core.observability import get_observability_services
 
-            await log_broker.broadcast(
+            await get_observability_services().broadcast_log(
                 {
                     "type": "static_changed",
                     "files": names,
