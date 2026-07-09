@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.platforms.zen.core.constants import (
+from provider_zen.core.constants import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -22,15 +22,15 @@ from src.platforms.zen.core.constants import (
     RATE_LIMIT_COOLDOWN,
     RECOVERY_INTERVAL,
 )
-from src.platforms.zen.core.headers import build_headers
-from src.platforms.zen.core.payloads import build_payload
-from src.platforms.zen.core.sse import parse_sse_line
+from provider_zen.core.headers import build_headers
+from provider_zen.core.payloads import build_payload
+from provider_zen.core.sse import parse_sse_line
 
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("ZenAdapter", "Adapter"):
-        from src.platforms.zen.core.adaptercore import (  # noqa: PLC0415
+        from provider_zen.core.adaptercore import (  # noqa: PLC0415
             ZenAdapter as _ZenAdapter,
         )
 

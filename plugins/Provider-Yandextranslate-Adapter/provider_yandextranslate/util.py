@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.platforms.yandextranslate.core.constants import (
+from provider_yandextranslate.core.constants import (
     BASE_URL,
     CAPS,
     DEFAULT_SOURCE_LANG,
@@ -27,7 +27,7 @@ from src.platforms.yandextranslate.core.constants import (
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("YandexTranslateAdapter", "Adapter"):
-        from src.platforms.yandextranslate.core.adaptercore import (  # noqa: PLC0415
+        from provider_yandextranslate.core.adaptercore import (  # noqa: PLC0415
             YandexTranslateAdapter as _YandexTranslateAdapter,
         )
 

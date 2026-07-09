@@ -10,15 +10,15 @@ import aiohttp.web
 from echotools.terminal import LocalTerminal, SSHTerminal
 
 from src.core.server.infra.terminal_sessions import get_terminal_store
-from src.logger import get_logger
-from src.webui.routers.session.terminal_session import (
+from src.foundation.logger import get_logger
+from src.webui.routers.session.terminal.terminal_session import (
     TerminalSession,
     TerminalSession as _TerminalSession,
     list_sessions,
     recover_sessions,
     sessions_registry,
 )
-from src.webui.routers.session.terminal_ws_handlers import (
+from src.webui.routers.session.terminal.terminal_ws_handlers import (
     _send_existing_sessions,
     handle_terminal_ws_message,
 )

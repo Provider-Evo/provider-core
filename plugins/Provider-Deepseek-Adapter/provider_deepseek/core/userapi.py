@@ -7,12 +7,12 @@ import secrets
 import uuid
 from typing import Any, Dict, Optional, Tuple
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 import aiohttp
 
-from src.platforms.deepseek.core.constants import DEFAULT_HOST
-from src.platforms.deepseek.core.headers import build_basic_headers, build_headers
+from provider_deepseek.core.constants import DEFAULT_HOST
+from provider_deepseek.core.headers import build_basic_headers, build_headers
 
 logger = get_logger(__name__)
 

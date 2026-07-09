@@ -34,6 +34,23 @@ class FncallUtilPlugin(ProviderPlugin, FncallPluginMixin):
             "Provider-Fncall-Util: xml/antml/original/bracket/nous/dsml/custom registered"
         )
 
+    async def on_unload(self) -> None:
+        from echotools.fncall.registry import clear_custom_protocol_factory
+        from echotools.protocol.base import unregister_protocol
+
+        for protocol_id in (
+            "xml",
+            "antml",
+            "original",
+            "bracket",
+            "nous",
+            "dsml",
+        ):
+            unregister_protocol(protocol_id)
+        clear_custom_protocol_factory()
+        self._custom_protocol_factory = None
+        self.ctx.logger.info("Provider-Fncall-Util: fncall protocols unregistered")
+
 
 def create_plugin() -> FncallUtilPlugin:
     return FncallUtilPlugin()

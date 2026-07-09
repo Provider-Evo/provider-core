@@ -1,5 +1,13 @@
-accounts.py
+﻿accounts.py
 __pycache__/
 *.pyc
 persist/
 config/
+config.toml
+data/
+*.pyo
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/

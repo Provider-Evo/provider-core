@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
 
-from src.platforms.nvidia.core.constants import (
+from provider_nvidia.core.constants import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -20,15 +20,15 @@ from src.platforms.nvidia.core.constants import (
     MODELS,
     RECOVERY_INTERVAL,
 )
-from src.platforms.nvidia.core.headers import build_headers
-from src.platforms.nvidia.core.payloads import build_payload
-from src.platforms.nvidia.core.sse import parse_sse_line
+from provider_nvidia.core.headers import build_headers
+from provider_nvidia.core.payloads import build_payload
+from provider_nvidia.core.sse import parse_sse_line
 
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("NvidiaAdapter", "Adapter"):
-        from src.platforms.nvidia.core.adaptercore import (  # noqa: PLC0415
+        from provider_nvidia.core.adaptercore import (  # noqa: PLC0415
             Adapter as _Adapter,
         )
 

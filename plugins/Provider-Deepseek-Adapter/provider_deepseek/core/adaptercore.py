@@ -6,18 +6,18 @@ from __future__ import annotations
 import asyncio
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 import aiohttp
 
-from src.platforms.base import PlatformAdapter
-from src.platforms.deepseek.core.constants import (
+from provider_sdk.extensions.platform.adapter import PlatformAdapter
+from provider_deepseek.core.constants import (
     CAPS,
     FETCH_MODELS_ENABLED,
     MODEL_FETCH_INTERVAL,
     MODELS,
 )
-from src.platforms.deepseek.core.modelcache import ModelsCache
+from provider_deepseek.core.modelcache import ModelsCache
 
 logger = get_logger(__name__)
 
@@ -28,7 +28,7 @@ class DeepseekAdapter(PlatformAdapter):
     def __init__(self) -> None:
         """初始化适配器。"""
         # 延迟导入以避免循环依赖，client 模块由 util 汇聚后才稳定
-        from src.platforms.deepseek.core.client import DeepseekClient  # noqa: PLC0415
+        from provider_deepseek.core.client import DeepseekClient  # noqa: PLC0415
 
         self._client: Optional[DeepseekClient] = None
         self._models: List[str] = list(MODELS)
@@ -62,7 +62,7 @@ class DeepseekAdapter(PlatformAdapter):
         Args:
             session: 共享的 aiohttp ClientSession。
         """
-        from src.platforms.deepseek.core.client import DeepseekClient  # noqa: PLC0415
+        from provider_deepseek.core.client import DeepseekClient  # noqa: PLC0415
 
         self._client = DeepseekClient()
         self._init_task = asyncio.ensure_future(self._init_immediate(session))

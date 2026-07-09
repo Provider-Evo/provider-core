@@ -19,10 +19,10 @@ from echotools.lifecycle.updater import get_updater, set_updater
 from echotools.process.port import *  # noqa: F401, F403
 from echotools.web.utils import json_response
 
-from src.core.server.app import REGISTRY_KEY, SESSION_KEY, create_app
-from src.core.server.app_host import AppHost
-from src.core.server.http_utils import clean_fncall, get_json, safe_flush
-from src.core.server.proxy import (
+from src.core.server.lifecycle.app import REGISTRY_KEY, SESSION_KEY, create_app
+from src.core.server.lifecycle.app_host import AppHost
+from src.core.server.http.http_utils import clean_fncall, get_json, safe_flush
+from src.core.server.net.proxy import (
     activate,
     deactivate,
     get_proxy_dict,

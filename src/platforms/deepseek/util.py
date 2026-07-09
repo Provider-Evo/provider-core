@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from src.platforms.deepseek.accounts import ACCOUNTS, Account
 from src.platforms.deepseek.core.client import make_stream_id
 from src.platforms.deepseek.core.constants import (

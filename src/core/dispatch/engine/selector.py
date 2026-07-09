@@ -12,7 +12,7 @@ from typing import Dict
 from echotools.dispatch.selector import AdaptiveSelector as _BaseSelector
 from echotools.dispatch.selector import TASRecord
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 __all__ = ["Selector", "TASRecord"]
 

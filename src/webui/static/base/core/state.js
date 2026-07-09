@@ -9,6 +9,7 @@ const initialTab = localStorage.getItem('provider.webui.activeTab') || document.
 const state = {
   timer: null,
   models: [],
+  modelsLoaded: false,
   summary: null,
   settings: loadSettings(),
   activeTab: initialTab,
@@ -21,12 +22,9 @@ const logBox = document.getElementById('logBox');
 const platformGrid = document.getElementById('platformGrid');
 const modelGrid = document.getElementById('modelGrid');
 const configGrid = document.getElementById('configGrid');
-const configJsonBox = document.getElementById('configJsonBox');
-const configEditArea = document.getElementById('configEditArea');
 const configSaveStatus = document.getElementById('configSaveStatus');
 const overviewGrid = document.getElementById('overviewGrid');
 const overviewNotice = document.getElementById('overviewNotice');
-const portablePanel = document.getElementById('portablePanel');
 const themeState = document.getElementById('themeState');
 const refreshState = document.getElementById('refreshState');
 const toastWrap = document.getElementById('toastWrap');
@@ -566,51 +564,44 @@ function saveSettings() {
 
 async function persistWebUISettings() {
   try {
-    var existing = await persistLoad('config.toml') || {};
-    existing.theme = state.settings.theme;
-    existing.refreshInterval = state.settings.refreshInterval;
-    existing.timeoutMs = state.settings.timeoutMs;
-    existing.streamIdleTimeoutMs = state.settings.streamIdleTimeoutMs;
-    existing.compact = state.settings.compact;
-    persistSave('config.toml', existing);
+    var body = Object.assign({}, await fetchJson('/v1/webui/config').catch(function() { return {}; }));
+    body.theme = state.settings.theme;
+    body.refreshInterval = state.settings.refreshInterval;
+    body.timeoutMs = state.settings.timeoutMs;
+    body.streamIdleTimeoutMs = state.settings.streamIdleTimeoutMs;
+    body.compact = state.settings.compact;
+    await fetch('/v1/webui/config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
   } catch (e) { /* ignore */ }
 }
 
 async function loadWebUISettings() {
   try {
-    var saved = await persistLoad('config.toml');
-    if (!saved) return false;
+    var saved = await fetchJson('/v1/webui/config');
+    if (!saved || typeof saved !== 'object') saved = {};
+    var voice = loadVoiceSettings();
+    if (!saved.sttModel && voice.sttModel) saved.sttModel = voice.sttModel;
+    if (!saved.ttsModel && voice.ttsModel) saved.ttsModel = voice.ttsModel;
+    if (!saved.ttsPrompt && voice.ttsPrompt) saved.ttsPrompt = voice.ttsPrompt;
     var changed = false;
     if (saved.theme) { state.settings.theme = saved.theme; changed = true; }
     if (typeof saved.refreshInterval === 'number') { state.settings.refreshInterval = saved.refreshInterval; changed = true; }
     if (typeof saved.timeoutMs === 'number') { state.settings.timeoutMs = saved.timeoutMs; changed = true; }
     if (typeof saved.streamIdleTimeoutMs === 'number') { state.settings.streamIdleTimeoutMs = saved.streamIdleTimeoutMs; changed = true; }
     if (saved.compact) { state.settings.compact = saved.compact; changed = true; }
-    return changed;
+    if (typeof _applyWebuiRuntime === 'function') _applyWebuiRuntime(saved);
+    return changed || Object.keys(saved).length > 0;
   } catch (e) { return false; }
 }
 
 async function initSettingsFromServer() {
-  var loaded = await loadWebUISettings();
-  if (loaded) {
-    applyTheme();
-    applyCompact();
-    scheduleRefresh();
-  }
-  var themeSelect = document.getElementById('themeSelect');
-  var themeDd = window._dropdowns && window._dropdowns['themeSelect'];
-  if (themeSelect) themeSelect.value = state.settings.theme;
-  if (themeDd) themeDd.setValue(state.settings.theme);
-  var compactSelect = document.getElementById('compactSelect');
-  var compactDd = window._dropdowns && window._dropdowns['compactSelect'];
-  if (compactSelect) compactSelect.value = state.settings.compact;
-  if (compactDd) compactDd.setValue(state.settings.compact);
-  var refreshInput = document.getElementById('refreshIntervalInput');
-  if (refreshInput) refreshInput.value = String(state.settings.refreshInterval);
-  var timeoutInput = document.getElementById('timeoutInput');
-  if (timeoutInput) timeoutInput.value = String(state.settings.timeoutMs);
-  var streamIdleInput = document.getElementById('streamIdleTimeoutInput');
-  if (streamIdleInput) streamIdleInput.value = String(getStreamIdleTimeoutMs());
+  await loadWebUISettings();
+  applyTheme();
+  applyCompact();
+  scheduleRefresh();
 }
 
 function loadVoiceSettings() {
@@ -652,7 +643,8 @@ function applyTheme() {
   const theme = state.settings.theme === 'auto' ? (prefersDark ? 'dark' : 'light') : state.settings.theme;
   document.documentElement.setAttribute('data-theme', theme);
   themeState.textContent = t('header.theme', { value: state.settings.theme });
-  document.getElementById('themeSelect').value = state.settings.theme;
+  var themeSelect = document.getElementById('themeSelect');
+  if (themeSelect) themeSelect.value = state.settings.theme;
   updateThemeIcon();
   // Notify terminal module to refresh theme when in 'theme' mode
   if (typeof TerminalManager !== 'undefined' && TerminalManager.refreshTheme) {
@@ -672,7 +664,8 @@ function updateThemeIcon() {
 
 function applyCompact() {
   document.body.dataset.compact = state.settings.compact;
-  document.getElementById('compactSelect').value = state.settings.compact;
+  var compactSelect = document.getElementById('compactSelect');
+  if (compactSelect) compactSelect.value = state.settings.compact;
 }
 
 function scheduleRefresh() {
@@ -704,6 +697,7 @@ function scheduleConfigSave() {
   if (state.configSaveTimer) clearTimeout(state.configSaveTimer);
   state.configDirty = true;
   updateConfigSaveStatus();
+  if (typeof _updateConfigSaveBtn === 'function') _updateConfigSaveBtn();
   state.configSaveTimer = setTimeout(function() {
     saveConfig();
   }, state.configSaveDebounceMs);
@@ -742,6 +736,9 @@ async function switchTab(nextTab) {
   }
 
   _initTab(nextTab);
+  if (nextTab === 'config' && typeof activateConfigPanel === 'function') {
+    activateConfigPanel(state.summary);
+  }
   if (nextTab === 'logs') {
     requestAnimationFrame(function() {
       _renderLogs();
@@ -772,7 +769,7 @@ function _initTab(tabName) {
       typeof initPluginsPanel === 'function' && initPluginsPanel();
       break;
     case 'config':
-      typeof _initConfigTab === 'function' && _initConfigTab();
+      if (typeof _bindConfigPanel === 'function') _bindConfigPanel();
       break;
     case 'terminal':
       typeof _initTerminalTab === 'function' && _initTerminalTab();

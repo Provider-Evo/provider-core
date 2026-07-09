@@ -13,8 +13,8 @@ import aiohttp
 
 from src.core.dispatch.candidate import Candidate
 from src.core.utils.compat.models_cache import ModelsCache
-from src.logger import get_logger
-from src.platforms.base import PlatformAdapter
+from src.foundation.logger import get_logger
+from provider_sdk.extensions.platform.adapter import PlatformAdapter
 from .client import CodebuddyClient
 from .constants import CAPS, FETCH_MODELS_ENABLED, MODELS, MODEL_FETCH_INTERVAL
 

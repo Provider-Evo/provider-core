@@ -9,8 +9,8 @@ import aiohttp
 
 from src.core.dispatch.candidate import Candidate
 from src.core.errors import NotSupportedError
-from src.logger import get_logger
-from src.platforms.base import PlatformAdapter
+from src.foundation.logger import get_logger
+from provider_sdk.extensions.platform.adapter import PlatformAdapter
 from .client import Client
 from .constants import CAPS, MODELS
 

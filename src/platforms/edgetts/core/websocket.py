@@ -10,7 +10,7 @@ import ssl
 import struct
 from typing import Dict, Tuple
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 _logger = get_logger(__name__)
 

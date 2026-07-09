@@ -12,14 +12,14 @@ import time
 from pathlib import Path
 from typing import Any, Optional, Tuple
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
-from src.platforms.deepseek.core.constants import (
+from provider_deepseek.core.constants import (
     WASM_META,
     WASM_PATH,
     WASM_URL,
 )
-from src.platforms.deepseek.core.headers import build_basic_headers
+from provider_deepseek.core.headers import build_basic_headers
 
 logger = get_logger(__name__)
 
@@ -214,8 +214,8 @@ async def get_pow_response(
 
     import aiohttp as _aiohttp
 
-    from src.platforms.deepseek.core.constants import DEFAULT_HOST
-    from src.platforms.deepseek.core.headers import build_basic_headers
+    from provider_deepseek.core.constants import DEFAULT_HOST
+    from provider_deepseek.core.headers import build_basic_headers
 
     headers = build_basic_headers(token)
     try:

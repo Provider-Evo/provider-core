@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 import aiohttp
 

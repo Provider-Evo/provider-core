@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from src.platforms.ollama.core.client import (
+from provider_ollama.core.client import (
     BASE_URL,
     CHAT_PATH,
     MAX_WORKERS,
@@ -26,7 +26,7 @@ from src.platforms.ollama.core.client import (
     parse_ollama_line,
     save_cache,
 )
-from src.platforms.ollama.core.constants import (
+from provider_ollama.core.constants import (
     CAPS,
     FETCH_MODELS_ENABLED,
     MODEL_FETCH_INTERVAL,
@@ -85,7 +85,7 @@ def parse_sse_line(data_str: str) -> Any:
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入 OllamaAdapter。"""
     if name in ("OllamaAdapter", "Adapter"):
-        from src.platforms.ollama.core.adaptercore import (  # noqa: PLC0415
+        from provider_ollama.core.adaptercore import (  # noqa: PLC0415
             OllamaAdapter as _OllamaAdapter,
         )
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 提供 `get_logger` 以统一项目日志输出（控制台 + 文件）。
 """
 
+import logging
 import re
 import sys
 from datetime import datetime, timedelta
@@ -24,7 +25,9 @@ _BEARER_RE = re.compile(r"(?i)(Bearer\s+)\S+")
 # 标记是否已完成基础 handler 初始化，避免重复添加
 _initialized: bool = False
 
-_LOG_DIR = Path(__file__).parent.parent / "logs"
+from src.foundation.paths import project_root as _project_root
+
+_LOG_DIR = _project_root / "logs"
 
 # 全局颜色覆盖：None 表示自动检测，True/False 强制开启/关闭
 _color_override: bool | None = None
@@ -44,6 +47,31 @@ LEVEL_ABBR = {
 }
 
 _VALID_LOG_LEVELS = set(LEVEL_ABBR.keys())
+
+_PARAMIKO_BENIGN_TOKENS = (
+    "10054",
+    "10053",
+    "Socket exception",
+    "EOF in transport",
+    "Connection reset",
+    "Error reading SSH protocol banner",
+)
+
+
+def _suppress_paramiko_disconnect_noise() -> None:
+    """过滤 paramiko 在预期断开（重启/关闭）时的 socket 噪声日志。"""
+    class _BenignParamikoFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            if not record.name.startswith("paramiko"):
+                return True
+            msg = record.getMessage()
+            return not any(token in msg for token in _PARAMIKO_BENIGN_TOKENS)
+
+    filt = _BenignParamikoFilter()
+    for name in ("paramiko", "paramiko.transport", "paramiko.channel"):
+        logger = logging.getLogger(name)
+        if not any(isinstance(f, _BenignParamikoFilter) for f in logger.filters):
+            logger.addFilter(filt)
 
 
 def _resolve_log_level() -> str:
@@ -433,6 +461,7 @@ def _setup_handlers() -> None:
     )
 
     _initialized = True
+    _suppress_paramiko_disconnect_noise()
 
 
 _setup_handlers()
@@ -470,7 +499,7 @@ def get_logger(module_name: str) -> CompatLogger:
         CompatLogger 实例。
 
     Example:
-        >>> from src.logger import get_logger
+        >>> from src.foundation.logger import get_logger
         >>> logger = get_logger("MyModule")
         >>> logger.info("这是一条日志")
         MM-DD HH:mm:ss | [I] | MyModule | 这是一条日志

@@ -17,9 +17,9 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 import aiohttp
 
 from src.core.dispatch.candidate import Candidate, make_id
-from src.logger import get_logger
-from src.platforms.ollama.accounts import ACCOUNTS
-from src.platforms.ollama.core.constants import (
+from src.foundation.logger import get_logger
+from provider_ollama.accounts import ACCOUNTS
+from provider_ollama.core.constants import (
     BASE_URL,
     CHAT_PATH,
     DYNAMIC_DISCOVERY,
@@ -670,7 +670,7 @@ class OllamaClient:
         Returns:
             Candidate 实例列表。
         """
-        from src.platforms.ollama.core.constants import CAPS
+        from provider_ollama.core.constants import CAPS
 
         out: List[Candidate] = []
         for ip, srv in self._servers.items():

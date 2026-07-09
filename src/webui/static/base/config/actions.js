@@ -103,6 +103,12 @@ function connectLogsSocket() {
         toast(payload.message || t('socket.staticHint'), 'info');
         return;
       }
+      if (payload.type === 'plugin_progress' && payload.progress) {
+        if (typeof window.PluginsPanel !== 'undefined' && typeof window.PluginsPanel.onProgress === 'function') {
+          window.PluginsPanel.onProgress(payload.progress);
+        }
+        return;
+      }
       if (payload.type === 'log' && payload.message) {
         // 支持新格式（完整级别名 "INFO"）和旧格式（单字母 "I"）
         var level = payload.level || 'INFO';
@@ -142,17 +148,32 @@ async function refreshAll() {
     ]);
     if (summaryResult.status === 'fulfilled') {
       state.summary = summaryResult.value;
+      state.modelsLoaded = true;
       renderOverview(summaryResult.value);
       if (typeof renderConfig === 'function') renderConfig(summaryResult.value);
-      renderModels(summaryResult.value.models || []);
+      if (state.activeTab === 'config' && typeof activateConfigPanel === 'function') {
+        activateConfigPanel(summaryResult.value);
+      }
+      var models = summaryResult.value.models || [];
+      renderModels(models);
       renderPlatforms(summaryResult.value.platforms || {});
+      if (typeof populateModelDropdowns === 'function') {
+        populateModelDropdowns(models);
+      }
     } else {
+      state.modelsLoaded = false;
+      if (typeof populateModelDropdowns === 'function') {
+        populateModelDropdowns(null, { error: true });
+      }
       // API failed, show error state
       if (document.getElementById('versionValue')) {
         document.getElementById('versionValue').textContent = t('overview.loadFailed');
       }
       if (document.getElementById('modelsValue')) {
         document.getElementById('modelsValue').textContent = t('overview.loadFailed');
+      }
+      if (modelGrid) {
+        modelGrid.innerHTML = '<div class="text-muted p-[18px] border border-dashed border-border rounded-xl text-center">' + t('overview.loadFailed') + '</div>';
       }
     }
     if (healthResult.status === 'fulfilled') {
@@ -178,17 +199,148 @@ async function refreshModels() {
   }
 }
 
+function populateModelDropdowns(models, options) {
+  options = options || {};
+  if (options.error) {
+    var errOpt = [{ value: '', text: t('overview.loadFailed') }];
+    ['chatModelSelect', 'voiceSttModel', 'voiceTtsModel'].forEach(function(id) {
+      var dd = window._dropdowns && window._dropdowns[id];
+      if (dd) dd.setOptions(errOpt, false);
+    });
+    return;
+  }
+  if (!Array.isArray(models)) return;
+
+  function isSttModel(model) {
+    var caps = model.capabilities || {};
+    var id = String(model.id || '').toLowerCase();
+    if (caps.audio_transcription || caps.audio_in) return true;
+    if (caps.chat && caps.vision) return true;
+    if (/whisper|transcribe|paraformer|speech-to-text/.test(id)) return true;
+    return false;
+  }
+
+  function isTtsModel(model) {
+    var caps = model.capabilities || {};
+    var ownedBy = String(model.owned_by || '');
+    if (!caps.audio_gen && !caps.tts) return false;
+    if (ownedBy === 'edgetts' || ownedBy === 'gtts' || ownedBy === 'openaifm') return true;
+    return !!(caps.audio_gen && !caps.chat);
+  }
+
+  var chatOpts = [];
+  var autoSelect = null;
+  for (var i = 0; i < models.length; i++) {
+    var caps = models[i].capabilities || {};
+    if (!caps.chat) continue;
+    chatOpts.push({ value: models[i].id, text: models[i].id });
+    if (models[i].id === 'qwen3.7-max') autoSelect = models[i].id;
+  }
+  var chatDropdown = window._dropdowns && window._dropdowns['chatModelSelect'];
+  if (chatDropdown) {
+    if (!chatOpts.length) {
+      chatDropdown.setOptions([{ value: '', text: t('models.noMatch') }], false);
+    } else {
+      chatDropdown.setOptions(chatOpts, false);
+      var saved = (typeof window._savedChatModel === 'string' && window._savedChatModel) ? window._savedChatModel : null;
+      if (saved) {
+        for (var j = 0; j < chatOpts.length; j++) {
+          if (chatOpts[j].value === saved) {
+            chatDropdown.setValue(saved);
+            if (typeof window !== 'undefined') window._savedChatModel = null;
+            saved = null;
+            break;
+          }
+        }
+      }
+      if (saved === null && autoSelect) chatDropdown.setValue(autoSelect);
+      else if (saved === null && chatOpts.length > 0) chatDropdown.setValue(chatOpts[0].value);
+    }
+  }
+
+  var sttOpts = [{ value: '', text: t('common.notUsing') }];
+  var ttsOpts = [{ value: '', text: t('common.notUsing') }];
+  for (var k = 0; k < models.length; k++) {
+    if (isSttModel(models[k])) {
+      sttOpts.push({ value: models[k].id, text: models[k].id });
+    }
+    if (isTtsModel(models[k])) {
+      ttsOpts.push({ value: models[k].id, text: models[k].id });
+    }
+  }
+  var sttDropdown = window._dropdowns && window._dropdowns['voiceSttModel'];
+  var ttsDropdown = window._dropdowns && window._dropdowns['voiceTtsModel'];
+  if (sttDropdown) {
+    if (sttOpts.length <= 1) {
+      sttDropdown.setOptions([{ value: '', text: t('models.noMatch') }], false);
+    } else {
+      sttDropdown.setOptions(sttOpts, false);
+      var vs = (typeof loadVoiceSettings === 'function') ? loadVoiceSettings() : {};
+      if (vs.sttModel) sttDropdown.setValue(vs.sttModel);
+    }
+  }
+  if (ttsDropdown) {
+    if (ttsOpts.length <= 1) {
+      ttsDropdown.setOptions([{ value: '', text: t('models.noMatch') }], false);
+    } else {
+      ttsDropdown.setOptions(ttsOpts, false);
+      var vs2 = (typeof loadVoiceSettings === 'function') ? loadVoiceSettings() : {};
+      if (vs2.ttsModel) ttsDropdown.setValue(vs2.ttsModel);
+    }
+  }
+}
+
 async function saveConfig() {
   try {
-    let configData;
-    if (configEditArea && !configEditArea.classList.contains('hidden')) {
-      configData = JSON.parse(configEditArea.value);
-    } else if (window._currentConfig) {
+    var isWebui = typeof getConfigTarget === 'function' && getConfigTarget() === 'webui';
+    var isSource = typeof getConfigEditMode === 'function' && getConfigEditMode() === 'source';
+
+    if (isSource) {
+      var editor = document.getElementById('configTomlEditor');
+      var rawContent = editor ? editor.value : '';
+      var rawUrl = isWebui ? '/v1/webui/config/raw' : '/v1/config/raw';
+      var response = await fetch(rawUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw_content: rawContent }),
+      });
+      var result = await response.json();
+      if (!response.ok || result.error) {
+        var errEl = document.getElementById('configTomlError');
+        var errMsg = result.error || (typeof t === 'function' ? t('actions.unknownError') : 'unknown error');
+        if (errEl) {
+          errEl.textContent = errMsg;
+          errEl.classList.remove('hidden');
+        }
+        toast(t('actions.configSaveFailed', { error: errMsg }), 'error');
+        return;
+      }
+      state.configDirty = false;
+      updateConfigSaveStatus();
+      if (typeof _updateConfigSaveBtn === 'function') _updateConfigSaveBtn();
+      var errHide = document.getElementById('configTomlError');
+      if (errHide) errHide.classList.add('hidden');
+      toast(t('actions.configSaveOk'), 'ok');
+      if (typeof _lastConfigSaveTime !== 'undefined') _lastConfigSaveTime = Date.now();
+      if (isWebui && typeof _applyWebuiRuntime === 'function') {
+        var cfgResp = await fetch('/v1/webui/config');
+        if (cfgResp.ok) _applyWebuiRuntime(await cfgResp.json());
+      } else if (!isWebui) {
+        await refreshAll();
+      }
+      return;
+    }
+
+    if (typeof _syncConfigFromDOM === 'function') _syncConfigFromDOM();
+    var configData;
+    if (window._currentConfig) {
       configData = window._currentConfig;
     } else {
-      configData = JSON.parse(configJsonBox.textContent || '{}');
+      const url = isWebui ? '/v1/webui/config' : '/v1/config';
+      configData = await fetchJson(url);
     }
-    const response = await fetch('/v1/config', {
+    const url = isWebui ? '/v1/webui/config' : '/v1/config';
+    const response = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(configData)
@@ -197,10 +349,11 @@ async function saveConfig() {
     if (result.status === 'ok') {
       state.configDirty = false;
       updateConfigSaveStatus();
+      if (typeof _updateConfigSaveBtn === 'function') _updateConfigSaveBtn();
       toast(t('actions.configSaveOk'), 'ok');
-      // Prevent renderConfig from re-fetching and overwriting the form for 5 seconds
       if (typeof _lastConfigSaveTime !== 'undefined') _lastConfigSaveTime = Date.now();
-      await refreshAll();
+      if (isWebui && typeof _applyWebuiRuntime === 'function') _applyWebuiRuntime(configData);
+      if (!isWebui) await refreshAll();
     } else {
       toast(t('actions.configSaveFailed', { error: result.error || t('actions.unknownError') }), 'error');
     }
@@ -461,13 +614,25 @@ function retryHealthCheck() {
 
 async function reloadConfigFromFile() {
   try {
-    const response = await fetch('/v1/config/reload', { method: 'POST' });
+    const isWebui = typeof getConfigTarget === 'function' && getConfigTarget() === 'webui';
+    const isSource = typeof getConfigEditMode === 'function' && getConfigEditMode() === 'source';
+    const url = isWebui ? '/v1/webui/config/reload' : '/v1/config/reload';
+    const response = await fetch(url, { method: 'POST' });
     const result = await response.json();
     if (result.status === 'ok') {
       state.configDirty = false;
       updateConfigSaveStatus();
+      if (typeof _updateConfigSaveBtn === 'function') _updateConfigSaveBtn();
       toast(t('config.reloadOk'), 'ok');
-      await refreshAll();
+      if (isSource && typeof _loadConfigRaw === 'function') {
+        _loadConfigRaw();
+      } else if (typeof forceRenderConfig === 'function') {
+        forceRenderConfig(state.summary);
+      } else if (isWebui && typeof renderConfig === 'function') {
+        renderConfig(state.summary);
+      } else {
+        await refreshAll();
+      }
     } else {
       toast(t('config.reloadFailed', { error: result.error || t('common.failed') }), 'error');
     }
@@ -478,26 +643,6 @@ async function reloadConfigFromFile() {
 
 function onConfigFieldChange(e) {
   // Config field changes are now handled by _onConfigChange in render.js
-  // This function is kept for backward compatibility but is a no-op
-}
-
-function toggleConfigEdit() {
-  if (!configEditArea) return;
-  const isHidden = configEditArea.classList.contains('hidden');
-  if (isHidden) {
-    configEditArea.value = configJsonBox.textContent || '';
-    configEditArea.classList.remove('hidden');
-    document.getElementById('configEditToggle').textContent = t('config.collapseEdit');
-  } else {
-    try {
-      const parsed = JSON.parse(configEditArea.value);
-      configJsonBox.textContent = JSON.stringify(parsed, null, 2);
-    } catch (e) {
-      toast(t('config.jsonErrorUnsaved'), 'error');
-    }
-    configEditArea.classList.add('hidden');
-    document.getElementById('configEditToggle').textContent = t('config.edit');
-  }
 }
 
 async function loadAutoupdateSettings() {

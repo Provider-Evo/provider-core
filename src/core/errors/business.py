@@ -12,6 +12,7 @@ __all__ = [
     "ValidationError",
     "RequestTimeoutError",
     "NotSupportedError",
+    "GatewayAbortedError",
 ]
 
 
@@ -63,3 +64,10 @@ class NotSupportedError(ProviderError):
             "{} 功能当前不支持".format(feature), status_code=501
         )
         self.feature = feature
+
+
+class GatewayAbortedError(ProviderError):
+    """网关 Hook 中止请求。"""
+
+    def __init__(self, message: str = "请求被 Hook 中止") -> None:
+        super().__init__(message, status_code=409)

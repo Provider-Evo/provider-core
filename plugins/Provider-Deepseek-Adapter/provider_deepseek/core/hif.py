@@ -7,16 +7,16 @@ import asyncio
 import time
 from typing import Any, Optional, Tuple
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 import aiohttp
 
-from src.platforms.deepseek.core.constants import (
+from provider_deepseek.core.constants import (
     HIF_DLIQ_URL,
     HIF_LEIM_URL,
     HIF_REFRESH_INTERVAL,
 )
-from src.platforms.deepseek.core.headers import build_basic_headers
+from provider_deepseek.core.headers import build_basic_headers
 
 logger = get_logger(__name__)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-from src.platforms.deepseek.core.constants import COMMON_HEADERS, DEFAULT_HOST
+from provider_deepseek.core.constants import COMMON_HEADERS, DEFAULT_HOST
 
 
 def build_headers(

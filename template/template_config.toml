@@ -2,7 +2,7 @@
 # 复制此文件到 config/ 目录并重命名为 main_config.toml
 
 [server]
-version = "2.2.273"               # 与 pyproject.toml / 打包脚本一致
+version = "2.2.274"               # 与 pyproject.toml / 打包脚本一致
 host = "0.0.0.0"
 port = 1337
 debug = false

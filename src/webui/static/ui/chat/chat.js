@@ -1243,36 +1243,20 @@ function clearChatMessages() {
 // ========================= Model List =========================
 async function loadModelsList() {
   try {
-    var result = await fetchJson("/v1/models");
-    var dropdown = window._dropdowns && window._dropdowns["chatModelSelect"];
-    if (!dropdown || !result || !result.data) return;
-    var models = result.data;
-    var opts = [];
-    var autoSelect = null;
-    for (var i = 0; i < models.length; i++) {
-      var caps = models[i].capabilities || {};
-      if (!caps.chat) continue;
-      opts.push({ value: models[i].id, text: models[i].id });
-      if (models[i].id === "qwen3.7-max") autoSelect = models[i].id;
+    if (state.modelsLoaded && state.models.length) {
+      if (typeof populateModelDropdowns === 'function') populateModelDropdowns(state.models);
+      return;
     }
-    dropdown.setOptions(opts, false);
-    // Apply saved model from persist if it exists in the options
-    if (_savedChatModel) {
-      var found = false;
-      for (var j = 0; j < opts.length; j++) {
-        if (opts[j].value === _savedChatModel) { found = true; break; }
-      }
-      if (found) {
-        dropdown.setValue(_savedChatModel);
-        _savedChatModel = null;
-        return;
-      }
+    var result = await fetchJson('/v1/webui/summary');
+    if (!result || !result.models) {
+      if (typeof populateModelDropdowns === 'function') populateModelDropdowns(null, { error: true });
+      return;
     }
-    if (autoSelect) dropdown.setValue(autoSelect);
-    else if (opts.length > 0) dropdown.setValue(opts[0].value);
+    state.modelsLoaded = true;
+    state.models = result.models;
+    if (typeof populateModelDropdowns === 'function') populateModelDropdowns(result.models);
   } catch (error) {
-    var dropdown = window._dropdowns && window._dropdowns["chatModelSelect"];
-    if (dropdown) dropdown.setOptions([{ value: '', text: t('overview.loadFailed') }], false);
+    if (typeof populateModelDropdowns === 'function') populateModelDropdowns(null, { error: true });
   }
 }
 
@@ -1281,6 +1265,7 @@ var chatConversationHistory = [];
 var _chatAbortController = null;
 var _chatStateLoaded = null;
 var _savedChatModel = null;
+window._savedChatModel = null;
 var _chatStateReady = false;
 
 function _setStreaming(isStreaming) {
@@ -1421,6 +1406,7 @@ async function loadChatState() {
           // Restore model and protocol selections
           if (persisted.model) {
             _savedChatModel = persisted.model;
+            window._savedChatModel = persisted.model;
             await loadModelsList();
           }
           if (persisted.protocol) {
@@ -1457,6 +1443,7 @@ async function loadChatState() {
     var savedProtocol = localStorage.getItem("provider.webui.chatProtocol");
     if (savedModel) {
       _savedChatModel = savedModel;
+      window._savedChatModel = savedModel;
       var dd = window._dropdowns && window._dropdowns["chatModelSelect"];
       if (dd) dd.setValue(savedModel);
     }

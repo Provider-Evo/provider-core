@@ -22,10 +22,10 @@ def resolve_project_root() -> Path:
         if meipass:
             return Path(meipass).resolve().parent
         return Path(sys.executable).resolve().parent
-    return Path(__file__).resolve().parent.parent
+    return Path(__file__).resolve().parents[2]
 
 
-# Project root: src/paths.py -> project root (dev) or frozen bundle parent
+# Project root: src/foundation/paths.py -> repo root (dev) or frozen bundle parent
 project_root: Path = resolve_project_root()
 
 

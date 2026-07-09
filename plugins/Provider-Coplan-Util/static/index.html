@@ -1,35 +1,225 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Entropy Coplan</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entropy CodingPlan</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/plugins/provider-coplan-util/coplan.css">
 </head>
 <body>
-  <header class="hero">
-    <p class="eyebrow">CodingPlan</p>
-    <h1>Entropy</h1>
-    <p class="tagline">策略组 · 密钥调度 · 策略市场</p>
-  </header>
-  <main class="grid">
-    <section class="card">
-      <h2>状态</h2>
-      <pre id="status">加载中...</pre>
-    </section>
-    <section class="card">
-      <h2>策略组</h2>
-      <div class="row">
-        <input id="groupName" placeholder="策略组名称">
-        <button id="createGroup" type="button">创建</button>
+<div id="app">
+  <nav class="navbar">
+    <div class="navbar-brand" @click="navigate('home')">Entropy CodingPlan<span>Entropy 代码计划</span></div>
+    <div class="navbar-actions">
+      <button class="btn btn-sm btn-outline coplan-theme-btn" type="button" id="coplanThemeBtn" aria-label="切换主题" title="切换主题"><span id="coplanThemeIcon">&#9790;</span></button>
+      <button class="btn btn-sm btn-outline" type="button" onclick="window.location.href='/coplan/admin'">管理后台</button>
+      <template v-if="!token">
+        <button class="btn btn-sm btn-outline" @click="navigate('login')">登录</button>
+        <button class="btn btn-sm btn-primary" @click="navigate('register')">注册</button>
+      </template>
+      <template v-else>
+        <button class="btn btn-sm btn-outline" @click="navigate('dashboard')">控制台</button>
+        <button class="btn btn-sm btn-outline" @click="doLogout">退出</button>
+      </template>
+    </div>
+  </nav>
+
+  <!-- Home -->
+  <div v-if="currentPage === 'home'">
+    <div class="landing-hero">
+      <h1 class="animate-in"><span>Entropy</span>CodingPlan</h1>
+      <p class="animate-in delay-1">{{ heroTagline }}</p>
+    </div>
+
+    <div class="agents-section animate-in delay-2">
+      <h3>{{ agentsTitle }}</h3>
+      <div class="agents-track-wrapper">
+        <div class="agents-track">
+          <img v-for="(a, i) in agentTrack" :key="i + '-' + a.name" :src="a.logo_url" :alt="a.name" class="agent-logo" />
+        </div>
       </div>
-      <ul id="groups"></ul>
-    </section>
-    <section class="card">
-      <h2>策略市场</h2>
-      <ul id="market"></ul>
-    </section>
-  </main>
-  <script src="/static/plugins/provider-coplan-util/coplan.js"></script>
+      <p v-if="platforms.length" class="text-sm text-muted" style="text-align:center;margin-top:16px;">
+        已接入平台：{{ platforms.join(' · ') }}
+      </p>
+    </div>
+
+    <div class="advantages-section">
+      <h2 class="animate-in">{{ advantagesTitle }}</h2>
+      <div class="advantages-grid">
+        <div v-for="(item, i) in advantages" :key="item.title" class="advantage-card animate-in" :style="{ animationDelay: (0.1 * (i + 1)) + 's' }">
+          <div class="advantage-icon">{{ item.icon }}</div>
+          <div class="advantage-title">{{ item.title }}</div>
+          <div class="advantage-desc">{{ item.description }}</div>
+          <span class="advantage-tag">{{ item.tag }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pricing-section">
+      <h2 class="animate-in delay-3">{{ pricingTitle }}</h2>
+      <div class="pricing-grid">
+        <div v-for="(p, i) in publicPlans" :key="p.id" class="pricing-card animate-in delay-4" :class="{ featured: p.name === 'Pro' }" :style="{ animationDelay: (0.3 + i * 0.1) + 's' }">
+          <div class="pricing-name">{{ p.name }}</div>
+          <div class="pricing-price">¥{{ p.price }}<span>/月</span></div>
+          <div class="pricing-desc">{{ p.description }}</div>
+          <ul class="pricing-features">
+            <li>每5小时 {{ p.requests_per_5h }} 次调用</li>
+            <li>每月 {{ p.requests_per_month }} 次调用</li>
+            <li v-for="f in parseFeatures(p.features).filter(f=>!f.startsWith('model:'))" :key="f">{{ f }}</li>
+            <li>无周限制</li>
+          </ul>
+          <button class="btn btn-primary btn-block" @click="navigate('register')">立即开通</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ Section -->
+    <div class="faq-section">
+      <h2 class="animate-in">{{ faqTitle }}</h2>
+      <div v-for="(faq, i) in faqs" :key="i" class="faq-item animate-in" :class="{ open: faq.open }" :style="{ animationDelay: (0.1 * i) + 's' }" @click="faq.open = !faq.open">
+        <div class="faq-question">
+          <span>{{ faq.q }}</span>
+          <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <div class="faq-answer">{{ faq.a }}</div>
+      </div>
+    </div>
+
+    <div class="contact-section">
+      <p>{{ contactHint }}<span>{{ adminContact || '请联系管理员' }}</span></p>
+    </div>
+  </div>
+
+  <!-- Login -->
+  <div v-if="currentPage === 'login'" class="auth-container">
+    <div class="auth-box">
+      <h2>欢迎回来</h2>
+      <p class="subtitle">登录你的账号</p>
+      <div v-if="authError" class="error-text">{{ authError }}</div>
+      <input v-model="loginForm.username" placeholder="用户名" @keyup.enter="doLogin" />
+      <input v-model="loginForm.password" type="password" placeholder="密码" @keyup.enter="doLogin" />
+      <button class="btn btn-primary btn-block" @click="doLogin" :disabled="loading">登录</button>
+      <div class="auth-switch">还没有账号？ <a @click="navigate('register')">注册</a></div>
+    </div>
+  </div>
+
+  <!-- Register -->
+  <div v-if="currentPage === 'register'" class="auth-container">
+    <div class="auth-box">
+      <h2>创建账号</h2>
+      <p class="subtitle">注册 Entropy CodingPlan</p>
+      <div v-if="authError" class="error-text">{{ authError }}</div>
+      <input v-model="registerForm.username" placeholder="用户名（2-32字符）" />
+      <input v-model="registerForm.email" placeholder="邮箱（可选）" />
+      <input v-model="registerForm.password" type="password" placeholder="密码（至少6位）" />
+      <button class="btn btn-primary btn-block" @click="doRegister" :disabled="loading">注册</button>
+      <div class="auth-switch">已有账号？ <a @click="navigate('login')">登录</a></div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div v-if="currentPage === 'dashboard'" class="dashboard">
+    <div class="dash-header">
+      <div><h1>控制台</h1><div class="dash-user">欢迎, {{ me?.username }}</div></div>
+      <button class="btn btn-sm btn-outline" @click="navigate('home')">返回首页</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab" :class="{ active: dashTab === 'overview' }" @click="dashTab = 'overview'">概览</div>
+      <div class="tab" :class="{ active: dashTab === 'usage' }" @click="dashTab = 'usage'">用量</div>
+      <div class="tab" :class="{ active: dashTab === 'keys' }" @click="dashTab = 'keys'">API 密钥</div>
+      <div class="tab" :class="{ active: dashTab === 'plans' }" @click="dashTab = 'plans'">我的套餐</div>
+      <div class="tab" :class="{ active: dashTab === 'security' }" @click="dashTab = 'security'">安全</div>
+    </div>
+
+    <div v-if="dashTab === 'overview'">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">当前套餐</div><div class="stat-value">{{ activePlan?.name || '无' }}</div><div v-if="activePlan" class="stat-sub">¥{{ activePlan.price }}</div></div>
+        <div class="stat-card"><div class="stat-label">本月已用</div><div class="stat-value">{{ currentUsage?.requests_month || 0 }}</div><div class="stat-sub">/ {{ activePlan?.requests_per_month || 0 }} 次</div><div v-if="activePlan" class="progress-bar"><div class="progress-fill" :class="progressClass(monthUsagePercent)" :style="{ width: Math.min(monthUsagePercent, 100) + '%' }"></div></div></div>
+        <div class="stat-card"><div class="stat-label">5小时内已用</div><div class="stat-value">{{ currentUsage?.requests_5h || 0 }}</div><div class="stat-sub">/ {{ activePlan?.requests_per_5h || 0 }} 次</div><div v-if="activePlan" class="progress-bar"><div class="progress-fill" :class="progressClass(fiveHourUsagePercent)" :style="{ width: Math.min(fiveHourUsagePercent, 100) + '%' }"></div></div></div>
+        <div class="stat-card"><div class="stat-label">累计请求</div><div class="stat-value">{{ totalUsage?.total_requests || 0 }}</div></div>
+      </div>
+      <div v-if="!activePlan" class="card" style="border-color:var(--warning);">
+        <div class="text-sm" style="color:var(--warning);">⚠️ 你还没有开通套餐。请联系管理员开通套餐后即可使用 API 服务。</div>
+        <div class="mt-8 text-sm text-muted">{{ adminContact || '请联系管理员' }}</div>
+      </div>
+    </div>
+
+    <div v-if="dashTab === 'usage'">
+      <div class="card">
+        <div class="card-header"><span class="card-title">用量趋势</span><select v-model="usageDays" @change="loadUsage" class="btn btn-sm btn-outline"><option value="7">近7天</option><option value="30">近30天</option><option value="90">近90天</option></select></div>
+        <div class="chart-container"><canvas ref="usageChart"></canvas></div>
+      </div>
+      <div class="stats-grid" style="margin-top:16px;">
+        <div class="stat-card"><div class="stat-label">累计输入 Tokens</div><div class="stat-value">{{ formatNumber(totalUsage?.total_input_tokens || 0) }}</div></div>
+        <div class="stat-card"><div class="stat-label">累计输出 Tokens</div><div class="stat-value">{{ formatNumber(totalUsage?.total_output_tokens || 0) }}</div></div>
+      </div>
+    </div>
+
+    <div v-if="dashTab === 'keys'">
+      <div class="card">
+        <div class="card-header"><span class="card-title">API 密钥</span><button class="btn btn-sm btn-primary" @click="showGenerateKey">+ 生成密钥</button></div>
+        <div v-if="newKey" class="card mb-16 key-reveal-card"><div class="text-sm key-reveal-title">新密钥已生成（请妥善保存，关闭后将无法再次查看）：</div><div class="mono text-sm mt-8 key-reveal-body"><span>{{ newKey }}</span><button class="btn btn-sm btn-outline" @click="copyText(newKey)">复制</button></div></div>
+        <table><thead><tr><th>密钥</th><th>备注</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody><tr v-for="k in myKeys" :key="k.id">
+            <td class="mono text-sm" style="position:relative;">
+              <span v-if="revealedKeys.includes(k.id)" style="word-break:break-all;user-select:all;">{{ k.key }}</span>
+              <span v-else style="cursor:pointer;" @click="revealedKeys.push(k.id)">{{ maskKey(k.key) }}</span>
+              <button v-if="!revealedKeys.includes(k.id)" class="btn btn-sm btn-outline" style="margin-left:6px;padding:2px 6px;font-size:11px;" @click="copyText(k.key)">复制</button>
+              <button v-if="revealedKeys.includes(k.id)" class="btn btn-sm btn-outline" style="margin-left:6px;padding:2px 6px;font-size:11px;" @click="copyText(k.key)">复制</button>
+            </td>
+            <td class="text-sm">{{ k.label || '-' }}</td>
+            <td><span class="badge" :class="k.is_active?'badge-green':'badge-red'">{{ k.is_active?'活跃':'已撤销' }}</span></td>
+            <td class="text-sm text-muted">{{ k.created_at }}</td><td><button v-if="k.is_active" class="btn btn-sm btn-danger" @click="revokeMyKey(k)">撤销</button></td></tr></tbody>
+        </table>
+        <div v-if="!myKeys.length" class="empty-state text-sm">暂无密钥</div>
+      </div>
+    </div>
+
+    <div v-if="dashTab === 'plans'">
+      <div class="card"><div class="card-title mb-16">当前套餐</div>
+        <div v-if="activePlan"><div class="flex-between"><div><strong style="font-size:18px;">{{ activePlan.name }}</strong><span class="badge badge-green" style="margin-left:8px;">生效中</span></div><div class="text-sm text-muted">¥{{ activePlan.price }}</div></div>
+          <div class="text-sm text-muted mt-8">{{ activePlan.description }}</div>
+          <div class="mt-8 text-sm">开通时间: {{ activePlan.activated_at }}</div>
+          <div v-if="activePlan.expires_at" class="text-sm">过期时间: {{ activePlan.expires_at }}</div>
+        </div>
+        <div v-else class="text-muted text-sm">暂无生效中的套餐</div>
+      </div>
+      <div class="card"><div class="card-title mb-16">套餐历史</div>
+        <table><thead><tr><th>套餐</th><th>价格</th><th>开通时间</th><th>状态</th></tr></thead>
+          <tbody><tr v-for="p in planHistory" :key="p.id"><td><strong>{{ p.name }}</strong></td><td>¥{{ p.price }}</td><td class="text-sm text-muted">{{ p.activated_at }}</td><td><span class="badge" :class="p.is_active?'badge-green':'badge-gray'">{{ p.is_active?'生效中':'已过期' }}</span></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security Tab -->
+  <div v-if="currentPage === 'dashboard' && dashTab === 'security'" class="dashboard">
+    <div class="card" style="max-width:480px;">
+      <div class="card-title mb-16">修改密码</div>
+      <div v-if="passwordSuccess" class="text-sm" style="color:var(--success);margin-bottom:12px;">✓ 密码修改成功</div>
+      <div v-if="passwordError" class="error-text">{{ passwordError }}</div>
+      <div style="margin-bottom:12px;"><label style="display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:var(--text-secondary);">当前密码</label><input v-model="passwordForm.current" type="password" placeholder="输入当前密码" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;" /></div>
+      <div style="margin-bottom:12px;"><label style="display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:var(--text-secondary);">新密码</label><input v-model="passwordForm.new" type="password" placeholder="至少6位" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;" /></div>
+      <div style="margin-bottom:16px;"><label style="display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:var(--text-secondary);">确认新密码</label><input v-model="passwordForm.confirm" type="password" placeholder="再次输入新密码" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;" /></div>
+      <button class="btn btn-primary" @click="doChangePassword" :disabled="loading">修改密码</button>
+    </div>
+  </div>
+
+  <div v-if="showKeyModal" class="modal-overlay" @click.self="showKeyModal=false">
+    <div class="modal">
+      <h3>生成 API 密钥</h3>
+      <div class="form-group" style="margin-bottom:14px;"><label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text-secondary);">备注</label><input v-model="keyLabel" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;" placeholder="如: 生产环境" /></div>
+      <div class="modal-actions"><button class="btn btn-sm btn-outline" @click="showKeyModal=false">取消</button><button class="btn btn-sm btn-primary" @click="doGenerateKey">生成</button></div>
+    </div>
+  </div>
+</div>
+
+
 </body>
+<script src="/static/plugins/provider-coplan-util/coplan-theme.js"></script>
+<script src="/static/plugins/provider-coplan-util/coplan-app.js"></script>
 </html>

@@ -10,8 +10,9 @@ import time
 from pathlib import Path
 from typing import IO, Optional
 
-from src.core.server.worker import RESTART_EXIT_CODE, finalize_exit
-from src.logger import get_logger
+from src.core.server.lifecycle.worker import RESTART_EXIT_CODE, finalize_exit
+from src.foundation.logger import get_logger
+from src.foundation.paths import resolve_project_root
 
 __all__ = [
     "run_runner",
@@ -23,7 +24,7 @@ _RESTART_COOLDOWN = 1.0
 _ERROR_RESTART_DELAY = 10.0
 _DEFAULT_MAX_ERROR_RESTARTS = 3
 
-_ROOT = Path(__file__).resolve().parents[3]
+_ROOT = resolve_project_root()
 
 logger = get_logger(__name__)
 
@@ -85,6 +86,23 @@ def _build_worker_env(color_enabled: bool) -> dict:
         env["NO_COLOR"] = "1"
 
     return env
+
+
+def _describe_exit_code(exit_code: int) -> str:
+    """将子进程退出码转为可读说明。"""
+    if exit_code == RESTART_EXIT_CODE:
+        return f"退出码 {exit_code}（请求重启）"
+    if exit_code < 0:
+        signal_num = -exit_code
+        known = {
+            6: "SIGABRT",
+            9: "SIGKILL",
+            11: "SIGSEGV 段错误",
+            15: "SIGTERM",
+        }
+        label = known.get(signal_num, f"信号 {signal_num}")
+        return f"退出码 {exit_code}（{label}）"
+    return f"退出码 {exit_code}"
 
 
 def _pipe_reader(stream: IO[bytes]) -> None:
@@ -164,6 +182,7 @@ def run_runner() -> None:
         last_start_time = time.time()
 
         logger.debug("启动 Worker 子进程...")
+        worker_started_at = time.time()
 
         try:
             proc = subprocess.Popen(
@@ -206,6 +225,14 @@ def run_runner() -> None:
         if reader_thread is not None:
             reader_thread.join(timeout=2.0)
 
+        worker_runtime = time.time() - worker_started_at
+        if exit_code == 0 and worker_runtime < 3.0:
+            logger.warning(
+                "Worker 在 %.1f 秒内正常退出；若服务未启动，请检查 1337 端口是否已被占用"
+                "（netstat -ano | findstr 1337）或查看上方 Worker 日志",
+                worker_runtime,
+            )
+
         if exit_code == RESTART_EXIT_CODE:
             logger.info(
                 "触发自动重启（退出码 %d），冷却 %.1f 秒后重启...",
@@ -223,8 +250,8 @@ def run_runner() -> None:
                 )
                 break
             logger.warning(
-                "Worker 因错误退出（退出码 %d），等待 %.1f 秒后重启（第 %d/%d 次）...",
-                exit_code,
+                "Worker 因错误退出（%s），等待 %.1f 秒后重启（第 %d/%d 次）...",
+                _describe_exit_code(exit_code),
                 _ERROR_RESTART_DELAY,
                 error_restart_count,
                 max_error_restarts,

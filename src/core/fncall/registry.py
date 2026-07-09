@@ -8,7 +8,7 @@ from echotools.fncall.registry import (
     _get_custom_protocol,
     _mapping_logged,
 )
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from echotools.protocol.base import (
     ToolProtocol,
     _PROTOCOL_REGISTRY,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Union
 
-from src.platforms.sse_common import parse_openai_sse_line
+from provider_sdk.extensions.platform.sse_common import parse_openai_sse_line
 
 __all__ = ["parse_sse_line"]
 

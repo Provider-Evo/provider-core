@@ -8,8 +8,8 @@ import aiohttp
 
 from src.core.dispatch.candidate import Candidate
 from src.core.utils.compat.models_cache import ModelsCache
-from src.logger import get_logger
-from src.platforms.base import PlatformAdapter
+from src.foundation.logger import get_logger
+from provider_sdk.extensions.platform.adapter import PlatformAdapter
 from .constants import (
     CAPS,
     FETCH_MODELS_ENABLED,
@@ -52,16 +52,14 @@ class ZenAdapter(PlatformAdapter):
             from .opencode.client import OpencodeClient
 
             self._client = OpencodeClient()
-            cache_platform = "zen-proxy"
         else:
             from .client import ZenClient
 
             self._client = ZenClient()
-            cache_platform = "zen"
 
         await self._client.init_immediate(session)
         self._cache = ModelsCache(
-            platform=cache_platform,
+            platform="zen",
             fallback_models=MODELS,
             fetch_enabled=FETCH_MODELS_ENABLED,
         )

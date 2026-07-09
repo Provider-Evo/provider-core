@@ -1,27 +1,29 @@
 # src/core/server/watcher.py
 
-文件变更监控器，负责热重载平台、检测核心变更触发重启、检测前端变更输出日志提示。
+向后兼容别名：`FileWatcher = HotReloadService`。实现见 `src/core/server/infra/reload/service.py`。
 
 ## 监控范围
 
-- `src/` 整个目录（递归）
-- `config/main_config.toml`
+- `src/`（递归）
+- `plugins/`（递归，含 `_manifest.json`）
 - `main.py`
+- `config/main_config.toml`
+- `config/webui_config.toml`（仅日志，不触发热重载）
 
 ## 文件类型过滤
 
-监控扩展名：`.py`, `.toml`, `.js`, `.css`, `.html`
+`.py`、`.toml`、`.js`、`.css`、`.html`；`plugins/` 下另监视 `_manifest.json` / `_manifest.json.disabled`。
 
 ## 变更分类
 
+详见 [infra/reload/README.md](infra/reload/README.md)。摘要：
+
 | 变更位置 | 行为 |
 |---------|------|
-| `main_config.toml` 或 `main.py` | 进程重启 (exit 42) |
-| `src/core/` 或 `src/routes/` | 进程重启 (exit 42) |
-| `src/platforms/<name>/` | 平台热重载 |
-| `src/webui/static/` | 日志提示用户手动刷新浏览器 |
-| 其他 `src/` 下的文件 | 进程重启 (exit 42) |
-
-## 前端文件变更处理
-
-检测到 `src/webui/static/` 下文件变化时，仅输出日志提示用户手动刷新浏览器，不自动广播 reload 消息。
+| `plugins/**/static/` | L0：`static_changed` 通知 |
+| `plugins/**` platform 类型 | L2：插件重载，不重建 app |
+| `plugins/**` fncall/webui/coplan | L2 + L3：插件重载后 `reload_app` |
+| `src/platforms/<name>/` | L2：遗留平台路径 |
+| `src/webui/static/` | L0：`static_changed` |
+| `src/routes/`、部分 `src/core/` | L3：`AppHost.reload_app()` |
+| `main.py`、reload 子系统自身 | L4：exit 42 |

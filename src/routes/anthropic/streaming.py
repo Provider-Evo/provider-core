@@ -11,7 +11,7 @@ from src.core.config.resolver import resolve_model
 from src.core.errors import NoCandidateError, ProviderError
 from src.core.server import REGISTRY_KEY, safe_flush as _safe_flush
 from src.core.utils.compat.tools import parse_fncall_xml
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 from src.routes.anthropic.convert import (
     _build_dispatch_kwargs,

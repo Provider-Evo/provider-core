@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.platforms.qwen.core.shared import (
+from provider_qwen.core.shared import (
     CAPS,
     MODELS,
     MODELS_PERSIST_PATH,
@@ -23,7 +23,7 @@ from src.platforms.qwen.core.shared import (
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入 QwenAdapter。"""
     if name in ("QwenAdapter", "Adapter"):
-        from src.platforms.qwen.core.adaptercore import (  # noqa: PLC0415
+        from provider_qwen.core.adaptercore import (  # noqa: PLC0415
             QwenAdapter as _QwenAdapter,
         )
 

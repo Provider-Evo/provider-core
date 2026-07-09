@@ -10,7 +10,7 @@ import aiohttp
 
 from src.core.dispatch.candidate import Candidate, make_id
 from src.core.errors import PlatformError
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from ..accounts import API_KEYS
 from .headers import build_headers
 from .payloads import build_payload, MAX_TOKENS

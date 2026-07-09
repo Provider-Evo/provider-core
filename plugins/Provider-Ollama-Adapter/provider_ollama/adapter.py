@@ -12,7 +12,7 @@ from typing import Any
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入 OllamaAdapter。"""
     if name in ("OllamaAdapter", "Adapter"):
-        from src.platforms.ollama.util import (  # noqa: PLC0415
+        from provider_ollama.util import (  # noqa: PLC0415
             OllamaAdapter as _OllamaAdapter,
         )
 

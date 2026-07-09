@@ -9,8 +9,8 @@ import aiohttp
 
 from src.core.dispatch.candidate import Candidate
 from src.core.utils.compat.models_cache import ModelsCache
-from src.logger import get_logger
-from src.platforms.base import PlatformAdapter
+from src.foundation.logger import get_logger
+from provider_sdk.extensions.platform.adapter import PlatformAdapter
 from .constants import CAPS, FETCH_MODELS_ENABLED, MODEL_FETCH_INTERVAL, MODELS
 
 logger = get_logger(__name__)

@@ -1,11 +1,16 @@
-# src/webui/routers/admin.py
+# src/webui/routers/admin/
 
-该模块负责 WebUI 管理端点，对外导出七个处理器：
+管理类 WebUI 路由，按职责拆分子模块。
 
-- `reload_service`：`POST /v1/admin/reload` — 触发退出码 42 完全重启服务。先返回成功响应，再异步触发 `os._exit(42)`。
-- `config_get`：`GET /v1/config` — 返回完整配置 JSON，直接读取 `config/main_config.toml`。
-- `config_put`：`PUT /v1/config` — 写入配置并重新加载。
-- `config_reload`：`POST /v1/config/reload` — 从文件重新加载配置，丢弃未保存更改。
+## config_panel.py
+
+主配置读写见 [config_panel.md](./admin/config_panel.md)。WebUI 便携配置见 [webui_config_panel.md](./admin/webui_config_panel.md)。配置页下拉可在 `main_config.toml` 与 `webui_config.toml` 间切换。
+
+## admin.py
+
+该模块负责其余 WebUI 管理端点：
+
+- `reload_service`：`POST /v1/admin/reload` — 触发优雅重启（exit 42）。
 - `persist_get`：`GET /v1/webui/persist/{filename}` — 读取 `persist/webui/json/` 目录下的 JSON/TOML 文件。`config.toml` 映射到 `config/webui_config.toml`。
 - `persist_put`：`POST /v1/webui/persist/{filename}` — 写入 JSON/TOML 到 `persist/webui/json/` 目录。
 - `bg_image_upload`：`POST /v1/webui/bg-image` — 上传终端背景图片到 `persist/webui/img/`。接收 multipart form data，文件大小限制 5MB，支持 PNG/JPEG/GIF/WEBP。返回 `{"url": "/v1/webui/bg-image/{filename}", "filename": "..."}`。

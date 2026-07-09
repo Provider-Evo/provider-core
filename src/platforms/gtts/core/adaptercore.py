@@ -13,7 +13,7 @@ import aiohttp
 
 from src.core.dispatch.candidate import Candidate
 from src.core.errors import NotSupportedError
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from src.platforms.base import PlatformAdapter
 from .constants import CAPS, MODELS
 from .client import Client

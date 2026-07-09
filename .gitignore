@@ -65,10 +65,11 @@ NOTE.txt
 nul
 server.log
 
+# plugins
+plugins/
+
 # aitianhu2 platform
 src/platforms/aitianhu2/
-plugins/Provider-Aitianhu2-Adapter/
-plugins/Provider-OpencodeZen-Adapter/
 
 # Documentation and tests
 docs-src/

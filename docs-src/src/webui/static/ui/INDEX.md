@@ -18,7 +18,11 @@ ui/
 
 ### bootstrap.js
 
-Bootstrap 框架的 JavaScript 实现，提供基础 UI 组件支持。
+Bootstrap 框架的 JavaScript 实现。页面加载时调用 `refreshAll()` 拉取 `/v1/webui/summary` 填充模型清单与下拉框；聊天/语音模型下拉通过 `populateModelDropdowns()` 更新，**不**调用需 API Key 的 `/v1/models`。
+
+语音模型筛选规则（`actions.js`）：
+- **STT**：`audio_transcription` / `audio_in`，或 `chat+vision` 多模态，或模型名含 whisper/transcribe
+- **TTS**：`edgetts` / `gtts` / `openaifm` 平台，或仅 `audio_gen` 无 `chat` 的专用语音模型
 
 ### dropdown.js
 

@@ -6,9 +6,9 @@ import json
 import os
 from typing import Dict, Optional, Union
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
-from src.paths import persist_json_dir
+from src.foundation.paths import persist_json_dir
 
 LOCAL_STORE_FILE_PATH = str(persist_json_dir() / "local_store.json")
 logger = get_logger(__name__)

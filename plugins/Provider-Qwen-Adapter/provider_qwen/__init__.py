@@ -11,7 +11,7 @@ from typing import Any
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入适配器类。"""
     if name in ("QwenAdapter", "Adapter"):
-        from src.platforms.qwen.core.adaptercore import (  # noqa: PLC0415
+        from provider_qwen.core.adaptercore import (  # noqa: PLC0415
             QwenAdapter as _QwenAdapter,
         )
 

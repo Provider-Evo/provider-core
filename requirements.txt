@@ -12,5 +12,7 @@ watchfiles>=0.21.0
 tomli>=2.0.0; python_version < '3.11'
 pydantic>=2.0.0
 typing-extensions>=4.7.0
+numpy>=1.21.0
+paramiko>=3.0.0
 echotools>=1.0.35
 provider-sdk>=0.2.0

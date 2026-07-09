@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.platforms.googletranslate.core.constants import (
+from provider_googletranslate.core.constants import (
     API_KEY,
     BASE_URL,
     CAPS,
@@ -28,7 +28,7 @@ from src.platforms.googletranslate.core.constants import (
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("GoogleTranslateAdapter", "Adapter"):
-        from src.platforms.googletranslate.core.adaptercore import (  # noqa: PLC0415
+        from provider_googletranslate.core.adaptercore import (  # noqa: PLC0415
             GoogleTranslateAdapter as _GoogleTranslateAdapter,
         )
 

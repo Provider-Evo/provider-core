@@ -13,7 +13,7 @@ except ModuleNotFoundError:
     from .runtime import Candidate
 
 try:
-    from src.platforms.base import PlatformAdapter
+    from provider_sdk.extensions.platform.adapter import PlatformAdapter
 except ModuleNotFoundError:
     from .runtime import PlatformAdapter
 

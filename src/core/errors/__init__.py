@@ -6,6 +6,7 @@ from typing import Optional
 from src.core.errors.base import ProviderError
 from src.core.errors.business import (
     ConfigError,
+    GatewayAbortedError,
     NetworkError,
     NoCandidateError,
     NotSupportedError,
@@ -56,6 +57,7 @@ __all__ = [
     "ServerError",
     "RequestTimeoutError",
     "NotSupportedError",
+    "GatewayAbortedError",
     "ImageError",
     "AudioError",
     "VideoError",

@@ -8,12 +8,12 @@ import secrets
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 import aiohttp
 
-from src.platforms.deepseek.accounts import ACCOUNTS, Account
-from src.platforms.deepseek.core.constants import (
+from provider_deepseek.accounts import ACCOUNTS, Account
+from provider_deepseek.core.constants import (
     CAPS,
     DEFAULT_HOST,
     HIF_REFRESH_INTERVAL,
@@ -25,12 +25,12 @@ from src.platforms.deepseek.core.constants import (
     MODEL_VISION,
     MODELS,
 )
-from src.platforms.deepseek.core.headers import build_headers
-from src.platforms.deepseek.core.hif import HifTokenManager, fetch_hif_tokens
-from src.platforms.deepseek.core.pow import WasmPow, download_wasm, get_pow_response
-from src.platforms.deepseek.core.sessionapi import create_session
-from src.platforms.deepseek.core.streamparser import StreamParser
-from src.platforms.deepseek.core.userapi import login
+from provider_deepseek.core.headers import build_headers
+from provider_deepseek.core.hif import HifTokenManager, fetch_hif_tokens
+from provider_deepseek.core.pow import WasmPow, download_wasm, get_pow_response
+from provider_deepseek.core.sessionapi import create_session
+from provider_deepseek.core.streamparser import StreamParser
+from provider_deepseek.core.userapi import login
 from src.core.dispatch.candidate import Candidate, make_id
 
 logger = get_logger(__name__)

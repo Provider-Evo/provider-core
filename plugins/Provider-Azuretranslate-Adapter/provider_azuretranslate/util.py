@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.platforms.azuretranslate.core.constants import (
+from provider_azuretranslate.core.constants import (
     API_VERSION,
     BASE_URL,
     CAPS,
@@ -28,7 +28,7 @@ from src.platforms.azuretranslate.core.constants import (
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("AzureTranslateAdapter", "Adapter"):
-        from src.platforms.azuretranslate.core.adaptercore import (  # noqa: PLC0415
+        from provider_azuretranslate.core.adaptercore import (  # noqa: PLC0415
             AzureTranslateAdapter as _AzureTranslateAdapter,
         )
 

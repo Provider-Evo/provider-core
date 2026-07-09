@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
 
-from src.platforms.openrouter.core.constants import (
+from provider_openrouter.core.constants import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -22,15 +22,15 @@ from src.platforms.openrouter.core.constants import (
     RATE_LIMIT_COOLDOWN,
     RECOVERY_INTERVAL,
 )
-from src.platforms.openrouter.core.headers import DEFAULT_HEADERS, build_headers
-from src.platforms.openrouter.core.payloads import build_payload
-from src.platforms.openrouter.core.sse import parse_sse_line
+from provider_openrouter.core.headers import DEFAULT_HEADERS, build_headers
+from provider_openrouter.core.payloads import build_payload
+from provider_openrouter.core.sse import parse_sse_line
 
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("OpenRouterAdapter", "Adapter"):
-        from src.platforms.openrouter.core.adaptercore import (  # noqa: PLC0415
+        from provider_openrouter.core.adaptercore import (  # noqa: PLC0415
             OpenRouterAdapter as _OpenRouterAdapter,
         )
 

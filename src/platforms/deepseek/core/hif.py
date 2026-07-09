@@ -7,7 +7,7 @@ import asyncio
 import time
 from typing import Any, Optional, Tuple
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 import aiohttp
 

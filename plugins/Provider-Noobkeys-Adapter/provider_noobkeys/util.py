@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.platforms.noobkeys.core.constants import (
+from provider_noobkeys.core.constants import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -21,15 +21,15 @@ from src.platforms.noobkeys.core.constants import (
     RATE_LIMIT_COOLDOWN,
     RECOVERY_INTERVAL,
 )
-from src.platforms.noobkeys.core.headers import DEFAULT_HEADERS, build_headers
-from src.platforms.noobkeys.core.payloads import build_payload
-from src.platforms.noobkeys.core.sse import parse_sse_line
+from provider_noobkeys.core.headers import DEFAULT_HEADERS, build_headers
+from provider_noobkeys.core.payloads import build_payload
+from provider_noobkeys.core.sse import parse_sse_line
 
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("NoobKeysAdapter", "Adapter"):
-        from src.platforms.noobkeys.core.adaptercore import (  # noqa: PLC0415
+        from provider_noobkeys.core.adaptercore import (  # noqa: PLC0415
             NoobKeysAdapter as _NoobKeysAdapter,
         )
 

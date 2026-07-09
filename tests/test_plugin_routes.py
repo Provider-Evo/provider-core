@@ -7,7 +7,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_register_plugin_routes_adds_coplan(aiohttp_client_session):
     from src.bootstrap.app_factory import create_application
-    from src.core.dispatch.registry import Registry
+    from src.core.dispatch.engine.registry import Registry
 
     registry = Registry()
     await registry.init(aiohttp_client_session)

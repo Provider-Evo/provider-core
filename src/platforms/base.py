@@ -8,7 +8,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import aiohttp
 
 from src.core import Candidate
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from src.platforms.capabilities import (
     DefaultAudioMixin,
     DefaultEmbeddingMixin,

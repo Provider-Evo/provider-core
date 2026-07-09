@@ -10,15 +10,15 @@ from echotools.dispatch.usage import normalize_usage as _normalize_usage
 
 from src.core.config import get_config
 from src.core.dispatch.candidate import Candidate
-from src.core.dispatch.fncall_context import (
+from src.core.dispatch.engine.fncall_context import (
     dump_race_prompt,
     native_complete_kw,
     prepare_worker_messages,
     resolve_protocol,
 )
 from src.core.errors import NoCandidateError, ProviderError
-from src.core.http_errors import maybe_classify_exception
-from src.logger import get_logger
+from src.core.errors.http_errors import maybe_classify_exception
+from src.foundation.logger import get_logger
 
 logger = get_logger(__name__)
 

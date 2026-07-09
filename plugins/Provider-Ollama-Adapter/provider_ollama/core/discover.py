@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from .constants import (
     BASE_URL,
     MAX_WORKERS,

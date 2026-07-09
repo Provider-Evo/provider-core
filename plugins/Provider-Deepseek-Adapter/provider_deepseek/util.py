@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from src.logger import get_logger
-from src.platforms.deepseek.accounts import ACCOUNTS, Account
-from src.platforms.deepseek.core.client import make_stream_id
-from src.platforms.deepseek.core.constants import (
+from src.foundation.logger import get_logger
+from provider_deepseek.accounts import ACCOUNTS, Account
+from provider_deepseek.core.client import make_stream_id
+from provider_deepseek.core.constants import (
     CAPS,
     CAPS_FLASH,
     CAPS_PRO,
@@ -28,11 +28,11 @@ from src.platforms.deepseek.core.constants import (
     MODEL_VISION,
     MODELS,
 )
-from src.platforms.deepseek.core.headers import build_basic_headers, build_headers
-from src.platforms.deepseek.core.hif import HifTokenManager, fetch_hif_tokens
-from src.platforms.deepseek.core.modelcache import ModelsCache
-from src.platforms.deepseek.core.pow import WasmPow, download_wasm, get_pow_response
-from src.platforms.deepseek.core.sessionapi import (
+from provider_deepseek.core.headers import build_basic_headers, build_headers
+from provider_deepseek.core.hif import HifTokenManager, fetch_hif_tokens
+from provider_deepseek.core.modelcache import ModelsCache
+from provider_deepseek.core.pow import WasmPow, download_wasm, get_pow_response
+from provider_deepseek.core.sessionapi import (
     create_session,
     delete_all_sessions,
     delete_session,
@@ -43,8 +43,8 @@ from src.platforms.deepseek.core.sessionapi import (
     update_pinned,
     update_session_title,
 )
-from src.platforms.deepseek.core.streamparser import StreamParser
-from src.platforms.deepseek.core.userapi import (
+from provider_deepseek.core.streamparser import StreamParser
+from provider_deepseek.core.userapi import (
     export_all_history,
     get_client_settings,
     get_current_user,
@@ -99,13 +99,13 @@ def parse_sse_line(
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in {"DeepseekAdapter", "Adapter"}:
-        from src.platforms.deepseek.core.adaptercore import (  # noqa: PLC0415
+        from provider_deepseek.core.adaptercore import (  # noqa: PLC0415
             DeepseekAdapter as _DeepseekAdapter,
         )
 
         return _DeepseekAdapter
     if name == "DeepseekClient":
-        from src.platforms.deepseek.core.client import (  # noqa: PLC0415
+        from provider_deepseek.core.client import (  # noqa: PLC0415
             DeepseekClient as _DeepseekClient,
         )
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Union
 
-from src.platforms.sse_common import load_sse_json
+from provider_sdk.extensions.platform.sse_common import load_sse_json
 
 __all__ = ["parse_sse_line"]
 

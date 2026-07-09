@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 import aiohttp.web
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 __all__ = ["register_plugin_routes"]
 
@@ -37,7 +37,7 @@ def _adapt_handler(handler: Callable[..., Any]) -> Callable[..., Any]:
 def register_plugin_routes(app: aiohttp.web.Application) -> None:
     """注册插件 Route 组件与 static/ 目录。"""
     try:
-        from src.core.plugins.runtime import get_plugin_runtime
+        from src.core.server.plugins.runtime import get_plugin_runtime
     except ImportError:
         return
 

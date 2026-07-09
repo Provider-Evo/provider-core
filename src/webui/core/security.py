@@ -8,8 +8,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from src.logger import get_logger
-from src.paths import persist_dir
+from src.foundation.logger import get_logger
+from src.foundation.paths import persist_dir
 
 __all__ = ["TokenManager"]
 

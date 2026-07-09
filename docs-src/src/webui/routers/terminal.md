@@ -85,6 +85,15 @@ xterm.js 终端支持三种背景模式，通过右键上下文菜单切换：
 - 依赖 `echotools.terminal`（`LocalTerminal` / `SSHTerminal` / `TerminalCallback`）。
 - 依赖 `src.core.terminal_sessions.TerminalSessionStore` 做持久化。
 
+## SSH 终端
+
+- `BridgedSSHTerminal`（`terminal_output_bridge.py`）子类化 `echotools` 的 `SSHTerminal`，负责实时输出广播。
+- 仅密码登录时设置 `look_for_keys=False`、`allow_agent=False`，不尝试本机公钥或 agent。
+- **优雅关闭**：`close()` 先取消读循环，再 `shutdown_write()` 后关闭 channel，最后 `transport.close()` + `client.close()`，降低重启/关闭时 socket 被硬掐的概率。
+- **重启期间**：主动 `close()` 时 `_closing` 为真，不触发 `exit` 回调，前端不会误报断开。
+- **状态持久化**：`save_state()` 在关停/热重载时写入 `{session_id}.json`，合并已有 `ssh_config`/`name`，避免覆盖 `TerminalSessionStore` 元数据。
+- **日志过滤**：`src.foundation.logger._suppress_paramiko_disconnect_noise()` 对 `paramiko.*` 添加过滤器，屏蔽预期断开时的 `10054`/`Socket exception` 等噪声（`WARNING` 级别无法屏蔽 `ERROR`，故用 filter）。
+
 ## 错误处理
 
 终端启动失败时（本地或 SSH），WebSocket 处理器直接向客户端发送 `{"type": "error", "message": "..."}` JSON 消息，而非静默失败。此前因 `_broadcast_error` 回调仅在 `attach_client` 时绑定，启动失败路径不会触发。

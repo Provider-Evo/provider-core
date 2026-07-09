@@ -12,12 +12,15 @@ def test_apply_windows_asyncio_patches_idempotent() -> None:
 
 
 def test_proactor_connection_lost_patch_installed_on_windows() -> None:
-    """Windows 上应标记 _call_connection_lost 已打补丁。"""
+    """Windows 上应标记 Proactor 补丁已安装。"""
     if sys.platform != "win32":
         return
 
+    import asyncio.base_events as base_events
     import asyncio.proactor_events as proactor_events
 
     win_asyncio.apply_windows_asyncio_patches()
-    patched = proactor_events._ProactorBasePipeTransport._call_connection_lost
-    assert getattr(patched, "_provider_patched", False)
+    patched_lost = proactor_events._ProactorBasePipeTransport._call_connection_lost
+    patched_attach = base_events.Server._attach
+    assert getattr(patched_lost, "_provider_patched", False)
+    assert getattr(patched_attach, "_provider_patched", False)

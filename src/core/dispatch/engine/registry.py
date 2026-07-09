@@ -8,7 +8,7 @@ from src.foundation.logger import get_logger
 from echotools.plugin.registry import PluginRegistry
 
 from src.core.config import get_config
-from src.core.dispatch.candidate import Candidate
+from src.core.dispatch.candidate import ALL_CAPABILITIES, Candidate
 from src.core.dispatch.engine.selector import Selector
 from src.foundation.paths import persist_dir
 
@@ -36,6 +36,47 @@ class Registry:
             await self._app_host.reload_app()
         except Exception as exc:
             logger.warning("插件热重载后应用重建失败: %s", exc)
+
+    def _platform_filters(self) -> tuple[Optional[List[str]], Optional[List[str]]]:
+        cfg = get_config()
+        plat_cfg = cfg.platforms_cfg
+        wl = plat_cfg.platform_list if plat_cfg.platform_list_type == "whitelist" else None
+        bl = plat_cfg.platform_list if plat_cfg.platform_list_type == "blacklist" else None
+        return wl, bl
+
+    def _register_platform_adapter(self, adapter: Any) -> bool:
+        wl, bl = self._platform_filters()
+        name = getattr(adapter, "name", "")
+        if not name:
+            return False
+        if wl is not None and name not in wl:
+            return False
+        if name in (bl or []):
+            return False
+        self._registry.register(adapter)
+        logger.info("平台插件已注册: %s", name)
+        return True
+
+    async def _unregister_platform_adapter(self, platform_name: str) -> None:
+        if not platform_name:
+            return
+        old = self._registry.get(platform_name)
+        if old is None:
+            return
+        try:
+            await old.close()
+        except Exception as exc:
+            logger.warning("关闭平台 [%s] 失败: %s", platform_name, exc)
+        self._registry._plugins.pop(platform_name, None)
+
+    def _plugin_runtime(self) -> Any:
+        if self._external_loader is not None:
+            return self._external_loader
+        from src.core.server.plugins.runtime import get_plugin_runtime
+
+        runtime = get_plugin_runtime()
+        self._external_loader = runtime
+        return runtime
 
     async def init(self, session: Any) -> None:
         """公开方法 init — 仅通过 plugins/ 加载平台适配器。
@@ -125,7 +166,7 @@ class Registry:
         return summary
 
     async def reload_plugins_by_ids(
-        self, plugin_ids: Sequence[str], session: Any
+        self, plugin_ids: Sequence[str], session: Any, *, reload_app: bool = True
     ) -> Dict[str, int]:
         """按插件 ID 热重载（coplan / fncall / webui / platform 等）。"""
         runtime = self._external_loader
@@ -170,16 +211,60 @@ class Registry:
                     continue
                 self._registry.register(adapter)
                 logger.info("平台插件已重新注册: %s", name)
+                models = list(getattr(adapter, "supported_models", []))
+                for model in models:
+                    try:
+                        await self.ensure_candidates(model, 1)
+                    except Exception as exc:
+                        logger.warning("候选项刷新失败 [%s]: %s", name, exc)
 
         summary = runtime.get_plugin_summary()
         logger.info(
-            "插件精确热重载完成: ids=%s loaded=%d failed=%d",
+            "插件精确热重载完成: ids=%s app_reload=%s loaded=%d failed=%d",
             list(plugin_ids),
+            reload_app,
             summary.get("loaded", 0),
             summary.get("failed", 0),
         )
-        await self._maybe_reload_app()
+        if reload_app:
+            await self._maybe_reload_app()
         return summary
+
+    async def sync_plugin_manifest(
+        self,
+        plugin_id: str,
+        session: Any,
+        *,
+        reload_app: bool = True,
+    ) -> str:
+        """manifest 启用/禁用或元数据变更时同步插件与平台注册表。"""
+        runtime = self._plugin_runtime()
+        record_before = runtime.loaded.get(plugin_id)
+        platform_name = ""
+        if record_before is not None and record_before.adapter is not None:
+            platform_name = getattr(record_before.adapter, "name", "")
+
+        action = await runtime.sync_plugin_manifest(plugin_id, session)
+        logger.info("插件 manifest 同步 [%s]: %s", plugin_id, action)
+
+        if action == "unloaded":
+            await self._unregister_platform_adapter(platform_name)
+        elif action in {"loaded", "reloaded"}:
+            record_after = runtime.loaded.get(plugin_id)
+            if record_after is not None and record_after.adapter is not None:
+                if platform_name and platform_name != getattr(record_after.adapter, "name", ""):
+                    await self._unregister_platform_adapter(platform_name)
+                self._register_platform_adapter(record_after.adapter)
+                adapter = record_after.adapter
+                for model in list(getattr(adapter, "supported_models", [])):
+                    try:
+                        await self.ensure_candidates(model, 1)
+                    except Exception as exc:
+                        logger.warning("候选项刷新失败 [%s]: %s", plugin_id, exc)
+
+        if reload_app and action in {"loaded", "reloaded", "unloaded"}:
+            await self._maybe_reload_app()
+        return action
 
     async def reload_platform(self, platform_name: str, session: Any) -> bool:
         """公开方法 reload_platform — 从 plugins/ 热重载平台适配器。"""
@@ -290,22 +375,55 @@ class Registry:
         import time
         out: List[Dict[str, Any]] = []
         seen: set = set()
-        for a in self._registry.plugins.values():
-            caps = getattr(a, "default_capabilities", {})
+        for a in self.adapters.values():
+            platform = getattr(a, "name", "")
+            default_caps = dict(getattr(a, "default_capabilities", {}) or {})
             ctx_len = getattr(a, "context_length", None)
-            for m in getattr(a, "supported_models", []):
-                if m not in seen:
-                    seen.add(m)
-                    entry: Dict[str, Any] = {
-                        "id": m,
-                        "object": "model",
-                        "created": int(time.time()),
-                        "owned_by": getattr(a, "name", ""),
-                        "capabilities": dict(caps),
-                    }
-                    if ctx_len is not None:
-                        entry["context_length"] = ctx_len
-                    out.append(entry)
+
+            model_caps: Dict[str, Dict[str, bool]] = {}
+            try:
+                candidates = await a.candidates()
+            except Exception as exc:
+                logger.debug("读取平台 [%s] 候选项失败: %s", platform, exc)
+                candidates = []
+
+            for cand in candidates:
+                if not isinstance(cand, Candidate):
+                    continue
+                cand_caps = {
+                    cap: True
+                    for cap in ALL_CAPABILITIES
+                    if getattr(cand, cap, False)
+                }
+                for model_name in getattr(cand, "models", []) or []:
+                    merged = model_caps.setdefault(model_name, {})
+                    merged.update(cand_caps)
+
+            try:
+                model_names = list(a.supported_models)
+            except Exception as exc:
+                logger.warning("读取平台 [%s] 模型列表失败: %s", platform, exc)
+                continue
+
+            for m in model_names:
+                if m in seen:
+                    continue
+                seen.add(m)
+                caps = dict(default_caps)
+                caps.update(model_caps.get(m, {}))
+                lower = m.lower()
+                if "whisper" in lower or "transcribe" in lower:
+                    caps["audio_transcription"] = True
+                entry: Dict[str, Any] = {
+                    "id": m,
+                    "object": "model",
+                    "created": int(time.time()),
+                    "owned_by": platform,
+                    "capabilities": caps,
+                }
+                if ctx_len is not None:
+                    entry["context_length"] = ctx_len
+                out.append(entry)
         return out
 
     async def list_models(self) -> List[Dict[str, Any]]:

@@ -13,9 +13,9 @@ import aiohttp
 
 from src.core.dispatch.candidate import Candidate
 from src.core.utils.compat.models_cache import ModelsCache
-from src.logger import get_logger
-from src.platforms.base import PlatformAdapter
-from src.platforms.ollama.core.constants import (
+from src.foundation.logger import get_logger
+from provider_sdk.extensions.platform.adapter import PlatformAdapter
+from provider_ollama.core.constants import (
     CAPS,
     FETCH_MODELS_ENABLED,
     MODEL_FETCH_INTERVAL,
@@ -74,7 +74,7 @@ class OllamaAdapter(PlatformAdapter):
         Args:
             session: aiohttp 会话实例。
         """
-        from src.platforms.ollama.core.client import OllamaClient  # noqa: PLC0415
+        from provider_ollama.core.client import OllamaClient  # noqa: PLC0415
 
         self._client = OllamaClient()
         self._init_task = asyncio.ensure_future(self._init_immediate(session))

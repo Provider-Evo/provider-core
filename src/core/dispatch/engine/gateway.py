@@ -6,8 +6,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 from src.core.dispatch.candidate import Candidate
 from src.core.config import get_config
-from src.core.dispatch.executors import run_selected
-from src.core.dispatch.fncall_context import (
+from src.core.dispatch.engine.executors import run_selected
+from src.core.dispatch.engine.fncall_context import (
     build_dispatch_extra_kw,
     fncall_lang,
     fold_system_into_user,
@@ -77,6 +77,24 @@ async def dispatch(
     **kw: Any,
 ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
     """核心分发：选择候选项并执行单发或竞速请求。"""
+    from src.core.errors import GatewayAbortedError
+    from src.core.server.plugins.hook_registry import get_hook_registry
+
+    hook_ctx = {
+        "registry": registry,
+        "messages": messages,
+        "model": model,
+        "stream": stream,
+        "platform": platform,
+        "tools": tools,
+    }
+    before = await get_hook_registry().invoke("gateway.request.before", hook_ctx)
+    if before.aborted:
+        raise GatewayAbortedError(before.abort_reason or "gateway.request.before aborted")
+    messages = list(before.context.get("messages", messages))
+    model = str(before.context.get("model", model))
+    platform = str(before.context.get("platform", platform))
+
     final_msgs = fold_system_into_user(messages, tools)
 
     cands = await _wait_for_candidates(registry, model, timeout=15.0, platform=platform)
@@ -108,3 +126,14 @@ async def dispatch(
         extra_kw,
     ):
         yield chunk
+
+    await get_hook_registry().invoke(
+        "gateway.request.after",
+        {
+            "registry": registry,
+            "model": model,
+            "stream": stream,
+            "platform": platform,
+            "candidate_count": len(sel),
+        },
+    )

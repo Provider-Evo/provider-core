@@ -6,7 +6,7 @@ from typing import Awaitable, Callable
 
 import aiohttp.web
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 logger = get_logger(__name__)
 

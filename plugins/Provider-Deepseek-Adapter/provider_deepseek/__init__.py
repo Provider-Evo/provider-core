@@ -5,6 +5,6 @@ from __future__ import annotations
 导出 DeepseekAdapter 类与 Adapter 通用别名，供注册表自动发现和加载。
 """
 
-from src.platforms.deepseek.adapter import Adapter, DeepseekAdapter
+from provider_deepseek.adapter import Adapter, DeepseekAdapter
 
 __all__ = ["Adapter", "DeepseekAdapter"]
