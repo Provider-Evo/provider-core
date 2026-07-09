@@ -71,12 +71,18 @@ class BridgedSSHTerminal(_LiveOutputSessionMixin, SSHTerminal):
         loop = asyncio.get_running_loop()
         if channel is not None:
             try:
-                await loop.run_in_executor(None, self._graceful_close_channel, channel)
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, self._graceful_close_channel, channel),
+                    timeout=2.0,
+                )
             except Exception:
                 pass
         if client is not None:
             try:
-                await loop.run_in_executor(None, self._graceful_close_client, client)
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, self._graceful_close_client, client),
+                    timeout=2.0,
+                )
             except Exception:
                 pass
 

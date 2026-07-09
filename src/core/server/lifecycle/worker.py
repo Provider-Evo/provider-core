@@ -24,6 +24,7 @@ from src.core.server.infra.reload import (
     bind_worker_shutdown,
     consume_restart_flag,
 )
+from src.core.server.infra.reload.internal.connection_drain import close_live_connections
 from src.core.server.infra.shutdown import request_shutdown
 from src.core.server.infra.event_loop_policy import configure_event_loop_policy
 from src.core.server.infra.win_asyncio import apply_windows_asyncio_patches
@@ -149,6 +150,55 @@ async def _create_background_tasks(
     return tasks, hot_reload
 
 
+async def _release_default_executor() -> None:
+    """非阻塞释放默认线程池，避免 asyncio 关停阶段 join 300 秒。"""
+    loop = asyncio.get_running_loop()
+    executor = getattr(loop, "_default_executor", None)
+    if executor is None:
+        return
+    try:
+        executor.shutdown(wait=False, cancel_futures=True)
+    except Exception as exc:
+        logger.debug("关闭默认线程池失败: %s", exc)
+    loop._default_executor = None
+
+
+def _abort_default_executor(loop: asyncio.AbstractEventLoop) -> None:
+    """同步丢弃事件循环默认线程池（run_worker finally 兜底）。"""
+    executor = getattr(loop, "_default_executor", None)
+    if executor is None:
+        return
+    try:
+        executor.shutdown(wait=False, cancel_futures=True)
+    except Exception:
+        pass
+    loop._default_executor = None
+
+
+async def _shutdown_terminal_sessions() -> None:
+    """关停终端 SSH/本地 shell，释放 run_in_executor 中的阻塞线程。"""
+    try:
+        get_observability_services().save_terminal_states()
+    except Exception as exc:
+        logger.debug("保存终端状态失败: %s", exc)
+    try:
+        from src.webui.routers.session.terminal.terminal import list_sessions
+
+        for session in list(list_sessions()):
+            terminal = getattr(session, "_terminal", None)
+            if terminal is None:
+                continue
+            close_fn = getattr(terminal, "close", None)
+            if close_fn is None:
+                continue
+            try:
+                await asyncio.wait_for(close_fn(), timeout=2.0)
+            except Exception as exc:
+                logger.debug("关闭终端会话失败: %s", exc)
+    except Exception as exc:
+        logger.debug("枚举终端会话失败: %s", exc)
+
+
 async def _drain_remaining_tasks() -> None:
     """取消并收割事件循环中残留任务，减轻 asyncio.run 退出阶段挂起。"""
     current = asyncio.current_task()
@@ -215,6 +265,17 @@ async def _shutdown(
         except Exception as exc:
             logger.warning("注销配置热重载回调失败: %s", exc, exc_info=True)
 
+    await _await_shutdown_step(
+        close_live_connections(),
+        timeout=_SHUTDOWN_STEP_TIMEOUT,
+        step_name="关闭活动 WebSocket",
+    )
+    await _await_shutdown_step(
+        _shutdown_terminal_sessions(),
+        timeout=_SHUTDOWN_STEP_TIMEOUT,
+        step_name="关闭终端会话",
+    )
+
     try:
         sockets = await get_observability_services().close_log_sockets()
     except Exception as exc:
@@ -255,6 +316,7 @@ async def _shutdown(
     )
 
     await _drain_remaining_tasks()
+    await _release_default_executor()
 
     logger.info("Provider-V2 已完全退出")
 
@@ -426,7 +488,7 @@ async def _run() -> int:
             logger.warning("关停过程异常，继续退出: %s", exc)
 
     exit_code = RESTART_EXIT_CODE if consume_restart_flag() else 0
-    finalize_exit(exit_code)
+    return exit_code
 
 
 def run_worker() -> None:
@@ -436,8 +498,10 @@ def run_worker() -> None:
 
     exit_code = 1
     global _active_main_loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
-        exit_code = asyncio.run(_run())
+        exit_code = loop.run_until_complete(_run())
     except KeyboardInterrupt:
         request_shutdown("keyboard_interrupt")
         logger.info("Worker 已退出")
@@ -452,4 +516,9 @@ def run_worker() -> None:
         exit_code = 1
     finally:
         _active_main_loop = None
+        _abort_default_executor(loop)
+        try:
+            loop.close()
+        except Exception as exc:
+            logger.debug("关闭事件循环失败: %s", exc)
         finalize_exit(exit_code)
