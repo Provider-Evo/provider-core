@@ -20,17 +20,20 @@ class VideoService:
 
     def __init__(
         self,
-        session: aiohttp.ClientSession,
+        session_provider: Callable[[], aiohttp.ClientSession],
         proxy_resolver: Callable[[], Optional[str]],
         cookies_provider: Callable[[], dict],
         create_chat: Callable[[str, str, str], Awaitable[str]],
         schedule_cleanup: Callable[[str, str], None],
     ) -> None:
-        self._session = session
+        self._session_provider = session_provider
         self._resolve_proxy = proxy_resolver
         self._cookies = cookies_provider
         self._create_chat = create_chat
         self._schedule_cleanup = schedule_cleanup
+
+    def _session(self) -> aiohttp.ClientSession:
+        return self._session_provider()
 
     async def generate(
         self,
@@ -88,7 +91,7 @@ class VideoService:
         size: str,
         token: str,
     ) -> Dict[str, Any]:
-        async with self._session.post(
+        async with self._session().post(
             f"{BASE_URL}{CHAT_PATH}?chat_id={chat_id}",
             json=build_i2v_payload(prompt, chat_id, model, image_url, image_name, size),
             headers=build_headers(token, chat_id=chat_id, cookies=self._cookies()),
@@ -116,7 +119,7 @@ class VideoService:
         url = f"{BASE_URL}{TASK_STATUS_PATH.format(task_id=task_id)}"
         headers = build_headers(token, chat_id=chat_id, cookies=self._cookies())
         while time.time() - start < VIDEO_TASK_MAX_POLL_TIME:
-            async with self._session.get(
+            async with self._session().get(
                 url,
                 headers=headers,
                 ssl=False,
@@ -134,7 +137,7 @@ class VideoService:
         raise RuntimeError(f"video task polling timed out after {VIDEO_TASK_MAX_POLL_TIME} seconds")
 
     async def _download_video(self, video_url: str) -> Optional[str]:
-        async with self._session.get(
+        async with self._session().get(
             video_url,
             headers={
                 "Accept": "*/*",

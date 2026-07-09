@@ -37,27 +37,48 @@ class QwenAdapter(PlatformAdapter):
         self._session: Optional[aiohttp.ClientSession] = None
         self._init_lock = asyncio.Lock()
         self._initialized = False
+        self._bg_setup_task: Optional[asyncio.Task] = None
 
     async def init(self, session: aiohttp.ClientSession) -> None:
         """Initialize the adapter (session parameter ignored; manages own session)."""
+        del session
         await self.ensure_initialized()
 
     async def close(self) -> None:
         """Shut down the client and the shared HTTP session."""
         await self.shutdown()
 
+    async def _open_session(self) -> aiohttp.ClientSession:
+        from src.core.server.infra.connector import make_connector
+
+        timeout = aiohttp.ClientTimeout(total=None, connect=20, sock_connect=20, sock_read=None)
+        connector = make_connector()
+        return aiohttp.ClientSession(timeout=timeout, connector=connector)
+
+    async def _teardown(self) -> None:
+        if self._bg_setup_task is not None and not self._bg_setup_task.done():
+            self._bg_setup_task.cancel()
+            try:
+                await self._bg_setup_task
+            except asyncio.CancelledError:
+                pass
+            self._bg_setup_task = None
+        if self._initialized or self._session is not None:
+            await self._client.close()
+            if self._session is not None and not self._session.closed:
+                await self._session.close()
+        self._session = None
+        self._initialized = False
+
     async def ensure_initialized(self) -> None:
-        """Initialize the underlying HTTP client once."""
-        if self._initialized:
+        """Initialize the underlying HTTP client once; recover if session was closed."""
+        if self._initialized and self._session is not None and not self._session.closed:
             return
         async with self._init_lock:
-            if self._initialized:
+            if self._initialized and self._session is not None and not self._session.closed:
                 return
-            from src.core.server.infra.connector import make_connector
-
-            timeout = aiohttp.ClientTimeout(total=None, connect=20, sock_connect=20, sock_read=None)
-            connector = make_connector()
-            session = aiohttp.ClientSession(timeout=timeout, connector=connector)
+            await self._teardown()
+            session = await self._open_session()
             try:
                 await self._client.init_immediate(session)
             except Exception:
@@ -65,17 +86,17 @@ class QwenAdapter(PlatformAdapter):
                     await session.close()
                 raise
             self._session = session
-            asyncio.create_task(self._client.background_setup())
+            self._bg_setup_task = asyncio.create_task(self._client.background_setup())
             self._initialized = True
 
     async def shutdown(self) -> None:
         """Shut down the client and the shared HTTP session."""
-        if not self._initialized:
+        if not self._initialized and self._session is None:
             return
-        await self._client.close()
-        if self._session is not None and not self._session.closed:
-            await self._session.close()
-        self._initialized = False
+        async with self._init_lock:
+            if not self._initialized and self._session is None:
+                return
+            await self._teardown()
 
     async def candidates(self) -> List[Candidate]:
         """Return available account-backed candidates."""

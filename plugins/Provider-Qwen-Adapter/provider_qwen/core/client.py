@@ -121,6 +121,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         return None
 
     async def init_immediate(self, session: aiohttp.ClientSession) -> None:
+        self._closing = False
         self._session = session
         for account in ACCOUNTS:
             self._account_states[account.username] = Account(username=account.username, password=account.password)
@@ -130,9 +131,14 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         self._cookies = load_persist(self._account_states, self._cookies, self._proxy_state)
         self._sync_expired_account_states()
         self._rebuild_candidates()
-        self._chat_session = ChatSession(session, self._get_proxy_kwarg, lambda: self._cookies, lambda: self._fp)
+        self._chat_session = ChatSession(
+            self._require_session,
+            self._get_proxy_kwarg,
+            lambda: self._cookies,
+            lambda: self._fp,
+        )
         self._tts_service = TtsService(
-            session,
+            self._require_session,
             self._get_proxy_kwarg,
             lambda: self._cookies,
             lambda: self._fp,
@@ -141,7 +147,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
             self._schedule_chat_cleanup,
         )
         self._video_service = VideoService(
-            session,
+            self._require_session,
             self._get_proxy_kwarg,
             lambda: self._cookies,
             self._chat_session.create,

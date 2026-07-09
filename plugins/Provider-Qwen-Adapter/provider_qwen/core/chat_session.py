@@ -20,21 +20,24 @@ class ChatSession:
 
     def __init__(
         self,
-        session: aiohttp.ClientSession,
+        session_provider: Callable[[], aiohttp.ClientSession],
         proxy_resolver: Callable[[], Optional[str]],
         cookies_provider: Callable[[], Dict[str, Any]],
         fingerprint_provider: Callable[[], str],
     ) -> None:
-        self._session = session
+        self._session_provider = session_provider
         self._resolve_proxy = proxy_resolver
         self._cookies = cookies_provider
         self._fingerprint = fingerprint_provider
+
+    def _session(self) -> aiohttp.ClientSession:
+        return self._session_provider()
 
     async def create(self, token: str, model: str, chat_type: str = "t2t") -> str:
         """Create a new chat and return its identifier."""
         url = f"{BASE_URL}{NEW_CHAT_PATH}"
         headers = build_headers(token, include_version=False)
-        async with self._session.post(
+        async with self._session().post(
             url,
             json=build_new_chat_payload(model, chat_type),
             headers=headers,
@@ -59,7 +62,7 @@ class ChatSession:
         """Stop generation for an active chat."""
         if not chat_id or not token:
             return False
-        async with self._session.post(
+        async with self._session().post(
             f"{BASE_URL}{STOP_CHAT_PATH}",
             json=build_stop_payload(chat_id),
             headers=build_stop_headers(token),
@@ -73,7 +76,7 @@ class ChatSession:
         """Delete a chat."""
         if not chat_id or not token:
             return False
-        async with self._session.delete(
+        async with self._session().delete(
             f"{BASE_URL}{DELETE_CHAT_PATH.format(chat_id=chat_id)}",
             headers=build_headers(token, cookies=self._cookies()),
             ssl=False,
@@ -91,7 +94,7 @@ class ChatSession:
 
     async def download_image(self, image_url: str, save_dir: str = GENERATED_IMAGE_DIR) -> Optional[str]:
         """Download an image asset to local storage."""
-        async with self._session.get(
+        async with self._session().get(
             image_url,
             headers={
                 "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
@@ -127,7 +130,7 @@ class ChatSession:
             fingerprint=self._fingerprint(),
             cookies=self._cookies(),
         )
-        async with self._session.post(
+        async with self._session().post(
             f"{BASE_URL}{CHAT_PATH}?chat_id={chat_id}",
             json=payload,
             headers=headers,

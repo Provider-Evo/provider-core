@@ -19,7 +19,7 @@ class TtsService:
 
     def __init__(
         self,
-        session: aiohttp.ClientSession,
+        session_provider: Callable[[], aiohttp.ClientSession],
         proxy_resolver: Callable[[], Optional[str]],
         cookies_provider: Callable[[], dict],
         fingerprint_provider: Callable[[], str],
@@ -27,13 +27,16 @@ class TtsService:
         get_response_id: Callable[[str, str, str], Awaitable[tuple[Optional[str], str]]],
         schedule_cleanup: Callable[[str, str], None],
     ) -> None:
-        self._session = session
+        self._session_provider = session_provider
         self._resolve_proxy = proxy_resolver
         self._cookies = cookies_provider
         self._fingerprint = fingerprint_provider
         self._create_chat = create_chat
         self._get_response_id = get_response_id
         self._schedule_cleanup = schedule_cleanup
+
+    def _session(self) -> aiohttp.ClientSession:
+        return self._session_provider()
 
     async def synthesize(
         self,
@@ -64,7 +67,7 @@ class TtsService:
         token: str,
     ) -> bool:
         """Replace an assistant message before TTS synthesis."""
-        async with self._session.post(
+        async with self._session().post(
             f"{BASE_URL}/api/v2/chats/{chat_id}/messages/{response_id}",
             json=build_replace_content_payload(new_content, origin_content),
             headers=build_headers(token, chat_id=chat_id, cookies=self._cookies()),
@@ -91,7 +94,7 @@ class TtsService:
         )
         headers["Accept"] = "*/*"
         chunks: List[str] = []
-        async with self._session.post(
+        async with self._session().post(
             f"{BASE_URL}{TTS_PATH}?chat_id={chat_id}",
             json=build_tts_payload(chat_id, response_id),
             headers=headers,

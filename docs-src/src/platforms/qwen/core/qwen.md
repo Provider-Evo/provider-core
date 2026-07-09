@@ -27,6 +27,8 @@ QwenAdapter (adaptercore.py)
       └── 请求处理 (_do_request, SSE 解析)
 
 关停时 `QwenClient.close()` 先置 `_closing`、等待进行中的 chat cleanup，再关闭专用 `aiohttp.ClientSession`；上传与补全在 session 已关闭时快速失败，避免 `Session is closed` 未处理异常。
+
+`QwenAdapter.ensure_initialized()` 在检测到 session 已关闭但 `_initialized` 仍为真时（例如插件热重载后）会自动 teardown 并重建 session；`init_immediate()` 会重置 `_closing`。`ChatSession` / `TtsService` / `VideoService` 通过 `_require_session` 惰性获取 session，避免持有已关闭的引用。
 ```
 
 ### 新增模块
