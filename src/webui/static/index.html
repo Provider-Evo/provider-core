@@ -360,7 +360,10 @@
             <button type="button" class="plugins-editor-tab" data-editor-tab="source" data-i18n="plugins.tabSource">源码</button>
             <button type="button" class="plugins-editor-tab" data-editor-tab="detail" data-i18n="plugins.tabDetail">详情</button>
           </div>
-          <div id="pluginsEditorVisual" class="plugins-editor-pane"></div>
+          <div id="pluginsEditorVisual" class="plugins-editor-pane">
+            <div class="config-section-tabs hidden" id="pluginsConfigSectionTabs" role="tablist"></div>
+            <div id="pluginsConfigGrid"></div>
+          </div>
           <div id="pluginsEditorSource" class="plugins-editor-pane hidden">
             <textarea id="pluginsConfigEditor" class="config-edit-area min-h-[320px] w-full" spellcheck="false"></textarea>
           </div>
@@ -728,10 +731,10 @@
   <script src="/static/base/core/motion.js"></script>
   <script src="/static/base/core/state.js?v=20260709-1"></script>
   <script src="/static/base/core/render.js?v=20260709-1"></script>
-  <script src="/static/base/config/render.js?v=20260709-5"></script>
-  <script src="/static/base/config/actions.js?v=20260709-3"></script>
+  <script src="/static/base/config/render.js?v=20260709-7"></script>
+  <script src="/static/base/config/actions.js?v=20260709-4"></script>
   <script src="/static/ui/widgets/dropdown.js"></script>
   <script src="/static/ui/widgets/datepicker.js"></script>
-  <script src="/static/ui/bootstrap.js?v=20260709-2"></script>
+  <script src="/static/ui/bootstrap.js?v=20260709-3"></script>
 </body>
 </html>

@@ -14,6 +14,8 @@ var PluginsPanel = (function () {
   var _editorBundle = null;
   var _editorTab = 'visual';
   var _editorDraft = {};
+  var _editorPanelHandle = null;
+  var _editorPanelId = '';
   var _actingPluginId = '';
   var _showUpdatesOnly = false;
   var _searchQuery = '';
@@ -333,90 +335,26 @@ var PluginsPanel = (function () {
     return JSON.parse(JSON.stringify(obj || {}));
   }
 
-  function getNestedValue(obj, path) {
-    var cur = obj;
-    for (var i = 0; i < path.length; i++) {
-      if (cur == null || typeof cur !== 'object') return undefined;
-      cur = cur[path[i]];
-    }
-    return cur;
-  }
-
-  function setNestedValue(obj, path, value) {
-    var cur = obj;
-    for (var i = 0; i < path.length - 1; i++) {
-      if (cur[path[i]] == null || typeof cur[path[i]] !== 'object') cur[path[i]] = {};
-      cur = cur[path[i]];
-    }
-    cur[path[path.length - 1]] = value;
-  }
-
-  function renderSchemaFields(schema, config, pathPrefix, container) {
-    if (!schema || schema.type !== 'object' || !schema.properties) {
-      container.innerHTML = '<div class="plugins-empty">' + t('plugins.noSchema') + '</div>';
+  function renderPluginConfigVisual(schema, config) {
+    var grid = el('pluginsConfigGrid');
+    var tabs = el('pluginsConfigSectionTabs');
+    if (!grid) return;
+    if (typeof window.renderEmbeddedConfigPanel === 'function') {
+      if (_editorPanelHandle && typeof _editorPanelHandle.destroy === 'function') {
+        _editorPanelHandle.destroy();
+      }
+      _editorPanelId = 'plugin-' + _editorPluginId;
+      _editorPanelHandle = window.renderEmbeddedConfigPanel({
+        panelId: _editorPanelId,
+        container: grid,
+        tabsContainer: tabs,
+        jsonSchema: schema || {},
+        config: config,
+        onChange: function(cfg) { _editorDraft = cfg; }
+      });
       return;
     }
-    var html = '';
-    Object.keys(schema.properties).forEach(function (key) {
-      var field = schema.properties[key] || {};
-      var path = pathPrefix.concat([key]);
-      var pathKey = path.join('.');
-      var value = getNestedValue(config, path);
-      var title = field.title || key;
-      if (field.type === 'object' && field.properties) {
-        html += '<div class="plugins-schema-section"><div class="plugins-schema-section-title">' + escapeHtml(title) + '</div>';
-        html += renderSchemaFieldsInner(field, config, path);
-        html += '</div>';
-        return;
-      }
-      html += renderFieldInput(field, title, pathKey, value);
-    });
-    container.innerHTML = html;
-    container.querySelectorAll('[data-schema-path]').forEach(function (node) {
-      node.addEventListener('change', function () {
-        var p = node.getAttribute('data-schema-path').split('.');
-        var ftype = node.getAttribute('data-field-type');
-        var val;
-        if (ftype === 'boolean') val = node.checked;
-        else if (ftype === 'number' || ftype === 'integer') val = Number(node.value);
-        else val = node.value;
-        setNestedValue(_editorDraft, p, val);
-      });
-    });
-  }
-
-  function renderSchemaFieldsInner(schema, config, pathPrefix) {
-    var html = '';
-    Object.keys(schema.properties).forEach(function (key) {
-      var field = schema.properties[key] || {};
-      var path = pathPrefix.concat([key]);
-      var pathKey = path.join('.');
-      var value = getNestedValue(config, path);
-      var title = field.title || key;
-      if (field.type === 'object' && field.properties) {
-        html += '<div class="plugins-schema-section"><div class="plugins-schema-section-title">' + escapeHtml(title) + '</div>';
-        html += renderSchemaFieldsInner(field, config, path);
-        html += '</div>';
-        return;
-      }
-      html += renderFieldInput(field, title, pathKey, value);
-    });
-    return html;
-  }
-
-  function renderFieldInput(field, title, pathKey, value) {
-    var ftype = field.type || 'string';
-    var val = value != null ? value : (field.default != null ? field.default : '');
-    var html = '<div class="plugins-schema-field"><label>' + escapeHtml(title) + '</label>';
-    if (ftype === 'boolean') {
-      html += '<label class="config-toggle"><input type="checkbox" data-schema-path="' + escapeAttr(pathKey) + '" data-field-type="boolean"' + (val ? ' checked' : '') + '><span class="toggle-slider"></span></label>';
-    } else if (ftype === 'integer' || ftype === 'number') {
-      html += '<input class="config-input w-full" type="number" data-schema-path="' + escapeAttr(pathKey) + '" data-field-type="' + escapeAttr(ftype) + '" value="' + escapeAttr(String(val)) + '">';
-    } else {
-      html += '<input class="config-input w-full" type="text" data-schema-path="' + escapeAttr(pathKey) + '" data-field-type="string" value="' + escapeAttr(String(val)) + '">';
-    }
-    html += '</div>';
-    return html;
+    grid.innerHTML = '<div class="plugins-empty">' + t('plugins.noSchema') + '</div>';
   }
 
   async function openEditor(pluginId) {
@@ -450,8 +388,7 @@ var PluginsPanel = (function () {
       _editorDraft = deepClone(bundle.config || {});
       var editor = el('pluginsConfigEditor');
       if (editor) editor.value = bundle.raw_config || '';
-      var visual = el('pluginsEditorVisual');
-      if (visual) renderSchemaFields(bundle.schema || {}, _editorDraft, [], visual);
+      renderPluginConfigVisual(bundle.schema || {}, _editorDraft);
       if (msg) msg.textContent = bundle.message || '';
       await loadEditorDetail(pluginId);
     } catch (err) {
@@ -491,6 +428,11 @@ var PluginsPanel = (function () {
   }
 
   function closeEditor() {
+    if (_editorPanelHandle && typeof _editorPanelHandle.destroy === 'function') {
+      _editorPanelHandle.destroy();
+    }
+    _editorPanelHandle = null;
+    _editorPanelId = '';
     _editorPluginId = '';
     _editorPlugin = null;
     _editorBundle = null;
@@ -505,6 +447,9 @@ var PluginsPanel = (function () {
         var editor = el('pluginsConfigEditor');
         await Api.put('/v1/admin/plugins/config/' + encodeURIComponent(_editorPluginId), { raw: editor ? editor.value : '' });
       } else {
+        if (_editorPanelHandle && typeof _editorPanelHandle.getConfig === 'function') {
+          _editorDraft = _editorPanelHandle.getConfig();
+        }
         await Api.put('/v1/admin/plugins/config/' + encodeURIComponent(_editorPluginId), { config: _editorDraft });
         var editor2 = el('pluginsConfigEditor');
         if (editor2) {
@@ -528,8 +473,7 @@ var PluginsPanel = (function () {
       _editorDraft = deepClone(resp.config || {});
       var editor = el('pluginsConfigEditor');
       if (editor) editor.value = resp.raw_config || '';
-      var visual = el('pluginsEditorVisual');
-      if (visual && _editorBundle) renderSchemaFields(_editorBundle.schema || {}, _editorDraft, [], visual);
+      if (_editorBundle) renderPluginConfigVisual(_editorBundle.schema || {}, _editorDraft);
       if (msg) msg.textContent = t('plugins.resetOk');
     } catch (err) {
       if (msg) msg.textContent = t('plugins.actionFailed', { error: err.message || String(err) });

@@ -44,14 +44,26 @@ function _renderReadonly(section, key, val) {
 /**
  * Render a select dropdown component.
  */
-function _renderSelect(section, key, val, options) {
+function _renderSelect(section, key, val, options, field) {
+  field = field || {};
   var id = 'cfg-' + section + '-' + key;
+  var opts = options || [];
+  var dynamicAttr = field.dynamic ? ' data-dynamic="true"' : '';
   var html = '<select class="config-input" id="' + id
-    + '" data-section="' + section + '" data-key="' + key + '" data-type="string">';
-  for (var i = 0; i < options.length; i++) {
-    var opt = options[i];
-    html += '<option value="' + escapeHtml(opt) + '"'
-      + (opt === val ? ' selected' : '') + '>' + escapeHtml(opt) + '</option>';
+    + '" data-section="' + section + '" data-key="' + key + '" data-type="string"' + dynamicAttr + '>';
+  if (!opts.length) {
+    var placeholder = field.dynamic
+      ? (typeof t === 'function' ? t('common.loading') : '加载中...')
+      : (typeof t === 'function' ? t('common.notUsing') : '');
+    html += '<option value="">' + escapeHtml(placeholder) + '</option>';
+  } else {
+    var labels = field.optionLabels || {};
+    for (var i = 0; i < opts.length; i++) {
+      var opt = opts[i];
+      var text = labels[opt] != null ? labels[opt] : opt;
+      html += '<option value="' + escapeHtml(opt) + '"'
+        + (String(opt) === String(val) ? ' selected' : '') + '>' + escapeHtml(text) + '</option>';
+    }
   }
   html += '</select>';
   return html;
@@ -251,7 +263,7 @@ function _renderFieldControl(sectionId, field, val) {
   if (type === 'readonly') return _renderReadonly(sectionId, key, val);
   if (type === 'boolean') return _renderToggle(sectionId, key, !!val);
   if (type === 'number') return _renderNumber(sectionId, key, val != null ? val : _defaultForField(field), field);
-  if (type === 'select') return _renderSelect(sectionId, key, val || (field.options && field.options[0]) || '', field.options || []);
+  if (type === 'select') return _renderSelect(sectionId, key, val != null ? val : '', field.options || [], field);
   if (type === 'list') return _renderStringList(sectionId, key, Array.isArray(val) ? val : []);
   if (type === 'mapping') return _renderMappingEditor(sectionId, key, val || {});
   if (type === 'json') return _renderRawJson(sectionId, key, val != null ? val : {});
@@ -684,41 +696,6 @@ function _renderConfigData(config) {
   if (!configGrid) return;
   configGrid.innerHTML = html;
 
-  if (_isFlatConfigTarget()) {
-    _enrichWebuiWidgets(config);
-  }
-
-  // Convert native <select> elements to CustomDropdown for consistent UI
-  if (typeof CustomDropdown !== 'undefined') {
-    var configSelects = configGrid.querySelectorAll('select.config-input');
-    for (var si = 0; si < configSelects.length; si++) {
-      var sel = configSelects[si];
-      if (sel.getAttribute('data-dynamic') === 'true') continue;
-      if (sel.classList.contains('custom-dropdown') || sel._customDropdown) continue;
-      var dd = new CustomDropdown(sel, {
-        onChange: function(value) {
-          var wrapper = this.el || this;
-          var section = wrapper.getAttribute('data-section') || wrapper._section;
-          var key = wrapper.getAttribute('data-key') || wrapper._key;
-          if (!section || !key) return;
-          _configSetValue(window._currentConfig, section, key, value);
-          _onWebuiConfigFieldChange(key, value);
-          scheduleConfigSave();
-        }
-      });
-      // Store section/key on the dropdown wrapper for the onChange handler
-      if (dd && dd.el) {
-        dd.el._section = sel.getAttribute('data-section');
-        dd.el._key = sel.getAttribute('data-key');
-        // Also copy data attributes to the wrapper for event delegation
-        dd.el.setAttribute('data-section', sel.getAttribute('data-section') || '');
-        dd.el.setAttribute('data-key', sel.getAttribute('data-key') || '');
-        dd.el.setAttribute('data-type', sel.getAttribute('data-type') || 'string');
-      }
-    }
-  }
-
-  // Bind events only once (survives re-renders since delegation is on configGrid)
   if (!configGrid._eventsBound) {
     configGrid._eventsBound = true;
     configGrid.addEventListener('change', _onConfigChange);
@@ -735,7 +712,53 @@ function _renderConfigData(config) {
     });
   }
 
-  // Bind list add/remove buttons
+  var finalize = function() {
+    _bindConfigFieldHandlers();
+    updateConfigSaveStatus();
+    _updateConfigSaveBtn();
+  };
+
+  if (_isFlatConfigTarget()) {
+    _enrichWebuiWidgets(config).then(function() {
+      _bindConfigDropdowns();
+      finalize();
+    });
+  } else {
+    _bindConfigDropdowns();
+    finalize();
+  }
+}
+
+function _bindConfigDropdowns() {
+  if (!configGrid || typeof CustomDropdown === 'undefined') return;
+  var configSelects = configGrid.querySelectorAll('select.config-input');
+  for (var si = 0; si < configSelects.length; si++) {
+    var sel = configSelects[si];
+    if (sel.classList.contains('custom-dropdown') || sel._customDropdown) continue;
+    if (!sel.options || sel.options.length === 0) continue;
+    var dd = new CustomDropdown(sel, {
+      onChange: function(value) {
+        var wrapper = this.el || this;
+        var section = wrapper.getAttribute('data-section') || wrapper._section;
+        var key = wrapper.getAttribute('data-key') || wrapper._key;
+        if (!section || !key) return;
+        _configSetValue(window._currentConfig, section, key, value);
+        _onWebuiConfigFieldChange(key, value);
+        scheduleConfigSave();
+      }
+    });
+    if (dd && dd.el) {
+      dd.el._section = sel.getAttribute('data-section');
+      dd.el._key = sel.getAttribute('data-key');
+      dd.el.setAttribute('data-section', sel.getAttribute('data-section') || '');
+      dd.el.setAttribute('data-key', sel.getAttribute('data-key') || '');
+      dd.el.setAttribute('data-type', sel.getAttribute('data-type') || 'string');
+    }
+  }
+}
+
+function _bindConfigFieldHandlers() {
+  if (!configGrid) return;
   configGrid.querySelectorAll('.config-list-add').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var section = this.dataset.section;
@@ -753,7 +776,6 @@ function _renderConfigData(config) {
       var section = container.dataset.section;
       var key = container.dataset.key;
       var idx = parseInt(this.dataset.index);
-      // Collect current values from inputs
       var inputs = container.querySelectorAll('.config-list-input');
       var list = [];
       inputs.forEach(function(inp) { list.push(inp.value); });
@@ -762,13 +784,12 @@ function _renderConfigData(config) {
       _renderConfigData(window._currentConfig);
     });
   });
-
   configGrid.querySelectorAll('.config-mapping-add').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var section = this.dataset.section;
       var key = this.dataset.key;
       var mapping = _collectMapping(this.closest('.config-mapping'));
-      mapping[''] = '';  // add empty entry
+      mapping[''] = '';
       _configSetValue(window._currentConfig, section, key, mapping);
       _renderConfigData(window._currentConfig);
     });
@@ -796,9 +817,6 @@ function _renderConfigData(config) {
       scheduleConfigSave();
     });
   });
-
-  updateConfigSaveStatus();
-  _updateConfigSaveBtn();
 }
 
 function _applyWebuiRuntime(config) {
@@ -839,7 +857,17 @@ function _onWebuiConfigFieldChange(key, val) {
 }
 
 async function _enrichWebuiWidgets(config) {
+  if (!configGrid) return;
   var models = state.models || [];
+  if (!models.length && typeof fetchJson === 'function') {
+    try {
+      var summary = await fetchJson('/v1/webui/summary');
+      models = (summary && summary.models) || [];
+    } catch (e) { /* ignore */ }
+  }
+  function _configSelect(key) {
+    return configGrid.querySelector('select.config-input[data-key="' + key + '"]');
+  }
   function _isSttModel(model) {
     var caps = model.capabilities || {};
     var id = String(model.id || '').toLowerCase();
@@ -866,15 +894,19 @@ async function _enrichWebuiWidgets(config) {
     if (!el) return;
     el.setAttribute('data-dynamic', 'true');
     var ids = _modelIds(filterFn);
-    var html = '<option value="">' + escapeHtml(typeof t === 'function' ? t('common.notUsing') : '') + '</option>';
+    var emptyLabel = ids.length
+      ? (typeof t === 'function' ? t('common.notUsing') : '')
+      : (typeof t === 'function' ? t('models.noMatch') : '无可用模型');
+    var html = '<option value="">' + escapeHtml(emptyLabel) + '</option>';
     for (var i = 0; i < ids.length; i++) {
       html += '<option value="' + escapeHtml(ids[i]) + '"' + (ids[i] === value ? ' selected' : '') + '>' + escapeHtml(ids[i]) + '</option>';
     }
     el.innerHTML = html;
+    if (el._customDropdown && typeof el._customDropdown.destroy === 'function') {
+      el._customDropdown.destroy();
+      el._customDropdown = null;
+    }
     if (typeof CustomDropdown !== 'undefined') {
-      if (el._customDropdown && typeof el._customDropdown.destroy === 'function') {
-        el._customDropdown.destroy();
-      }
       el._customDropdown = new CustomDropdown(el, {
         onChange: function(val) {
           var section = el.getAttribute('data-section');
@@ -886,13 +918,13 @@ async function _enrichWebuiWidgets(config) {
       });
     }
   }
-  _fillModelSelect(document.getElementById('cfg-_root-sttModel'), config.sttModel || '', _isSttModel);
-  _fillModelSelect(document.getElementById('cfg-_root-ttsModel'), config.ttsModel || '', _isTtsModel);
+  _fillModelSelect(_configSelect('sttModel'), config.sttModel || '', _isSttModel);
+  _fillModelSelect(_configSelect('ttsModel'), config.ttsModel || '', _isTtsModel);
   if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
   try {
     var devices = await navigator.mediaDevices.enumerateDevices();
     var audioInputs = devices.filter(function(d) { return d.kind === 'audioinput'; });
-    var recSel = document.getElementById('cfg-_root-recordingDeviceId');
+    var recSel = _configSelect('recordingDeviceId');
     if (!recSel) return;
     recSel.setAttribute('data-dynamic', 'true');
     var current = config.recordingDeviceId || '';
@@ -903,13 +935,16 @@ async function _enrichWebuiWidgets(config) {
         + escapeHtml(dev.label || ('Mic ' + (i + 1))) + '</option>';
     }
     recSel.innerHTML = html;
+    if (recSel._customDropdown && typeof recSel._customDropdown.destroy === 'function') {
+      recSel._customDropdown.destroy();
+      recSel._customDropdown = null;
+    }
     if (typeof CustomDropdown !== 'undefined') {
-      if (recSel._customDropdown && typeof recSel._customDropdown.destroy === 'function') {
-        recSel._customDropdown.destroy();
-      }
       recSel._customDropdown = new CustomDropdown(recSel, {
         onChange: function(value) {
-          _configSetValue(window._currentConfig, '_root', 'recordingDeviceId', value);
+          var section = recSel.getAttribute('data-section');
+          var key = recSel.getAttribute('data-key');
+          _configSetValue(window._currentConfig, section, key, value);
           scheduleConfigSave();
         }
       });
@@ -973,3 +1008,379 @@ window._renderConfigData = _renderConfigData;
 window._updateConfigSubtitle = _updateConfigSubtitle;
 window._updateConfigSaveBtn = _updateConfigSaveBtn;
 window._loadConfigRaw = _loadConfigRaw;
+
+// ========================= Embedded config panel (plugins) =========================
+
+var _embeddedPanels = {};
+
+function jsonSchemaFieldToPanelField(key, field) {
+  field = field || {};
+  var ftype = field.type;
+  var panel = { key: key, label: field.title || key };
+  if (Array.isArray(field.enum) && field.enum.length) {
+    panel.type = 'select';
+    panel.options = field.enum.map(String);
+    return panel;
+  }
+  if (ftype === 'boolean') {
+    panel.type = 'boolean';
+    return panel;
+  }
+  if (ftype === 'integer' || ftype === 'number') {
+    panel.type = 'number';
+    if (field.minimum != null) panel.min = field.minimum;
+    if (field.maximum != null) panel.max = field.maximum;
+    return panel;
+  }
+  if (ftype === 'array') {
+    var items = field.items || {};
+    if (items.type === 'string' || !items.type) {
+      panel.type = 'list';
+      return panel;
+    }
+    panel.type = 'json';
+    panel.wide = true;
+    return panel;
+  }
+  if (ftype === 'object') {
+    panel.type = 'json';
+    panel.wide = true;
+    return panel;
+  }
+  if (ftype === 'string') {
+    if (field.format === 'textarea' || (field.maxLength && field.maxLength > 200)) {
+      panel.type = 'textarea';
+      panel.wide = true;
+      return panel;
+    }
+    if (/content|prompt|description/i.test(key)) {
+      panel.type = 'textarea';
+      panel.wide = true;
+      return panel;
+    }
+    panel.type = 'string';
+    return panel;
+  }
+  panel.type = 'string';
+  return panel;
+}
+
+function jsonSchemaToPanelSchema(jsonSchema) {
+  if (!jsonSchema || jsonSchema.type !== 'object' || !jsonSchema.properties) {
+    return { sections: [], flat: false };
+  }
+  var props = jsonSchema.properties;
+  var keys = Object.keys(props);
+  var sections = [];
+  var rootFields = [];
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    var prop = props[key] || {};
+    if (prop.type === 'object' && prop.properties) {
+      var fields = [];
+      var subKeys = Object.keys(prop.properties);
+      for (var j = 0; j < subKeys.length; j++) {
+        fields.push(jsonSchemaFieldToPanelField(subKeys[j], prop.properties[subKeys[j]]));
+      }
+      sections.push({ id: key, title: prop.title || key, fields: fields });
+    } else {
+      rootFields.push(jsonSchemaFieldToPanelField(key, prop));
+    }
+  }
+  if (sections.length) {
+    if (rootFields.length) {
+      sections.unshift({ id: '_root', title: 'general', fields: rootFields });
+    }
+    return { flat: false, sections: sections };
+  }
+  if (rootFields.length) {
+    return { flat: true, sections: [{ id: '_root', title: 'config', fields: rootFields }] };
+  }
+  return { sections: [], flat: false };
+}
+
+function _embeddedSetValue(state, section, key, val) {
+  var config = state.config;
+  var schema = state.schema || {};
+  if (schema.flat || section === '_root') {
+    config[key] = val;
+    return;
+  }
+  if (!config[section]) config[section] = {};
+  config[section][key] = val;
+}
+
+function _embeddedGetValue(state, section, key) {
+  var config = state.config;
+  var schema = state.schema || {};
+  if (schema.flat || section === '_root') return config[key];
+  return config[section] && config[section][key];
+}
+
+function _embeddedSyncFromDOM(state) {
+  var container = state.container;
+  if (!container || !state.config) return;
+  container.querySelectorAll('.config-list').forEach(function(listEl) {
+    var section = listEl.dataset.section;
+    var key = listEl.dataset.key;
+    if (!section || !key) return;
+    var inputs = listEl.querySelectorAll('.config-list-input');
+    var list = [];
+    inputs.forEach(function(inp) { list.push(inp.value); });
+    _embeddedSetValue(state, section, key, list);
+  });
+  container.querySelectorAll('.config-mapping').forEach(function(mapEl) {
+    var section = mapEl.dataset.section;
+    var key = mapEl.dataset.key;
+    if (!section || !key) return;
+    _embeddedSetValue(state, section, key, _collectMapping(mapEl));
+  });
+}
+
+function _destroyEmbeddedDropdowns(container) {
+  if (!container) return;
+  container.querySelectorAll('select.config-input').forEach(function(sel) {
+    if (sel._customDropdown && typeof sel._customDropdown.destroy === 'function') {
+      sel._customDropdown.destroy();
+      sel._customDropdown = null;
+    }
+  });
+}
+
+function _bindEmbeddedDropdowns(state) {
+  var container = state.container;
+  if (!container || typeof CustomDropdown === 'undefined') return;
+  container.querySelectorAll('select.config-input').forEach(function(sel) {
+    if (sel._customDropdown) return;
+    if (!sel.options || sel.options.length === 0) return;
+    var dd = new CustomDropdown(sel, {
+      onChange: function(value) {
+        var section = sel.getAttribute('data-section');
+        var key = sel.getAttribute('data-key');
+        if (!section || !key) return;
+        _embeddedSetValue(state, section, key, value);
+        if (typeof state.onChange === 'function') state.onChange(state.config);
+      }
+    });
+    if (dd && dd.el) {
+      dd.el.setAttribute('data-section', sel.getAttribute('data-section') || '');
+      dd.el.setAttribute('data-key', sel.getAttribute('data-key') || '');
+    }
+  });
+}
+
+function _bindEmbeddedFieldHandlers(state) {
+  var container = state.container;
+  if (!container) return;
+  container.querySelectorAll('.config-list-add').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var section = this.dataset.section;
+      var key = this.dataset.key;
+      var list = _embeddedGetValue(state, section, key) || [];
+      list = Array.isArray(list) ? list.slice() : [];
+      list.push('');
+      _embeddedSetValue(state, section, key, list);
+      _renderEmbeddedPanelData(state.panelId);
+      if (typeof state.onChange === 'function') state.onChange(state.config);
+    });
+  });
+  container.querySelectorAll('.config-list-remove').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var listEl = this.closest('.config-list');
+      var section = listEl.dataset.section;
+      var key = listEl.dataset.key;
+      var idx = parseInt(this.dataset.index, 10);
+      var inputs = listEl.querySelectorAll('.config-list-input');
+      var list = [];
+      inputs.forEach(function(inp) { list.push(inp.value); });
+      list.splice(idx, 1);
+      _embeddedSetValue(state, section, key, list);
+      _renderEmbeddedPanelData(state.panelId);
+      if (typeof state.onChange === 'function') state.onChange(state.config);
+    });
+  });
+  container.querySelectorAll('.config-mapping-add').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var section = this.dataset.section;
+      var key = this.dataset.key;
+      var mapping = _collectMapping(this.closest('.config-mapping'));
+      mapping[''] = '';
+      _embeddedSetValue(state, section, key, mapping);
+      _renderEmbeddedPanelData(state.panelId);
+      if (typeof state.onChange === 'function') state.onChange(state.config);
+    });
+  });
+  container.querySelectorAll('.config-mapping-remove').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var mapEl = this.closest('.config-mapping');
+      var section = mapEl.dataset.section;
+      var key = mapEl.dataset.key;
+      var idx = parseInt(this.dataset.index, 10);
+      var mapping = _collectMapping(mapEl);
+      var keys = Object.keys(mapping);
+      delete mapping[keys[idx]];
+      _embeddedSetValue(state, section, key, mapping);
+      _renderEmbeddedPanelData(state.panelId);
+      if (typeof state.onChange === 'function') state.onChange(state.config);
+    });
+  });
+  container.querySelectorAll('.config-mapping-key, .config-mapping-val').forEach(function(inp) {
+    inp.addEventListener('change', function() {
+      var mapEl = this.closest('.config-mapping');
+      var section = mapEl.dataset.section;
+      var key = mapEl.dataset.key;
+      _embeddedSetValue(state, section, key, _collectMapping(mapEl));
+      if (typeof state.onChange === 'function') state.onChange(state.config);
+    });
+  });
+}
+
+function _onEmbeddedConfigChange(state, e) {
+  var el = e.target;
+  var section = el.dataset.section;
+  var key = el.dataset.key;
+  var type = el.dataset.type;
+  if (!section || !key || !type) return;
+  var val;
+  if (type === 'boolean') val = el.checked;
+  else if (type === 'number') val = parseInt(el.value, 10) || 0;
+  else if (type === 'json') {
+    try { val = JSON.parse(el.value); } catch (err) { return; }
+  } else if (type === 'list') return;
+  else val = el.value;
+  _embeddedSetValue(state, section, key, val);
+  if (typeof state.onChange === 'function') state.onChange(state.config);
+}
+
+function _renderEmbeddedSectionTabs(state) {
+  var tabsEl = state.tabsEl;
+  if (!tabsEl) return;
+  var tabs = _collectSectionTabs(state.schema, state.config);
+  if (!tabs.length) {
+    state.activeSection = null;
+    tabsEl.classList.add('hidden');
+    tabsEl.innerHTML = '';
+    return;
+  }
+  var hasActive = false;
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].id === state.activeSection) {
+      hasActive = true;
+      break;
+    }
+  }
+  if (!hasActive) state.activeSection = tabs[0].id;
+  if (tabs.length <= 1) {
+    tabsEl.classList.add('hidden');
+    tabsEl.innerHTML = '';
+    return;
+  }
+  tabsEl.classList.remove('hidden');
+  var html = '';
+  for (var j = 0; j < tabs.length; j++) {
+    var tab = tabs[j];
+    html += '<button type="button" class="config-section-tab'
+      + (tab.id === state.activeSection ? ' active' : '')
+      + '" data-panel-id="' + escapeHtml(state.panelId) + '" data-section="' + escapeHtml(tab.id) + '" role="tab"'
+      + (tab.id === state.activeSection ? ' aria-selected="true"' : ' aria-selected="false"')
+      + '>[' + escapeHtml(tab.title) + ']</button>';
+  }
+  tabsEl.innerHTML = html;
+  if (!tabsEl._embeddedBound) {
+    tabsEl._embeddedBound = true;
+    tabsEl.addEventListener('click', function(ev) {
+      var btn = ev.target.closest('[data-panel-id][data-section]');
+      if (!btn) return;
+      var panelId = btn.getAttribute('data-panel-id');
+      var sectionId = btn.getAttribute('data-section');
+      var panelState = _embeddedPanels[panelId];
+      if (!panelState || sectionId === panelState.activeSection) return;
+      _embeddedSyncFromDOM(panelState);
+      panelState.activeSection = sectionId;
+      _renderEmbeddedPanelData(panelId);
+    });
+  }
+}
+
+function _renderEmbeddedPanelData(panelId) {
+  var state = _embeddedPanels[panelId];
+  if (!state || !state.container) return;
+  var schema = state.schema || { sections: [] };
+  var config = state.config || {};
+  _renderEmbeddedSectionTabs(state);
+  var html = '';
+  var sectionDef = state.activeSection ? _findSectionDef(schema, state.activeSection) : null;
+  if (sectionDef) {
+    html = _renderSectionFromSchema(sectionDef, config, schema);
+  } else if ((schema.sections || []).length) {
+    html = _renderSectionFromSchema(schema.sections[0], config, schema);
+  }
+  if (!html) {
+    html = '<div class="text-muted text-sm p-3">' + escapeHtml(typeof t === 'function' ? t('plugins.noSchema') : '无配置 schema') + '</div>';
+  }
+  _destroyEmbeddedDropdowns(state.container);
+  state.container.innerHTML = html;
+  if (!state.container._embeddedEventsBound) {
+    state.container._embeddedEventsBound = true;
+    state.container.addEventListener('change', function(e) {
+      var panelState = _embeddedPanels[panelId];
+      if (panelState) _onEmbeddedConfigChange(panelState, e);
+    });
+    state.container.addEventListener('input', function(e) {
+      if (e.target.tagName !== 'TEXTAREA') return;
+      var panelState = _embeddedPanels[panelId];
+      if (panelState) _onEmbeddedConfigChange(panelState, e);
+    });
+  }
+  _bindEmbeddedFieldHandlers(state);
+  _bindEmbeddedDropdowns(state);
+}
+
+function renderEmbeddedConfigPanel(opts) {
+  opts = opts || {};
+  var panelId = opts.panelId || 'embedded';
+  var container = opts.container;
+  if (!container) return null;
+  var schema = opts.panelSchema || jsonSchemaToPanelSchema(opts.jsonSchema || {});
+  var state = _embeddedPanels[panelId] || {};
+  state.panelId = panelId;
+  state.container = container;
+  state.tabsEl = opts.tabsContainer || null;
+  state.schema = schema;
+  state.config = opts.config || {};
+  state.onChange = opts.onChange || null;
+  if (!state.activeSection) {
+    state.activeSection = schema.sections && schema.sections[0] ? schema.sections[0].id : null;
+  }
+  _embeddedPanels[panelId] = state;
+  _renderEmbeddedPanelData(panelId);
+  return {
+    getConfig: function() {
+      var panelState = _embeddedPanels[panelId];
+      if (panelState) _embeddedSyncFromDOM(panelState);
+      return panelState ? panelState.config : {};
+    },
+    setConfig: function(cfg) {
+      var panelState = _embeddedPanels[panelId];
+      if (!panelState) return;
+      panelState.config = cfg || {};
+      _renderEmbeddedPanelData(panelId);
+    },
+    destroy: function() {
+      var panelState = _embeddedPanels[panelId];
+      if (panelState && panelState.container) _destroyEmbeddedDropdowns(panelState.container);
+      delete _embeddedPanels[panelId];
+    }
+  };
+}
+
+function destroyEmbeddedConfigPanel(panelId) {
+  var state = _embeddedPanels[panelId];
+  if (!state) return;
+  if (state.container) _destroyEmbeddedDropdowns(state.container);
+  delete _embeddedPanels[panelId];
+}
+
+window.jsonSchemaToPanelSchema = jsonSchemaToPanelSchema;
+window.renderEmbeddedConfigPanel = renderEmbeddedConfigPanel;
+window.destroyEmbeddedConfigPanel = destroyEmbeddedConfigPanel;

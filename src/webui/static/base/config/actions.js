@@ -299,15 +299,15 @@ async function saveConfig() {
       var editor = document.getElementById('configTomlEditor');
       var rawContent = editor ? editor.value : '';
       var rawUrl = isWebui ? '/v1/webui/config/raw' : '/v1/config/raw';
-      var response = await fetch(rawUrl, {
+      var rawResponse = await fetch(rawUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ raw_content: rawContent }),
       });
-      var result = await response.json();
-      if (!response.ok || result.error) {
+      var rawResult = await rawResponse.json();
+      if (!rawResponse.ok || rawResult.error) {
         var errEl = document.getElementById('configTomlError');
-        var errMsg = result.error || (typeof t === 'function' ? t('actions.unknownError') : 'unknown error');
+        var errMsg = rawResult.error || (typeof t === 'function' ? t('actions.unknownError') : 'unknown error');
         if (errEl) {
           errEl.textContent = errMsg;
           errEl.classList.remove('hidden');

@@ -183,6 +183,11 @@ def load_requests() -> None:
             for row in cursor:
                 data = dict(zip(columns, row))
                 # 还原为 WebSocket 推送格式
+                messages_raw = data.get("messages") or "[]"
+                try:
+                    messages = json.loads(messages_raw)
+                except (json.JSONDecodeError, TypeError):
+                    messages = []
                 entry: dict[str, Any] = {
                     "type": "request_end",
                     "id": data["id"],
@@ -191,6 +196,11 @@ def load_requests() -> None:
                     "platform": data["platform"],
                     "status": data["status"],
                     "latency_ms": data["latency_ms"],
+                    "messages_count": data.get("messages_count", 0),
+                    "messages": messages,
+                    "has_tools": bool(data.get("has_tools")),
+                    "stream": bool(data.get("stream")),
+                    "response": data.get("response") or "",
                 }
                 request_broker._buffer.append(entry)
                 count += 1
@@ -217,6 +227,49 @@ def get_request_count() -> int:
 
 
 # ------------------------------------------------------------------
+# 响应内容缓冲（在 push_event 同步路径聚合，避免 request_end 先于 chunk 到达）
+# ------------------------------------------------------------------
+
+_response_buffers: dict[str, list[str]] = {}
+
+
+def _accumulate_request_event(payload: dict[str, Any]) -> dict[str, Any]:
+    """在调度 broadcast 前同步聚合响应文本，并为 request_end 补充 response 字段。"""
+    event_type = payload.get("type")
+    req_id = str(payload.get("id", ""))
+
+    if event_type == "request_start":
+        if req_id:
+            _response_buffers[req_id] = []
+        return payload
+
+    if event_type == "request_chunk":
+        delta = payload.get("delta", "")
+        if req_id and delta:
+            _response_buffers.setdefault(req_id, []).append(str(delta))
+        return payload
+
+    if event_type != "request_end" or not req_id:
+        return payload
+
+    buffered = "".join(_response_buffers.pop(req_id, []))
+    response = str(payload.get("response") or buffered)
+    if not response:
+        return payload
+
+    enriched = dict(payload)
+    enriched["response"] = response
+    return enriched
+
+
+_orig_push_event = RequestBroker.push_event
+
+
+def _patched_push_event(self: RequestBroker, payload: dict[str, Any]) -> None:
+    _orig_push_event(self, _accumulate_request_event(payload))
+
+
+# ------------------------------------------------------------------
 # Monkey-patch RequestBroker.broadcast 以拦截 request_end 事件
 # ------------------------------------------------------------------
 
@@ -225,20 +278,26 @@ _orig_broadcast = RequestBroker.broadcast
 
 async def _patched_broadcast(self: RequestBroker, payload: dict) -> None:
     """包装 broadcast：在 request_end 时同时写入脏列表。"""
-    await _orig_broadcast(self, payload)
+    start_data: dict[str, Any] = {}
     if payload.get("type") == "request_end":
-        # 合并 request_start 的信息（messages 等）
-        req_id = payload.get("id", "")
-        start_data = self._active.get(req_id, {})
+        req_id = str(payload.get("id", ""))
+        start_data = dict(self._active.get(req_id, {}))
+
+    await _orig_broadcast(self, payload)
+
+    if payload.get("type") == "request_end":
+        req_id = str(payload.get("id", ""))
         entry = dict(payload)
-        # 从 start_data 补充字段
         for key in ("messages", "messages_count", "has_tools", "stream"):
             if key in start_data:
                 entry[key] = start_data[key]
+        if not entry.get("response"):
+            buffered = "".join(_response_buffers.pop(req_id, []))
+            if buffered:
+                entry["response"] = buffered
         with _lock:
             _dirty.append(entry)
             if len(_dirty) >= _FLUSH_BATCH:
-                # 立即刷盘，不等定时器
                 threading.Thread(target=_flush, daemon=True).start()
 
 
@@ -270,8 +329,9 @@ def start_request_persist() -> None:
     # 加载历史
     load_requests()
 
-    # 替换 broadcast 方法
+    # 替换 broadcast / push_event 方法
     RequestBroker.broadcast = _patched_broadcast  # type: ignore[assignment]
+    RequestBroker.push_event = _patched_push_event  # type: ignore[assignment]
 
     # 启动定时刷盘
     _flush_loop()

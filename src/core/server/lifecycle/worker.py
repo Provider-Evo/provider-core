@@ -403,6 +403,9 @@ async def _run() -> int:
 
 def run_worker() -> None:
     """Worker 进程入口——配置事件循环策略并启动异步主流程。"""
+    from src.core.server.plugins.sdk_compat import ensure_provider_sdk_platform_extras
+
+    ensure_provider_sdk_platform_extras()
     apply_windows_asyncio_patches()
     configure_event_loop_policy()
 
