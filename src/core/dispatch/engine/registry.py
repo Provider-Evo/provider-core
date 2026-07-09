@@ -4,13 +4,13 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List, Optional, Sequence
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from echotools.plugin.registry import PluginRegistry
 
 from src.core.config import get_config
 from src.core.dispatch.candidate import Candidate
-from src.core.dispatch.selector import Selector
-from src.paths import persist_dir
+from src.core.dispatch.engine.selector import Selector
+from src.foundation.paths import persist_dir
 
 __all__ = ["Registry"]
 logger = get_logger(__name__)
@@ -23,6 +23,19 @@ class Registry:
         self._registry = PluginRegistry()
         self.selector = Selector(persist_dir=str(persist_dir("gateway")), group_attr="platform")
         self._external_loader: Any = None
+        self._app_host: Any = None
+
+    def set_app_host(self, app_host: Any) -> None:
+        """绑定 AppHost，插件热重载后用于重建主站路由。"""
+        self._app_host = app_host
+
+    async def _maybe_reload_app(self) -> None:
+        if self._app_host is None:
+            return
+        try:
+            await self._app_host.reload_app()
+        except Exception as exc:
+            logger.warning("插件热重载后应用重建失败: %s", exc)
 
     async def init(self, session: Any) -> None:
         """公开方法 init — 仅通过 plugins/ 加载平台适配器。
@@ -34,7 +47,7 @@ class Registry:
         wl = plat_cfg.platform_list if plat_cfg.platform_list_type == "whitelist" else None
         bl = plat_cfg.platform_list if plat_cfg.platform_list_type == "blacklist" else None
 
-        from src.core.plugins.runtime import get_plugin_runtime
+        from src.core.server.plugins.runtime import get_plugin_runtime
 
         runtime = get_plugin_runtime()
         try:
@@ -58,6 +71,115 @@ class Registry:
 
         if adapter_count == 0:
             logger.warning("0 个平台插件已注册，网关将以无平台模式运行")
+
+    async def reload_plugins(self, session: Any) -> Dict[str, int]:
+        """磁盘插件变更后全量热重载运行时与平台注册表。"""
+        cfg = get_config()
+        plat_cfg = cfg.platforms_cfg
+        wl = plat_cfg.platform_list if plat_cfg.platform_list_type == "whitelist" else None
+        bl = plat_cfg.platform_list if plat_cfg.platform_list_type == "blacklist" else None
+
+        for name, adapter in list(self._registry.plugins.items()):
+            try:
+                await adapter.close()
+            except Exception as exc:
+                logger.warning("关闭平台 [%s] 失败: %s", name, exc)
+        self._registry._plugins.clear()
+
+        runtime = self._external_loader
+        if runtime is None:
+            from src.core.server.plugins.runtime import get_plugin_runtime
+
+            runtime = get_plugin_runtime()
+            self._external_loader = runtime
+        else:
+            try:
+                await runtime.close()
+            except Exception as exc:
+                logger.warning("插件运行时关闭失败: %s", exc)
+
+        await runtime.init(session)
+
+        adapter_count = 0
+        for adapter in runtime.platform_adapters():
+            name = getattr(adapter, "name", "")
+            if not name:
+                continue
+            if wl is not None and name not in wl:
+                continue
+            if name in (bl or []):
+                continue
+            self._registry.register(adapter)
+            adapter_count += 1
+            logger.info("平台插件已重新注册: %s", name)
+
+        summary = runtime.get_plugin_summary()
+        logger.info(
+            "插件热重载完成: platforms=%d loaded=%d failed=%d inactive=%d",
+            adapter_count,
+            summary.get("loaded", 0),
+            summary.get("failed", 0),
+            summary.get("inactive", 0),
+        )
+        await self._maybe_reload_app()
+        return summary
+
+    async def reload_plugins_by_ids(
+        self, plugin_ids: Sequence[str], session: Any
+    ) -> Dict[str, int]:
+        """按插件 ID 热重载（coplan / fncall / webui / platform 等）。"""
+        runtime = self._external_loader
+        if runtime is None:
+            from src.core.server.plugins.runtime import get_plugin_runtime
+
+            runtime = get_plugin_runtime()
+            self._external_loader = runtime
+
+        cfg = get_config()
+        plat_cfg = cfg.platforms_cfg
+        wl = plat_cfg.platform_list if plat_cfg.platform_list_type == "whitelist" else None
+        bl = plat_cfg.platform_list if plat_cfg.platform_list_type == "blacklist" else None
+
+        for plugin_id in plugin_ids:
+            record_before = runtime.loaded.get(plugin_id)
+            platform_name = ""
+            if record_before is not None and record_before.adapter is not None:
+                platform_name = getattr(record_before.adapter, "name", "")
+                old = self._registry.get(platform_name)
+                if old is not None:
+                    try:
+                        await old.close()
+                    except Exception as exc:
+                        logger.warning("关闭旧平台 [%s] 失败: %s", platform_name, exc)
+                    self._registry._plugins.pop(platform_name, None)
+
+            ok = await runtime.reload_plugin(plugin_id, session)
+            if not ok:
+                logger.warning("插件热重载失败 [%s]", plugin_id)
+                continue
+
+            record_after = runtime.loaded.get(plugin_id)
+            if record_after is not None and record_after.adapter is not None:
+                adapter = record_after.adapter
+                name = getattr(adapter, "name", "")
+                if not name:
+                    continue
+                if wl is not None and name not in wl:
+                    continue
+                if name in (bl or []):
+                    continue
+                self._registry.register(adapter)
+                logger.info("平台插件已重新注册: %s", name)
+
+        summary = runtime.get_plugin_summary()
+        logger.info(
+            "插件精确热重载完成: ids=%s loaded=%d failed=%d",
+            list(plugin_ids),
+            summary.get("loaded", 0),
+            summary.get("failed", 0),
+        )
+        await self._maybe_reload_app()
+        return summary
 
     async def reload_platform(self, platform_name: str, session: Any) -> bool:
         """公开方法 reload_platform — 从 plugins/ 热重载平台适配器。"""

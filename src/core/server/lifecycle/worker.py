@@ -14,10 +14,10 @@ import aiohttp
 import aiohttp.web
 
 from src.core.config import get_config, get_config_manager
-from src.core.dispatch.registry import Registry
-from src.core.observability import get_observability_services
+from src.core.dispatch.engine.registry import Registry
+from src.core.utils.observability import get_observability_services
 from src.core.server import AutoUpdater, ensure_port_available
-from src.core.server.app_host import AppHost
+from src.core.server.lifecycle.app_host import AppHost
 from src.core.server.infra.connector import make_connector
 from src.core.server.infra.reload import (
     HotReloadService,
@@ -25,8 +25,8 @@ from src.core.server.infra.reload import (
     consume_restart_flag,
 )
 from src.core.server.infra.win_asyncio import apply_windows_asyncio_patches
-from src.paths import resolve_project_root
-from src.logger import get_logger, shutdown_logging
+from src.foundation.paths import resolve_project_root
+from src.foundation.logger import get_logger, shutdown_logging
 
 __all__ = [
     "RESTART_EXIT_CODE",
@@ -264,6 +264,7 @@ async def _run() -> None:
         session,
         access_log=access_log,
     )
+    registry.set_app_host(app_host)
 
     async def _reload_app_after_config(changed_scopes: object = ()) -> None:
         from src.core.config.reload_policy import scope_needs_app_reload
@@ -341,7 +342,7 @@ async def _run() -> None:
     logger.info("Worker 已启动: http://%s:%d", host, port)
 
     # 插件加载汇总日志
-    from src.core.plugins.runtime import get_plugin_runtime
+    from src.core.server.plugins.runtime import get_plugin_runtime
 
     plugin_summary = get_plugin_runtime().get_plugin_summary()
     logger.info(

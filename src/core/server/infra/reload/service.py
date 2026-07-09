@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 from src.core.server.infra.reload.coordinator import ReloadCoordinator
 from src.core.server.infra.reload.file_watcher import FileChange, FileWatcher
@@ -62,7 +62,11 @@ class HotReloadService:
         if main_config_path is not None:
             watch_paths.append(Path(main_config_path))
 
-        from src.paths import config_dir
+        plugins_dir = self._root / "plugins"
+        if plugins_dir.is_dir():
+            watch_paths.append(plugins_dir)
+
+        from src.foundation.paths import config_dir
 
         webui_config_path = config_dir() / "webui_config.toml"
         if webui_config_path.is_file():
