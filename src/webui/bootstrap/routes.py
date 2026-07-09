@@ -16,6 +16,7 @@ from src.webui.routers import (
     chat_media_get, chat_media_put,
     logs_ws, persist_get, persist_put, reload_service, requests_list, requests_ws,
     stats_api, stats_reset, summary_api, system_status, terminal_sessions_api, terminal_ws, webui_page,
+    plugins_install, plugins_list, plugins_status, plugins_uninstall,
 )
 from src.webui.routers.admin import auth_regenerate, auth_update, auth_verify
 
@@ -55,6 +56,11 @@ def _register_admin_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/admin/autoupdate/check", autoupdate_check)
     app.router.add_post("/v1/admin/autoupdate/diff", autoupdate_diff)
     app.router.add_post("/v1/admin/autoupdate/apply", autoupdate_apply)
+    # 插件管理路由
+    app.router.add_get("/v1/admin/plugins", plugins_list)
+    app.router.add_get("/v1/admin/plugins/status", plugins_status)
+    app.router.add_post("/v1/admin/plugins/install", plugins_install)
+    app.router.add_post("/v1/admin/plugins/uninstall", plugins_uninstall)
 
 
 def _register_file_routes(app: aiohttp.web.Application) -> None:

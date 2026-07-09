@@ -44,7 +44,7 @@ def get_protocol(
             custom_prompt_zh = getattr(_fc, "custom_prompt_zh", "") or ""
     except Exception:
         if not default_protocol:
-            default_protocol = "xml"
+            default_protocol = "entml"
 
     # 优先级：protocol_id（API 请求显式指定）> fncall_mapping（管理员配置）> default_protocol（全局默认）
     if not protocol_id:

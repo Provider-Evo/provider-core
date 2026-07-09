@@ -24,60 +24,56 @@ class Registry:
         self.selector = Selector(persist_dir=str(persist_dir("gateway")), group_attr="platform")
         self._external_loader: Any = None
 
-    async def _load_external_plugins(
-        self,
-        session: Any,
-        whitelist: Optional[List[str]],
-        blacklist: Optional[List[str]],
-    ) -> None:
-        plugins_root = project_root / "plugins"
-        if not plugins_root.is_dir():
-            return
-        try:
-            from provider_sdk.runtime.loader import PluginLoader
-        except ImportError:
-            logger.debug("provider-sdk 未安装，跳过外部 plugins/ 加载")
-            return
-
-        loader = PluginLoader(plugin_type_filter="platform")
-        self._external_loader = loader
-        loaded = await loader.discover_and_load(
-            plugins_root,
-            session,
-            whitelist=whitelist,
-            blacklist=blacklist,
-        )
-        for record in loaded:
-            if record.adapter is None:
-                continue
-            self._registry.register(record.adapter)
-            logger.info("外部平台插件已注册: %s (%s)", record.adapter.name, record.manifest.id)
-
     async def init(self, session: Any) -> None:
-        """公开方法 init。"""
+        """公开方法 init — 仅通过 plugins/ 加载平台适配器。
+
+        容错：插件加载失败不向上抛出，网关仍可启动。
+        """
         cfg = get_config()
         plat_cfg = cfg.platforms_cfg
         wl = plat_cfg.platform_list if plat_cfg.platform_list_type == "whitelist" else None
         bl = plat_cfg.platform_list if plat_cfg.platform_list_type == "blacklist" else None
-        from src.platforms.base import PlatformAdapter
-        await self._registry.discover_and_register(
-            "src.platforms",
-            context=session,
-            whitelist=wl,
-            blacklist=bl,
-            base_class=PlatformAdapter,
-            required_methods=("init", "candidates", "ensure_candidates", "complete", "close"),
-            init_method="init",
-            shutdown_method="close",
-        )
-        await self._load_external_plugins(session, wl, bl)
+
+        from src.core.plugins.runtime import get_plugin_runtime
+
+        runtime = get_plugin_runtime()
+        try:
+            await runtime.init(session)
+        except Exception as exc:
+            logger.error("插件运行时初始化��常（网关继续启动）: %s", exc)
+        self._external_loader = runtime
+
+        adapter_count = 0
+        for adapter in runtime.platform_adapters():
+            name = getattr(adapter, "name", "")
+            if not name:
+                continue
+            if wl is not None and name not in wl:
+                continue
+            if name in (bl or []):
+                continue
+            self._registry.register(adapter)
+            adapter_count += 1
+            logger.info("平台插件已注册: %s", name)
+
+        if adapter_count == 0:
+            logger.warning("0 个平台插件已注册，网关将以无平台模式运行")
 
     async def reload_platform(self, platform_name: str, session: Any) -> bool:
-        """公开方法 reload_platform。"""
+        """公开方法 reload_platform — 从插件路径重载平台适配器。"""
         from src.platforms.base import PlatformAdapter  # noqa: PLC0415
+
+        # 优先从插件路径重载
+        plugin_dir = project_root / "plugins" / f"Provider-{platform_name.capitalize()}-Adapter"
+        if plugin_dir.is_dir():
+            module_path = f"plugins.Provider-{platform_name.capitalize()}-Adapter.{platform_name}"
+        else:
+            # 回退到内置路径
+            module_path = "src.platforms.{}".format(platform_name)
+
         return await self._registry.reload(
             platform_name,
-            "src.platforms.{}".format(platform_name),
+            module_path,
             context=session,
             base_class=PlatformAdapter,
             required_methods=("init", "candidates", "ensure_candidates", "complete", "close"),
@@ -198,9 +194,9 @@ class Registry:
         """公开方法 close。"""
         if self._external_loader is not None:
             try:
-                await self._external_loader.unload_all()
+                await self._external_loader.close()
             except Exception as exc:
-                logger.warning("外部插件卸载失败: %s", exc)
+                logger.warning("插件运行时关闭失败: %s", exc)
             self._external_loader = None
 
         # 保存适配器引用，PluginRegistry.close() 会清空 plugins 字典
