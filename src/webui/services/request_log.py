@@ -17,6 +17,7 @@ import sqlite3
 import threading
 import time
 from collections import deque
+from pathlib import Path
 from typing import Any, List
 
 from echotools.web.broker import RequestBroker, request_broker
@@ -76,7 +77,7 @@ _started = False
 
 def _init_db() -> None:
     """创建 SQLite 数据库和表结构。"""
-    _DB_DIR.mkdir(parents=True, exist_ok=True)
+    _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(_DB_PATH))
     try:
         conn.executescript(_DB_SCHEMA)
