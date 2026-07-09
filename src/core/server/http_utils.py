@@ -6,17 +6,18 @@ from typing import Any, Tuple
 
 
 def clean_fncall(content: str, platform_id: str = "", protocol_id: str = "") -> str:
-    """Clean function-call tags (remove protocol-specific trigger tags).
+    """中文说明：clean_fncall。
 
-    Args:
-        content: Content string to clean.
-        platform_id: Platform identifier (used to determine protocol).
-        protocol_id: Protocol identifier (overrides platform_id).
+Clean function-call tags (remove protocol-specific trigger tags).
 
-    Returns:
-        Cleaned content string.
-    """
-    from src.core.tools import get_protocol
+Args:
+    content: Content string to clean.
+    platform_id: Platform identifier (used to determine protocol).
+    protocol_id: Protocol identifier (overrides platform_id).
+
+Returns:
+    Cleaned content string."""
+    from src.core.utils.compat.tools import get_protocol
 
     protocol = get_protocol(protocol_id=protocol_id, platform_id=platform_id)
     return protocol.clean_tags(content)
@@ -25,21 +26,22 @@ def clean_fncall(content: str, platform_id: str = "", protocol_id: str = "") -> 
 def safe_flush(
     buffer: str, platform_id: str = "", protocol_id: str = ""
 ) -> Tuple[str, str]:
-    """Safely flush buffer — keep suffixes that might trigger tool calls.
+    """中文说明：safe_flush。
 
-    Scans the buffer tail for trigger-tag prefixes (not yet fully present),
-    keeping the prefix in the buffer and flushing the complete part.
+Safely flush buffer — keep suffixes that might trigger tool calls.
 
-    Args:
-        buffer: Current buffer content.
-        platform_id: Platform identifier.
-        protocol_id: Protocol identifier.
+Scans the buffer tail for trigger-tag prefixes (not yet fully present),
+keeping the prefix in the buffer and flushing the complete part.
 
-    Returns:
-        (flushable_part, kept_part): Two strings whose concatenation equals the
-        original buffer.
-    """
-    from src.core.tools import get_protocol
+Args:
+    buffer: Current buffer content.
+    platform_id: Platform identifier.
+    protocol_id: Protocol identifier.
+
+Returns:
+    (flushable_part, kept_part): Two strings whose concatenation equals the
+    original buffer."""
+    from src.core.utils.compat.tools import get_protocol
 
     protocol = get_protocol(protocol_id=protocol_id, platform_id=platform_id)
     tags = protocol.get_trigger_tags()
@@ -63,14 +65,15 @@ def safe_flush(
 
 
 async def get_json(request: Any) -> Any:
-    """Safely read request JSON body, returning None on failure.
+    """中文说明：get_json。
 
-    Args:
-        request: aiohttp.web.Request instance.
+Safely read request JSON body, returning None on failure.
 
-    Returns:
-        Parsed JSON object, or None if parsing fails.
-    """
+Args:
+    request: aiohttp.web.Request instance.
+
+Returns:
+    Parsed JSON object, or None if parsing fails."""
     try:
         return await request.json()
     except Exception:

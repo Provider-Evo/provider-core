@@ -45,13 +45,14 @@ let _logFilterExpanded = localStorage.getItem('provider.logFilterExpanded') === 
 let _uniqueModules = [];
 let _logSeenIds = {};  // 去重
 
-// Virtual scrolling state
-let _logFilteredCache = null;  // cached filtered entries (invalidated on filter change)
-const _VS_DEFAULT_ROW_HEIGHT = 26;
-const _VS_BUFFER = 50;
-let _vsRenderedRange = { start: -1, end: -1 };
-let _vsRowHeights = {};  // cache for measured row heights
-let _vsMeasuredHeights = new Set();  // track which rows have been measured
+let _logFilteredCache = null;
+let _logRenderTimer = null;
+
+const _LOG_FONT_CONFIG = {
+  small:  { timeW: 76, levelW: 38, moduleW: 112, colGap: 8, linePad: 2 },
+  medium: { timeW: 88, levelW: 44, moduleW: 128, colGap: 8, linePad: 3 },
+  large:  { timeW: 100, levelW: 50, moduleW: 144, colGap: 10, linePad: 4 },
+};
 
 const _LOG_LEVEL_PRIORITY = { DEBUG: 10, INFO: 20, WARNING: 30, ERROR: 40, CRITICAL: 50, SUCCESS: 25 };
 
@@ -77,6 +78,48 @@ function _formatLogLevel(level) {
   return level;
 }
 
+function _getLogFontConfig() {
+  return _LOG_FONT_CONFIG[_logFontSize] || _LOG_FONT_CONFIG.small;
+}
+
+function _formatLogLevelTag(level) {
+  return '[' + _formatLogLevel(level) + ']';
+}
+
+function _logModuleStyleAttr(entry) {
+  var parts = [];
+  if (entry.moduleColor) parts.push('color:' + entry.moduleColor);
+  if (entry.moduleBold) parts.push('font-weight:700');
+  return parts.length ? ' style="' + parts.join(';') + '"' : '';
+}
+
+function _createLogEntryHTML(entry) {
+  var level = entry.level || 'INFO';
+  var levelTag = _escapeHtml(_formatLogLevelTag(level));
+  var levelClass = 'log-col-level log-level-' + _escapeHtml(level);
+  var ts = _escapeHtml(_formatLogTimestamp(entry.timestamp));
+  var mod = _escapeHtml(entry.module || '');
+  var msg = _escapeHtml(entry.message || '');
+  var modStyle = _logModuleStyleAttr(entry);
+
+  return '<div class="log-entry">' +
+    '<div class="log-entry-mobile">' +
+      '<div class="log-mobile-meta">' +
+        '<span class="log-col-time">' + ts + '</span>' +
+        '<span class="' + levelClass + '">' + levelTag + '</span>' +
+      '</div>' +
+      '<div class="log-col-module"' + modStyle + '>' + mod + '</div>' +
+      '<div class="log-col-msg"' + modStyle + '>' + msg + '</div>' +
+    '</div>' +
+    '<div class="log-entry-desktop">' +
+      '<span class="log-col-time">' + ts + '</span>' +
+      '<span class="' + levelClass + '">' + levelTag + '</span>' +
+      '<span class="log-col-module"' + modStyle + '>' + mod + '</span>' +
+      '<span class="log-col-msg">' + msg + '</span>' +
+    '</div>' +
+  '</div>';
+}
+
 function _logEntryMatchesFilter(entry) {
   if (_logLevelFilter !== 'all') {
     var entryPri = _LOG_LEVEL_PRIORITY[entry.level] || 0;
@@ -92,7 +135,6 @@ function _logEntryMatchesFilter(entry) {
         var re = new RegExp(_logSearchQuery, 'i');
         if (!re.test(msg) && !re.test(mod)) return false;
       } catch (e) {
-        // Invalid regex — fall back to literal substring match
         var q = _logSearchQuery.toLowerCase();
         if (msg.toLowerCase().indexOf(q) === -1 && mod.toLowerCase().indexOf(q) === -1) return false;
       }
@@ -101,11 +143,10 @@ function _logEntryMatchesFilter(entry) {
       if (msg.toLowerCase().indexOf(q) === -1 && mod.toLowerCase().indexOf(q) === -1) return false;
     }
   }
-  // Date range filter
   if (_logDateFrom || _logDateTo) {
     var ts = entry.timestamp || '';
     if (ts) {
-      var entryDate = ts.substring(0, 10); // YYYY-MM-DD
+      var entryDate = ts.substring(0, 10);
       if (_logDateFrom && entryDate < _logDateFrom) return false;
       if (_logDateTo && entryDate > _logDateTo) return false;
     }
@@ -113,19 +154,16 @@ function _logEntryMatchesFilter(entry) {
   return true;
 }
 
-// ========================= Virtual Scrolling =========================
+// ========================= Log Rendering =========================
 
 function _invalidateLogFilterCache() {
   _logFilteredCache = null;
-  _vsRenderedRange = { start: -1, end: -1 };
-  _vsRowHeights = {};
-  _vsMeasuredHeights = new Set();
 }
 
 function _getFilteredLogs() {
   if (_logFilteredCache !== null) return _logFilteredCache;
   _logFilteredCache = [];
-  for (var i = _logEntries.length - 1; i >= 0; i--) {
+  for (var i = 0; i < _logEntries.length; i++) {
     if (_logEntryMatchesFilter(_logEntries[i])) {
       _logFilteredCache.push(_logEntries[i]);
     }
@@ -133,133 +171,41 @@ function _getFilteredLogs() {
   return _logFilteredCache;
 }
 
-function _getEstimatedRowHeight(idx) {
-  return _vsRowHeights[idx] || _VS_DEFAULT_ROW_HEIGHT;
-}
-
-function _getRowTop(idx) {
-  var top = 0;
-  for (var i = 0; i < idx; i++) {
-    top += _getEstimatedRowHeight(i);
-  }
-  return top;
-}
-
-function _getTotalHeight() {
-  var total = 0;
-  var filtered = _getFilteredLogs();
-  for (var i = 0; i < filtered.length; i++) {
-    total += _getEstimatedRowHeight(i);
-  }
-  return total;
-}
-
-function _measureRowHeight(dom, idx) {
-  var h = dom.getBoundingClientRect().height;
-  if (h > 0 && Math.abs(h - _getEstimatedRowHeight(idx)) > 1) {
-    _vsRowHeights[idx] = h;
-    _vsMeasuredHeights.add(idx);
-    return true;
-  }
-  return false;
-}
-
-function _renderVisibleLogs() {
+function _renderLogs() {
   var box = document.getElementById('logBox');
   if (!box) return;
   var filtered = _getFilteredLogs();
-  var totalHeight = _getTotalHeight();
-  var scrollTop = box.scrollTop;
-  var viewportH = box.clientHeight;
-
-  // Ensure spacer exists for scroll height
-  var spacer = box.querySelector('.log-vs-spacer');
-  if (!spacer) {
-    spacer = document.createElement('div');
-    spacer.className = 'log-vs-spacer';
-    spacer.style.cssText = 'width:1px;pointer-events:none;';
-    box.appendChild(spacer);
+  if (!filtered.length) {
+    box.innerHTML = '<div class="log-empty">' + t('logs.empty') + '</div>';
+    return;
   }
-  spacer.style.height = totalHeight + 'px';
-
-  // Calculate visible range using cumulative heights
-  var startIdx = 0;
-  var accH = 0;
-  while (startIdx < filtered.length && accH + _getEstimatedRowHeight(startIdx) < scrollTop) {
-    accH += _getEstimatedRowHeight(startIdx);
-    startIdx++;
+  var parts = ['<div class="log-list">'];
+  for (var i = 0; i < filtered.length; i++) {
+    parts.push(_createLogEntryHTML(filtered[i]));
   }
-  startIdx = Math.max(0, startIdx - _VS_BUFFER);
-
-  var endIdx = startIdx;
-  accH = _getRowTop(startIdx);
-  while (endIdx < filtered.length && accH < scrollTop + viewportH) {
-    accH += _getEstimatedRowHeight(endIdx);
-    endIdx++;
-  }
-  endIdx = Math.min(filtered.length, endIdx + _VS_BUFFER);
-
-  // Skip if range unchanged
-  if (startIdx === _vsRenderedRange.start && endIdx === _vsRenderedRange.end) return;
-  _vsRenderedRange = { start: startIdx, end: endIdx };
-
-  // Remove old log entries (keep spacer)
-  var children = box.children;
-  for (var i = children.length - 1; i >= 0; i--) {
-    if (!children[i].classList.contains('log-vs-spacer')) {
-      box.removeChild(children[i]);
-    }
-  }
-
-  // Insert new entries before spacer
-  for (var j = startIdx; j < endIdx; j++) {
-    var dom = _createLogEntryDOM(filtered[j]);
-    dom.style.position = 'absolute';
-    dom.style.top = _getRowTop(j) + 'px';
-    dom.style.left = '0';
-    dom.style.right = '0';
-    box.insertBefore(dom, spacer);
-  }
-
-  // Measure heights after rendering
-  requestAnimationFrame(function() {
-    var needReRender = false;
-    var children = box.children;
-    for (var i = 0; i < children.length; i++) {
-      if (children[i].classList.contains('log-vs-spacer')) continue;
-      var idx = startIdx + i;
-      if (idx < filtered.length && _measureRowHeight(children[i], idx)) {
-        needReRender = true;
-      }
-    }
-    if (needReRender) {
-      _vsRenderedRange = { start: -1, end: -1 };
-      _renderVisibleLogs();
-    }
-  });
+  parts.push('</div>');
+  box.innerHTML = parts.join('');
 }
 
-function _setupLogVirtualScroll() {
-  var box = document.getElementById('logBox');
-  if (!box || box._vsSetup) return;
-  box._vsSetup = true;
-  box.style.position = 'relative';
-  box.addEventListener('scroll', function() {
-    requestAnimationFrame(_renderVisibleLogs);
-  });
+function _syncLogLayoutVars() {
+  var viewer = document.getElementById('logBox');
+  if (!viewer) return;
+  var cfg = _getLogFontConfig();
+  viewer.style.setProperty('--log-time-w', cfg.timeW + 'px');
+  viewer.style.setProperty('--log-level-w', cfg.levelW + 'px');
+  viewer.style.setProperty('--log-module-w', cfg.moduleW + 'px');
+  viewer.style.setProperty('--log-col-gap', cfg.colGap + 'px');
+  viewer.style.setProperty('--log-line-pad', cfg.linePad + 'px');
 }
 
-function _createLogEntryDOM(entry) {
-  var div = document.createElement('div');
-  div.className = 'log-entry';
-  var levelText = _formatLogLevel(entry.level || 'INFO');
-  var moduleStyle = entry.moduleColor ? ' style="color:' + _escapeHtml(entry.moduleColor) + '"' : '';
-  div.innerHTML =
-    '<span class="log-time">' + _escapeHtml(_formatLogTimestamp(entry.timestamp)) + '</span>' +
-    '<span class="log-level log-level-' + _escapeHtml(entry.level || 'INFO') + '">' + levelText + '</span>' +
-    '<span class="log-module"' + moduleStyle + '>' + _escapeHtml(entry.module || '') + '</span>' +
-    '<span class="log-msg">' + _escapeHtml(entry.message || '') + '</span>';
-  return div;
+function _scheduleLogRender() {
+  if (_logRenderTimer) return;
+  _logRenderTimer = requestAnimationFrame(function() {
+    _logRenderTimer = null;
+    _renderLogs();
+    _logAutoScrollToBottom();
+    _updateLogCount();
+  });
 }
 
 function _updateUniqueModules() {
@@ -281,7 +227,7 @@ function _rebuildModuleSelect() {
   var prev = sel.value;
   
   // Build options array
-  var opts = [{ value: 'all', text: '全部模块' }];
+  var opts = [{ value: 'all', text: t('logs.allModules') }];
   for (var i = 0; i < _uniqueModules.length; i++) {
     opts.push({ value: _uniqueModules[i], text: _uniqueModules[i] });
   }
@@ -293,7 +239,7 @@ function _rebuildModuleSelect() {
     dropdown.setValue(prev || 'all');
   } else {
     // Fallback to native select manipulation
-    sel.innerHTML = '<option value="all">全部模块</option>';
+    sel.innerHTML = '<option value="all">' + t('logs.allModules') + '</option>';
     for (var i = 0; i < _uniqueModules.length; i++) {
       var opt = document.createElement('option');
       opt.value = _uniqueModules[i];
@@ -307,9 +253,8 @@ function _rebuildModuleSelect() {
 function _updateLogCount() {
   var el = document.getElementById('logCount');
   if (!el) return;
-  var total = _logEntries.length;
-  var visible = logBox ? logBox.children.length : 0;
-  el.textContent = visible + ' / ' + total + ' 条';
+  var filtered = _getFilteredLogs();
+  el.textContent = t('logs.count', { filtered: filtered.length, total: _logEntries.length });
 }
 
 function _applyLogFontSize() {
@@ -317,6 +262,8 @@ function _applyLogFontSize() {
   if (!viewer) return;
   viewer.classList.remove('log-font-small', 'log-font-medium', 'log-font-large');
   viewer.classList.add('log-font-' + _logFontSize);
+  _syncLogLayoutVars();
+  _renderLogs();
 }
 
 function _toggleLogFilters() {
@@ -360,9 +307,9 @@ function addLogEntry(entry) {
     }
   }
 
-  _logEntries.unshift(entry);
+  _logEntries.push(entry);
   while (_logEntries.length > _logMaxEntries) {
-    var removed = _logEntries.pop();
+    var removed = _logEntries.shift();
     if (removed.id) delete _logSeenIds[removed.id];
   }
 
@@ -373,13 +320,8 @@ function addLogEntry(entry) {
     _rebuildModuleSelect();
   }
 
-  // Invalidate filter cache and re-render visible logs
   _invalidateLogFilterCache();
-  if (_logEntryMatchesFilter(entry)) {
-    _renderVisibleLogs();
-    _logAutoScrollToBottom();
-  }
-  _updateLogCount();
+  _scheduleLogRender();
 }
 
 // ========================= Log Filtering =========================
@@ -396,8 +338,7 @@ function _logAutoScrollToBottom() {
 
 function filterLogs() {
   _invalidateLogFilterCache();
-  _setupLogVirtualScroll();
-  _renderVisibleLogs();
+  _renderLogs();
   _logAutoScrollToBottom();
   _updateLogCount();
 }
@@ -407,19 +348,20 @@ function clearLogs() {
   _logSeenIds = {};
   _uniqueModules = [];
   _logFilteredCache = null;
-  _vsRenderedRange = { start: -1, end: -1 };
-  _vsRowHeights = {};
-  _vsMeasuredHeights = new Set();
+  if (_logRenderTimer) {
+    cancelAnimationFrame(_logRenderTimer);
+    _logRenderTimer = null;
+  }
   var box = document.getElementById('logBox');
   if (box) box.innerHTML = '';
   _rebuildModuleSelect();
   _updateLogCount();
-  toast('日志已清空', 'ok');
+  toast(t('logs.cleared'), 'ok');
 }
 
 function exportLogs() {
   var lines = [];
-  for (var i = _logEntries.length - 1; i >= 0; i--) {
+  for (var i = 0; i < _logEntries.length; i++) {
     var e = _logEntries[i];
     lines.push(_formatLogTimestamp(e.timestamp) + ' [' + (e.level || '') + '] [' + (e.module || '') + '] ' + (e.message || ''));
   }
@@ -437,7 +379,7 @@ function exportLogs() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('日志已导出', 'ok');
+  toast(t('logs.exported'), 'ok');
 }
 
 function toggleAutoScroll() {
@@ -458,14 +400,14 @@ function toggleLogRegex() {
   _logSearchRegex = !_logSearchRegex;
   _updateRegexBtn();
   _invalidateLogFilterCache();
-  _renderVisibleLogs();
+  _renderLogs();
 }
 
 function _updateRegexBtn() {
   var btn = document.getElementById('logRegexBtn');
   if (btn) {
     btn.classList.toggle('active', _logSearchRegex);
-    btn.title = _logSearchRegex ? '正则表达式搜索已开启' : '正则表达式搜索已关闭';
+    btn.title = _logSearchRegex ? t('logs.regexOn') : t('logs.regexOff');
   }
   localStorage.setItem('provider.logSearchRegex', String(_logSearchRegex));
 }
@@ -510,9 +452,9 @@ function toast(message, type) {
 
 function showConfirmDialog(message, options) {
   options = options || {};
-  var title = options.title || '确认操作';
-  var confirmText = options.confirmText || '确定';
-  var cancelText = options.cancelText || '取消';
+  var title = options.title || t('dialog.titleDefault');
+  var confirmText = options.confirmText || t('dialog.ok');
+  var cancelText = options.cancelText || t('dialog.cancel');
 
   return new Promise(function(resolve) {
     var overlay = document.createElement('div');
@@ -542,10 +484,10 @@ function showConfirmDialog(message, options) {
 
 function showInputDialog(message, options) {
   options = options || {};
-  var title = options.title || '输入';
+  var title = options.title || t('dialog.inputTitle');
   var defaultValue = options.defaultValue || '';
-  var confirmText = options.confirmText || '确定';
-  var cancelText = options.cancelText || '取消';
+  var confirmText = options.confirmText || t('dialog.ok');
+  var cancelText = options.cancelText || t('dialog.cancel');
   var placeholder = options.placeholder || '';
 
   return new Promise(function(resolve) {
@@ -696,7 +638,7 @@ function applyTheme() {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const theme = state.settings.theme === 'auto' ? (prefersDark ? 'dark' : 'light') : state.settings.theme;
   document.documentElement.setAttribute('data-theme', theme);
-  themeState.textContent = 'theme: ' + state.settings.theme;
+  themeState.textContent = t('header.theme', { value: state.settings.theme });
   document.getElementById('themeSelect').value = state.settings.theme;
   updateThemeIcon();
   // Notify terminal module to refresh theme when in 'theme' mode
@@ -727,19 +669,19 @@ function scheduleRefresh() {
   const interval = Number(state.settings.refreshInterval || 0);
   if (interval > 0) {
     state.timer = setInterval(refreshAll, interval * 1000);
-    refreshState.textContent = 'refresh: ' + interval + 's';
+    refreshState.textContent = t('header.refreshInterval', { value: interval });
   } else {
-    refreshState.textContent = 'refresh: manual';
+    refreshState.textContent = t('header.refreshManual');
   }
 }
 
 function updateConfigSaveStatus() {
   if (configSaveStatus) {
     if (state.configDirty) {
-      configSaveStatus.textContent = '未保存';
+      configSaveStatus.textContent = t('common.unsaved');
       configSaveStatus.className = 'status-dirty flex items-center';
     } else {
-      configSaveStatus.textContent = '已保存';
+      configSaveStatus.textContent = t('common.saved');
       configSaveStatus.className = 'status-saved flex items-center';
     }
   }
@@ -776,7 +718,7 @@ async function switchTab(nextTab) {
     if (panel) {
       loaderEl = document.createElement('div');
       loaderEl.className = 'tab-loading-indicator';
-      loaderEl.textContent = '加载中...';
+      loaderEl.textContent = t('common.loading');
       panel.appendChild(loaderEl);
     }
     try {
@@ -787,6 +729,12 @@ async function switchTab(nextTab) {
   }
 
   _initTab(nextTab);
+  if (nextTab === 'logs') {
+    requestAnimationFrame(function() {
+      _renderLogs();
+      _logAutoScrollToBottom();
+    });
+  }
 }
 
 function _initTab(tabName) {
@@ -794,6 +742,10 @@ function _initTab(tabName) {
   _initializedTabs.add(tabName);
 
   switch (tabName) {
+    case 'logs':
+      _applyLogFontSize();
+      _renderLogs();
+      break;
     case 'chat':
       typeof _initChatTab === 'function' && _initChatTab();
       break;
@@ -829,6 +781,8 @@ async function fetchJson(url, options) {
     clearTimeout(timer);
   }
 }
+
+_applyLogFontSize();
 
 // ========================= Candidate ID Mapping =========================
 /**

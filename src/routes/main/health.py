@@ -15,4 +15,5 @@ async def _health_check(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 def setup_routes(app: aiohttp.web.Application) -> None:
+    """公开方法 setup_routes。"""
     app.router.add_get("/health", _health_check)

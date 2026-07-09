@@ -72,6 +72,7 @@ class AsyncTaskManager:
         task: AsyncTask,
         call_back: Optional[Callable[[asyncio.Task], None]] = None,
     ) -> None:
+        """公开方法 add_task。"""
         if not issubclass(task.__class__, AsyncTask):
             raise TypeError("task 必须继承 AsyncTask")
         async with self._lock:

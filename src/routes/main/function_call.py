@@ -16,6 +16,7 @@ _FUNCTION_REGISTRY: Dict[str, Dict[str, Any]] = {}
 
 
 def register_function(name: str, description: str, parameters: Dict[str, Any]) -> None:
+    """公开方法 register_function。"""
     _FUNCTION_REGISTRY[name] = {"name": name, "description": description, "parameters": parameters}
 
 
@@ -37,5 +38,6 @@ async def _list_functions(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 def setup_routes(app: aiohttp.web.Application) -> None:
+    """公开方法 setup_routes。"""
     app.router.add_post("/v1/function/call", _handle_function_call)
     app.router.add_get("/v1/functions", _list_functions)

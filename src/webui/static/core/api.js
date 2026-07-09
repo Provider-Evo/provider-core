@@ -35,5 +35,39 @@ var Api = (function () {
     });
   }
 
-  return { setTimeout: setTimeout_, fetchJson: fetchJson, post: post, put: put };
+  async function postForm(url, formData) {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, _timeout);
+    try {
+      var resp = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+      var data;
+      try {
+        data = await resp.json();
+      } catch (_e) {
+        data = null;
+      }
+      if (!resp.ok) {
+        var msg = (data && data.error) ? data.error : (resp.status + ' ' + resp.statusText);
+        var err = new Error(msg);
+        err.status = resp.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  return {
+    setTimeout: setTimeout_,
+    fetchJson: fetchJson,
+    post: post,
+    put: put,
+    postForm: postForm,
+  };
 })();

@@ -420,6 +420,28 @@ def _setup_handlers() -> None:
 _setup_handlers()
 
 
+def _cleanup_loguru() -> None:
+    """在进程退出前移除所有 loguru handler，避免 atexit 回调中 join 线程阻塞。
+
+    loguru 的文件处理器若使用 enqueue=True，会在后台启动线程。
+    Python 退出时 atexit 回调尝试 join 该线程，可能被 KeyboardInterrupt 中断。
+    ��前移除所有 handler 可避免此问题。
+    """
+    try:
+        _loguru_logger.remove()
+    except Exception:
+        pass
+
+
+def shutdown_logging() -> None:
+    """优雅关闭日志系统，释放文件句柄与后台线程。"""
+    _cleanup_loguru()
+
+
+import atexit as _atexit
+_atexit.register(_cleanup_loguru)
+
+
 def get_logger(module_name: str) -> CompatLogger:
     """返回绑定了模块名的 logger。
 

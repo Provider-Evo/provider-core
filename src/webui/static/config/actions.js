@@ -24,7 +24,7 @@ function copyText(text, successMessage) {
   copyPromise.then(function() {
     toast(successMessage, 'ok');
   }).catch(function(error) {
-    toast('复制失败：' + String(error), 'error');
+    toast(t('actions.copyFailed', { error: String(error) }), 'error');
   });
 }
 
@@ -37,12 +37,12 @@ function exportSummary() {
   link.download = 'provider-summary.json';
   link.click();
   URL.revokeObjectURL(url);
-  toast('摘要已导出', 'ok');
+  toast(t('actions.exportSummaryOk'), 'ok');
 }
 
 function connectLogsSocket() {
   if (!window.WebSocket) {
-    socketNotice.textContent = '日志 WebSocket: 当前浏览器不支持';
+    socketNotice.textContent = t('socket.unsupported');
     return;
   }
   if (logsSocket && (logsSocket.readyState === WebSocket.CONNECTING || logsSocket.readyState === WebSocket.OPEN)) {
@@ -57,15 +57,20 @@ function connectLogsSocket() {
   var maxReconnectAttempts = 999;
   var maxReconnectDelay = 30000;
   var baseReconnectDelay = 1000;
+  var _staticChangedToastAt = 0;
+  var _staticChangedToastCooldownMs = 60000;
 
   function scheduleReconnect() {
     if (reconnectAttempts >= maxReconnectAttempts) {
-      socketNotice.textContent = '日志 WebSocket: 重连次数过多，请刷新页面';
+      socketNotice.textContent = t('socket.reconnectLimit');
       return;
     }
     var delay = Math.min(baseReconnectDelay * Math.pow(2, Math.min(reconnectAttempts, 8)), maxReconnectDelay);
     reconnectAttempts++;
-    socketNotice.textContent = '日志 WebSocket: 将在 ' + (delay / 1000).toFixed(1) + ' 秒后重连 (' + reconnectAttempts + ')';
+    socketNotice.textContent = t('socket.reconnecting', {
+      delay: (delay / 1000).toFixed(1),
+      attempt: reconnectAttempts,
+    });
     setTimeout(function() {
       connectLogsSocket();
     }, delay);
@@ -80,17 +85,24 @@ function connectLogsSocket() {
       dot.classList.toggle('connected', connected);
       dot.classList.toggle('disconnected', !connected);
     }
-    if (text) text.textContent = connected ? '已连接' : '未连接';
+    if (text) text.textContent = connected ? t('logs.connConnected') : t('logs.connDisconnected');
   }
 
   logsSocket.onopen = function() {
     reconnectAttempts = 0;
-    socketNotice.textContent = '日志 WebSocket: 已连接';
+    socketNotice.textContent = t('socket.connected');
     _updateConnStatus(true);
   };
   logsSocket.onmessage = function(event) {
     try {
       var payload = JSON.parse(event.data);
+      if (payload.type === 'static_changed') {
+        var now = Date.now();
+        if (now - _staticChangedToastAt < _staticChangedToastCooldownMs) return;
+        _staticChangedToastAt = now;
+        toast(payload.message || t('socket.staticHint'), 'info');
+        return;
+      }
       if (payload.type === 'log' && payload.message) {
         // 支持新格式（完整级别名 "INFO"）和旧格式（单字母 "I"）
         var level = payload.level || 'INFO';
@@ -112,11 +124,11 @@ function connectLogsSocket() {
     }
   };
   logsSocket.onerror = function() {
-    socketNotice.textContent = '日志 WebSocket: 连接异常';
+    socketNotice.textContent = t('socket.error');
     _updateConnStatus(false);
   };
   logsSocket.onclose = function() {
-    socketNotice.textContent = '日志 WebSocket: 已关闭';
+    socketNotice.textContent = t('socket.closed');
     _updateConnStatus(false);
     scheduleReconnect();
   };
@@ -137,32 +149,32 @@ async function refreshAll() {
     } else {
       // API failed, show error state
       if (document.getElementById('versionValue')) {
-        document.getElementById('versionValue').textContent = '加载失败';
+        document.getElementById('versionValue').textContent = t('overview.loadFailed');
       }
       if (document.getElementById('modelsValue')) {
-        document.getElementById('modelsValue').textContent = '加载失败';
+        document.getElementById('modelsValue').textContent = t('overview.loadFailed');
       }
     }
     if (healthResult.status === 'fulfilled') {
       document.getElementById('healthValue').textContent = healthResult.value && healthResult.value.status ? healthResult.value.status : 'degraded';
     } else {
       if (document.getElementById('healthValue')) {
-        document.getElementById('healthValue').textContent = '未知';
+        document.getElementById('healthValue').textContent = t('overview.unknown');
       }
     }
     document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString();
   } catch (error) {
-    toast('状态刷新失败：' + String(error), 'error');
+    toast(t('overview.refreshFailed', { error: String(error) }), 'error');
   }
 }
 
 async function refreshModels() {
   try {
     const result = await fetchJson('/v1/admin/refresh_models', { method: 'POST' });
-    toast('模型刷新完成', 'ok');
+    toast(t('actions.modelsRefreshOk'), 'ok');
     await refreshAll();
   } catch (error) {
-    toast('模型刷新失败：' + String(error), 'error');
+    toast(t('actions.modelsRefreshFailed', { error: String(error) }), 'error');
   }
 }
 
@@ -185,15 +197,15 @@ async function saveConfig() {
     if (result.status === 'ok') {
       state.configDirty = false;
       updateConfigSaveStatus();
-      toast('WebUI 配置已保存', 'ok');
+      toast(t('actions.configSaveOk'), 'ok');
       // Prevent renderConfig from re-fetching and overwriting the form for 5 seconds
       if (typeof _lastConfigSaveTime !== 'undefined') _lastConfigSaveTime = Date.now();
       await refreshAll();
     } else {
-      toast('保存失败：' + (result.error || '未知错误'), 'error');
+      toast(t('actions.configSaveFailed', { error: result.error || t('actions.unknownError') }), 'error');
     }
   } catch (error) {
-    toast('保存失败：' + String(error), 'error');
+    toast(t('actions.configSaveFailed', { error: String(error) }), 'error');
   }
 }
 
@@ -216,21 +228,25 @@ var _RESTART_CONFIG = {
   SUCCESS_REDIRECT_DELAY: 1500,
 };
 
-var _RESTART_TITLES = {
-  requesting: '准备重启',
-  restarting: '正在重启',
-  checking: '检查服务状态',
-  success: '重启成功',
-  failed: '重启失败',
+var _RESTART_KEY_MAP = {
+  requesting: { title: 'restart.preparing', desc: 'restart.preparingDesc' },
+  restarting: { title: 'restart.restarting', desc: 'restart.restartingDesc' },
+  checking: { title: 'restart.checking', desc: 'restart.checkingDesc' },
+  success: { title: 'restart.success', desc: 'restart.successDesc' },
+  failed: { title: 'restart.failed', desc: 'restart.failedDesc' },
 };
 
-var _RESTART_DESCS = {
-  requesting: '正在发送重启请求...',
-  restarting: '服务正在重启中，请稍候...',
-  checking: '服务正在启动，正在检查是否可用...',
-  success: '服务已恢复正常，即将刷新页面...',
-  failed: '服务在规定时间内未恢复，请检查服务状态',
-};
+function _restartText(status, field) {
+  var keys = _RESTART_KEY_MAP[status] || _RESTART_KEY_MAP.requesting;
+  var key = keys[field];
+  if (status === 'checking' && field === 'desc') {
+    return t(key, {
+      current: _restartCheckAttempts,
+      max: _RESTART_CONFIG.MAX_ATTEMPTS,
+    });
+  }
+  return t(key);
+}
 
 function _restartSetState(status) {
   _restartState = status;
@@ -259,8 +275,14 @@ function _restartSetState(status) {
   if (pulse) pulse.classList.toggle('hidden', !showSpinner);
 
   // Text
-  if (title) title.textContent = _RESTART_TITLES[status] || '';
-  if (desc) desc.textContent = _RESTART_DESCS[status] || '';
+  if (title) {
+    title.textContent = _restartText(status, 'title');
+    title.setAttribute('data-i18n', _RESTART_KEY_MAP[status] ? _RESTART_KEY_MAP[status].title : 'restart.preparing');
+  }
+  if (desc) {
+    desc.textContent = _restartText(status, 'desc');
+    if (_RESTART_KEY_MAP[status]) desc.setAttribute('data-i18n', _RESTART_KEY_MAP[status].desc);
+  }
 
   // Actions
   if (actions) {
@@ -279,7 +301,7 @@ function _restartUpdateProgress(percent) {
 function _restartUpdateElapsed() {
   _restartElapsed++;
   var el = document.getElementById('restartElapsed');
-  if (el) el.textContent = '已用时 ' + _restartElapsed + 's';
+  if (el) el.textContent = t('restart.elapsed', { seconds: _restartElapsed });
 }
 
 function _restartStartProgressTimer() {
@@ -312,7 +334,11 @@ function _restartStartHealthCheck() {
     var controller = new AbortController();
     var timeout = setTimeout(function() { controller.abort(); }, _RESTART_CONFIG.CHECK_TIMEOUT);
 
-    fetch('/health', { signal: controller.signal })
+    fetch('/v1/webui/system/status', {
+      signal: controller.signal,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    })
       .then(function(resp) {
         clearTimeout(timeout);
         if (resp.ok) {
@@ -321,7 +347,7 @@ function _restartStartHealthCheck() {
         throw new Error('not ok');
       })
       .then(function(data) {
-        if (data && data.status === 'ok') {
+        if (data && data.running) {
           _restartOnSuccess();
           return;
         }
@@ -368,10 +394,22 @@ function _restartShowOverlay() {
   }
 }
 
-function _restartTrigger() {
+function triggerRestart(options) {
+  options = options || {};
+  var skipApiCall = Boolean(options.skipApiCall);
+
+  if (_restartState !== 'idle' && _restartState !== 'failed') {
+    return;
+  }
+
   _restartShowOverlay();
-  _restartSetState('requesting');
+  _restartSetState(skipApiCall ? 'restarting' : 'requesting');
   _restartStartProgressTimer();
+
+  if (skipApiCall) {
+    setTimeout(_restartStartHealthCheck, _RESTART_CONFIG.INITIAL_DELAY);
+    return;
+  }
 
   // Send restart request (server will die, so timeout is expected)
   var controller = new AbortController();
@@ -400,11 +438,15 @@ function _restartTrigger() {
     });
 }
 
+function _restartTrigger() {
+  triggerRestart();
+}
+
 function reloadServer() {
-  showConfirmDialog('确认要重启服务吗？所有活跃连接将被中断。', {
-    title: '重启服务',
-    confirmText: '确认重启',
-    cancelText: '取消',
+  showConfirmDialog(t('restart.confirmMessage'), {
+    title: t('restart.confirmTitle'),
+    confirmText: t('restart.confirmButton'),
+    cancelText: t('common.cancel'),
   }).then(function(confirmed) {
     if (confirmed) {
       _restartTrigger();
@@ -424,13 +466,13 @@ async function reloadConfigFromFile() {
     if (result.status === 'ok') {
       state.configDirty = false;
       updateConfigSaveStatus();
-      toast('配置已从文件重新加载', 'ok');
+      toast(t('config.reloadOk'), 'ok');
       await refreshAll();
     } else {
-      toast('重载失败：' + (result.error || '未知错误'), 'error');
+      toast(t('config.reloadFailed', { error: result.error || t('common.failed') }), 'error');
     }
   } catch (error) {
-    toast('重载失败：' + String(error), 'error');
+    toast(t('config.reloadFailed', { error: String(error) }), 'error');
   }
 }
 
@@ -445,16 +487,16 @@ function toggleConfigEdit() {
   if (isHidden) {
     configEditArea.value = configJsonBox.textContent || '';
     configEditArea.classList.remove('hidden');
-    document.getElementById('configEditToggle').textContent = '收起编辑';
+    document.getElementById('configEditToggle').textContent = t('config.collapseEdit');
   } else {
     try {
       const parsed = JSON.parse(configEditArea.value);
       configJsonBox.textContent = JSON.stringify(parsed, null, 2);
     } catch (e) {
-      toast('JSON 格式错误，未保存更改', 'error');
+      toast(t('config.jsonErrorUnsaved'), 'error');
     }
     configEditArea.classList.add('hidden');
-    document.getElementById('configEditToggle').textContent = '编辑配置';
+    document.getElementById('configEditToggle').textContent = t('config.edit');
   }
 }
 
@@ -468,7 +510,7 @@ async function loadAutoupdateSettings() {
       document.getElementById('autoupdateInterval').value = d.interval || 300;
       var diffEl = document.getElementById('autoupdateDiffUpdate');
       if (diffEl) diffEl.checked = d.diff_update !== false;
-      document.getElementById('autoupdateStatus').textContent = d.enabled ? '已启用' : '未启用';
+      document.getElementById('autoupdateStatus').textContent = d.enabled ? t('autoupdate.statusEnabled') : t('autoupdate.statusDisabled');
       // Render mirrors
       _renderMirrors(d.mirrors || []);
       // Show last check if available
@@ -477,7 +519,7 @@ async function loadAutoupdateSettings() {
       }
     }
   } catch (error) {
-    toast('加载自动更新设置失败：' + String(error), 'error');
+    toast(t('autoupdate.loadFailed', { error: String(error) }), 'error');
   }
 }
 
@@ -496,7 +538,7 @@ function _renderMirrors(mirrors) {
         return inp ? inp.value.trim() : '';
       },
       onChange: function() { /* items changed, will be collected on save */ },
-      placeholder: 'No mirrors configured',
+      placeholder: t('autoupdate.noMirrors'),
     });
   }
   _mirrorList.setItems(mirrors);
@@ -526,13 +568,13 @@ async function saveAutoupdateSettings() {
     });
     var data = await resp.json();
     if (data.success) {
-      document.getElementById('autoupdateStatus').textContent = data.data.enabled ? '已启用' : '未启用';
-      toast('自动更新设置已保存', 'ok');
+      document.getElementById('autoupdateStatus').textContent = data.data.enabled ? t('autoupdate.statusEnabled') : t('autoupdate.statusDisabled');
+      toast(t('autoupdate.saveOk'), 'ok');
     } else {
-      toast('保存失败：' + (data.error || 'unknown'), 'error');
+      toast(t('autoupdate.saveFailed', { error: data.error || t('actions.unknownError') }), 'error');
     }
   } catch (error) {
-    toast('保存失败：' + String(error), 'error');
+    toast(t('autoupdate.saveFailed', { error: String(error) }), 'error');
   }
 }
 
@@ -556,13 +598,13 @@ function _showCheckResults(d) {
   if (d.status === 'error') {
     statusEl.textContent = '[error]';
     statusEl.style.color = 'var(--err)';
-    metaEl.textContent = d.message || 'Check failed';
+    metaEl.textContent = d.message || t('autoupdate.checkFailed');
     filesEl.innerHTML = '';
     return;
   }
 
   if (!d.has_update) {
-    statusEl.textContent = '[up to date]';
+    statusEl.textContent = t('autoupdate.upToDate');
     statusEl.style.color = 'var(--ok)';
     metaEl.textContent = (d.local_hash || '') + ' = ' + (d.remote_hash || '') + ' (mirror: ' + (d.mirror || '') + ')';
     filesEl.innerHTML = '';
@@ -570,7 +612,7 @@ function _showCheckResults(d) {
   }
 
   var files = d.changed_files || [];
-  statusEl.textContent = files.length + ' file(s) changed';
+  statusEl.textContent = t('autoupdate.filesChanged', { count: files.length });
   statusEl.style.color = 'var(--warn)';
   metaEl.textContent = (d.local_hash || '?') + ' -> ' + (d.remote_hash || '?') + ' (mirror: ' + (d.mirror || '') + ')';
 
@@ -588,10 +630,10 @@ function _showCheckResults(d) {
     var html = filtered.map(function(f) {
       return '<label class="flex items-center gap-2" style="padding:2px 0;cursor:pointer;">'
         + '<input type="checkbox" class="autoupdate-file-check" value="' + escapeHtml(f) + '" checked>'
-        + '<span class="text-[12px] font-mono autoupdate-file-link" data-file="' + escapeHtml(f) + '" style="color:var(--accent);cursor:pointer;text-decoration:underline;" title="点击查看变更">' + escapeHtml(f) + '</span>'
+        + '<span class="text-[12px] font-mono autoupdate-file-link" data-file="' + escapeHtml(f) + '" style="color:var(--accent);cursor:pointer;text-decoration:underline;" title="' + escapeHtml(t('autoupdate.viewDiff')) + '">' + escapeHtml(f) + '</span>'
         + '</label>';
     }).join('');
-    filesEl.innerHTML = html || '<div class="text-muted" style="padding:8px;">No matching files</div>';
+    filesEl.innerHTML = html || '<div class="text-muted" style="padding:8px;">' + escapeHtml(t('autoupdate.noMatchingFiles')) + '</div>';
     _bindFileEvents();
     _updateSelectedCount();
   }
@@ -599,7 +641,7 @@ function _showCheckResults(d) {
   function _updateSelectedCount() {
     var checked = filesEl.querySelectorAll('.autoupdate-file-check:checked').length;
     var total = filesEl.querySelectorAll('.autoupdate-file-check').length;
-    if (selectedCount) selectedCount.textContent = '已选 ' + checked + '/' + total + ' 个文件';
+    if (selectedCount) selectedCount.textContent = t('autoupdate.selectedCount', { checked: checked, total: total });
   }
 
   function _bindFileEvents() {
@@ -670,8 +712,8 @@ async function _showFileDiff(filepath) {
       + '<button id="autoupdateDiffClose" type="button" style="cursor:pointer;font-size:20px;border:none;background:none;color:var(--text);">&times;</button>'
       + '</div>'
       + '<div id="autoupdateDiffContent" style="flex:1;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
-      + '<div id="diffLeft" style="overflow:auto;font-size:12px;line-height:1.5;padding:12px;background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;white-space:pre-wrap;word-break:break-all;font-family:monospace;"><div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;">OLD (local)</div><pre id="diffLeftPre" style="margin:0;white-space:pre-wrap;"></pre></div>'
-      + '<div id="diffRight" style="overflow:auto;font-size:12px;line-height:1.5;padding:12px;background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;white-space:pre-wrap;word-break:break-all;font-family:monospace;"><div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;">NEW (remote)</div><pre id="diffRightPre" style="margin:0;white-space:pre-wrap;"></pre></div>'
+      + '<div id="diffLeft" style="overflow:auto;font-size:12px;line-height:1.5;padding:12px;background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;white-space:pre-wrap;word-break:break-all;font-family:monospace;"><div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;">' + escapeHtml(t('autoupdate.diffOld')) + '</div><pre id="diffLeftPre" style="margin:0;white-space:pre-wrap;"></pre></div>'
+      + '<div id="diffRight" style="overflow:auto;font-size:12px;line-height:1.5;padding:12px;background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;white-space:pre-wrap;word-break:break-all;font-family:monospace;"><div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;">' + escapeHtml(t('autoupdate.diffNew')) + '</div><pre id="diffRightPre" style="margin:0;white-space:pre-wrap;"></pre></div>'
       + '</div>'
       + '</div>';
     document.body.appendChild(overlay);
@@ -680,7 +722,7 @@ async function _showFileDiff(filepath) {
   }
   overlay.style.display = 'flex';
   document.getElementById('autoupdateDiffTitle').textContent = filepath;
-  document.getElementById('diffLeftPre').textContent = 'Loading diff...';
+  document.getElementById('diffLeftPre').textContent = t('autoupdate.diffLoading');
   document.getElementById('diffRightPre').textContent = '';
 
   try {
@@ -753,19 +795,19 @@ async function triggerAutoupdateCheck() {
     var statusEl = document.getElementById('autoupdateResultStatus');
     var panel = document.getElementById('autoupdateResults');
     if (panel) panel.classList.remove('hidden');
-    if (statusEl) { statusEl.textContent = 'checking...'; statusEl.style.color = 'var(--muted)'; }
+    if (statusEl) { statusEl.textContent = t('autoupdate.checking'); statusEl.style.color = 'var(--muted)'; }
     var resp = await fetch('/v1/admin/autoupdate/check', { method: 'POST' });
     var data = await resp.json();
     if (data.success) {
       _showCheckResults(data.data);
-      toast('检查完成：' + (data.data.changed_count || 0) + ' file(s) changed', 'ok');
+      toast(t('autoupdate.checkComplete', { count: data.data.changed_count || 0 }), 'ok');
     } else {
-      _showCheckResults({ status: 'error', message: data.error || 'unknown' });
-      toast('检查失败：' + (data.error || 'unknown'), 'error');
+      _showCheckResults({ status: 'error', message: data.error || t('actions.unknownError') });
+      toast(t('autoupdate.checkFailedDetail', { error: data.error || t('actions.unknownError') }), 'error');
     }
   } catch (error) {
     _showCheckResults({ status: 'error', message: String(error) });
-    toast('检查失败：' + String(error), 'error');
+    toast(t('autoupdate.checkFailedDetail', { error: String(error) }), 'error');
   }
 }
 
@@ -777,13 +819,13 @@ async function applyAutoupdate() {
     checkboxes.forEach(function(cb) { selectedFiles.push(cb.value); });
 
     if (selectedFiles.length === 0) {
-      toast('请至少选择一个要更新的文件', 'warn');
+      toast(t('autoupdate.selectAtLeastOne'), 'warn');
       return;
     }
 
-    var confirmed = await showConfirmDialog('确定要应用 ' + selectedFiles.length + ' 个文件的更新吗？更新后需要重启服务才能生效。');
+    var confirmed = await showConfirmDialog(t('autoupdate.applyConfirm', { count: selectedFiles.length }));
     if (!confirmed) return;
-    toast('正在应用 ' + selectedFiles.length + ' 个文件的更新...', 'info');
+    toast(t('autoupdate.applying', { count: selectedFiles.length }), 'info');
     var resp = await fetch('/v1/admin/autoupdate/apply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -791,7 +833,7 @@ async function applyAutoupdate() {
     });
     var data = await resp.json();
     if (data.success) {
-      toast('更新已应用 ' + selectedFiles.length + ' 个文件，正在热重载配置...', 'ok');
+      toast(t('autoupdate.applyOk', { count: selectedFiles.length }), 'ok');
       var applyBtn = document.getElementById('autoupdateApplyBtn');
       if (applyBtn) applyBtn.classList.add('hidden');
       // Auto hot-reload config after apply
@@ -799,14 +841,14 @@ async function applyAutoupdate() {
         var reloadResp = await fetch('/v1/config/reload', { method: 'POST' });
         var reloadResult = await reloadResp.json();
         if (reloadResult.status === 'ok') {
-          toast('配置已热重载', 'ok');
+          toast(t('autoupdate.configReloaded'), 'ok');
         }
       } catch (e) { /* ignore reload errors */ }
       await refreshAll();
     } else {
-      toast('应用失败：' + (data.error || 'unknown'), 'error');
+      toast(t('autoupdate.applyFailed', { error: data.error || t('actions.unknownError') }), 'error');
     }
   } catch (error) {
-    toast('应用失败：' + String(error), 'error');
+    toast(t('autoupdate.applyFailed', { error: String(error) }), 'error');
   }
 }

@@ -25,5 +25,6 @@ async def _get_model(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 def setup_routes(app: aiohttp.web.Application) -> None:
+    """公开方法 setup_routes。"""
     app.router.add_get("/v1/models", _list_models)
     app.router.add_get("/v1/models/{model}", _get_model)

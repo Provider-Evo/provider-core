@@ -45,19 +45,24 @@ if str(_ROOT) not in sys.path:
 # 导入
 # ---------------------------------------------------------------------------
 
-from src.core.config import get_config, start_config_watcher
+from src.core.config import get_config, get_config_manager
 from src.core.dispatch.registry import Registry
-from src.core.server import (   # server 已合并为单文件，所有符号从此处导入
+from src.core.server import (
     AutoUpdater,
-    FileWatcher,
-    create_app,
     ensure_port_available,
+)
+from src.core.server.app_host import AppHost
+from src.core.server.infra.reload import (
+    HotReloadService,
+    bind_worker_shutdown,
+    consume_restart_flag,
 )
 
 # 导入 server 模块触发 proxy monkey-patch（_init_proxy 在模块级自动执行）
 import src.core.server  # noqa: F401
 
-from src.logger import get_logger
+from src.logger import get_logger, shutdown_logging
+from src.core.server.infra.shutdown import request_shutdown
 
 logger = get_logger(__name__)
 
@@ -78,6 +83,13 @@ _ERROR_RESTART_DELAY = 10.0
 
 # Worker 错误重启默认最大次数
 _DEFAULT_MAX_ERROR_RESTARTS = 3
+
+# 关停步骤默认超时（秒）
+_SHUTDOWN_STEP_TIMEOUT = 5.0
+
+# 全局引用：供信号处理器在事件循环线程外触发关停
+_active_main_loop: Optional[asyncio.AbstractEventLoop] = None
+_active_stop_event: Optional[asyncio.Event] = None
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +150,7 @@ def _make_connector() -> aiohttp.TCPConnector:
     Returns:
         配置���的 TCPConnector 实例。
     """
-    from src.core.server.connector import make_connector
+    from src.core.server.infra.connector import make_connector
     return make_connector()
 
 
@@ -147,49 +159,74 @@ def _make_connector() -> aiohttp.TCPConnector:
 # ---------------------------------------------------------------------------
 
 
-def _setup_signal_handlers(stop_event: asyncio.Event) -> None:
-    """配置进程退出信号处理器（仅 Unix 平台）。
+def _print_interrupt_exit_notice() -> None:
+    """在日志系统不可用或正在退出时，用最小输出提示 Ctrl+C 退出。"""
+    print("\n收到 Ctrl+C，中断退出。", flush=True)
 
-    在 Windows 上不注册信号处理器，通过 KeyboardInterrupt 捕获退出。
+
+def _finalize_exit(exit_code: int = 0) -> None:
+    """关闭日志并强制退出，避免 threading shutdown 阶段被 KeyboardInterrupt 打断。"""
+    try:
+        shutdown_logging()
+    except KeyboardInterrupt:
+        _print_interrupt_exit_notice()
+    except Exception:
+        pass
+    os._exit(exit_code)
+
+
+def _mark_shutdown_and_interrupt(_signum: int, _frame: object) -> None:
+    """收到中断信号时标记关停，并通知主事件循环退出。"""
+    request_shutdown("signal")
+    loop = _active_main_loop
+    stop_event = _active_stop_event
+    if loop is None or loop.is_closed() or stop_event is None:
+        return
+    try:
+        loop.call_soon_threadsafe(stop_event.set)
+    except RuntimeError:
+        return
+
+
+def _setup_signal_handlers(stop_event: asyncio.Event) -> None:
+    """配置进程退出信号处理器。
+
+    Windows 不支持 ``loop.add_signal_handler``，使用 ``signal.signal`` 代替。
 
     Args:
         stop_event: 用于通知主流程退出的异步事件。
     """
-
-    def _on_signal() -> None:
-        logger.info("收到退出信号，准备优雅退出...")
-        stop_event.set()
-
+    global _active_stop_event
+    _active_stop_event = stop_event
+    signal.signal(signal.SIGINT, _mark_shutdown_and_interrupt)
     if sys.platform != "win32":
         loop = asyncio.get_running_loop()
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, _on_signal)
-    else:
-        logger.debug("Windows 平台��信号处理器通过 KeyboardInterrupt 捕获")
+        for sig in (signal.SIGTERM,):
+            loop.add_signal_handler(sig, stop_event.set)
 
 
 async def _create_background_tasks(
     cfg: object,
     registry: Registry,
     session: aiohttp.ClientSession,
-) -> List[asyncio.Task]:
-    """创建并启动后台异步任务。
+    app_host: AppHost,
+    stop_event: asyncio.Event,
+) -> tuple[list[asyncio.Task], HotReloadService | None]:
+    """创建并启动后台异步任务（单 FileWatcher 多订阅）。"""
+    is_idle_env = _is_idle()
+    hot_reload = HotReloadService(
+        _ROOT,
+        registry,
+        session,
+        app_host,
+        get_config_manager(),
+        dry_run=is_idle_env,
+    )
 
-    Args:
-        cfg: 全局配置对象。
-        registry: 路由注册表。
-        session: aiohttp 客户端会话。
-
-    Returns:
-        已启动的后台任务列表。
-    """
-
-    async def _config_watcher_task() -> None:
-        await start_config_watcher(interval=2.0)
-
-    async def _file_watcher_task() -> None:
-        watcher = FileWatcher(_ROOT)
-        await watcher.start(registry, session)
+    async def _hot_reload_task() -> None:
+        await hot_reload.start()
+        await stop_event.wait()
+        await hot_reload.stop()
 
     async def _autoupdate_task() -> None:
         updater = AutoUpdater(
@@ -199,63 +236,99 @@ async def _create_background_tasks(
         )
         await updater.run()
 
-    tasks: List[asyncio.Task] = [
-        asyncio.ensure_future(_config_watcher_task()),
+    tasks: list[asyncio.Task] = [
+        asyncio.ensure_future(_hot_reload_task()),
     ]
 
-    is_idle_env = _is_idle()
-    if not is_idle_env:
-        tasks.append(asyncio.ensure_future(_file_watcher_task()))
     if cfg.autoupdate.enabled and not is_idle_env:
         tasks.append(asyncio.ensure_future(_autoupdate_task()))
 
-    return tasks
+    return tasks, hot_reload
+
+
+async def _await_shutdown_step(
+    awaitable: object,
+    *,
+    timeout: float,
+    step_name: str,
+) -> object | None:
+    """为关停步骤设置硬超时，避免单个组件阻塞 Ctrl+C 退出。"""
+    try:
+        return await asyncio.wait_for(awaitable, timeout=timeout)
+    except asyncio.TimeoutError:
+        logger.warning("%s 超时，继续执行后续关停步骤", step_name)
+        return None
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        logger.warning("%s 失败，继续执行后续关停步骤: %s", step_name, exc)
+        return None
 
 
 async def _shutdown(
     tasks: List[asyncio.Task],
     registry: Registry,
     session: aiohttp.ClientSession,
-    runner: aiohttp.web.AppRunner,
+    app_host: AppHost,
+    hot_reload_service: HotReloadService | None = None,
+    *,
+    reload_callback: object | None = None,
 ) -> None:
-    """优雅关闭所有后台任务和资源。
-
-    Args:
-        tasks: 需要取消的后台任务列表。
-        registry: 路由注册表。
-        session: aiohttp 客户端会话。
-        runner: aiohttp 应用运行器。
-    """
+    """优雅关闭所有后台任务和资源。"""
     logger.info("取消后台任务...")
     for task in tasks:
         task.cancel()
-    await asyncio.gather(*tasks, return_exceptions=True)
+    await _await_shutdown_step(
+        asyncio.gather(*tasks, return_exceptions=True),
+        timeout=_SHUTDOWN_STEP_TIMEOUT,
+        step_name="取消后台任务",
+    )
+
+    if hot_reload_service is not None:
+        await hot_reload_service.stop()
+
+    if reload_callback is not None:
+        try:
+            get_config_manager().unregister_reload_callback(reload_callback)
+        except Exception:
+            pass
 
     # 主动关闭所有 WebSocket 连接，避免 ProactorEventLoop 下 transport 未正确关闭
-    from src.webui.logs_ws import log_broker
+    from src.webui.core.logs_ws import log_broker
     async with log_broker._lock:
         sockets = list(log_broker._sockets)
         log_broker._sockets.clear()
     for ws in sockets:
         try:
-            await ws.close()
+            await asyncio.wait_for(ws.close(), timeout=1.0)
         except Exception:
             pass
 
     logger.info("正在关闭注册表...")
-    await registry.close()
+    await _await_shutdown_step(
+        registry.close(),
+        timeout=_SHUTDOWN_STEP_TIMEOUT,
+        step_name="关闭注册表",
+    )
 
     logger.info("正在关闭 HTTP Session...")
-    await session.close()
+    await _await_shutdown_step(
+        session.close(),
+        timeout=_SHUTDOWN_STEP_TIMEOUT,
+        step_name="关闭 HTTP Session",
+    )
 
     logger.info("正在停止 Web 服务器...")
-    if runner is not None:
-        await runner.cleanup()
+    await _await_shutdown_step(
+        app_host.shutdown(),
+        timeout=_SHUTDOWN_STEP_TIMEOUT,
+        step_name="停止 Web 服务器",
+    )
 
     logger.info("Provider-V2 已完全退出")
 
 
-async def _run() -> None:
+async def _run() -> int:
     """Worker 的异步主流程——启动所有��件，等待退出信号，优雅关闭。"""
     cfg = get_config()
     host = cfg.server.host
@@ -266,13 +339,36 @@ async def _run() -> None:
 
     registry = Registry()
     await registry.init(session)
+    get_config_manager().bind_runtime(registry, session)
 
-    app = await create_app(registry, session)
+    from src.core.server.infra.reload.internal.runtime_state import set_worker_start_time
+    set_worker_start_time()
+
 
     import logging as _logging
     _access_log = (
         _logging.getLogger("aiohttp.access") if cfg.debug.access_log else None
     )
+
+    app_host = AppHost(
+        host,
+        port,
+        registry,
+        session,
+        access_log=_access_log,
+    )
+
+    async def _reload_app_after_config(changed_scopes: object = ()) -> None:
+        from src.core.config.reload_policy import scope_needs_app_reload
+        scopes = changed_scopes if isinstance(changed_scopes, (list, tuple)) else ()
+        if scopes and not scope_needs_app_reload(scopes):
+            return
+        try:
+            await app_host.reload_app()
+        except Exception as exc:
+            logger.warning('配置热重载后应用重建失败: %s', exc)
+
+    get_config_manager().register_reload_callback(_reload_app_after_config)
 
     # 检查并绑定端口（带重试）
     # Windows 上 kill 进程后 TCP ��接字可能仍在 TIME_WAIT，
@@ -280,7 +376,6 @@ async def _run() -> None:
     # 和 site.start() 合并在同一个重试循环中。
     max_port_retries = 8
     port_retry_delay = 1.0
-    runner: Optional[aiohttp.web.AppRunner] = None
 
     for port_attempt in range(max_port_retries):
         port_result = ensure_port_available(port, cfg.server.startup_force_kill_port)
@@ -308,17 +403,11 @@ async def _run() -> None:
                 await registry.close()
                 raise SystemExit(1)
 
-        # 端口可用（或已释放），尝试绑定
-        runner = aiohttp.web.AppRunner(app, access_log=_access_log)
-        await runner.setup()
-        site = aiohttp.web.TCPSite(runner, host, port)
         try:
-            await site.start()
-            break  # 绑定成功
+            await app_host.start()
+            break
         except OSError as exc:
-            # ensure_port_available 报告空闲但实际 bind 失败（TIME_WAIT）
-            await runner.cleanup()
-            runner = None
+            await app_host.shutdown()
             if port_attempt < max_port_retries - 1:
                 logger.warning(
                     "端口 %d 绑定失败 (%s)，等待 %.1f 秒后重试 (%d/%d)...",
@@ -343,53 +432,37 @@ async def _run() -> None:
 
     logger.info("Worker 已启动: http://%s:%d", host, port)
 
+    global _active_main_loop
+    _active_main_loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
+    bind_worker_shutdown(stop_event)
     _setup_signal_handlers(stop_event)
-    tasks = await _create_background_tasks(cfg, registry, session)
+    tasks, hot_reload_service = await _create_background_tasks(
+        cfg, registry, session, app_host, stop_event,
+    )
 
     try:
-        if sys.platform == "win32":
-            while not stop_event.is_set():
-                await asyncio.sleep(0.5)
-        else:
-            await stop_event.wait()
+        while not stop_event.is_set():
+            await asyncio.sleep(0.5)
     except (KeyboardInterrupt, SystemExit):
-        logger.info("收到键盘中断��正在退出...")
+        request_shutdown("keyboard_interrupt")
+        logger.info("收到键盘中断，正在退出...")
     finally:
-        await _shutdown(tasks, registry, session, runner)
-        # 使用 os._exit() 强制退出，避免 Python 线程关闭清理
-        # 避免 "Exception ignored on threading shutdown" 错误
-        # 在 _shutdown() 中已完成所有清理工作，此处强��退出是安全的
-        os._exit(0)
-
-
-async def _run_idle_watcher() -> None:
-    """IDLE 环境下的文件监视器——只提示变更，不触发重启。"""
-    watcher = FileWatcher(_ROOT)
-    mtimes: dict = watcher._scan()
-    logger.info("IDLE 文件监��已启动，文件变更时将提示手动重启")
-
-    while True:
-        await asyncio.sleep(2.0)
         try:
-            current = watcher._scan()
-            changed = {
-                fp
-                for fp, mt in current.items()
-                if fp not in mtimes or mtimes[fp] != mt
-            }
-            mtimes = current
+            await _shutdown(
+                tasks,
+                registry,
+                session,
+                app_host,
+                hot_reload_service,
+                reload_callback=_reload_app_after_config,
+            )
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            _print_interrupt_exit_notice()
+        except Exception as exc:
+            logger.warning("关停过程异常，继续退出: %s", exc)
 
-            if changed:
-                names = [Path(fp).name for fp in changed]
-                logger.info("检测到文件变更: %s", names)
-                print(
-                    f"\n*** 检测到文件变更 {names}，"
-                    "请手动重启服务 (python main.py) ***\n",
-                    flush=True,
-                )
-        except (OSError, ValueError) as exc:
-            logger.warning("文件监视检查失败: %s", exc)
+    return _RESTART_EXIT_CODE if consume_restart_flag() else 0
 
 
 # ---------------------------------------------------------------------------
@@ -414,10 +487,21 @@ def _run_worker() -> None:
         except (ImportError, OSError) as exc:
             logger.debug("uvloop 初始化失败（%s），使用默认事件循环", exc)
 
+    exit_code = 0
+    global _active_main_loop
     try:
-        asyncio.run(_run())
+        exit_code = asyncio.run(_run())
     except KeyboardInterrupt:
+        request_shutdown("keyboard_interrupt")
         logger.info("Worker 已退出")
+    except SystemExit as exc:
+        if isinstance(exc.code, int):
+            exit_code = exc.code
+        elif exc.code:
+            exit_code = 1
+    finally:
+        _active_main_loop = None
+        _finalize_exit(exit_code)
 
 
 # ---------------------------------------------------------------------------
@@ -571,7 +655,7 @@ def _run_runner() -> None:
             if reader_thread is not None:
                 reader_thread.join(timeout=2.0)
             logger.info("Worker 已终止，Runner 退出")
-            return
+            _finalize_exit(0)
 
         if reader_thread is not None:
             reader_thread.join(timeout=2.0)
@@ -615,6 +699,7 @@ def _run_runner() -> None:
         proc.wait()
     if reader_thread is not None:
         reader_thread.join(timeout=2.0)
+    _finalize_exit(0)
 
 
 # ---------------------------------------------------------------------------

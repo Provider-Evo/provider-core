@@ -43,11 +43,12 @@ async def auth_middleware(
     request: aiohttp.web.Request,
     handler: _Handler,
 ) -> aiohttp.web.StreamResponse:
-    """Reject unauthenticated requests to protected WebUI routes.
+    """中文说明：auth_middleware。
 
-    Authentication is disabled when ``[auth] enabled = false`` in
-    ``config.toml`` (the default).
-    """
+Reject unauthenticated requests to protected WebUI routes.
+
+Authentication is disabled when ``[auth] enabled = false`` in
+``config.toml`` (the default)."""
     cfg = get_config()
     if not cfg.auth.enabled:
         return await handler(request)

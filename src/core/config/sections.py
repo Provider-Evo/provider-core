@@ -204,66 +204,57 @@ class AppConfig(ConfigBase):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AppConfig":
-        """重写 from_dict，特殊处理 [platforms] 段和模型映射合并。
-
-        [platforms] 在 TOML 中同时包含：
-        - platform_list_type / platform_list -> PlatformsCfg
-        - 其他键（qwen, deepseek 等） -> platforms raw dict
-
-        模型映射支持三种来源（优先级从高到低）：
-        1. 协议级：[anthropic.model_mapping] / [openai.model_mapping]
-        2. 根级协议：[model_mapping.anthropic] / [model_mapping.openai]
-        3. 根级全局：[model_mapping]（非 anthropic/openai 的键作为全局 fallback）
-        """
-        # 分离 platforms 段
-        platforms_raw = {}
-        platforms_cfg_data = {}
-        raw_platforms = data.get("platforms", {})
-        if isinstance(raw_platforms, dict):
-            for k, v in raw_platforms.items():
-                if k in ("platform_list_type", "platform_list"):
-                    platforms_cfg_data[k] = v
-                else:
-                    platforms_raw[k] = v if isinstance(v, dict) else {}
-
-        # 用分离后的数据构造 platforms_cfg
+        """重写 from_dict，特殊处理 [platforms] 段和模型映射合并。"""
+        platforms_raw, platforms_cfg_data = _split_platforms_section(data)
         data = dict(data)
         data["platforms_cfg"] = platforms_cfg_data
         data["platforms"] = platforms_raw
 
-        # 提取 openai.model_mapping（无 OpenAICfg 段，需手动提取）
-        openai_section_mm = {}
+        openai_section_mm: dict[str, Any] = {}
         raw_openai = data.get("openai", {})
         if isinstance(raw_openai, dict):
             openai_section_mm = dict(raw_openai.get("model_mapping", {}))
 
-        # 构造实例
         instance = super().from_dict(data)
-
-        # 合并模型映射
-        global_mm = data.get("model_mapping", {})
-        if isinstance(global_mm, dict):
-            root_anth_mm = dict(global_mm.get("anthropic", {}))
-            root_openai_mm = dict(global_mm.get("openai", {}))
-            global_fallback = {k: v for k, v in global_mm.items() if k not in ("anthropic", "openai")}
-        else:
-            root_anth_mm = {}
-            root_openai_mm = {}
-            global_fallback = {}
-
-        # Anthropic 合并：协议级 > 根级协议 > 全局 fallback
-        anth_section_mm = instance.anthropic.model_mapping
-        merged_anth = dict(global_fallback)
-        merged_anth.update(root_anth_mm)
-        merged_anth.update(anth_section_mm)
-
-        # OpenAI 合并：协议级 > 根级协议 > 全局 fallback
-        merged_openai = dict(global_fallback)
-        merged_openai.update(root_openai_mm)
-        merged_openai.update(openai_section_mm)
-
-        # 写入合并结果
-        instance.model_mapping.anthropic = merged_anth
-        instance.model_mapping.openai = merged_openai
-
+        _merge_model_mappings(instance, data, openai_section_mm)
         return instance
+
+
+def _split_platforms_section(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """分离 [platforms] 段为 platforms_cfg 与 platforms raw dict。"""
+    platforms_raw: dict[str, Any] = {}
+    platforms_cfg_data: dict[str, Any] = {}
+    raw_platforms = data.get("platforms", {})
+    if isinstance(raw_platforms, dict):
+        for k, v in raw_platforms.items():
+            if k in ("platform_list_type", "platform_list"):
+                platforms_cfg_data[k] = v
+            else:
+                platforms_raw[k] = v if isinstance(v, dict) else {}
+    return platforms_raw, platforms_cfg_data
+
+
+def _merge_model_mappings(
+    instance: AppConfig,
+    data: dict[str, Any],
+    openai_section_mm: dict[str, Any],
+) -> None:
+    """合并三层模型映射并写入 instance.model_mapping。"""
+    global_mm = data.get("model_mapping", {})
+    if isinstance(global_mm, dict):
+        root_anth_mm = dict(global_mm.get("anthropic", {}))
+        root_openai_mm = dict(global_mm.get("openai", {}))
+        global_fallback = {k: v for k, v in global_mm.items() if k not in ("anthropic", "openai")}
+    else:
+        root_anth_mm = {}
+        root_openai_mm = {}
+        global_fallback = {}
+    merged_anth = dict(global_fallback)
+    merged_anth.update(root_anth_mm)
+    merged_anth.update(instance.anthropic.model_mapping)
+    merged_openai = dict(global_fallback)
+    merged_openai.update(root_openai_mm)
+    merged_openai.update(openai_section_mm)
+    instance.model_mapping.anthropic = merged_anth
+    instance.model_mapping.openai = merged_openai
+

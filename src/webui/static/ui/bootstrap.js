@@ -3,7 +3,7 @@ document.getElementById('fabThemeButton').addEventListener('click', function() {
   var current = state.settings.theme;
   state.settings.theme = (current === 'light') ? 'dark' : 'light';
   saveSettings();
-  toast('主题已切换为 ' + state.settings.theme, 'ok');
+  toast(t('toast.themeSwitched', { theme: state.settings.theme }), 'ok');
 });
 function _openPortable() {
   portablePanel.style.display = '';
@@ -50,11 +50,11 @@ document.getElementById('modelCapabilitySelect').addEventListener('change', func
   renderModels(state.models);
 });
 document.getElementById('copySummaryButton').addEventListener('click', function() {
-  copyText(JSON.stringify(state.summary || {}, null, 2), '摘要已复制');
+  copyText(JSON.stringify(state.summary || {}, null, 2), t('overview.summaryCopied'));
 });
 document.getElementById('exportSummaryButton').addEventListener('click', exportSummary);
 document.getElementById('copyConfigButton').addEventListener('click', function() {
-  copyText(configJsonBox.textContent || '{}', '配置摘要已复制');
+  copyText(configJsonBox.textContent || '{}', t('overview.configCopied'));
 });
 document.getElementById('clearLogButton').addEventListener('click', function() {
   clearLogs();
@@ -156,7 +156,7 @@ if (configEditArea) {
       JSON.parse(configEditArea.value);
       scheduleConfigSave();
     } catch (e) {
-      toast('JSON 格式错误', 'error');
+      toast(t('config.jsonError'), 'error');
     }
   });
 }
@@ -256,8 +256,8 @@ if (typeof initAllMotionEffects === 'function') {
     var result = await fetchJson("/v1/models");
     if (!result || !result.data) return;
     var models = result.data;
-    var sttOpts = [{ value: '', text: '不使用' }];
-    var ttsOpts = [{ value: '', text: '不使用' }];
+    var sttOpts = [{ value: '', text: t('common.notUsing') }];
+    var ttsOpts = [{ value: '', text: t('common.notUsing') }];
     for (var i = 0; i < models.length; i++) {
       var caps = models[i].capabilities || {};
       if (caps.stt || (caps.chat && caps.vision)) sttOpts.push({ value: models[i].id, text: models[i].id });
@@ -308,13 +308,13 @@ if (ttsRestoreBtn) {
             ttsModel: (window._dropdowns['voiceTtsModel'] || {}).value || document.getElementById('voiceTtsModel').value || '',
             ttsPrompt: text.trim(),
           });
-          toast('已恢复默认 Prompt', 'ok');
+          toast(t('actions.promptRestored'), 'ok');
         }
       } else {
-        toast('加载默认 Prompt 失败', 'error');
+        toast(t('actions.promptRestoreFailed'), 'error');
       }
     } catch (e) {
-      toast('加载默认 Prompt 失败: ' + e.message, 'error');
+      toast(t('actions.promptRestoreFailedDetail', { error: e.message }), 'error');
     }
   });
 }
@@ -366,11 +366,11 @@ async function _refreshRecordingDevices() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
     var devices = await navigator.mediaDevices.enumerateDevices();
     var audioInputs = devices.filter(function(d) { return d.kind === 'audioinput'; });
-    var opts = [{ value: '', text: '默认设备' }];
+    var opts = [{ value: '', text: t('voice.defaultDevice') }];
     for (var i = 0; i < audioInputs.length; i++) {
       opts.push({
         value: audioInputs[i].deviceId,
-        text: audioInputs[i].label || ('麦克风 ' + (i + 1))
+        text: audioInputs[i].label || t('voice.micFallback', { index: i + 1 })
       });
     }
     var dropdown = window._dropdowns && window._dropdowns['recordingDeviceSelect'];
@@ -422,7 +422,7 @@ function _initChatTab() {
       var section = document.getElementById('batchTestSection');
       if (section) {
         section.classList.toggle('hidden');
-        chatBatchToggleBtn.textContent = section.classList.contains('hidden') ? '批量测试' : '收起批量测试';
+        chatBatchToggleBtn.textContent = section.classList.contains('hidden') ? t('chat.batchTest') : t('chat.collapseBatchTest');
       }
     });
   }
@@ -431,7 +431,7 @@ function _initChatTab() {
     var voiceSettings = {};
     try { voiceSettings = JSON.parse(localStorage.getItem('provider.webui.voice') || '{}'); } catch(e) {}
     window._chatInputBox = InputBox.create('#chatInputBox', {
-      placeholder: '输入消息... (Shift+Enter 换行, Enter 发送)',
+      placeholder: t('chat.inputPlaceholder'),
       buttons: { file: true, voice: true, send: true },
       voice: {
         sttModel: voiceSettings.sttModel || '',
@@ -439,7 +439,7 @@ function _initChatTab() {
         ttsPrompt: voiceSettings.ttsPrompt || '',
       },
       onSend: function(text, files) { sendChatMessage(text, files); },
-      onVoiceStart: function() { toast('录音中...', 'info'); },
+      onVoiceStart: function() { toast(t('chat.recording'), 'info'); },
       onVoiceEnd: function() {},
     });
   }
@@ -447,13 +447,14 @@ function _initChatTab() {
   if (chatClearBtn) {
     chatClearBtn.addEventListener('click', function() {
       clearChatMessages();
-      toast('对话已清空', 'ok');
+      toast(t('chat.cleared'), 'ok');
     });
   }
   if (chatRunTestsBtn) {
     chatRunTestsBtn.addEventListener('click', runChatTests);
   }
   if (typeof loadModelsList === 'function') loadModelsList();
+  if (typeof ChatAttachments !== 'undefined' && ChatAttachments.install) ChatAttachments.install();
   if (typeof loadChatState === 'function') loadChatState();
   if (typeof _loadTools === 'function') _loadTools();
 }
@@ -489,9 +490,9 @@ function _initStatsTab() {
   if (statsResetBtn) statsResetBtn.addEventListener('click', async function() {
     try {
       await Api.post('/v1/webui/stats/reset');
-      toast('统计已重置', 'ok');
+      toast(t('stats.resetOk'), 'ok');
       StatsFeature.refresh();
-    } catch(e) { toast('重置失败: ' + e.message, 'error'); }
+    } catch(e) { toast(t('stats.resetFailed', { error: e.message }), 'error'); }
   });
 }
 
@@ -565,21 +566,20 @@ document.getElementById('tabLayoutSelect').addEventListener('change', async func
   existing.layout = _tabLayoutConfig.layout;
   existing.sidebarCompressed = _tabLayoutConfig.sidebarCompressed;
   persistSave('config.toml', existing);
-  toast('标签栏布局: ' + (event.target.value === 'vertical' ? '竖向侧边' : '横向顶部'), 'ok');
+  toast(t('portable.layoutSwitched', {
+    layout: event.target.value === 'vertical' ? t('portable.layoutVertical') : t('portable.layoutHorizontal'),
+  }), 'ok');
 });
 
-// CustomDropdown onChange for tabLayoutSelect
-(function() {
-  var dropdown = window._dropdowns && window._dropdowns['tabLayoutSelect'];
-  if (dropdown) {
-    dropdown.onChange = async function(value) {
-      _tabLayoutConfig.layout = value;
-      _applyTabLayout(value);
-      var existing = await persistLoad('config.toml') || {};
-      existing.layout = value;
-      existing.sidebarCompressed = _tabLayoutConfig.sidebarCompressed;
-      persistSave('config.toml', existing);
-      toast('标签栏布局: ' + (value === 'vertical' ? '竖向侧边' : '横向顶部'), 'ok');
-    };
-  }
-})();
+if (window.i18n) {
+  i18n.onLanguageChanged(function() {
+    if (typeof applyTheme === 'function') applyTheme();
+    if (typeof scheduleRefresh === 'function') scheduleRefresh();
+    if (typeof updateConfigSaveStatus === 'function') updateConfigSaveStatus();
+    if (typeof _restartSetState === 'function' && typeof _restartState !== 'undefined' && _restartState !== 'idle') {
+      _restartSetState(_restartState);
+    }
+    if (typeof _updateLogCount === 'function') _updateLogCount();
+  });
+}
+

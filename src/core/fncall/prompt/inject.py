@@ -29,6 +29,7 @@ def inject_fncall(
     loop_detection_threshold: int = 3,
     dump_prompt: bool = True,
 ) -> List[Dict[str, Any]]:
+    """公开方法 inject_fncall。"""
     dump_dir = _get_dump_dir() if dump_prompt else None
     return _echotools_inject(
         messages=messages,

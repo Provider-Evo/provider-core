@@ -52,6 +52,142 @@ async def _wait_for_candidates(
     return []
 
 
+def _fold_system_into_user(
+    messages: List[Dict[str, Any]],
+    tools: Optional[List[Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
+    """无 tools 时将 system 消息合并进首条 user 消息。"""
+    if tools:
+        return messages
+    sys_parts: List[str] = []
+    non_sys: List[Dict[str, Any]] = []
+    for msg in messages:
+        if msg.get("role") == "system":
+            content = msg.get("content", "")
+            if content:
+                sys_parts.append(content if isinstance(content, str) else str(content))
+        else:
+            non_sys.append(msg)
+    if not sys_parts:
+        return messages
+    sys_text = "\n\n".join(sys_parts)
+    merged = list(non_sys)
+    for idx, msg in enumerate(merged):
+        if msg.get("role") == "user":
+            old = msg.get("content", "")
+            old_text = old if isinstance(old, str) else str(old)
+            merged[idx] = {**msg, "content": sys_text + "\n\n" + old_text}
+            return merged
+    merged.insert(0, {"role": "user", "content": sys_text})
+    return merged
+
+
+def _build_dispatch_extra_kw(
+    kw: Dict[str, Any],
+    *,
+    upload_files: Optional[List[Any]],
+    temperature: Optional[float],
+    top_p: Optional[float],
+    max_tokens: Optional[int],
+    stop: Optional[List[str]],
+) -> Dict[str, Any]:
+    """组装 dispatch 透传关键字参数。"""
+    extra_kw: Dict[str, Any] = dict(kw)
+    extra_kw.pop("fncall_lang", None)
+    extra_kw.pop("protocol_id", None)
+    if upload_files:
+        extra_kw["upload_files"] = upload_files
+    if temperature is not None:
+        extra_kw["temperature"] = temperature
+    if top_p is not None:
+        extra_kw["top_p"] = top_p
+    if max_tokens is not None:
+        extra_kw["max_tokens"] = max_tokens
+    if stop:
+        extra_kw["stop"] = stop
+    return extra_kw
+
+
+async def _select_dispatch_candidates(
+    registry: Any,
+    cands: List[Candidate],
+    stream: bool,
+) -> tuple[int, List[Candidate]]:
+    """根据网关配置选择并发数与候选项子集。"""
+    cfg = get_config()
+    gw = cfg.gateway
+    racing_pool = (
+        [c for c in cands if gw.is_platform_enabled(c.platform)]
+        if gw.group_list_set
+        else cands
+    )
+    n = 1
+    if gw.concurrent_enabled and stream and len(racing_pool) > 1 and len(cands) > 1:
+        n = min(gw.concurrent_count, len(racing_pool))
+    sel_pool = racing_pool if n > 1 else cands
+    sel = await registry.selector.select(sel_pool, n)
+    if not sel:
+        raise NoCandidateError("TAS 选择失败")
+    return n, sel
+
+
+async def _run_selected(
+    registry: Any,
+    sel: List[Candidate],
+    final_msgs: List[Dict[str, Any]],
+    model: str,
+    stream: bool,
+    thinking: bool,
+    search: bool,
+    tools: Optional[List[Dict[str, Any]]],
+    fncall_lang: str,
+    protocol_id: str,
+    extra_kw: Dict[str, Any],
+) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+    """对单发或竞速候选项执行请求并产出流式分片。"""
+    prompt_len = sum(len(str(m.get("content", ""))) for m in final_msgs)
+    if len(sel) == 1:
+        async for chunk in _single(
+            registry,
+            sel[0],
+            final_msgs,
+            model,
+            stream,
+            thinking,
+            search,
+            tools,
+            prompt_len,
+            fncall_lang=fncall_lang,
+            protocol_id=protocol_id,
+            **extra_kw,
+        ):
+            yield chunk
+        return
+
+    cfg = get_config()
+    async for chunk in _race(
+        registry,
+        sel,
+        final_msgs,
+        model,
+        stream,
+        thinking,
+        search,
+        tools,
+        prompt_len,
+        cfg.gateway.min_tokens,
+        fncall_lang=fncall_lang,
+        protocol_id=protocol_id,
+        **extra_kw,
+    ):
+        yield chunk
+
+
+def _fncall_lang(kw: Dict[str, Any]) -> str:
+    raw = kw.get("fncall_lang", "en")
+    return raw if raw in ("en", "zh") else "en"
+
+
 async def dispatch(
     registry: Any,
     messages: List[Dict],
@@ -69,126 +205,25 @@ async def dispatch(
     platform: str = "",
     **kw: Any,
 ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
-    """核心分发——选择候选项并执行请求。
-
-    Args:
-        registry: 平台注册表。
-        messages: 消息列表。
-        model: 模型名。
-        stream: 是否流式。
-        tools: 工具列表（可选）。
-        thinking: 是否启用 thinking 模式。
-        search: 是否启用搜索。
-        temperature: 温度参数。
-        top_p: top_p 参数。
-        max_tokens: 最大 token 数。
-        stop: 停止序列。
-        upload_files: 待上传文件列表 [(file_data, filename), ...]。
-        platform: 平台名，非空时过滤候选项。
-        **kw: 额外参数透传。
-
-    Yields:
-        str 或 dict（按 yield 协议）。
-    """
-    cfg = get_config()
-
-    raw_fncall_lang = kw.get("fncall_lang", "en")
-    fncall_lang = raw_fncall_lang if raw_fncall_lang in ("en", "zh") else "en"
-
-    # 协议注入延迟到候选项选择后（_single/_race 中按平台解析协议）
-    final_msgs = messages
-
-    # 无 tools 时，将 system 消息折叠到第一条 user 消息中，
-    # 确保所有平台都能收到系统指令（部分平台不原生支持 system role）
-    if not tools:
-        sys_parts = []
-        non_sys = []
-        for m in final_msgs:
-            if m.get("role") == "system":
-                c = m.get("content", "")
-                if c:
-                    sys_parts.append(c if isinstance(c, str) else str(c))
-            else:
-                non_sys.append(m)
-        if sys_parts:
-            sys_text = "\n\n".join(sys_parts)
-            merged = list(non_sys)
-            for i, m in enumerate(merged):
-                if m.get("role") == "user":
-                    old = m.get("content", "")
-                    old_text = old if isinstance(old, str) else str(old)
-                    merged[i] = {**m, "content": sys_text + "\n\n" + old_text}
-                    break
-            else:
-                merged.insert(0, {"role": "user", "content": sys_text})
-            final_msgs = merged
-
-    if tools:
-        thinking = False
+    """核心分发：选择候选项并执行单发或竞速请求。"""
+    final_msgs = _fold_system_into_user(messages, tools)
 
     cands = await _wait_for_candidates(registry, model, timeout=15.0, platform=platform)
     if not cands:
         raise NoCandidateError("无候选项: {}".format(model))
 
-    # [gateway].group_list 决定"谁允许并发竞速"，不决定"谁能路由"：
-    # - 所有候选始终进入路由池
-    # - 只有当竞速池（racing-eligible）≥ 2 时才启用并发；否则单发
-    # - 因此非名单内平台仍可服务请求，只是该请求强制 n=1
-    gw = cfg.gateway
-    racing_pool = (
-        [c for c in cands if gw.is_platform_enabled(c.platform)]
-        if gw.group_list_set
-        else cands
+    n, sel = await _select_dispatch_candidates(registry, cands, stream)
+
+    extra_kw = _build_dispatch_extra_kw(
+        kw,
+        upload_files=upload_files,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        stop=stop,
     )
 
-    n = 1
-    if (
-        gw.concurrent_enabled
-        and len(racing_pool) > 1
-        and len(cands) > 1
-    ):
-        n = min(gw.concurrent_count, len(racing_pool))
-    sel_pool = racing_pool if n > 1 else cands
-    sel = await registry.selector.select(sel_pool, n)
-    if not sel:
-        raise NoCandidateError("TAS 选择失败")
-
-    extra_kw: Dict[str, Any] = dict(kw)
-    extra_kw.pop("fncall_lang", None)
-    extra_kw.pop("protocol_id", None)
-    if upload_files:
-        extra_kw["upload_files"] = upload_files
-    if temperature is not None:
-        extra_kw["temperature"] = temperature
-    if top_p is not None:
-        extra_kw["top_p"] = top_p
-    if max_tokens is not None:
-        extra_kw["max_tokens"] = max_tokens
-    if stop:
-        extra_kw["stop"] = stop
-
-    prompt_len = sum(len(str(m.get("content", ""))) for m in final_msgs)
-##    print(final_msgs[0]["content"])
-    if len(sel) == 1:
-        async for chunk in _single(
-            registry,
-            sel[0],
-            final_msgs,
-            model,
-            stream,
-            thinking,
-            search,
-            tools,
-            prompt_len,
-            fncall_lang=fncall_lang,
-            protocol_id=kw.get("protocol_id", ""),
-            **extra_kw,
-        ):
-##            print(chunk)
-            yield chunk
-        return
-
-    async for chunk in _race(
+    async for chunk in _run_selected(
         registry,
         sel,
         final_msgs,
@@ -197,11 +232,9 @@ async def dispatch(
         thinking,
         search,
         tools,
-        prompt_len,
-        cfg.gateway.min_tokens,
-        fncall_lang=fncall_lang,
-        protocol_id=kw.get("protocol_id", ""),
-        **extra_kw,
+        _fncall_lang(kw),
+        kw.get("protocol_id", ""),
+        extra_kw,
     ):
         yield chunk
 
@@ -469,8 +502,11 @@ async def _race(
                         info["acc_parts"].append(data)
                         if info["ft"] is None:
                             info["ft"] = time.monotonic()
-                    elif isinstance(data, dict) and "usage" in data:
-                        info["usage"] = data["usage"]
+                    elif isinstance(data, dict):
+                        if "usage" in data:
+                            info["usage"] = data["usage"]
+                        elif data.get("thinking"):
+                            info["acc_parts"].append(str(data["thinking"]))
                     if info["tok"] >= min_tok:
                         winner = info
                         break
@@ -485,10 +521,15 @@ async def _race(
 
         if winner is None:
             valid = [
-                i for i in infos if i["buf"] and not i["err"]
+                i
+                for i in infos
+                if not i["err"] and (i["buf"] or i["acc_parts"])
             ]
             if valid:
-                winner = max(valid, key=lambda x: x["tok"])
+                winner = max(
+                    valid,
+                    key=lambda x: (x["tok"], len("".join(x["acc_parts"]))),
+                )
             else:
                 err_details = []
                 for i in infos:

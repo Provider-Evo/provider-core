@@ -70,6 +70,12 @@ var FileManager = (function () {
     return false;
   }
 
+  function _canWriteToTab(tab) {
+    if (!tab) return false;
+    if (tab.isDrives || _isRootView(tab.path)) return false;
+    return true;
+  }
+
   /**
    * Return the parent of *path*, or "/" if already at the root.
    * Works with both Unix (/home/user) and Windows (C:\Users) paths.
@@ -407,6 +413,7 @@ var FileManager = (function () {
       _lazyLimit: 200,
       _lazyLoadingMore: false,
       _lazyAllLoaded: false,
+      isDrives: false,
     };
 
     _tabs.push(tab);
@@ -493,6 +500,7 @@ var FileManager = (function () {
       var data = await Api.fetchJson(url);
       tab.entries = data.entries || [];
       tab.path = data.path || path;
+      tab.isDrives = !!data.isDrives;
       tab.name = _pathDisplayName(tab.path);
       tab.loading = false;
       tab._lazyOffset = tab.entries.length;
@@ -507,7 +515,7 @@ var FileManager = (function () {
       tab._lazyAllLoaded = true;
       tab._lazyTotal = 0;
       _renderContent();
-      if (typeof toast === 'function') toast('加载目录失败: ' + e.message, 'error');
+      if (typeof toast === 'function') toast(t('files.loadDirFailed', { error: e.message }), 'error');
     }
   }
 
@@ -540,7 +548,7 @@ var FileManager = (function () {
     } catch (e) {
       tab._lazyLoadingMore = false;
       _hideLazyLoadingIndicator(tab);
-      if (typeof toast === 'function') toast('加载更多失败: ' + e.message, 'error');
+      if (typeof toast === 'function') toast(t('files.loadMoreFailed', { error: e.message }), 'error');
     }
   }
 
@@ -608,7 +616,7 @@ var FileManager = (function () {
     if (!listArea) return;
     var indicator = document.createElement('div');
     indicator.className = 'files-lazy-loading';
-    indicator.textContent = '加载更多...';
+    indicator.textContent = t('files.loadMore');
     listArea.appendChild(indicator);
   }
 
@@ -663,7 +671,7 @@ var FileManager = (function () {
       _body.innerHTML =
         '<div class="files-empty">' +
         '<div class="files-empty-icon">&#128193;</div>' +
-        '<div class="files-empty-text">无打开的标签。点击 + 浏览文件。</div>' +
+        '<div class="files-empty-text">' + t('files.noOpenTabs') + '</div>' +
         '</div>';
       return;
     }
@@ -678,10 +686,10 @@ var FileManager = (function () {
     listArea.style.cssText = 'flex:1;min-height:0;';
 
     if (tab.loading) {
-      listArea.innerHTML = '<div class="files-loading">加载中...</div>';
+      listArea.innerHTML = '<div class="files-loading">' + t('files.loading') + '</div>';
       tab._scrollContainer = null;
     } else if (tab.entries.length === 0) {
-      listArea.innerHTML = '<div class="files-empty"><div class="files-empty-text">空目录</div></div>';
+      listArea.innerHTML = '<div class="files-empty"><div class="files-empty-text">' + t('files.emptyDir') + '</div></div>';
       tab._scrollContainer = null;
     } else {
       if (tab.entries.length > _VS_THRESHOLD) {
@@ -724,7 +732,7 @@ var FileManager = (function () {
     var backBtn = document.createElement('button');
     backBtn.className = 'files-nav-btn';
     backBtn.innerHTML = '&#9664;';
-    backBtn.title = '后退';
+    backBtn.title = t('files.back');
     backBtn.disabled = tab.historyIdx <= 0;
     backBtn.addEventListener('click', function () { _goBack(tab); });
     toolbar.appendChild(backBtn);
@@ -733,7 +741,7 @@ var FileManager = (function () {
     var fwdBtn = document.createElement('button');
     fwdBtn.className = 'files-nav-btn';
     fwdBtn.innerHTML = '&#9654;';
-    fwdBtn.title = '前进';
+    fwdBtn.title = t('files.forward');
     fwdBtn.disabled = tab.historyIdx >= tab.history.length - 1;
     fwdBtn.addEventListener('click', function () { _goForward(tab); });
     toolbar.appendChild(fwdBtn);
@@ -742,7 +750,7 @@ var FileManager = (function () {
     var upBtn = document.createElement('button');
     upBtn.className = 'files-nav-btn';
     upBtn.innerHTML = '&#9650;';
-    upBtn.title = '上级目录';
+    upBtn.title = t('files.parentDir');
     upBtn.disabled = _isRootView(tab.path);
     upBtn.addEventListener('click', function () { _goUp(tab); });
     toolbar.appendChild(upBtn);
@@ -836,7 +844,7 @@ var FileManager = (function () {
       var projBtn = document.createElement('button');
       projBtn.className = 'files-nav-btn files-project-btn';
       projBtn.innerHTML = '&#128193;';
-      projBtn.title = '项目根目录';
+      projBtn.title = t('files.projectRoot');
       projBtn.addEventListener('click', function () { _navigateTo(tab, _projectRoot); });
       toolbar.appendChild(projBtn);
     }
@@ -848,7 +856,7 @@ var FileManager = (function () {
     _searchInput = document.createElement('input');
     _searchInput.type = 'text';
     _searchInput.className = 'files-search-input';
-    _searchInput.placeholder = '\u641C\u7D22\u6587\u4EF6...';
+    _searchInput.placeholder = t('files.searchPlaceholder');
     _searchInput.autocomplete = 'off';
     _searchInput.spellcheck = false;
 
@@ -895,7 +903,7 @@ var FileManager = (function () {
     clearBtn.className = 'files-search-clear';
     clearBtn.type = 'button';
     clearBtn.innerHTML = '&times;';
-    clearBtn.title = '清除搜索';
+    clearBtn.title = t('files.clearSearch');
     clearBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       _clearSearch();
@@ -921,13 +929,13 @@ var FileManager = (function () {
     if (_clipboard.paths.length > 0) {
       var clipIndicator = document.createElement('span');
       clipIndicator.className = 'files-clipboard-indicator';
-      var clipLabel = _clipboard.action === 'cut' ? '\u5DF2\u526A\u5207' : '\u5DF2\u590D\u5236';
-      clipIndicator.textContent = clipLabel + ' ' + _clipboard.paths.length + ' \u9879';
-      clipIndicator.title = _clipboard.action === 'cut' ? '已剪切到剪贴板' : '已复制到剪贴板';
+      var clipLabel = _clipboard.action === 'cut' ? t('files.cutDone') : t('files.copyDone');
+      clipIndicator.textContent = t('files.clipboard', { count: _clipboard.paths.length });
+      clipIndicator.title = _clipboard.action === 'cut' ? t('files.cutToClipboard') : t('files.copyToClipboard');
       var clipClearBtn = document.createElement('span');
       clipClearBtn.className = 'files-clipboard-clear';
       clipClearBtn.textContent = '\u00D7';
-      clipClearBtn.title = '清除剪贴板';
+      clipClearBtn.title = t('files.clearClipboardTitle');
       clipClearBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         _clipboard = { action: null, paths: [] };
@@ -941,22 +949,27 @@ var FileManager = (function () {
     var actions = document.createElement('div');
     actions.className = 'files-toolbar-actions';
 
+    var canWrite = _canWriteToTab(tab);
+
     var uploadBtn = document.createElement('button');
     uploadBtn.className = 'files-toolbar-btn files-upload-btn';
-    uploadBtn.textContent = '上传';
-    uploadBtn.title = '上传文件到当前目录';
+    uploadBtn.textContent = t('files.upload');
+    uploadBtn.title = canWrite ? t('files.uploadToDir') : t('files.enterDirFirst');
+    uploadBtn.disabled = !canWrite;
     uploadBtn.addEventListener('click', function () { _triggerFilePicker(); });
     actions.appendChild(uploadBtn);
 
     var newFolderBtn = document.createElement('button');
     newFolderBtn.className = 'files-toolbar-btn';
-    newFolderBtn.textContent = '+ 文件夹';
+    newFolderBtn.textContent = t('files.newFolderShort');
+    newFolderBtn.title = canWrite ? t('files.newFolder') : t('files.enterDirFirst');
+    newFolderBtn.disabled = !canWrite;
     newFolderBtn.addEventListener('click', function () { _promptNewFolder(tab); });
     actions.appendChild(newFolderBtn);
 
     var refreshBtn = document.createElement('button');
     refreshBtn.className = 'files-toolbar-btn';
-    refreshBtn.textContent = '刷新';
+    refreshBtn.textContent = t('files.refresh');
     refreshBtn.addEventListener('click', function () { _loadDirectory(tab, tab.path); });
     actions.appendChild(refreshBtn);
 
@@ -1015,9 +1028,9 @@ var FileManager = (function () {
     var headerRow = document.createElement('tr');
 
     var cols = [
-      { key: 'name', label: '名称', cls: '' },
-      { key: 'size', label: '大小', cls: 'file-size' },
-      { key: 'modified', label: '修改时间', cls: 'file-modified' },
+      { key: 'name', label: t('files.name'), cls: '' },
+      { key: 'size', label: t('files.size'), cls: 'file-size' },
+      { key: 'modified', label: t('files.modified'), cls: 'file-modified' },
     ];
 
     for (var c = 0; c < cols.length; c++) {
@@ -1221,9 +1234,9 @@ var FileManager = (function () {
     var thead = document.createElement('thead');
     var headerRow = document.createElement('tr');
     var cols = [
-      { key: 'name', label: '名称', cls: '' },
-      { key: 'size', label: '大小', cls: 'file-size' },
-      { key: 'modified', label: '修改时间', cls: 'file-modified' },
+      { key: 'name', label: t('files.name'), cls: '' },
+      { key: 'size', label: t('files.size'), cls: 'file-size' },
+      { key: 'modified', label: t('files.modified'), cls: 'file-modified' },
     ];
 
     for (var c = 0; c < cols.length; c++) {
@@ -1328,26 +1341,16 @@ var FileManager = (function () {
     switchTab('terminal');
     setTimeout(function () {
       if (typeof TerminalManager === 'undefined') return;
-      var tab = TerminalManager.createTab('local');
-      // Wait for WebSocket connection, then send cd command
-      var attempts = 0;
-      var maxAttempts = 30;
-      var pollInterval = setInterval(function () {
-        attempts++;
-        if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
-          clearInterval(pollInterval);
-          tab.ws.send(JSON.stringify({ type: 'input', data: 'cd "' + dirPath + '"\r\n' }));
-        } else if (attempts >= maxAttempts) {
-          clearInterval(pollInterval);
-        }
-      }, 100);
-    }, 500);
+      var parts = String(dirPath || '').split(/[\/\\]/).filter(Boolean);
+      var label = parts.length ? parts[parts.length - 1] : dirPath;
+      TerminalManager.createTab('local', { cwd: dirPath, name: label });
+    }, 100);
   }
 
   function _copyPathToClipboard(path) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(path).then(function () {
-        if (typeof toast === 'function') toast('路径已复制: ' + path, 'ok');
+        if (typeof toast === 'function') toast(t('files.pathCopied', { path: path }), 'ok');
       }).catch(function () {
         _fallbackCopyText(path);
       });
@@ -1364,9 +1367,9 @@ var FileManager = (function () {
     ta.select();
     try {
       document.execCommand('copy');
-      if (typeof toast === 'function') toast('路径已复制: ' + text, 'ok');
+      if (typeof toast === 'function') toast(t('files.pathCopied', { path: text }), 'ok');
     } catch (e) {
-      if (typeof toast === 'function') toast('复制失败', 'error');
+      if (typeof toast === 'function') toast(t('files.copyFailedShort'), 'error');
     }
     document.body.removeChild(ta);
   }
@@ -1388,26 +1391,26 @@ var FileManager = (function () {
     var items = [];
 
     if (entry.type === 'dir') {
-      items.push({ label: '打开', action: function () { _navigateTo(tab, entry.path); } });
-      items.push({ label: '\u5728\u7EC8\u7AEF\u4E2D\u6253\u5F00', action: function () { _openInTerminal(entry.path); } });
+      items.push({ label: t('files.open'), action: function () { _navigateTo(tab, entry.path); } });
+      items.push({ label: t('files.openInTerminal'), action: function () { _openInTerminal(entry.path); } });
     } else {
-      items.push({ label: '预览', action: function () { _previewFile(entry); } });
-      items.push({ label: '编辑', action: function () { _previewFile(entry, true); } });
-      items.push({ label: '下载', action: function () { _downloadFile(entry.path); } });
+      items.push({ label: t('files.preview'), action: function () { _previewFile(entry); } });
+      items.push({ label: t('files.edit'), action: function () { _previewFile(entry, true); } });
+      items.push({ label: t('files.download'), action: function () { _downloadFile(entry.path); } });
     }
 
     items.push({ separator: true });
-    items.push({ label: '\u590D\u5236\u8DEF\u5F84', action: function () { _copyPathToClipboard(entry.path); } });
-    items.push({ label: '\u590D\u5236', action: function () { _clipboardCopy([entry.path]); _renderContent(); } });
-    items.push({ label: '\u526A\u5207', action: function () { _clipboardCut([entry.path]); _renderContent(); } });
+    items.push({ label: t('files.copyPath'), action: function () { _copyPathToClipboard(entry.path); } });
+    items.push({ label: t('files.copy'), action: function () { _clipboardCopy([entry.path]); _renderContent(); } });
+    items.push({ label: t('files.cut'), action: function () { _clipboardCut([entry.path]); _renderContent(); } });
     if (_clipboard.paths.length > 0) {
-      items.push({ label: '\u7C98\u8D34', action: function () { _clipboardPaste(tab); } });
+      items.push({ label: t('files.paste'), action: function () { _clipboardPaste(tab); } });
     }
     items.push({ separator: true });
-    items.push({ label: '重命名', action: function () { _showRenameDialog(tab, entry); } });
-    items.push({ label: '删除', danger: true, action: function () { _deleteEntries(tab, [entry.path]); } });
+    items.push({ label: t('files.rename'), action: function () { _showRenameDialog(tab, entry); } });
+    items.push({ label: t('files.delete'), danger: true, action: function () { _deleteEntries(tab, [entry.path]); } });
     items.push({ separator: true });
-    items.push({ label: '新建文件夹', action: function () { _promptNewFolder(tab); } });
+    items.push({ label: t('files.newFolder'), action: function () { _promptNewFolder(tab); } });
 
     _populateMenu(_contextMenu, items);
     document.body.appendChild(_contextMenu);
@@ -1422,9 +1425,9 @@ var FileManager = (function () {
     _contextMenu.style.top = event.clientY + 'px';
 
     var items = [
-      { label: '关闭', action: function () { closeTab(tabId); } },
-      { label: '关闭其他', action: function () { _closeOtherTabs(tabId); } },
-      { label: '全部关闭', danger: true, action: function () { _closeAllTabs(); } },
+      { label: t('files.close'), action: function () { closeTab(tabId); } },
+      { label: t('files.closeOthers'), action: function () { _closeOtherTabs(tabId); } },
+      { label: t('files.closeAll'), danger: true, action: function () { _closeAllTabs(); } },
     ];
 
     _populateMenu(_contextMenu, items);
@@ -1439,18 +1442,22 @@ var FileManager = (function () {
     _contextMenu.style.left = event.clientX + 'px';
     _contextMenu.style.top = event.clientY + 'px';
 
-    var items = [
-      { label: '上传文件', action: function () { _triggerFilePicker(); } },
+    var canWrite = _canWriteToTab(tab);
+    var items = [];
+    if (canWrite) {
+      items.push({ label: t('files.uploadFiles'), action: function () { _triggerFilePicker(); } });
+      items.push({ separator: true });
+      items.push({ label: t('files.newFolder'), action: function () { _promptNewFolder(tab); } });
+    }
+    items.push(
+      { label: t('files.refresh'), action: function () { _loadDirectory(tab, tab.path); } },
       { separator: true },
-      { label: '新建文件夹', action: function () { _promptNewFolder(tab); } },
-      { label: '刷新', action: function () { _loadDirectory(tab, tab.path); } },
-      { separator: true },
-      { label: '\u5728\u7EC8\u7AEF\u4E2D\u6253\u5F00', action: function () { _openInTerminal(tab.path); } },
-    ];
+      { label: t('files.openInTerminal'), action: function () { _openInTerminal(tab.path); } }
+    );
 
     if (_clipboard.paths.length > 0) {
       items.push({ separator: true });
-      items.push({ label: '\u7C98\u8D34', action: function () { _clipboardPaste(tab); } });
+      items.push({ label: t('files.paste'), action: function () { _clipboardPaste(tab); } });
     }
 
     _populateMenu(_contextMenu, items);
@@ -1496,20 +1503,25 @@ var FileManager = (function () {
 
   function _clipboardCopy(paths) {
     _clipboard = { action: 'copy', paths: paths.slice() };
-    if (typeof toast === 'function') toast('\u5DF2\u590D\u5236 ' + paths.length + ' \u9879', 'ok');
+    if (typeof toast === 'function') toast(t('files.copiedCount', { count: paths.length }), 'ok');
   }
 
   function _clipboardCut(paths) {
     _clipboard = { action: 'cut', paths: paths.slice() };
-    if (typeof toast === 'function') toast('\u5DF2\u526A\u5207 ' + paths.length + ' \u9879', 'ok');
+    if (typeof toast === 'function') toast(t('files.cutCount', { count: paths.length }), 'ok');
   }
 
   async function _clipboardPaste(tab) {
     if (!_clipboard.action || _clipboard.paths.length === 0) return;
-
-    var destDir = tab.path || '/';
+    if (!tab || !_canWriteToTab(tab)) {
+      if (typeof toast === 'function') {
+        toast(t('files.genericFailed', { error: '当前目录不可写入' }), 'error');
+      }
+      return;
+    }
     var endpoint = _clipboard.action === 'cut' ? '/v1/webui/files/move' : '/v1/webui/files/copy';
-    var actionLabel = _clipboard.action === 'cut' ? '\u79FB\u52A8' : '\u590D\u5236';
+    var actionLabel = _clipboard.action === 'cut' ? t('files.move') : t('files.copy');
+    var destDir = tab.path || '/';
 
     // Process each path sequentially
     var successCount = 0;
@@ -1519,12 +1531,12 @@ var FileManager = (function () {
         await Api.post(endpoint, { source: srcPath, dest: destDir });
         successCount++;
       } catch (e) {
-        if (typeof toast === 'function') toast(actionLabel + ' \u5931\u8D25: ' + e.message, 'error');
+        if (typeof toast === 'function') toast(t('files.pasteFailed', { action: actionLabel, error: e.message }), 'error');
       }
     }
 
     if (successCount > 0) {
-      if (typeof toast === 'function') toast(actionLabel + ' ' + successCount + ' \u9879', 'ok');
+      if (typeof toast === 'function') toast(t('files.pasteOk', { action: actionLabel, count: successCount }), 'ok');
     }
 
     // Clear clipboard after cut, keep for copy
@@ -1546,23 +1558,23 @@ var FileManager = (function () {
 
   async function _deleteEntries(tab, paths) {
     var msg = paths.length === 1 ?
-      '删除 "' + paths[0].split(/[\/\\]/).pop() + '"?' :
-      '删除 ' + paths.length + ' 项?';
-    var confirmed = await showConfirmDialog(msg, { title: '确认删除', confirmText: '删除' });
+      t('files.deleteSingleConfirm', { name: paths[0].split(/[\/\\]/).pop() }) :
+      t('files.deleteMultiConfirm', { count: paths.length });
+    var confirmed = await showConfirmDialog(msg, { title: t('files.deleteTitle'), confirmText: t('files.delete') });
     if (!confirmed) return;
 
     try {
       var resp = await Api.post('/v1/webui/files/delete', { paths: paths });
       var ok = (resp.results || []).every(function (r) { return r.ok; });
       if (ok) {
-        if (typeof toast === 'function') toast('删除成功', 'ok');
+        if (typeof toast === 'function') toast(t('files.deleteOk'), 'ok');
         _loadDirectory(tab, tab.path);
       } else {
         var errs = (resp.results || []).filter(function (r) { return !r.ok; });
-        if (typeof toast === 'function') toast('删除失败: ' + errs[0].error, 'error');
+        if (typeof toast === 'function') toast(t('files.deleteFailed', { error: errs[0].error }), 'error');
       }
     } catch (e) {
-      if (typeof toast === 'function') toast('删除失败: ' + e.message, 'error');
+      if (typeof toast === 'function') toast(t('files.deleteFailed', { error: e.message }), 'error');
     }
   }
 
@@ -1572,11 +1584,11 @@ var FileManager = (function () {
 
     overlay.innerHTML =
       '<div class="files-rename-dialog">' +
-      '<h3>重命名</h3>' +
+      '<h3>' + t('files.rename') + '</h3>' +
       '<input type="text" id="filesRenameInput" value="' + _escapeAttr(entry.name) + '">' +
       '<div class="files-rename-actions">' +
-      '<button class="files-rename-cancel" type="button">取消</button>' +
-      '<button class="files-rename-confirm" type="button">重命名</button>' +
+      '<button class="files-rename-cancel" type="button">' + t('common.cancel') + '</button>' +
+      '<button class="files-rename-confirm" type="button">' + t('files.rename') + '</button>' +
       '</div></div>';
 
     document.body.appendChild(overlay);
@@ -1611,10 +1623,10 @@ var FileManager = (function () {
         old_path: entry.path,
         new_path: newPath,
       }).then(function () {
-        if (typeof toast === 'function') toast('已重命名', 'ok');
+        if (typeof toast === 'function') toast(t('files.renamed'), 'ok');
         _loadDirectory(tab, tab.path);
       }).catch(function (e) {
-        if (typeof toast === 'function') toast('重命名失败: ' + e.message, 'error');
+        if (typeof toast === 'function') toast(t('files.renameFailed', { error: e.message }), 'error');
       });
 
       overlay.remove();
@@ -1628,19 +1640,19 @@ var FileManager = (function () {
   }
 
   function _promptNewFolder(tab) {
-    showInputDialog('输入新文件夹名称:', {
-      title: '新建文件夹',
-      placeholder: '文件夹名称'
+    showInputDialog(t('files.newFolderPrompt'), {
+      title: t('files.newFolder'),
+      placeholder: t('files.folderNamePlaceholder')
     }).then(function(name) {
       if (!name || !name.trim()) return;
 
       var newPath = _pathJoin(tab.path, name.trim());
 
       Api.post('/v1/webui/files/mkdir', { path: newPath }).then(function () {
-        if (typeof toast === 'function') toast('文件夹已创建', 'ok');
+        if (typeof toast === 'function') toast(t('files.folderCreated'), 'ok');
         _loadDirectory(tab, tab.path);
       }).catch(function (e) {
-        if (typeof toast === 'function') toast('失败: ' + e.message, 'error');
+        if (typeof toast === 'function') toast(t('files.genericFailed', { error: e.message }), 'error');
       });
     });
   }
@@ -1648,12 +1660,29 @@ var FileManager = (function () {
   // ========================= Upload =========================
 
   function _triggerFilePicker() {
+    var tab = _getActiveTab();
+    if (tab && !_canWriteToTab(tab)) {
+      if (typeof toast === 'function') toast(t('files.uploadDirRequired'), 'error');
+      return;
+    }
     var input = document.getElementById('filesUploadInput');
     if (input) input.click();
   }
 
+  function _formatUploadSkipped(skipped) {
+    if (!skipped || skipped.length === 0) return '';
+    var first = skipped[0];
+    var detail = first.file ? (first.file + ': ' + first.error) : first.error;
+    if (skipped.length === 1) return detail;
+    return detail + t('files.uploadPartialMore', { count: skipped.length - 1 });
+  }
+
   async function _uploadFiles(tab, dirPath, fileList) {
     if (!fileList || fileList.length === 0) return;
+    if (!tab || !_canWriteToTab(tab)) {
+      if (typeof toast === 'function') toast(t('files.uploadDirRequired'), 'error');
+      return;
+    }
 
     var formData = new FormData();
     formData.append('dir', dirPath);
@@ -1661,34 +1690,31 @@ var FileManager = (function () {
       formData.append('files', fileList[i]);
     }
 
-    // Show a brief upload indicator via toast
     var count = fileList.length;
-    if (typeof toast === 'function') toast('正在上传 ' + count + ' 个文件...', 'ok');
+    if (typeof toast === 'function') toast(t('files.uploading', { count: count }), 'ok');
 
     try {
-      var resp = await fetch('/v1/webui/files/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      var data;
-      try {
-        data = await resp.json();
-      } catch (_e) {
-        data = null;
-      }
-
-      if (!resp.ok) {
-        var errMsg = (data && data.error) ? data.error : ('HTTP ' + resp.status);
-        if (typeof toast === 'function') toast('上传失败: ' + errMsg, 'error');
-        return;
-      }
-
+      var data = await Api.postForm('/v1/webui/files/upload', formData);
       var uploaded = (data && data.uploaded) || [];
-      if (typeof toast === 'function') toast('已上传 ' + uploaded.length + ' 个文件', 'ok');
+      var skipped = (data && data.skipped) || [];
+      if (skipped.length > 0) {
+        var msg = t('files.uploadPartial', {
+          uploaded: uploaded.length,
+          skipped: skipped.length,
+          detail: _formatUploadSkipped(skipped)
+        });
+        if (typeof toast === 'function') toast(msg, uploaded.length > 0 ? 'ok' : 'error');
+      } else if (typeof toast === 'function') {
+        toast(t('files.uploadedCount', { count: uploaded.length }), 'ok');
+      }
       _loadDirectory(tab, tab.path);
     } catch (e) {
-      if (typeof toast === 'function') toast('上传失败: ' + e.message, 'error');
+      var skippedErr = (e.data && e.data.skipped) || [];
+      var errMsg = e.message;
+      if (skippedErr.length > 0) {
+        errMsg += ' (' + _formatUploadSkipped(skippedErr) + ')';
+      }
+      if (typeof toast === 'function') toast(t('files.uploadFailed', { error: errMsg }), 'error');
     }
   }
 
@@ -1700,7 +1726,7 @@ var FileManager = (function () {
       if (overlay) return;
       overlay = document.createElement('div');
       overlay.className = 'files-drop-overlay';
-      overlay.textContent = '拖放文件以上传';
+      overlay.textContent = t('files.dropToUpload');
       listArea.style.position = 'relative';
       listArea.appendChild(overlay);
     }
@@ -1716,6 +1742,7 @@ var FileManager = (function () {
     listArea.addEventListener('dragenter', function (e) {
       e.preventDefault();
       e.stopPropagation();
+      if (!_canWriteToTab(tab)) return;
       dragCounter++;
       if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.indexOf('Files') !== -1) {
         showOverlay();
@@ -1741,6 +1768,10 @@ var FileManager = (function () {
       e.preventDefault();
       e.stopPropagation();
       hideOverlay();
+      if (!_canWriteToTab(tab)) {
+        if (typeof toast === 'function') toast(t('files.uploadDirRequired'), 'error');
+        return;
+      }
       if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         _uploadFiles(tab, tab.path, e.dataTransfer.files);
       }
@@ -1748,6 +1779,119 @@ var FileManager = (function () {
   }
 
   // ========================= File Preview =========================
+
+  function _isHtmlPreviewFile(name) {
+    var ext = (name || '').split('.').pop().toLowerCase();
+    return ext === 'html' || ext === 'htm';
+  }
+
+  function _isMarkdownPreviewFile(name) {
+    return /\.(md|mdx)$/i.test(name || '');
+  }
+
+  function _escapePreviewHtml(text) {
+    if (typeof escapeHtml === 'function') return escapeHtml(text);
+    var d = document.createElement('div');
+    d.textContent = String(text || '');
+    return d.innerHTML;
+  }
+
+  function _renderPreviewInlineMarkdown(text) {
+    var inlineCodes = [];
+    text = text.replace(/`([^`\n]+)`/g, function(m, code) {
+      var idx = inlineCodes.length;
+      inlineCodes.push(code);
+      return '\x00IC' + idx + '\x00';
+    });
+    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    for (var i = 0; i < inlineCodes.length; i++) {
+      text = text.replace('\x00IC' + i + '\x00',
+        '<code class="files-preview-inline-code">' + inlineCodes[i] + '</code>');
+    }
+    return text;
+  }
+
+  function _renderMarkdownPreviewHtml(content) {
+    var codeBlocks = [];
+    var sentinel = '\x00CB';
+    var processed = String(content || '').replace(/```(\w*)\n([\s\S]*?)```/g, function(match, lang, code) {
+      var idx = codeBlocks.length;
+      codeBlocks.push({ lang: lang, code: code });
+      return sentinel + idx + sentinel;
+    });
+    processed = _escapePreviewHtml(processed);
+    var lines = processed.split('\n');
+    var resultLines = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var hMatch = line.match(/^(#{1,6})\s+(.+)$/);
+      if (hMatch) {
+        var level = hMatch[1].length;
+        resultLines.push('<h' + level + '>' + _renderPreviewInlineMarkdown(hMatch[2]) + '</h' + level + '>');
+        continue;
+      }
+      var ulMatch = line.match(/^(\s*)[*-]\s+(.+)$/);
+      if (ulMatch) {
+        resultLines.push('<div class="files-preview-md-li">\u2022 ' + _renderPreviewInlineMarkdown(ulMatch[2]) + '</div>');
+        continue;
+      }
+      if (!line.trim()) {
+        resultLines.push('<div class="files-preview-md-gap"></div>');
+        continue;
+      }
+      resultLines.push('<p>' + _renderPreviewInlineMarkdown(line) + '</p>');
+    }
+    processed = resultLines.join('');
+    for (var j = 0; j < codeBlocks.length; j++) {
+      var cb = codeBlocks[j];
+      var escapedCode = _escapePreviewHtml(cb.code);
+      var langLabel = cb.lang ? _escapePreviewHtml(cb.lang) : 'code';
+      processed = processed.replace(
+        sentinel + j + sentinel,
+        '<pre class="files-preview-md-pre"><code class="language-' + langLabel + '">' + escapedCode + '</code></pre>'
+      );
+    }
+    return processed;
+  }
+
+  function _wrapHtmlPreviewDoc(raw) {
+    var trimmed = String(raw || '').replace(/^\uFEFF/, '').trim();
+    if (/^<!DOCTYPE\s+html/i.test(trimmed) || /^<html[\s>]/i.test(trimmed)) {
+      return trimmed;
+    }
+    return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<style>html,body{margin:0;padding:12px;overflow:auto;background:#fff;color:#111;word-wrap:break-word;}' +
+      'img,video,canvas,svg,table{max-width:100%;height:auto;}</style></head><body>' +
+      trimmed + '</body></html>';
+  }
+
+  function _clearHtmlPreviewHost(host) {
+    if (!host) return;
+    var oldUrl = host.getAttribute('data-preview-blob');
+    if (oldUrl) {
+      URL.revokeObjectURL(oldUrl);
+      host.removeAttribute('data-preview-blob');
+    }
+    host.innerHTML = '';
+  }
+
+  function _renderHtmlPreviewHost(host, content) {
+    _clearHtmlPreviewHost(host);
+    var frame = document.createElement('iframe');
+    frame.className = 'files-preview-html-frame';
+    frame.setAttribute('sandbox', '');
+    frame.setAttribute('referrerpolicy', 'no-referrer');
+    frame.setAttribute('title', 'HTML preview');
+    var blob = new Blob([_wrapHtmlPreviewDoc(content)], { type: 'text/html;charset=utf-8' });
+    var blobUrl = URL.createObjectURL(blob);
+    host.setAttribute('data-preview-blob', blobUrl);
+    frame.src = blobUrl;
+    host.appendChild(frame);
+  }
 
   async function _previewFile(entry, editMode) {
     var overlay = document.createElement('div');
@@ -1757,20 +1901,28 @@ var FileManager = (function () {
       '<div class="files-preview-dialog">' +
       '<div class="files-preview-header">' +
       '<div class="files-preview-title">' + _escapeHtml(entry.name) + '</div>' +
+      '<div class="files-preview-modes" id="filesPreviewModes" hidden></div>' +
       '<div class="files-preview-actions">' +
-      '<button class="files-preview-btn" id="filesPreviewEdit">编辑</button>' +
-      '<button class="files-preview-btn" id="filesPreviewDownload">下载</button>' +
-      '<button class="files-preview-btn" id="filesPreviewClose">关闭</button>' +
+      '<button class="files-preview-btn" id="filesPreviewEdit">' + t('files.edit') + '</button>' +
+      '<button class="files-preview-btn" id="filesPreviewDownload">' + t('files.download') + '</button>' +
+      '<button class="files-preview-btn" id="filesPreviewClose">' + t('common.close') + '</button>' +
       '</div></div>' +
-      '<div class="files-preview-body"><div class="files-loading">加载中...</div></div>' +
+      '<div class="files-preview-body"><div class="files-loading">' + t('files.loading') + '</div></div>' +
       '</div>';
 
     document.body.appendChild(overlay);
 
     var dialog = overlay.querySelector('.files-preview-dialog');
     var titleEl = overlay.querySelector('.files-preview-title');
+    var modesEl = overlay.querySelector('#filesPreviewModes');
     var actionsEl = overlay.querySelector('.files-preview-actions');
     var bodyEl = overlay.querySelector('.files-preview-body');
+
+    var previewState = {
+      kind: 'text',
+      viewMode: 'source',
+      content: '',
+    };
 
     // State for edit mode
     var editState = {
@@ -1780,7 +1932,15 @@ var FileManager = (function () {
     };
 
     // Close overlay
-    function closeOverlay() {
+    async function closeOverlay() {
+      if (editState.active && editState.dirty) {
+        var confirmed = await showConfirmDialog(t('files.discardConfirm'), {
+          title: t('files.discardTitle'),
+          confirmText: t('files.discardButton'),
+        });
+        if (!confirmed) return;
+      }
+      _clearHtmlPreviewHost(bodyEl.querySelector('.files-preview-html-host'));
       overlay.remove();
       document.removeEventListener('keydown', onKey);
     }
@@ -1823,9 +1983,9 @@ var FileManager = (function () {
       titleEl.textContent = entry.name;
 
       actionsEl.innerHTML =
-        '<button class="files-preview-btn" id="filesPreviewEdit">编辑</button>' +
-        '<button class="files-preview-btn" id="filesPreviewDownload">下载</button>' +
-        '<button class="files-preview-btn" id="filesPreviewClose">关闭</button>';
+        '<button class="files-preview-btn" id="filesPreviewEdit">' + t('files.edit') + '</button>' +
+        '<button class="files-preview-btn" id="filesPreviewDownload">' + t('files.download') + '</button>' +
+        '<button class="files-preview-btn" id="filesPreviewClose">' + t('common.close') + '</button>';
 
       actionsEl.querySelector('#filesPreviewEdit').addEventListener('click', function () {
         if (editState.active) return;
@@ -1839,6 +1999,8 @@ var FileManager = (function () {
       var editor = dialog.querySelector('.files-editor');
       if (editor) editor.remove();
       bodyEl.style.display = '';
+      _setupPreviewModes();
+      _renderPreviewBody();
     }
 
     // Switch to edit mode: change header buttons, hide body, show editor
@@ -1846,16 +2008,17 @@ var FileManager = (function () {
       editState.active = true;
       editState.dirty = false;
       dialog.classList.add('files-edit-mode');
-      titleEl.textContent = entry.name + ' - 编辑中';
+      titleEl.textContent = entry.name + ' - ' + t('files.editing');
 
       actionsEl.innerHTML =
-        '<button class="files-preview-btn files-preview-btn-save" id="filesEditorSave">保存</button>' +
-        '<button class="files-preview-btn" id="filesEditorCancel">取消</button>';
+        '<button class="files-preview-btn files-preview-btn-save" id="filesEditorSave">' + t('files.save') + '</button>' +
+        '<button class="files-preview-btn" id="filesEditorCancel">' + t('common.cancel') + '</button>';
 
       actionsEl.querySelector('#filesEditorSave').addEventListener('click', _saveEditedFile);
       actionsEl.querySelector('#filesEditorCancel').addEventListener('click', _cancelEdit);
 
       bodyEl.style.display = 'none';
+      if (modesEl) modesEl.hidden = true;
       _showEditor();
     }
 
@@ -1923,7 +2086,7 @@ var FileManager = (function () {
     function _markDirty() {
       if (!editState.dirty) {
         editState.dirty = true;
-        titleEl.textContent = entry.name + ' - 编辑中 *';
+        titleEl.textContent = entry.name + ' - ' + t('files.editing') + ' *';
       }
     }
 
@@ -1935,7 +2098,7 @@ var FileManager = (function () {
       var saveBtn = actionsEl.querySelector('#filesEditorSave');
       if (saveBtn) {
         saveBtn.disabled = true;
-        saveBtn.textContent = '保存中...';
+        saveBtn.textContent = t('files.saving');
       }
 
       try {
@@ -1944,15 +2107,15 @@ var FileManager = (function () {
           content: textarea.value,
         });
         editState.originalContent = textarea.value;
-        if (typeof toast === 'function') toast('文件已保存', 'ok');
+        if (typeof toast === 'function') toast(t('files.saveOk'), 'ok');
         // Refresh the read-only preview with updated content
         _renderTextPreview(editState.originalContent);
         _exitEditMode();
       } catch (e) {
-        if (typeof toast === 'function') toast('保存失败: ' + e.message, 'error');
+        if (typeof toast === 'function') toast(t('files.saveFailed', { error: e.message }), 'error');
         if (saveBtn) {
           saveBtn.disabled = false;
-          saveBtn.textContent = '保存';
+          saveBtn.textContent = t('files.save');
         }
       }
     }
@@ -1960,42 +2123,108 @@ var FileManager = (function () {
     // Cancel editing with dirty-state confirmation
     async function _cancelEdit() {
       if (editState.dirty) {
-        var confirmed = await showConfirmDialog('放弃未保存的更改?', { title: '放弃更改', confirmText: '放弃' });
+        var confirmed = await showConfirmDialog(t('files.discardConfirm'), { title: t('files.discardTitle'), confirmText: t('files.discardButton') });
         if (!confirmed) return;
       }
       _exitEditMode();
-      // Restore preview body from original content
-      bodyEl.innerHTML = '';
-      _renderTextPreview(editState.originalContent);
+      _renderPreviewBody();
       bodyEl.style.display = '';
+    }
+
+    function _setupPreviewModes() {
+      if (!modesEl) return;
+      if (previewState.kind === 'html') {
+        modesEl.hidden = false;
+        modesEl.innerHTML =
+          '<button type="button" class="files-preview-mode' + (previewState.viewMode === 'source' ? ' is-active' : '') + '" data-mode="source">' + t('files.viewSource') + '</button>' +
+          '<button type="button" class="files-preview-mode' + (previewState.viewMode === 'rendered' ? ' is-active' : '') + '" data-mode="rendered">' + t('files.viewPreview') + '</button>';
+      } else if (previewState.kind === 'markdown') {
+        modesEl.hidden = false;
+        modesEl.innerHTML =
+          '<button type="button" class="files-preview-mode' + (previewState.viewMode === 'source' ? ' is-active' : '') + '" data-mode="source">' + t('files.viewSource') + '</button>' +
+          '<button type="button" class="files-preview-mode' + (previewState.viewMode === 'rendered' ? ' is-active' : '') + '" data-mode="rendered">' + t('files.viewRendered') + '</button>';
+      } else {
+        modesEl.hidden = true;
+        modesEl.innerHTML = '';
+        return;
+      }
+      modesEl.querySelectorAll('.files-preview-mode').forEach(function(btn) {
+        btn.addEventListener('click', function () {
+          var mode = btn.getAttribute('data-mode');
+          if (!mode || previewState.viewMode === mode) return;
+          previewState.viewMode = mode;
+          _setupPreviewModes();
+          _renderPreviewBody();
+        });
+      });
+    }
+
+    function _renderTextSourcePreview(content, fileName) {
+      var wrap = document.createElement('div');
+      wrap.className = 'files-preview-text-wrap';
+
+      var lines = String(content || '').split('\n');
+      if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+
+      var gutter = document.createElement('div');
+      gutter.className = 'files-preview-gutter';
+      var nums = [];
+      for (var i = 1; i <= Math.max(lines.length, 1); i++) nums.push(i);
+      gutter.textContent = nums.join('\n');
+
+      var pre = document.createElement('pre');
+      pre.className = 'files-preview-code-pane';
+      var codeEl = document.createElement('code');
+      codeEl.className = 'language-' + _detectLanguage(fileName);
+      codeEl.textContent = content || '';
+      pre.appendChild(codeEl);
+
+      pre.addEventListener('scroll', function () {
+        gutter.scrollTop = pre.scrollTop;
+      });
+
+      wrap.appendChild(gutter);
+      wrap.appendChild(pre);
+      bodyEl.innerHTML = '';
+      bodyEl.appendChild(wrap);
+
+      if (typeof hljs !== 'undefined') {
+        hljs.highlightElement(codeEl);
+      }
+    }
+
+    function _renderPreviewBody() {
+      _clearHtmlPreviewHost(bodyEl.querySelector('.files-preview-html-host'));
+      bodyEl.className = 'files-preview-body';
+      var content = previewState.content;
+
+      if (previewState.kind === 'html' && previewState.viewMode === 'rendered') {
+        bodyEl.className = 'files-preview-body files-preview-body-html';
+        bodyEl.innerHTML = '';
+        var htmlHost = document.createElement('div');
+        htmlHost.className = 'files-preview-html-host';
+        bodyEl.appendChild(htmlHost);
+        _renderHtmlPreviewHost(htmlHost, content);
+        return;
+      }
+
+      if (previewState.kind === 'markdown' && previewState.viewMode === 'rendered') {
+        bodyEl.className = 'files-preview-body files-preview-body-markdown';
+        bodyEl.innerHTML = '<div class="files-preview-markdown">' + _renderMarkdownPreviewHtml(content) + '</div>';
+        bodyEl.querySelectorAll('pre code').forEach(function(el) {
+          if (typeof hljs !== 'undefined') hljs.highlightElement(el);
+        });
+        return;
+      }
+
+      _renderTextSourcePreview(content, entry.name);
     }
 
     // Render text content with line numbers into the preview body
     function _renderTextPreview(content) {
-      var pre = document.createElement('pre');
-      pre.className = 'files-preview-code';
-
-      var codeEl = document.createElement('code');
-      codeEl.className = 'language-' + _detectLanguage(entry.name);
-
-      var lines = (content || '').split('\n');
-      if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
-
-      for (var i = 0; i < lines.length; i++) {
-        var lineEl = document.createElement('span');
-        lineEl.className = 'line';
-        lineEl.textContent = lines[i] || ' ';
-        codeEl.appendChild(lineEl);
-      }
-
-      pre.appendChild(codeEl);
-      bodyEl.innerHTML = '';
-      bodyEl.appendChild(pre);
-
-      // Apply syntax highlighting if highlight.js is available
-      if (typeof hljs !== 'undefined') {
-        hljs.highlightElement(codeEl);
-      }
+      previewState.content = content || '';
+      _setupPreviewModes();
+      _renderPreviewBody();
     }
 
     // Load file content from API
@@ -2015,20 +2244,29 @@ var FileManager = (function () {
         bodyEl.innerHTML =
           '<div class="files-preview-binary">' +
           '<div style="font-size:48px;opacity:0.5;">&#128196;</div>' +
-          '<div>二进制文件 (' + _formatSize(data.total_size) + ')</div>' +
-          '<button class="files-preview-btn" onclick="FileManager.download(\'' +
-          _escapeAttr(entry.path) + '\')">下载</button>' +
+          '<div>' + t('files.binaryFile', { size: _formatSize(data.total_size) }) + '</div>' +
+          '<button class="files-preview-btn" type="button" id="filesPreviewBinaryDownload">' + t('files.download') + '</button>' +
           '</div>';
+        var binaryDl = bodyEl.querySelector('#filesPreviewBinaryDownload');
+        if (binaryDl) binaryDl.addEventListener('click', function () { _downloadFile(entry.path); });
       } else {
-        // Text preview with line numbers
         editState.originalContent = data.content || '';
+        if (_isHtmlPreviewFile(entry.name)) {
+          previewState.kind = 'html';
+          previewState.viewMode = 'source';
+        } else if (_isMarkdownPreviewFile(entry.name)) {
+          previewState.kind = 'markdown';
+          previewState.viewMode = 'source';
+        } else {
+          previewState.kind = 'text';
+          previewState.viewMode = 'source';
+        }
         _renderTextPreview(editState.originalContent);
-        // Auto-enter edit mode when opened via context menu "Edit"
         if (editMode) _enterEditMode();
       }
     } catch (e) {
       overlay.querySelector('#filesPreviewEdit').style.display = 'none';
-      bodyEl.innerHTML = '<div class="files-preview-binary"><div>加载文件失败: ' + _escapeHtml(e.message) + '</div></div>';
+      bodyEl.innerHTML = '<div class="files-preview-binary"><div>' + t('files.loadFileFailed', { error: _escapeHtml(e.message) }) + '</div></div>';
     }
   }
 
@@ -2256,7 +2494,7 @@ var FileManager = (function () {
       var data = await resp.json();
 
       if (!resp.ok) {
-        _searchResults.innerHTML = '<div class="files-search-empty">' + _escapeHtml(data.error || '搜索失败') + '</div>';
+        _searchResults.innerHTML = '<div class="files-search-empty">' + _escapeHtml(data.error || t('files.searchFailed')) + '</div>';
         return;
       }
 
@@ -2264,7 +2502,7 @@ var FileManager = (function () {
       _renderSearchResults(results, dirPath);
     } catch (e) {
       if (e.name === 'AbortError') return;
-      _searchResults.innerHTML = '<div class="files-search-empty">搜索出错: ' + _escapeHtml(e.message) + '</div>';
+      _searchResults.innerHTML = '<div class="files-search-empty">' + t('files.searchError', { error: _escapeHtml(e.message) }) + '</div>';
     }
   }
 
@@ -2274,7 +2512,7 @@ var FileManager = (function () {
     _searchActiveIdx = -1;
 
     if (results.length === 0) {
-      _searchResults.innerHTML = '<div class="files-search-empty">未找到结果</div>';
+      _searchResults.innerHTML = '<div class="files-search-empty">' + t('files.noSearchResults') + '</div>';
       _searchResults.classList.add('visible');
       return;
     }
@@ -2398,11 +2636,23 @@ var FileManager = (function () {
     items[_searchActiveIdx].scrollIntoView({ block: 'nearest' });
   }
 
+  function openPath(path) {
+    if (!path) return;
+    if (typeof switchTab === 'function') switchTab('files');
+    var tab = _getActiveTab();
+    if (!tab) {
+      createTab(path);
+      return;
+    }
+    _navigateTo(tab, path, true);
+  }
+
   return {
     init: init,
     createTab: createTab,
     closeTab: closeTab,
     download: _downloadFile,
+    openPath: openPath,
   };
 })();
 

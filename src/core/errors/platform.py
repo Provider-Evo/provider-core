@@ -110,6 +110,7 @@ class StreamError(PlatformError):
 
 
 class ServerError(PlatformError):
+    """类 ServerError。"""
     """Platform server error — upstream 5xx error."""
 
     def __init__(

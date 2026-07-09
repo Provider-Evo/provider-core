@@ -16,12 +16,12 @@ except ModuleNotFoundError:
     from .runtime import Candidate, make_id
 
 try:
-    from src.core.models_cache import ModelsCache
+    from src.core.utils.compat.models_cache import ModelsCache
 except ModuleNotFoundError:
     from .runtime import ModelsCache
 
 try:
-    from src.core.proxy_selector import ProxySelector
+    from src.core.utils.compat.proxy_selector import ProxySelector
 except ModuleNotFoundError:
     from .runtime import ProxySelector
 
@@ -48,9 +48,9 @@ from .models import extract_model_ids
 from .payloads import build_payload
 from .persistence import load_persist, save_persist
 from .proxy import ProxyState
+from .upload import UploadMixin
 from .stream import StreamHandler
 from .tts import TtsService
-from .upload import UploadMixin
 from .video import VideoService
 
 
@@ -117,6 +117,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         await self._models_cache.load()
         self._models = list(self._models_cache.models)
         self._cookies = load_persist(self._account_states, self._cookies, self._proxy_state)
+        self._sync_expired_account_states()
         self._rebuild_candidates()
         self._chat_session = ChatSession(session, self._get_proxy_kwarg, lambda: self._cookies, lambda: self._fp)
         self._tts_service = TtsService(
@@ -139,6 +140,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
     async def background_setup(self) -> None:
         await self._initial_login_pass()
         self._bg_tasks.append(asyncio.create_task(self._login_poll_loop()))
+        self._bg_tasks.append(asyncio.create_task(self._bg_token_expiry_watch()))
         self._bg_tasks.append(asyncio.create_task(self._bg_cookie_refresh()))
         self._bg_tasks.append(asyncio.create_task(self._bg_persist()))
         self._bg_tasks.append(
@@ -193,14 +195,23 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
                 resource_id=account.username[:12],
                 models=list(self._models),
                 context_length=account.context_length,
-                meta={"email": account.username, "token": account.token, "user_id": account.user_id},
+                meta={
+                    "email": account.username,
+                    "token": account.token,
+                    "user_id": account.user_id,
+                    "is_login": True,
+                },
                 **CAPS,
             )
             for account in self._account_states.values()
-            if account.is_login and account.token
+            if account.is_login
+            and account.token
+            and not self._is_token_expired(account)
         ]
 
     async def candidates(self) -> List[Candidate]:
+        self._sync_expired_account_states()
+        self._rebuild_candidates()
         return list(self._candidates)
 
     async def ensure_candidates(self, count: int) -> int:
@@ -272,7 +283,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
 
     def _get_any_valid_token(self) -> Optional[str]:
         for account in self._account_states.values():
-            if account.token:
+            if account.token and account.is_login and not self._is_token_expired(account):
                 return account.token
         return None
 
@@ -317,13 +328,23 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
                 return
             except TokenExpiredError as exc:
                 email = str(candidate.meta.get("email", ""))
-                if email in self._account_states:
-                    account = self._account_states[email]
+                account = self._account_states.get(email)
+                if account is not None:
                     account.is_login = False
                     account.token = ""
+                    account.token_expires = 0.0
                     self._rebuild_candidates()
                     self._save_persist()
-                raise
+                    try:
+                        await self._login_and_configure(account)
+                        self._rebuild_candidates()
+                        candidate.meta["token"] = account.token
+                        candidate.meta["user_id"] = account.user_id
+                        self._save_persist()
+                        continue
+                    except Exception:
+                        pass
+                raise exc
             except WafBlockedError as exc:
                 last_error = exc
                 self._log_retry(f"WAF retry {attempt + 1}/3")
@@ -345,8 +366,20 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         tts: bool = False,
         upload_files: Optional[List[Tuple[bytes, str]]] = None,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
-        token = str(candidate.meta.get("token", ""))
-        user_id = str(candidate.meta.get("user_id", ""))
+        email = str(candidate.meta.get("email", ""))
+        account = self._account_states.get(email)
+        if (
+            account is None
+            or not account.is_login
+            or not account.token
+            or self._is_token_expired(account)
+        ):
+            raise RuntimeError("candidate account is not logged in")
+        candidate.meta["token"] = account.token
+        candidate.meta["user_id"] = account.user_id
+        candidate.meta["is_login"] = True
+        token = account.token
+        user_id = str(account.user_id or "")
         if not token:
             raise RuntimeError("candidate token is missing")
         file_objects: List[Dict[str, Any]] = []
@@ -361,17 +394,18 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         request_start = time.time()
         success = False
         try:
+            # Qwen chat completions always respond as SSE; StreamHandler only
+            # parses event-stream bodies. Client stream=false must not disable
+            # upstream streaming or the race/single paths see empty output.
             payload = build_payload(
                 messages=messages,
                 model=model,
                 chat_id=chat_id,
                 files=file_objects,
                 thinking_enabled=thinking,
-                auto_thinking=False,
                 thinking_mode="Thinking" if thinking else "Fast",
-                thinking_format="raw",
                 auto_search=search,
-                stream=stream,
+                stream=True,
             )
             headers = build_headers(token, chat_id=chat_id, include_sse=True, fingerprint=self._fp, cookies=self._cookies)
             async with self._session.post(

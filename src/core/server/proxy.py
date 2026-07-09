@@ -38,37 +38,45 @@ def _load_from_config() -> None:
 
 
 def activate() -> None:
-    """Activate proxy (load from config and enable)."""
+    """中文说明：activate。
+
+Activate proxy (load from config and enable)."""
     _load_from_config()
     _mgr.activate()
 
 
 def deactivate() -> None:
-    """Deactivate proxy."""
+    """中文说明：deactivate。
+
+Deactivate proxy."""
     _mgr.deactivate()
 
 
 def is_active() -> bool:
-    """Whether proxy is active."""
+    """中文说明：is_active。
+
+Whether proxy is active."""
     return _mgr.is_active()
 
 
 def get_proxy_server() -> str:
-    """Get current proxy server URL.
+    """中文说明：get_proxy_server。
 
-    Returns:
-        Proxy server URL, or empty string if not configured.
-    """
+Get current proxy server URL.
+
+Returns:
+    Proxy server URL, or empty string if not configured."""
     proxies = _mgr.get_proxy_dict()
     return proxies.get("http") or proxies.get("https") or ""
 
 
 def get_proxy_dict() -> Dict[str, str]:
-    """Get proxy dictionary.
+    """中文说明：get_proxy_dict。
 
-    Returns:
-        ``{"http": "...", "https": "..."}`` proxy configuration.
-    """
+Get proxy dictionary.
+
+Returns:
+    ``{"http": "...", "https": "..."}`` proxy configuration."""
     return _mgr.get_proxy_dict()
 
 
