@@ -25,18 +25,15 @@ def filter_candidates_by_context(
     model: str,
     min_context: int,
 ) -> List["Candidate"]:
-    """筛掉上下文不足的候选项；若全部不足则保留未知长度的候选项。"""
+    """筛掉已知上下文不足的候选项；未暴露长度视为满足；全被筛掉则回退全部。"""
     if min_context <= 0:
         return list(candidates)
-    sufficient: List[Candidate] = []
-    unknown: List[Candidate] = []
+    kept: List[Candidate] = []
     for cand in candidates:
         ctx = context_for_model(cand, model)
-        if ctx is None:
-            unknown.append(cand)
-        elif ctx >= min_context:
-            sufficient.append(cand)
-    return sufficient if sufficient else unknown
+        if ctx is None or ctx >= min_context:
+            kept.append(cand)
+    return kept if kept else list(candidates)
 
 
 ALL_CAPABILITIES: tuple = (

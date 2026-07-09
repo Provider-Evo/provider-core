@@ -57,8 +57,14 @@ class QwenAdapter(PlatformAdapter):
 
             timeout = aiohttp.ClientTimeout(total=None, connect=20, sock_connect=20, sock_read=None)
             connector = make_connector()
-            self._session = aiohttp.ClientSession(timeout=timeout, connector=connector)
-            await self._client.init_immediate(self._session)
+            session = aiohttp.ClientSession(timeout=timeout, connector=connector)
+            try:
+                await self._client.init_immediate(session)
+            except Exception:
+                if not session.closed:
+                    await session.close()
+                raise
+            self._session = session
             asyncio.create_task(self._client.background_setup())
             self._initialized = True
 

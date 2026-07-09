@@ -34,10 +34,21 @@ class OllamaAdapter(PlatformAdapter):
 
     def __init__(self) -> None:
         self._client: Any = None
+        self._session: Optional[aiohttp.ClientSession] = None
         self._models: List[str] = list(MODELS)
         self._cache: Optional[ModelsCache] = None
         self._init_task: Optional[asyncio.Task] = None
         self._refresh_task: Optional[asyncio.Task] = None
+
+    async def _open_session(self) -> aiohttp.ClientSession:
+        if self._session is not None and not self._session.closed:
+            return self._session
+        from src.core.server.infra.connector import make_connector
+
+        timeout = aiohttp.ClientTimeout(total=None, connect=20, sock_connect=20, sock_read=None)
+        connector = make_connector()
+        self._session = aiohttp.ClientSession(timeout=timeout, connector=connector)
+        return self._session
 
     @property
     def name(self) -> str:
@@ -72,18 +83,20 @@ class OllamaAdapter(PlatformAdapter):
         """初始化适配器——立即注册，后台完成服务器发现。
 
         Args:
-            session: aiohttp 会话实例。
+            session: 主进程共享 session（未使用；插件自管专用 session）。
         """
+        del session
         from provider_ollama.core.client import OllamaClient  # noqa: PLC0415
 
         self._client = OllamaClient()
-        self._init_task = asyncio.ensure_future(self._init_immediate(session))
+        self._init_task = asyncio.ensure_future(self._init_immediate())
         self._refresh_task = asyncio.ensure_future(self._background_init())
 
-    async def _init_immediate(self, session: aiohttp.ClientSession) -> None:
+    async def _init_immediate(self) -> None:
         """后台完成即时初始化：服务器发现、连接验证。"""
         if self._client is None:
             return
+        session = await self._open_session()
         try:
             await self._client.init_immediate(session)
             self._cache = ModelsCache(
@@ -96,6 +109,9 @@ class OllamaAdapter(PlatformAdapter):
                 self._models = cached
                 self._client.update_models(self._models)
         except Exception as exc:
+            if self._session is not None and not self._session.closed:
+                await self._session.close()
+            self._session = None
             logger.warning("ollama 即时初始化失败，将在后台重试: %s", exc)
 
     async def _background_init(self) -> None:
@@ -229,6 +245,9 @@ class OllamaAdapter(PlatformAdapter):
                 logger.debug("ollama refresh task cancelled")
         if self._client is not None:
             await self._client.close()
+        if self._session is not None and not self._session.closed:
+            await self._session.close()
+        self._session = None
 
 
 # 通用别名，供 adapter.py / util.py 统一导出

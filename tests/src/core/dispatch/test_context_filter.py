@@ -42,3 +42,38 @@ def test_filter_candidates_by_context() -> None:
     )
     out = filter_candidates_by_context([small, large], "m", 8000)
     assert out == [large]
+
+
+def test_filter_unknown_context_treated_as_sufficient() -> None:
+    unknown = Candidate(
+        id=make_id("ollama", "u"),
+        platform="ollama",
+        resource_id="u",
+        models=["m"],
+        meta={},
+        chat=True,
+    )
+    small = Candidate(
+        id=make_id("ollama", "s"),
+        platform="ollama",
+        resource_id="s",
+        models=["m"],
+        meta={"model_context": {"m": 4096}},
+        chat=True,
+    )
+    out = filter_candidates_by_context([small, unknown], "m", 8000)
+    assert unknown in out
+    assert small not in out
+
+
+def test_filter_fallback_when_all_known_insufficient() -> None:
+    small = Candidate(
+        id=make_id("ollama", "s"),
+        platform="ollama",
+        resource_id="s",
+        models=["m"],
+        meta={"model_context": {"m": 4096}},
+        chat=True,
+    )
+    out = filter_candidates_by_context([small], "m", 8000)
+    assert out == [small]

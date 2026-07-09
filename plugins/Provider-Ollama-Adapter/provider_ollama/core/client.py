@@ -573,6 +573,14 @@ class OllamaClient:
         self._session: Optional[aiohttp.ClientSession] = None
         self._servers: Dict[str, Any] = {}
         self._registry: Dict[str, Any] = {}
+        self._closing = False
+        self._bg_refresh_task: Optional[asyncio.Task] = None
+
+    def _require_session(self) -> aiohttp.ClientSession:
+        session = self._session
+        if self._closing or session is None or session.closed:
+            raise RuntimeError("ollama client session is closed")
+        return session
 
     async def init(self, session: aiohttp.ClientSession) -> None:
         """初始化客户端，注入 session 并准备状态。
@@ -629,26 +637,29 @@ class OllamaClient:
         except Exception as e:
             logger.error("ollama服务器发现失败: %s", e)
 
-        asyncio.ensure_future(self._bg_refresh())
+        self._bg_refresh_task = asyncio.create_task(self._bg_refresh())
 
     async def _bg_refresh(self) -> None:
         """后台定时刷新服务器列表。"""
         if not DYNAMIC_DISCOVERY:
             return
-        while True:
-            await asyncio.sleep(BG_REFRESH_INTERVAL)
-            try:
-                additional = [acc.server_url for acc in ACCOUNTS if acc.server_url]
-                loop = asyncio.get_running_loop()
-                servers, registry = await loop.run_in_executor(
-                    None,
-                    lambda: _do_refresh(force=True, additional=additional),
-                )
-                self._servers = servers
-                self._registry = registry
-                logger.debug("ollama刷新完成: %d服务器", len(servers))
-            except Exception as e:
-                logger.warning("ollama刷新失败: %s", e)
+        try:
+            while not self._closing:
+                await asyncio.sleep(BG_REFRESH_INTERVAL)
+                try:
+                    additional = [acc.server_url for acc in ACCOUNTS if acc.server_url]
+                    loop = asyncio.get_running_loop()
+                    servers, registry = await loop.run_in_executor(
+                        None,
+                        lambda: _do_refresh(force=True, additional=additional),
+                    )
+                    self._servers = servers
+                    self._registry = registry
+                    logger.debug("ollama刷新完成: %d服务器", len(servers))
+                except Exception as e:
+                    logger.warning("ollama刷新失败: %s", e)
+        except asyncio.CancelledError:
+            return
 
     def get_available_models(self) -> List[str]:
         """返回当前已发现的所有模型名称。
@@ -672,28 +683,34 @@ class OllamaClient:
         Returns:
             Candidate 实例列表。
         """
-        from provider_ollama.core.constants import CAPS
+        from provider_ollama.core.detect import gateway_capabilities
 
         out: List[Candidate] = []
         for ip, srv in self._servers.items():
             models = srv.get("model_names", [])
             if not models:
                 continue
-            caps: Dict[str, bool] = {"chat": True}
-            for m_info in srv.get("models", []):
-                for k, v in m_info.get("capabilities", {}).items():
-                    if v:
-                        caps[k] = True
-            if not caps.get("embedding"):
-                _embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
-                if any(kw in m.lower() for m in models for kw in _embed_kw):
-                    caps["embedding"] = True
             model_context: Dict[str, int] = {}
+            model_capabilities: Dict[str, Dict[str, bool]] = {}
+            server_caps: Dict[str, bool] = {"chat": True}
             for m_info in srv.get("models", []):
                 m_name = m_info.get("name")
+                if not m_name:
+                    continue
                 m_ctx = m_info.get("context_length")
-                if m_name and m_ctx:
+                if m_ctx:
                     model_context[m_name] = int(m_ctx)
+                raw_caps = m_info.get("capabilities")
+                if isinstance(raw_caps, dict):
+                    gw_caps = gateway_capabilities(raw_caps)
+                    model_capabilities[m_name] = gw_caps
+                    for key, value in gw_caps.items():
+                        if value:
+                            server_caps[key] = True
+            if not server_caps.get("embedding"):
+                _embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
+                if any(kw in m.lower() for m in models for kw in _embed_kw):
+                    server_caps["embedding"] = True
             ctx_len = max(model_context.values()) if model_context else None
             out.append(
                 Candidate(
@@ -706,8 +723,9 @@ class OllamaClient:
                         "ip": ip,
                         "base_url": srv["base_url"],
                         "model_context": model_context,
+                        "model_capabilities": model_capabilities,
                     },
-                    **caps,
+                    **server_caps,
                 )
             )
         return out
@@ -737,7 +755,7 @@ class OllamaClient:
 
         payload: Dict[str, Any] = {"model": model, "input": input_data}
         try:
-            async with self._session.post(
+            async with self._require_session().post(
                 url, json=payload, timeout=aiohttp.ClientTimeout(total=120)
             ) as resp:
                 if resp.status != 200:
@@ -835,10 +853,10 @@ class OllamaClient:
         chat_messages = build_image_messages(messages)
         payload = build_chat_payload(chat_messages, model, stream=stream, **kw)
 
-        if self._session is None:
-            raise RuntimeError("OllamaClient 未初始化，请先调用 init()")
+        if self._closing:
+            raise RuntimeError("ollama client is shutting down")
 
-        async with self._session.post(
+        async with self._require_session().post(
             url,
             json=payload,
             timeout=aiohttp.ClientTimeout(total=600),
@@ -912,7 +930,16 @@ class OllamaClient:
 
     async def close(self) -> None:
         """清理资源。"""
-        return
+        self._closing = True
+        task = self._bg_refresh_task
+        if task is not None and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        self._bg_refresh_task = None
+        self._session = None
 
 
 def _extract_usage(data: Dict[str, Any]) -> Dict[str, int]:

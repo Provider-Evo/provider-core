@@ -21,6 +21,7 @@ venv
 agent_log
 config/
 .agents/
+plugins/
 
 # Extensions
 *.dll

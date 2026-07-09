@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """HTTP 异常分类辅助 — 将 aiohttp 错误映射为 ProviderError。"""
 
+import re
 from typing import Optional
 
 import aiohttp
@@ -9,6 +10,8 @@ import aiohttp
 from src.core.errors import ProviderError, classify_http_error
 
 __all__ = ["classify_client_error", "maybe_classify_exception"]
+
+_HTTP_STATUS_IN_MSG = re.compile(r"HTTP(\d{3})\b", re.IGNORECASE)
 
 
 def classify_client_error(

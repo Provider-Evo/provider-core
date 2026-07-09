@@ -122,9 +122,7 @@ async def dispatch(
     min_ctx = _estimate_prompt_tokens(messages) + reserve
     filtered = filter_candidates_by_context(cands, model, min_ctx)
     if not filtered:
-        raise NoCandidateError(
-            "无满足上下文要求的候选项: {} (需要约 {} tokens)".format(model, min_ctx)
-        )
+        filtered = cands
     if len(filtered) < len(cands):
         from src.foundation.logger import get_logger
 

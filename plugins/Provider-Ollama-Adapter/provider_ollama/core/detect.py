@@ -25,6 +25,21 @@ def extract_context_length(detail: Optional[Dict[str, Any]]) -> Optional[int]:
     return None
 
 
+def gateway_capabilities(ollama_caps: Dict[str, bool]) -> Dict[str, bool]:
+    """将 Ollama 能力映射为网关 Candidate 能力字段。"""
+    out: Dict[str, bool] = {}
+    if ollama_caps.get("chat", True):
+        out["chat"] = True
+    if ollama_caps.get("vision"):
+        out["vision"] = True
+    if ollama_caps.get("embedding"):
+        out["embedding"] = True
+    if ollama_caps.get("tools"):
+        out["tools"] = True
+        out["native_tools"] = True
+    return out
+
+
 def detect_capabilities(detail: Dict[str, Any]) -> Dict[str, bool]:
     """从模型详情中检测能力。
 

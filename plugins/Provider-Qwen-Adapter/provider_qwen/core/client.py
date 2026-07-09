@@ -34,6 +34,7 @@ from .endpoints import (
     BASE_URL,
     CHAT_PATH,
     MODELS_PATH,
+    MODELS_PERSIST_PATH,
     PROXY_SELECTOR_PERSIST_PATH,
     PERSIST_INTERVAL,
     SSE_TIMEOUT,
@@ -44,7 +45,14 @@ from .errors import WafBlockedError, TokenExpiredError
 from .headers import build_headers
 from .logs import LogsMixin
 from .media import MediaMixin
-from .models import extract_model_ids
+from .models import (
+    catalog_from_persist,
+    catalog_to_persist,
+    extract_model_ids,
+    parse_models_catalog,
+    QwenModelInfo,
+    union_capabilities,
+)
 from .payloads import build_payload
 from .persistence import load_persist, save_persist
 from .proxy import ProxyState
@@ -62,6 +70,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         self._account_states: Dict[str, Account] = {}
         self._candidates: List[Candidate] = []
         self._models: List[str] = list(MODELS)
+        self._model_catalog: Dict[str, QwenModelInfo] = {}
         self._fp = generate_fingerprint()
         self._cookies: Dict[str, Any] = generate_cookies(self._fp)
         self._bg_tasks: List[asyncio.Task] = []
@@ -117,6 +126,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
             self._account_states[account.username] = Account(username=account.username, password=account.password)
         await self._models_cache.load()
         self._models = list(self._models_cache.models)
+        self._load_model_catalog()
         self._cookies = load_persist(self._account_states, self._cookies, self._proxy_state)
         self._sync_expired_account_states()
         self._rebuild_candidates()
@@ -219,27 +229,87 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
             self._pending_cleanups.clear()
         self._save_persist()
 
+    def _load_model_catalog(self) -> None:
+        path = Path(MODELS_PERSIST_PATH)
+        if not path.is_file():
+            return
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return
+        catalog_raw = payload.get("catalog")
+        if isinstance(catalog_raw, dict):
+            self._model_catalog = catalog_from_persist(catalog_raw)
+
+    def _save_model_catalog(self) -> None:
+        path = Path(MODELS_PERSIST_PATH)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload: Dict[str, Any] = {
+            "models": list(self._models),
+            "catalog": catalog_to_persist(self._model_catalog),
+            "updated_at": int(time.time()),
+        }
+        path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    def _apply_model_catalog(self, catalog: Dict[str, QwenModelInfo]) -> None:
+        if not catalog:
+            return
+        self._model_catalog = dict(catalog)
+        self._models = list(catalog.keys())
+        self._save_model_catalog()
+
+    def _candidate_caps_for_account(self, account: Account) -> Dict[str, bool]:
+        active_ids = [mid for mid in self._models if mid in self._model_catalog]
+        if active_ids:
+            return union_capabilities(self._model_catalog[mid] for mid in active_ids)
+        return dict(CAPS)
+
+    def _model_context_for_account(self, account: Account) -> Dict[str, int]:
+        model_context: Dict[str, int] = {}
+        for model_id, info in self._model_catalog.items():
+            if model_id not in self._models:
+                continue
+            ctx = info.context_length
+            if ctx is None:
+                continue
+            if account.context_length:
+                ctx = min(ctx, int(account.context_length))
+            model_context[model_id] = int(ctx)
+        return model_context
+
+    def _model_capabilities_for_account(self) -> Dict[str, Dict[str, bool]]:
+        return {
+            model_id: info.capability_dict()
+            for model_id, info in self._model_catalog.items()
+            if model_id in self._models
+        }
+
     def _rebuild_candidates(self) -> None:
-        self._candidates = [
-            Candidate(
-                id=make_id("qwen", account.username[:12]),
-                platform="qwen",
-                resource_id=account.username[:12],
-                models=list(self._models),
-                context_length=account.context_length,
-                meta={
-                    "email": account.username,
-                    "token": account.token,
-                    "user_id": account.user_id,
-                    "is_login": True,
-                },
-                **CAPS,
+        self._candidates = []
+        for account in self._account_states.values():
+            if not (account.is_login and account.token and not self._is_token_expired(account)):
+                continue
+            model_context = self._model_context_for_account(account)
+            model_capabilities = self._model_capabilities_for_account()
+            ctx_len = max(model_context.values()) if model_context else account.context_length
+            self._candidates.append(
+                Candidate(
+                    id=make_id("qwen", account.username[:12]),
+                    platform="qwen",
+                    resource_id=account.username[:12],
+                    models=list(self._models),
+                    context_length=ctx_len,
+                    meta={
+                        "email": account.username,
+                        "token": account.token,
+                        "user_id": account.user_id,
+                        "is_login": True,
+                        "model_context": model_context,
+                        "model_capabilities": model_capabilities,
+                    },
+                    **self._candidate_caps_for_account(account),
+                )
             )
-            for account in self._account_states.values()
-            if account.is_login
-            and account.token
-            and not self._is_token_expired(account)
-        ]
 
     async def candidates(self) -> List[Candidate]:
         self._sync_expired_account_states()
@@ -277,6 +347,10 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
 
     async def _on_models_update(self, models: List[str]) -> None:
         self._models = list(models)
+        if self._model_catalog:
+            self._model_catalog = {
+                mid: info for mid, info in self._model_catalog.items() if mid in self._models
+            }
         for cand in self._candidates:
             cand.models = list(models)
         if self._account_states:
@@ -286,7 +360,7 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
         token = self._get_any_valid_token()
         if not token:
             return []
-        endpoints = [f"{BASE_URL}{MODELS_PATH}", f"{BASE_URL}/api/v1/models"]
+        endpoint = f"{BASE_URL}{MODELS_PATH}"
         headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/json",
@@ -295,23 +369,29 @@ class QwenClient(AuthMixin, UploadMixin, MediaMixin, LogsMixin):
             "Referer": f"{BASE_URL}/",
             "source": "web",
         }
-        for endpoint in endpoints:
-            try:
-                async with self._require_session().get(
-                    endpoint,
-                    headers=headers,
-                    ssl=False,
-                    timeout=aiohttp.ClientTimeout(total=30),
-                    proxy=self._get_proxy_kwarg(),
-                ) as response:
-                    if response.status != 200:
-                        continue
-                    models = extract_model_ids(await response.json(content_type=None))
-                    if models:
-                        return models
-            except Exception:
-                continue
-        return []
+        try:
+            async with self._require_session().get(
+                endpoint,
+                headers=headers,
+                ssl=False,
+                timeout=aiohttp.ClientTimeout(total=30),
+                proxy=self._get_proxy_kwarg(),
+            ) as response:
+                if response.status != 200:
+                    return []
+                payload = await response.json(content_type=None)
+        except Exception:
+            return []
+
+        catalog = parse_models_catalog(payload)
+        if catalog:
+            self._apply_model_catalog(catalog)
+            return list(catalog.keys())
+        models = extract_model_ids(payload)
+        if models:
+            self._models = list(models)
+            self._save_model_catalog()
+        return models
 
     def _get_any_valid_token(self) -> Optional[str]:
         for account in self._account_states.values():
