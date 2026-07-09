@@ -6,7 +6,16 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-__all__ = ["Candidate", "make_id", "ALL_CAPABILITIES", "context_for_model", "filter_candidates_by_context"]
+__all__ = [
+    "Candidate",
+    "make_id",
+    "ALL_CAPABILITIES",
+    "context_for_model",
+    "filter_candidates_by_context",
+    "capability_for_model",
+    "filter_candidates_by_capability",
+    "messages_require_capability",
+]
 
 
 def context_for_model(candidate: "Candidate", model: str) -> Optional[int]:
@@ -34,6 +43,49 @@ def filter_candidates_by_context(
         if ctx is None or ctx >= min_context:
             kept.append(cand)
     return kept if kept else list(candidates)
+
+
+def capability_for_model(
+    candidate: "Candidate",
+    model: str,
+    capability: str,
+) -> Optional[bool]:
+    """返回候选项对指定模型是否具备某能力；未暴露则返回 None（视为满足）。"""
+    meta = candidate.meta if isinstance(candidate.meta, dict) else {}
+    model_capabilities = meta.get("model_capabilities")
+    if isinstance(model_capabilities, dict) and model in model_capabilities:
+        caps_for_model = model_capabilities[model]
+        if isinstance(caps_for_model, dict):
+            return bool(caps_for_model.get(capability, False))
+    return None
+
+
+def filter_candidates_by_capability(
+    candidates: List["Candidate"],
+    model: str,
+    capability: str,
+) -> List["Candidate"]:
+    """筛掉已知不具备能力的候选项；未暴露视为满足；全被筛掉则回退全部。"""
+    kept: List[Candidate] = []
+    for cand in candidates:
+        known = capability_for_model(cand, model, capability)
+        if known is not False:
+            kept.append(cand)
+    return kept if kept else list(candidates)
+
+
+def messages_require_capability(messages: List[Dict[str, Any]], capability: str) -> bool:
+    """根据消息内容判断是否需要某能力（当前支持 vision / image_url）。"""
+    if capability != "vision":
+        return False
+    for msg in messages:
+        content = msg.get("content")
+        if not isinstance(content, list):
+            continue
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "image_url":
+                return True
+    return False
 
 
 ALL_CAPABILITIES: tuple = (

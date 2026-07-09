@@ -4,7 +4,7 @@ import asyncio
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from src.core.dispatch.candidate import Candidate, filter_candidates_by_context
+from src.core.dispatch.candidate import Candidate, filter_candidates_by_context, filter_candidates_by_capability, messages_require_capability
 from src.core.config import get_config
 from src.core.dispatch.engine.executors import run_selected
 from src.core.dispatch.engine.fncall_context import (
@@ -134,6 +134,19 @@ async def dispatch(
             len(filtered),
         )
     cands = filtered
+
+    if messages_require_capability(messages, "vision"):
+        cap_filtered = filter_candidates_by_capability(cands, model, "vision")
+        if len(cap_filtered) < len(cands):
+            from src.foundation.logger import get_logger
+
+            get_logger(__name__).debug(
+                "vision 筛选: model=%s %d→%d 个候选项",
+                model,
+                len(cands),
+                len(cap_filtered),
+            )
+        cands = cap_filtered
 
     n, sel = await _select_dispatch_candidates(registry, cands, stream)
 

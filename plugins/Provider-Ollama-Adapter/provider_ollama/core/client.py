@@ -19,7 +19,7 @@ import aiohttp
 from src.core.dispatch.candidate import Candidate, make_id
 from src.foundation.logger import get_logger
 from provider_ollama.accounts import ACCOUNTS
-from provider_ollama.core.detect import extract_context_length
+from provider_ollama.core.detect import detect_capabilities, extract_context_length
 from provider_ollama.core.constants import (
     BASE_URL,
     CHAT_PATH,
@@ -49,6 +49,8 @@ _REG_FILE: Path = Path("persist/ollama/registry.json")
 
 def build_image_messages(
     messages: List[Dict[str, Any]],
+    *,
+    include_images: bool = True,
 ) -> List[Dict[str, Any]]:
     """将 OpenAI 格式的消息转换为 Ollama 格式。
 
@@ -80,7 +82,7 @@ def build_image_messages(
                     continue
                 if part.get("type") == "text":
                     text_parts.append(part.get("text", ""))
-                elif part.get("type") == "image_url":
+                elif part.get("type") == "image_url" and include_images:
                     url = part.get("image_url", {}).get("url", "")
                     if url.startswith("data:") and ";base64," in url:
                         images.append(url.split(";base64,", 1)[1])
@@ -96,6 +98,21 @@ def build_image_messages(
         result.append({"role": role, "content": str(content)})
 
     return result
+
+
+def _capability_for_model(
+    candidate: Candidate,
+    model: str,
+    capability: str,
+) -> Optional[bool]:
+    """读取 meta.model_capabilities；未暴露返回 None。"""
+    meta = candidate.meta if isinstance(candidate.meta, dict) else {}
+    model_capabilities = meta.get("model_capabilities")
+    if isinstance(model_capabilities, dict) and model in model_capabilities:
+        caps_for_model = model_capabilities[model]
+        if isinstance(caps_for_model, dict):
+            return bool(caps_for_model.get(capability, False))
+    return None
 
 
 def build_chat_payload(
@@ -299,52 +316,6 @@ def _show_model(base: str, name: str) -> Optional[Dict[str, Any]]:
         return None
     except Exception:
         return None
-
-
-def detect_capabilities(detail: Optional[Dict[str, Any]]) -> Dict[str, bool]:
-    """从模型详情中检测能力。
-
-    Args:
-        detail: /api/show 返回的模型详情。
-
-    Returns:
-        能力字典。
-    """
-    caps: Dict[str, bool] = {
-        "chat": True,
-        "vision": False,
-        "embedding": False,
-        "tools": False,
-    }
-    if not detail:
-        return caps
-
-    model_info = detail.get("model_info") or {}
-    for k in model_info:
-        kl = k.lower()
-        if any(x in kl for x in ("vision", "projector", "mmproj", "clip")):
-            caps["vision"] = True
-            break
-
-    tpl = detail.get("template") or ""
-    if "tools" in tpl.lower() or ".Tools" in tpl:
-        caps["tools"] = True
-
-    det = detail.get("details") or {}
-    for fam in (det.get("families") or []):
-        if any(x in fam.lower() for x in ("clip", "vision")):
-            caps["vision"] = True
-
-    params = detail.get("parameters") or ""
-    if "embedding" in params.lower():
-        caps["embedding"] = True
-    if not caps["embedding"]:
-        _name = (detail.get("name") or "").lower()
-        _embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
-        if any(kw in _name for kw in _embed_kw):
-            caps["embedding"] = True
-
-    return caps
 
 
 def _verify_server(ip: str) -> Optional[Dict[str, Any]]:
@@ -850,7 +821,10 @@ class OllamaClient:
             raise ValueError("candidate.meta['base_url'] 为空")
         url = "{}{}".format(base_url, CHAT_PATH)
 
-        chat_messages = build_image_messages(messages)
+        chat_messages = build_image_messages(
+            messages,
+            include_images=_capability_for_model(candidate, model, "vision") is not False,
+        )
         payload = build_chat_payload(chat_messages, model, stream=stream, **kw)
 
         if self._closing:

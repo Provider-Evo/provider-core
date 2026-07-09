@@ -17,12 +17,14 @@
 - **系统消息折叠**：无 tools 时，将 system 消息折叠到第一条 user 消息
 - **thinking 禁用**：有 tools 时自动禁用 thinking 模式
 
-### 2. 候选项等待
+### 2. 候选项等待与筛选
 
 `_wait_for_candidates` 函数等待候选项就绪：
 - 最大等待 15 秒
 - 每 0.5 秒检查一次
 - 支持按平台过滤
+
+随后按 prompt 粗估 token 做**上下文筛选**；若消息含 `image_url` 则做 **vision 能力筛选**（未知能力视为满足）。
 
 ### 3. 竞速决策
 

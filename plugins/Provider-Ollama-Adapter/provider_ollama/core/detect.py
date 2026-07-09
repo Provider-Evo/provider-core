@@ -77,5 +77,10 @@ def detect_capabilities(detail: Dict[str, Any]) -> Dict[str, bool]:
     params = detail.get("parameters") or ""
     if "embedding" in params.lower():
         caps["embedding"] = True
+    if not caps["embedding"]:
+        name = (detail.get("name") or "").lower()
+        embed_kw = ("embed", "bge", "nomic", "text2vec", "e5-", "gte-", "sentence")
+        if any(kw in name for kw in embed_kw):
+            caps["embedding"] = True
 
     return caps

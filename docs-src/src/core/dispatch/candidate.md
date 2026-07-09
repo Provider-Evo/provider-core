@@ -11,6 +11,17 @@
 - `Candidate`：候选项数据类
 - `make_id`：生成候选项 ID 的辅助函数
 - `ALL_CAPABILITIES`：所有支持的能力元组
+- `context_for_model` / `filter_candidates_by_context`：按模型上下文长度筛选
+- `capability_for_model` / `filter_candidates_by_capability`：按模型能力筛选
+- `messages_require_capability`：从消息内容推断所需能力（如 `image_url` → `vision`）
+
+## 能力筛选策略
+
+与上下文筛选一致：
+
+1. 候选项 `meta.model_capabilities[model]` 中**已知不具备**某能力时排除
+2. **未暴露**该模型能力时视为满足，不排除
+3. 若全部被排除则**回退**到原候选项列表
 
 ## 核心组件
 
