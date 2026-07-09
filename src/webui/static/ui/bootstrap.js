@@ -280,7 +280,6 @@ async function persistLoad(filename) {
 // Called by state.js _initTab() the first time each tab is shown.
 
 function _initChatTab() {
-  // Chat InputBox initialization
   var chatClearBtn = document.getElementById('chatClearBtn');
   var chatRunTestsBtn = document.getElementById('chatRunTestsBtn');
   var chatBatchToggleBtn = document.getElementById('chatBatchToggleBtn');
@@ -295,21 +294,24 @@ function _initChatTab() {
     });
   }
 
-  if (typeof InputBox !== 'undefined' && document.getElementById('chatInputBox')) {
-    var voiceSettings = {};
-    try { voiceSettings = JSON.parse(localStorage.getItem('provider.webui.voice') || '{}'); } catch(e) {}
+  var initInputBox = function() {
+    if (typeof InputBox === 'undefined' || !document.getElementById('chatInputBox')) return;
+    if (window._chatInputBox) return;
+    var voiceSettings = typeof loadVoiceSettings === 'function' ? loadVoiceSettings() : {};
     window._chatInputBox = InputBox.create('#chatInputBox', {
       placeholder: t('chat.inputPlaceholder'),
       buttons: { file: true, voice: true, send: true },
-      voice: {
-        sttModel: voiceSettings.sttModel || '',
-        ttsModel: voiceSettings.ttsModel || '',
-        ttsPrompt: voiceSettings.ttsPrompt || '',
-      },
+      voice: voiceSettings,
       onSend: function(text, files) { sendChatMessage(text, files); },
       onVoiceStart: function() { toast(t('chat.recording'), 'info'); },
       onVoiceEnd: function() {},
     });
+  };
+
+  if (typeof loadWebUISettings === 'function') {
+    loadWebUISettings().then(initInputBox).catch(function() { initInputBox(); });
+  } else {
+    initInputBox();
   }
 
   if (chatClearBtn) {

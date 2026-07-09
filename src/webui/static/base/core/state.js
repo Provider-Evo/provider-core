@@ -604,19 +604,33 @@ async function initSettingsFromServer() {
   scheduleRefresh();
 }
 
+function normalizeVoiceSettings(source) {
+  source = source || {};
+  var nested = source.voice && typeof source.voice === 'object' ? source.voice : {};
+  return {
+    sttModel: source.sttModel || nested.sttModel || '',
+    ttsModel: source.ttsModel || nested.ttsModel || '',
+    ttsPrompt: source.ttsPrompt || nested.ttsPrompt || '',
+    recordingDeviceId: source.recordingDeviceId || nested.recordingDeviceId || '',
+  };
+}
+
 function loadVoiceSettings() {
-  try { return JSON.parse(localStorage.getItem('provider.webui.voice') || '{}'); } catch(e) { return {}; }
+  try {
+    var stored = JSON.parse(localStorage.getItem('provider.webui.voice') || '{}');
+    return normalizeVoiceSettings(stored);
+  } catch (e) {
+    return normalizeVoiceSettings({});
+  }
 }
 
 function saveVoiceSettings(vs) {
-  localStorage.setItem('provider.webui.voice', JSON.stringify(vs));
-  // Update InputBox if initialized
-  if (window._chatInputBox) {
-    window._chatInputBox._opts.voice = {
-      sttModel: vs.sttModel || '',
-      ttsModel: vs.ttsModel || '',
-      ttsPrompt: vs.ttsPrompt || '',
-    };
+  var normalized = normalizeVoiceSettings(vs);
+  localStorage.setItem('provider.webui.voice', JSON.stringify(normalized));
+  if (window._chatInputBox && typeof window._chatInputBox.updateVoice === 'function') {
+    window._chatInputBox.updateVoice(normalized);
+  } else if (window._chatInputBox) {
+    window._chatInputBox._opts.voice = normalized;
   }
 }
 

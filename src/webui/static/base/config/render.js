@@ -840,13 +840,13 @@ function _applyWebuiRuntime(config) {
     }
   }
   if (typeof saveVoiceSettings === 'function') {
-    saveVoiceSettings({
-      sttModel: config.sttModel || '',
-      ttsModel: config.ttsModel || '',
-      ttsPrompt: config.ttsPrompt || '',
-    });
+    saveVoiceSettings(_voiceSettingsFromConfig(config));
   }
   if (typeof applyVoiceSettings === 'function') applyVoiceSettings();
+}
+
+function _voiceSettingsFromConfig(config) {
+  return normalizeVoiceSettings(config);
 }
 
 function _onWebuiConfigFieldChange(key, val) {

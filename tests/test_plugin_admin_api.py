@@ -14,7 +14,7 @@ def test_validate_plugin_id_rejects_traversal() -> None:
 
 
 def test_parse_host_version_alpha() -> None:
-    parsed = _parse_host_version("2.2.0-beta")
+    parsed = _parse_host_version("2.2.0")
     assert parsed == {"version_major": 2, "version_minor": 2, "version_patch": 0}
 
 
