@@ -10,7 +10,7 @@ from echotools.plugin.registry import PluginRegistry
 from src.core.config import get_config
 from src.core.dispatch.candidate import Candidate
 from src.core.dispatch.selector import Selector
-from src.paths import persist_dir, project_root
+from src.paths import persist_dir
 
 __all__ = ["Registry"]
 logger = get_logger(__name__)
@@ -60,26 +60,26 @@ class Registry:
             logger.warning("0 个平台插件已注册，网关将以无平台模式运行")
 
     async def reload_platform(self, platform_name: str, session: Any) -> bool:
-        """公开方法 reload_platform — 从插件路径重载平台适配器。"""
-        from src.platforms.base import PlatformAdapter  # noqa: PLC0415
+        """公开方法 reload_platform — 从 plugins/ 热重载平台适配器。"""
+        if self._external_loader is None:
+            return False
 
-        # 优先从插件路径重载
-        plugin_dir = project_root / "plugins" / f"Provider-{platform_name.capitalize()}-Adapter"
-        if plugin_dir.is_dir():
-            module_path = f"plugins.Provider-{platform_name.capitalize()}-Adapter.{platform_name}"
-        else:
-            # 回退到内置路径
-            module_path = "src.platforms.{}".format(platform_name)
+        old = self._registry.get(platform_name)
+        if old is not None:
+            try:
+                await old.close()
+            except Exception as exc:
+                logger.warning("关闭旧平台 [%s] 失败: %s", platform_name, exc)
+            self._registry._plugins.pop(platform_name, None)
 
-        return await self._registry.reload(
-            platform_name,
-            module_path,
-            context=session,
-            base_class=PlatformAdapter,
-            required_methods=("init", "candidates", "ensure_candidates", "complete", "close"),
-            init_method="init",
-            shutdown_method="close",
-        )
+        adapter = await self._external_loader.reload_platform(platform_name, session)
+        if adapter is None:
+            logger.warning("平台 [%s] 插件热重载失败", platform_name)
+            return False
+
+        self._registry.register(adapter)
+        logger.info("平台 [%s] 已热重载", platform_name)
+        return True
 
     async def reload_platforms(self, platform_names: Sequence[str], session: Any) -> None:
         """批量热重载平台适配器。"""

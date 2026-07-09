@@ -310,6 +310,14 @@ async def plugins_config_put(request: aiohttp.web.Request) -> aiohttp.web.Respon
 async def plugins_toggle(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """POST /v1/admin/plugins/toggle — 切换插件启用/禁用。"""
     plugin_id = request.match_info.get("plugin_id", "")
+    if not plugin_id:
+        try:
+            body = await request.json()
+            plugin_id = str(body.get("plugin_id") or "").strip()
+        except Exception:
+            plugin_id = ""
+    if not plugin_id:
+        return aiohttp.web.json_response({"error": "plugin_id required"}, status=400)
     plugin_path = _find_plugin_path_by_id(plugin_id)
     if not plugin_path:
         return aiohttp.web.json_response({"error": "plugin not found"}, status=404)

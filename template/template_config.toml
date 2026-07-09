@@ -73,8 +73,8 @@ platform_list_type = "blacklist"  # "blacklist": 排除列表中的平台; "whit
 platform_list = []
 
 [fncall]
-# 协议模式: "xml" | "original" | "antml" | "bracket" | "custom" | "nous" | "dsml"
-protocol = "xml"
+# 协议模式: "entml" | "xml" | "original" | "antml" | "bracket" | "custom" | "nous" | "dsml"
+protocol = "entml"
 # 平台到协议的映射（可选）
 # [fncall.fncall_mapping]
 # "qwen" = "nous"

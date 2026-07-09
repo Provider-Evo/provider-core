@@ -768,6 +768,9 @@ function _initTab(tabName) {
     case 'autoupdate':
       typeof _initAutoupdateTab === 'function' && _initAutoupdateTab();
       break;
+    case 'plugins':
+      typeof initPluginsPanel === 'function' && initPluginsPanel();
+      break;
     case 'config':
       typeof _initConfigTab === 'function' && _initConfigTab();
       break;

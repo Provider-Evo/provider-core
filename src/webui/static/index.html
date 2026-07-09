@@ -86,6 +86,7 @@
       <button class="sidebar-nav-item tab-button" data-tab="platforms" data-i18n="sidebar.platforms" data-i18n-attr="data-tooltip" data-tooltip="平台" type="button">平台</button>
       <button class="sidebar-nav-item tab-button" data-tab="models" data-i18n="sidebar.models" data-i18n-attr="data-tooltip" data-tooltip="模型" type="button">模型</button>
       <button class="sidebar-nav-item tab-button" data-tab="config" data-i18n="sidebar.config" data-i18n-attr="data-tooltip" data-tooltip="配置" type="button">配置</button>
+      <button class="sidebar-nav-item tab-button" data-tab="plugins" data-i18n="sidebar.plugins" data-i18n-attr="data-tooltip" data-tooltip="插件" type="button">插件</button>
       <button class="sidebar-nav-item tab-button" data-tab="autoupdate" data-i18n="sidebar.autoupdate" data-i18n-attr="data-tooltip" data-tooltip="更新" type="button">更新</button>
       <button class="sidebar-nav-item tab-button" data-tab="chat" data-i18n="sidebar.chat" data-i18n-attr="data-tooltip" data-tooltip="聊天" type="button">聊天</button>
       <button class="sidebar-nav-item tab-button" data-tab="logs" data-i18n="sidebar.logs" data-i18n-attr="data-tooltip" data-tooltip="日志" type="button">日志</button>
@@ -230,6 +231,43 @@
         <textarea class="config-edit-area hidden" id="configEditArea" spellcheck="false" aria-label="配置编辑器" data-i18n="config.editorLabel" data-i18n-attr="aria-label"></textarea>
       </section>
 
+      <section class="tab-panel hidden" id="tab-plugins" aria-labelledby="tab-plugins-button">
+        <div class="flex flex-wrap justify-between items-end gap-3">
+          <div>
+            <h2 data-i18n="plugins.title">插件管理</h2>
+            <p class="m-0 text-muted leading-relaxed" data-i18n="plugins.subtitle">查看已安装插件、加载状态与 Git 安装。</p>
+          </div>
+          <div class="flex flex-wrap gap-2 items-center">
+            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-border bg-panel text-text hover:bg-panel-alt transition" id="pluginsRefreshBtn" type="button" data-i18n="plugins.refresh">刷新</button>
+            <span id="pluginsStatus" class="status-saved flex items-center" data-i18n="plugins.ready">就绪</span>
+          </div>
+        </div>
+        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift mt-3">
+          <div class="text-[13px] font-semibold mb-2" data-i18n="plugins.installTitle">从 Git 安装</div>
+          <div class="grid gap-2 md:grid-cols-[1fr_180px_auto] items-center">
+            <input id="pluginsInstallUrl" class="config-input w-full" type="text" data-i18n-placeholder="plugins.installUrlPlaceholder" placeholder="https://github.com/org/repo.git">
+            <input id="pluginsInstallRef" class="config-input w-full" type="text" data-i18n-placeholder="plugins.installRefPlaceholder" placeholder="分支或标签（可选）">
+            <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-accent text-accent bg-panel hover:bg-accent hover:text-white transition" id="pluginsInstallBtn" type="button" data-i18n="plugins.install">安装</button>
+          </div>
+        </div>
+        <div class="text-sm text-muted mt-3" id="pluginsSummary"></div>
+        <div class="border border-border rounded-xl overflow-hidden mt-3">
+          <table class="w-full text-sm">
+            <thead class="bg-panel-soft text-left">
+              <tr>
+                <th class="px-3 py-2" data-i18n="plugins.colName">名称</th>
+                <th class="px-3 py-2" data-i18n="plugins.colVersion">版本</th>
+                <th class="px-3 py-2" data-i18n="plugins.colType">类型</th>
+                <th class="px-3 py-2" data-i18n="plugins.colStatus">状态</th>
+                <th class="px-3 py-2" data-i18n="plugins.colDescription">描述</th>
+                <th class="px-3 py-2" data-i18n="plugins.colActions">操作</th>
+              </tr>
+            </thead>
+            <tbody id="pluginsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="tab-panel hidden" id="tab-autoupdate" aria-labelledby="tab-autoupdate-button">
         <div class="flex flex-wrap justify-between items-end gap-3">
           <div>
@@ -314,6 +352,7 @@
           <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
             <div class="text-[13px] text-muted m-0 mb-2" data-i18n="chat.protocol">协议</div>
             <select id="chatProtocolSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+              <option value="entml">EntML</option>
               <option value="xml">XML</option>
               <option value="antml">AntML</option>
               <option value="original">Original</option>

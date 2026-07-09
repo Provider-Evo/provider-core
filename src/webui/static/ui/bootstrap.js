@@ -1,3 +1,13 @@
+(function loadWebuiEnhance() {
+  fetch('/v1/webui/enhance/info').then(function(r) { return r.ok ? r.json() : null; }).then(function(info) {
+    if (!info || !info.enabled || !info.css) return;
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = info.css;
+    document.head.appendChild(link);
+    document.body.classList.add('webui-enhanced');
+  }).catch(function() {});
+})();
 document.getElementById('fabThemeButton').addEventListener('click', function() {
   // Portable toggle: only switches between light and dark (no auto)
   var current = state.settings.theme;
