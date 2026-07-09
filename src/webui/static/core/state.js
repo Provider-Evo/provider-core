@@ -2,6 +2,7 @@ const defaultSettings = {
   theme: 'auto',
   refreshInterval: 0,
   timeoutMs: 30000,
+  streamIdleTimeoutMs: 60000,
   compact: '0'
 };
 const initialTab = localStorage.getItem('provider.webui.activeTab') || document.body.dataset.initialTab || 'overview';
@@ -547,6 +548,14 @@ function loadSettings() {
   }
 }
 
+function getStreamIdleTimeoutMs() {
+  const value = Number(state.settings.streamIdleTimeoutMs);
+  if (Number.isFinite(value) && value >= 5000) {
+    return value;
+  }
+  return defaultSettings.streamIdleTimeoutMs;
+}
+
 function saveSettings() {
   localStorage.setItem('provider.webui.settings', JSON.stringify(state.settings));
   applyTheme();
@@ -561,6 +570,7 @@ async function persistWebUISettings() {
     existing.theme = state.settings.theme;
     existing.refreshInterval = state.settings.refreshInterval;
     existing.timeoutMs = state.settings.timeoutMs;
+    existing.streamIdleTimeoutMs = state.settings.streamIdleTimeoutMs;
     existing.compact = state.settings.compact;
     persistSave('config.toml', existing);
   } catch (e) { /* ignore */ }
@@ -574,6 +584,7 @@ async function loadWebUISettings() {
     if (saved.theme) { state.settings.theme = saved.theme; changed = true; }
     if (typeof saved.refreshInterval === 'number') { state.settings.refreshInterval = saved.refreshInterval; changed = true; }
     if (typeof saved.timeoutMs === 'number') { state.settings.timeoutMs = saved.timeoutMs; changed = true; }
+    if (typeof saved.streamIdleTimeoutMs === 'number') { state.settings.streamIdleTimeoutMs = saved.streamIdleTimeoutMs; changed = true; }
     if (saved.compact) { state.settings.compact = saved.compact; changed = true; }
     return changed;
   } catch (e) { return false; }
@@ -585,19 +596,21 @@ async function initSettingsFromServer() {
     applyTheme();
     applyCompact();
     scheduleRefresh();
-    var themeSelect = document.getElementById('themeSelect');
-    var themeDd = window._dropdowns && window._dropdowns['themeSelect'];
-    if (themeSelect) themeSelect.value = state.settings.theme;
-    if (themeDd) themeDd.setValue(state.settings.theme);
-    var compactSelect = document.getElementById('compactSelect');
-    var compactDd = window._dropdowns && window._dropdowns['compactSelect'];
-    if (compactSelect) compactSelect.value = state.settings.compact;
-    if (compactDd) compactDd.setValue(state.settings.compact);
-    var refreshInput = document.getElementById('refreshIntervalInput');
-    if (refreshInput) refreshInput.value = String(state.settings.refreshInterval);
-    var timeoutInput = document.getElementById('timeoutInput');
-    if (timeoutInput) timeoutInput.value = String(state.settings.timeoutMs);
   }
+  var themeSelect = document.getElementById('themeSelect');
+  var themeDd = window._dropdowns && window._dropdowns['themeSelect'];
+  if (themeSelect) themeSelect.value = state.settings.theme;
+  if (themeDd) themeDd.setValue(state.settings.theme);
+  var compactSelect = document.getElementById('compactSelect');
+  var compactDd = window._dropdowns && window._dropdowns['compactSelect'];
+  if (compactSelect) compactSelect.value = state.settings.compact;
+  if (compactDd) compactDd.setValue(state.settings.compact);
+  var refreshInput = document.getElementById('refreshIntervalInput');
+  if (refreshInput) refreshInput.value = String(state.settings.refreshInterval);
+  var timeoutInput = document.getElementById('timeoutInput');
+  if (timeoutInput) timeoutInput.value = String(state.settings.timeoutMs);
+  var streamIdleInput = document.getElementById('streamIdleTimeoutInput');
+  if (streamIdleInput) streamIdleInput.value = String(getStreamIdleTimeoutMs());
 }
 
 function loadVoiceSettings() {

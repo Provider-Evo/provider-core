@@ -546,6 +546,10 @@
             <input id="timeoutInput" type="number" min="500" max="30000" step="500" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
           </label>
           <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
+            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="portable.streamIdleTimeout">流式无数据超时（毫秒）</div>
+            <input id="streamIdleTimeoutInput" type="number" min="5000" max="600000" step="5000" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+          </label>
+          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
             <div class="text-[13px] text-muted m-0 mb-2" data-i18n="portable.compactLabel">显示紧凑模式</div>
             <select id="compactSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
               <option value="0" data-i18n="common.off">关闭</option>

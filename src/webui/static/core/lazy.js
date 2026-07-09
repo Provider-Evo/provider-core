@@ -31,7 +31,7 @@ var LazyLoader = (function() {
       { type: 'js',  url: '/static/ui/widgets/input-box.js?v=20260709-6' },
       { type: 'js',  url: '/static/ui/chat-attachments.js?v=20260709-10' },
       { type: 'js',  url: '/static/ui/chat-media-persist.js?v=20260709-10' },
-      { type: 'js',  url: '/static/ui/chat.js?v=20260709-10' },
+      { type: 'js',  url: '/static/ui/chat.js?v=20260709-11' },
     ],
     stats: [
       { type: 'js', url: '/static/stats/stats.js' },
