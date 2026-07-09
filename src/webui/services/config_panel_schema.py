@@ -204,8 +204,8 @@ WEBUI_CONFIG_PANEL_SCHEMA: Dict[str, Any] = {
     "flat": True,
     "sections": [
         _section(
-            "_root",
-            "webui",
+            "display",
+            "display",
             [
                 {
                     "key": "theme",
@@ -213,6 +213,19 @@ WEBUI_CONFIG_PANEL_SCHEMA: Dict[str, Any] = {
                     "label": "theme",
                     "options": _WEBUI_THEME_OPTIONS,
                 },
+                {
+                    "key": "compact",
+                    "type": "select",
+                    "label": "compact",
+                    "options": _WEBUI_COMPACT_OPTIONS,
+                    "optionLabels": {"0": "off", "1": "on"},
+                },
+            ],
+        ),
+        _section(
+            "timing",
+            "timing",
+            [
                 {
                     "key": "refreshInterval",
                     "type": "number",
@@ -234,12 +247,12 @@ WEBUI_CONFIG_PANEL_SCHEMA: Dict[str, Any] = {
                     "min": 5000,
                     "max": 600000,
                 },
-                {
-                    "key": "compact",
-                    "type": "select",
-                    "label": "compact",
-                    "options": _WEBUI_COMPACT_OPTIONS,
-                },
+            ],
+        ),
+        _section(
+            "layout",
+            "layout",
+            [
                 {
                     "key": "layout",
                     "type": "select",
@@ -247,9 +260,33 @@ WEBUI_CONFIG_PANEL_SCHEMA: Dict[str, Any] = {
                     "options": _WEBUI_LAYOUT_OPTIONS,
                 },
                 {"key": "sidebarCompressed", "type": "boolean", "label": "sidebar_compressed"},
-                {"key": "sttModel", "type": "select", "label": "stt_model", "options": []},
-                {"key": "ttsModel", "type": "select", "label": "tts_model", "options": []},
-                {"key": "recordingDeviceId", "type": "select", "label": "recording_device", "options": []},
+            ],
+        ),
+        _section(
+            "voice",
+            "voice",
+            [
+                {
+                    "key": "sttModel",
+                    "type": "select",
+                    "label": "stt_model",
+                    "options": [],
+                    "dynamic": "stt-model",
+                },
+                {
+                    "key": "ttsModel",
+                    "type": "select",
+                    "label": "tts_model",
+                    "options": [],
+                    "dynamic": "tts-model",
+                },
+                {
+                    "key": "recordingDeviceId",
+                    "type": "select",
+                    "label": "recording_device",
+                    "options": [],
+                    "dynamic": "audio-input",
+                },
                 {"key": "ttsPrompt", "type": "textarea", "label": "tts_prompt", "wide": True},
             ],
         ),

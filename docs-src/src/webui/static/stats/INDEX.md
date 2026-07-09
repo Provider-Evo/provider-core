@@ -15,9 +15,9 @@ stats/
 ### request-inspector.js
 
 请求检查器的前端实现，包括：
-- HTTP 请求监控
-- 请求详情展示
-- 请求性能分析
+- HTTP 请求监控（WebSocket `/v1/webui/ws/requests`）
+- 请求详情展示（优先使用 `request_end.response` 作为最终响应文本）
+- 流式过程中通过 `request_chunk` 增量更新详情弹窗
 
 ### stats.js
 

@@ -52,3 +52,8 @@ def test_webui_schema_has_core_portable_keys() -> None:
 
 def test_webui_schema_is_flat() -> None:
     assert WEBUI_CONFIG_PANEL_SCHEMA.get("flat") is True
+
+
+def test_webui_schema_has_section_tabs() -> None:
+    section_ids = [s["id"] for s in WEBUI_CONFIG_PANEL_SCHEMA["sections"]]
+    assert section_ids == ["display", "timing", "layout", "voice"]
