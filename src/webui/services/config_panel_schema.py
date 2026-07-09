@@ -37,6 +37,7 @@ CONFIG_PANEL_SCHEMA: Dict[str, Any] = {
                 {"key": "port", "type": "number", "label": "port", "min": 1, "max": 65535},
                 {"key": "debug", "type": "boolean", "label": "debug"},
                 {"key": "startup_force_kill_port", "type": "boolean", "label": "startup_force_kill_port"},
+                {"key": "fast_restart", "type": "boolean", "label": "fast_restart"},
                 {"key": "max_restarts", "type": "number", "label": "max_restarts", "min": 0},
             ],
         ),
