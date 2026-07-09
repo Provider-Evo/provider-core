@@ -13,7 +13,7 @@ import aiohttp
 
 from src.core.config import get_config
 
-__all__ = ["make_connector"]
+__all__ = ["close_shared_connector", "make_connector"]
 
 # Module-level cache so multiple calls within the same process return the
 # same connector (avoids accidental duplicate pools).
@@ -49,3 +49,13 @@ Returns:
         enable_cleanup_closed=True,
     )
     return _connector
+
+
+async def close_shared_connector() -> None:
+    """关闭进程级共享 TCPConnector，避免关停后 asyncio.run 等待连接清理。"""
+    global _connector
+    conn = _connector
+    _connector = None
+    if conn is None or conn.closed:
+        return
+    await conn.close()

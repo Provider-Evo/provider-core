@@ -18,7 +18,7 @@ from src.core.dispatch.engine.registry import Registry
 from src.core.utils.observability import get_observability_services
 from src.core.server import AutoUpdater, ensure_port_available
 from src.core.server.lifecycle.app_host import AppHost
-from src.core.server.infra.connector import make_connector
+from src.core.server.infra.connector import close_shared_connector, make_connector
 from src.core.server.infra.reload import (
     HotReloadService,
     bind_worker_shutdown,
@@ -149,6 +149,21 @@ async def _create_background_tasks(
     return tasks, hot_reload
 
 
+async def _drain_remaining_tasks() -> None:
+    """取消并收割事件循环中残留任务，减轻 asyncio.run 退出阶段挂起。"""
+    current = asyncio.current_task()
+    pending = [
+        task
+        for task in asyncio.all_tasks()
+        if task is not current and not task.done()
+    ]
+    if not pending:
+        return
+    for task in pending:
+        task.cancel()
+    await asyncio.gather(*pending, return_exceptions=True)
+
+
 async def _await_shutdown_step(
     awaitable: object,
     *,
@@ -188,7 +203,11 @@ async def _shutdown(
     )
 
     if hot_reload_service is not None:
-        await hot_reload_service.stop()
+        await _await_shutdown_step(
+            hot_reload_service.stop(),
+            timeout=_SHUTDOWN_STEP_TIMEOUT,
+            step_name="停止热重载服务",
+        )
 
     if reload_callback is not None:
         try:
@@ -207,6 +226,14 @@ async def _shutdown(
         except Exception as exc:
             logger.debug("关闭日志 WebSocket 失败: %s", exc)
 
+    logger.info("正在停止 Web 服务器...")
+    await _await_shutdown_step(
+        app_host.shutdown(),
+        timeout=_SHUTDOWN_STEP_TIMEOUT,
+        step_name="停止 Web 服务器",
+    )
+    app_host.abandon_runner()
+
     logger.info("正在关闭注册表...")
     await _await_shutdown_step(
         registry.close(),
@@ -221,12 +248,13 @@ async def _shutdown(
         step_name="关闭 HTTP Session",
     )
 
-    logger.info("正在停止 Web 服务器...")
     await _await_shutdown_step(
-        app_host.shutdown(),
+        close_shared_connector(),
         timeout=_SHUTDOWN_STEP_TIMEOUT,
-        step_name="停止 Web 服务器",
+        step_name="关闭 HTTP 连接池",
     )
+
+    await _drain_remaining_tasks()
 
     logger.info("Provider-V2 已完全退出")
 
@@ -398,14 +426,11 @@ async def _run() -> int:
             logger.warning("关停过程异常，继续退出: %s", exc)
 
     exit_code = RESTART_EXIT_CODE if consume_restart_flag() else 0
-    return exit_code
+    finalize_exit(exit_code)
 
 
 def run_worker() -> None:
     """Worker 进程入口——配置事件循环策略并启动异步主流程。"""
-    from src.core.server.plugins.sdk_compat import ensure_provider_sdk_platform_extras
-
-    ensure_provider_sdk_platform_extras()
     apply_windows_asyncio_patches()
     configure_event_loop_policy()
 

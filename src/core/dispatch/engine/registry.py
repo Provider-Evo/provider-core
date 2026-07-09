@@ -83,9 +83,6 @@ class Registry:
 
         容错：插件加载失败不向上抛出，网关仍可启动。
         """
-        from src.core.server.plugins.sdk_compat import ensure_provider_sdk_platform_extras
-
-        ensure_provider_sdk_platform_extras()
         cfg = get_config()
         plat_cfg = cfg.platforms_cfg
         wl = plat_cfg.platform_list if plat_cfg.platform_list_type == "whitelist" else None

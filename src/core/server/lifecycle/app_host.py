@@ -128,6 +128,12 @@ class AppHost:
         await prepare_graceful_restart(self._registry, self._session, reason=reason)
         await request_graceful_restart(reason=reason)
 
+    def abandon_runner(self) -> None:
+        """超时或强制退出时丢弃 Runner 引用，避免关停协程被取消后仍持有站点。"""
+        self._site = None
+        self._runner = None
+        self._app = None
+
     async def shutdown(self) -> None:
         """停止站点并清理 Runner。"""
         lock_acquired = False

@@ -4,7 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.core.server.plugins.sdk_compat import ensure_provider_sdk_platform_extras
 from src.foundation.logger import get_logger
 from src.foundation.paths import project_root
 from src.core.server.plugins.hook_registry import get_hook_registry
@@ -71,7 +70,6 @@ class PluginRuntime:
 
     async def init(self, session: Any) -> None:
         """初始化插件加载。容错：任意异常不向上抛出。"""
-        ensure_provider_sdk_platform_extras()
         if not self._plugins_root.is_dir():
             logger.warning("plugins/ 目录不存在，跳过插件加载")
             return
@@ -158,7 +156,6 @@ class PluginRuntime:
 
     async def load_plugin(self, plugin_dir: Path, session: Any) -> bool:
         """从目录加载单个启用中的插件。"""
-        ensure_provider_sdk_platform_extras()
         if not is_plugin_enabled(plugin_dir):
             return False
         try:
@@ -245,7 +242,6 @@ class PluginRuntime:
 
     async def reload_plugin(self, plugin_id: str, session: Any) -> bool:
         """热重载单个插件（on_unload → 清模块缓存 → on_load）。"""
-        ensure_provider_sdk_platform_extras()
         found = self._find_plugin_record(plugin_id)
         if found is None:
             return False
