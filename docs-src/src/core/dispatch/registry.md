@@ -27,10 +27,14 @@
 
 ### 3. 模型列表
 
-- `all_models`：收集所有模型及其能力信息（/v1/models 格式）
+- `all_models`：收集所有模型及其能力信息（/v1/models 格式）；合并适配器 `default_capabilities` 与候选项级能力，并对 whisper/transcribe 模型名补充 `audio_transcription`
 - `list_models`：`all_models` 的别名
 
 ### 4. 平台重载
+
+- `reload_platform` / `reload_platforms`：从 `plugins/` 热重载 platform 适配器
+- `reload_plugins`：全量插件运行时重建（Admin API）
+- `reload_plugins_by_ids`：按 manifest `id` 精确重载；`reload_app=False` 时仅 platform adapter，跳过 L3
 
 `reload_platform` 方法支持动态重载指定平台适配器。
 

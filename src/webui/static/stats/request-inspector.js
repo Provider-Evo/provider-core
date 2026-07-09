@@ -128,6 +128,21 @@ var RequestInspector = (function () {
     _ws.onerror = function () {};
   }
 
+  function _requestContent(req) {
+    if (!req) return '';
+    if (req.content) return req.content;
+    if (req.response) return req.response;
+    if (req.chunks && req.chunks.length) return req.chunks.join('');
+    return '';
+  }
+
+  function _applyResponse(req, responseText) {
+    if (!req || !responseText) return;
+    req.content = responseText;
+    req.response = responseText;
+    req.chunks = [responseText];
+  }
+
   function handleMessage(msg) {
     if (msg.type === 'request_start') {
       _requests[msg.id] = {
@@ -154,6 +169,7 @@ var RequestInspector = (function () {
       }
     } else if (msg.type === 'request_end') {
       var req = _requests[msg.id];
+      var responseText = msg.response || '';
       if (!req) {
         // History entry from SQLite — create record directly
         req = {
@@ -164,7 +180,9 @@ var RequestInspector = (function () {
           stream: msg.stream || false,
           status: msg.status, latency_ms: msg.latency_ms,
           platform: msg.platform || '',
-          chunks: [], content: ''
+          chunks: responseText ? [responseText] : [],
+          content: responseText,
+          response: responseText
         };
         _requests[msg.id] = req;
         _order.unshift(msg.id);
@@ -177,6 +195,9 @@ var RequestInspector = (function () {
         req.latency_ms = msg.latency_ms;
         req.platform = msg.platform || '';
         req.model = req.model || msg.model || '';
+        if (msg.messages && msg.messages.length) req.messages = msg.messages;
+        if (msg.messages_count) req.messages_count = msg.messages_count;
+        if (responseText) _applyResponse(req, responseText);
       }
     }
     renderList();
@@ -320,7 +341,7 @@ var RequestInspector = (function () {
     html += '</div>';
 
     // Response content
-    var content = req.content || req.chunks.join('');
+    var content = _requestContent(req);
     if (content) {
       html += '<div class="req-modal-section">';
       html += '<div class="req-modal-section-header">';
@@ -399,7 +420,7 @@ var RequestInspector = (function () {
 
     // Update response content section
     var sections = modal.querySelectorAll('.req-modal-section');
-    var content = req.content || req.chunks.join('');
+    var content = _requestContent(req);
     if (sections.length > 0) {
       var firstSection = sections[0];
       if (content) {
@@ -425,6 +446,8 @@ var RequestInspector = (function () {
         }
       } else if (req.status === 'pending') {
         firstSection.innerHTML = '<div class="text-muted" style="padding:12px;text-align:center;">Waiting for response...</div>';
+      } else {
+        firstSection.innerHTML = '<div class="text-muted" style="padding:12px;text-align:center;">No response content captured</div>';
       }
     }
 

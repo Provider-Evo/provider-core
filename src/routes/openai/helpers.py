@@ -11,7 +11,7 @@ import aiohttp.web
 
 from src.core.server import json_response
 from src.core.utils.compat.tools import normalize_content
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 __all__ = [
     "_FNCALL_START",

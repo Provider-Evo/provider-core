@@ -7,7 +7,7 @@ from abc import abstractmethod
 from asyncio import Event, Lock, Task
 from typing import Callable, Dict, Optional
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 logger = get_logger(__name__)
 

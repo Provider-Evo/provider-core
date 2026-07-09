@@ -50,7 +50,7 @@ class ConfigManager:
             return
         set_color(self._config.debug.color)
         try:
-            from src.logger import set_color as _loguru_set_color
+            from src.foundation.logger import set_color as _loguru_set_color
 
             _loguru_set_color(self._config.debug.color)
         except Exception:
@@ -61,7 +61,7 @@ class ConfigManager:
         if config_path:
             self._center.load(config_path)
         else:
-            from src.paths import config_dir
+            from src.foundation.paths import config_dir
 
             default_config_path = config_dir() / "main_config.toml"
             if default_config_path.exists():
@@ -153,7 +153,7 @@ class ConfigManager:
             except Exception as exc:
                 logger.warning("平台配置热重载失败: %s", exc)
         if requires_process_restart(old_raw, new_raw):
-            from src.core.server.infra.reload.pre_restart import prepare_graceful_restart
+            from src.core.server.infra.reload.internal.pre_restart import prepare_graceful_restart
             from src.core.server.infra.reload.restart import request_graceful_restart
 
             await prepare_graceful_restart(

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import aiohttp.web
 
-from src.paths import persist_dir
+from src.foundation.paths import persist_dir
 
 __all__ = ["chat_media_put", "chat_media_get"]
 

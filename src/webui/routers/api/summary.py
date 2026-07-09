@@ -5,9 +5,9 @@ from __future__ import annotations
 import aiohttp.web
 
 from src.webui.bootstrap.dependencies import get_registry_from_request
-from src.webui.services.summary_schema import summarize_for_client
-from src.webui.services import build_export_payload, build_summary_payload
-from src.webui.services.export_util import make_json_download_name
+from src.webui.data.services.summary_schema import summarize_for_client
+from src.webui.data.services import build_export_payload, build_summary_payload
+from src.webui.data.services.export_util import make_json_download_name
 
 __all__ = ["summary_api", "export_summary"]
 

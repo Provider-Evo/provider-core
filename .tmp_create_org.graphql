@@ -1,0 +1,15 @@
+mutation {
+  createOrganization(
+    input: {
+      login: "Provider-Evo"
+      profileName: "Provider-Evo"
+      billingEmail: "nichegnfuben@outlook.com"
+      admins: ["nichengfuben"]
+    }
+  ) {
+    organization {
+      login
+      url
+    }
+  }
+}

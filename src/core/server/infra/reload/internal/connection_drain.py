@@ -7,8 +7,8 @@ from typing import Iterable
 
 import aiohttp.web
 
-from src.core.observability import get_observability_services
-from src.logger import get_logger
+from src.core.utils.observability import get_observability_services
+from src.foundation.logger import get_logger
 
 __all__ = ["close_live_connections"]
 

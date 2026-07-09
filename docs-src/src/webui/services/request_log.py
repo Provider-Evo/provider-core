@@ -8,10 +8,14 @@
 
 ::
 
-  middleware.push_event(request_end)
-    → RequestBroker.broadcast()  [内存 buffer + WebSocket 广播]
-    → _patched_broadcast()       [同时写入 SQLite dirty list]
-    → _flush_timer               [每 10 秒批量写入 SQLite]
+  middleware.push_event(request_chunk*)  [流式实时，可选]
+  middleware.push_event(request_end + response)
+    → RequestBroker.push_event()   [同步聚合 response 文本]
+    → RequestBroker.broadcast()    [内存 buffer + WebSocket 广播]
+    → _patched_broadcast()         [合并 request_start 字段并写入 SQLite]
+    → _flush_timer                 [每 10 秒批量写入 SQLite]
+
+``request_end`` 事件携带 ``response`` 字段作为最终响应文本；前端详情面板优先使用该字段，避免 chunk 与 end 异步乱序导致「No response content captured」。
 
 架构
 ----

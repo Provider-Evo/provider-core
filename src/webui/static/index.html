@@ -42,7 +42,7 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="/static/ui/styles.css?v=20260709-9">
+  <link rel="stylesheet" href="/static/ui/styles.css?v=20260709-11">
   <link rel="stylesheet" href="/static/ui/widgets/datepicker.css">
 </head>
 <body data-initial-tab="overview">
@@ -69,10 +69,9 @@
           <span class="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs bg-accent-soft text-text" id="refreshState">refresh: manual</span>
         </div>
       </div>
-      <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(130px,1fr))]">
-        <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-border bg-panel text-text hover:bg-panel-alt transition" id="portableButton" type="button" data-i18n="header.portableSettings">便携设置</button>
-        <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-warn text-warn bg-panel hover:bg-warn hover:text-white transition" id="reloadServerButton" type="button" data-i18n="header.reloadServer">重启服务</button>
-        <button class="cursor-pointer font-bold rounded-lg px-4 py-2.5 text-[14px] border border-border bg-panel text-text hover:bg-panel-alt transition" id="reloadConfigButton" type="button" data-i18n="header.reloadConfig">重载配置</button>
+      <div class="flex flex-wrap gap-2 items-center">
+        <button class="cursor-pointer font-semibold rounded-lg px-3 py-1.5 text-xs border border-warn text-warn bg-panel hover:bg-warn hover:text-white transition shrink-0" id="reloadServerButton" type="button" data-i18n="header.reloadServer">重启服务</button>
+        <button class="cursor-pointer font-semibold rounded-lg px-3 py-1.5 text-xs border border-border bg-panel text-text hover:bg-panel-alt transition shrink-0" id="reloadConfigButton" type="button" data-i18n="header.reloadConfig">重载配置</button>
       </div>
       <div class="flex flex-wrap gap-2 items-center">
         <div class="px-3 py-2.5 bg-accent-soft rounded-xl leading-relaxed text-[14px]" id="socketNotice" data-i18n="socket.endpoint">日志 WebSocket: /v1/webui/ws/logs</div>
@@ -86,6 +85,7 @@
       <button class="sidebar-nav-item tab-button" data-tab="platforms" data-i18n="sidebar.platforms" data-i18n-attr="data-tooltip" data-tooltip="平台" type="button">平台</button>
       <button class="sidebar-nav-item tab-button" data-tab="models" data-i18n="sidebar.models" data-i18n-attr="data-tooltip" data-tooltip="模型" type="button">模型</button>
       <button class="sidebar-nav-item tab-button" data-tab="config" data-i18n="sidebar.config" data-i18n-attr="data-tooltip" data-tooltip="配置" type="button">配置</button>
+      <button class="sidebar-nav-item tab-button" data-tab="plugins" data-i18n="sidebar.plugins" data-i18n-attr="data-tooltip" data-tooltip="插件" type="button">插件</button>
       <button class="sidebar-nav-item tab-button" data-tab="autoupdate" data-i18n="sidebar.autoupdate" data-i18n-attr="data-tooltip" data-tooltip="更新" type="button">更新</button>
       <button class="sidebar-nav-item tab-button" data-tab="chat" data-i18n="sidebar.chat" data-i18n-attr="data-tooltip" data-tooltip="聊天" type="button">聊天</button>
       <button class="sidebar-nav-item tab-button" data-tab="logs" data-i18n="sidebar.logs" data-i18n-attr="data-tooltip" data-tooltip="日志" type="button">日志</button>
@@ -214,20 +214,188 @@
       </section>
 
       <section class="tab-panel hidden" id="tab-config" aria-labelledby="tab-config-button">
-        <div class="flex flex-wrap justify-between items-end gap-3">
-          <div>
+        <div class="config-panel-header">
+          <div class="config-panel-title">
             <h2 data-i18n="config.title">配置管理</h2>
-            <p class="m-0 text-muted leading-relaxed" data-i18n="config.subtitle">在线编辑配置文件，修改后自动保存并重新加载。</p>
+            <p class="m-0 text-muted leading-relaxed" id="configSubtitle" data-i18n="config.subtitleMain">编辑 config/main_config.toml，修改后自动保存并热重载。</p>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-border bg-panel text-text hover:bg-panel-alt transition" id="configEditToggle" type="button" data-i18n="config.edit">编辑配置</button>
-            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-border bg-panel text-text hover:bg-panel-alt transition" id="copyConfigButton" type="button" data-i18n="config.copy">复制配置</button>
-            <span id="configSaveStatus" class="status-saved flex items-center" data-i18n="common.saved">已保存</span>
+          <div class="config-panel-toolbar">
+            <div class="config-target-switch" id="configTargetSwitch" role="tablist" aria-label="配置目标">
+              <button type="button" class="config-target-btn active" data-target="main" data-i18n="config.targetMain">main_config.toml</button>
+              <button type="button" class="config-target-btn" data-target="webui" data-i18n="config.targetWebui">webui_config.toml</button>
+            </div>
+            <select id="configTargetSelect" class="hidden" aria-hidden="true" tabindex="-1">
+              <option value="main">main_config.toml</option>
+              <option value="webui">webui_config.toml</option>
+            </select>
+            <div class="config-mode-switch" id="configModeSwitch" role="tablist" aria-label="编辑模式">
+              <button type="button" class="config-mode-btn active" data-mode="visual" data-i18n="config.modeVisual">可视化</button>
+              <button type="button" class="config-mode-btn" data-mode="source" data-i18n="config.modeSource">文件</button>
+            </div>
+            <button class="config-toolbar-btn" id="configRefreshBtn" type="button" data-i18n-title="config.refresh" title="刷新" aria-label="刷新">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+            </button>
+            <button class="config-toolbar-btn" id="configSaveBtn" type="button" data-i18n-title="config.save" title="保存" aria-label="保存" disabled>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            </button>
+            <button class="tab-button tab-button-sm cursor-pointer font-semibold rounded-lg px-3 py-1.5 border border-border bg-panel text-text hover:bg-panel-alt transition shrink-0" id="copyConfigButton" type="button" data-i18n="config.copy">复制配置</button>
+            <button class="tab-button tab-button-sm cursor-pointer font-semibold rounded-lg px-3 py-1.5 border border-border bg-panel text-text hover:bg-panel-alt transition shrink-0 hidden" id="configTtsRestoreBtn" type="button" data-i18n="voice.restoreDefault">恢复默认 Prompt</button>
+            <span id="configSaveStatus" class="status-saved flex items-center text-xs shrink-0" data-i18n="common.saved">已保存</span>
           </div>
         </div>
-        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]" id="configGrid"></div>
-        <div class="min-h-[140px] max-h-[260px] overflow-auto whitespace-pre-wrap font-mono text-[13px] leading-relaxed border border-border rounded-xl p-3 bg-panel-soft" id="configJsonBox"></div>
-        <textarea class="config-edit-area hidden" id="configEditArea" spellcheck="false" aria-label="配置编辑器" data-i18n="config.editorLabel" data-i18n-attr="aria-label"></textarea>
+
+        <div id="configSourcePane" class="hidden config-source-pane">
+          <div id="configSourceNotice" class="config-notice">
+            <strong data-i18n="config.fileModeTitle">文件模式：</strong>
+            <span data-i18n="config.fileModeDesc">直接编辑原始配置文件。此功能仅适用于熟悉 TOML 语法的用户。只有格式完全正确才能保存。</span>
+            <button type="button" class="config-notice-dismiss" id="configSourceNoticeDismiss" aria-label="关闭">&times;</button>
+          </div>
+          <div id="configTomlError" class="hidden config-toml-error"></div>
+          <textarea id="configTomlEditor" class="config-toml-editor" spellcheck="false" aria-label="TOML 配置编辑器" data-i18n="config.tomlEditorLabel" data-i18n-attr="aria-label"></textarea>
+        </div>
+
+        <div id="configVisualPane" class="config-visual-pane">
+          <div class="config-section-tabs" id="configSectionTabs" role="tablist"></div>
+          <div class="config-section-body" id="configGrid"></div>
+        </div>
+      </section>
+
+      <section class="tab-panel hidden" id="tab-plugins" aria-labelledby="tab-plugins-button">
+        <div id="pluginsMainView">
+          <div class="flex flex-wrap justify-between items-end gap-3">
+            <div>
+              <h2 data-i18n="plugins.title">插件管理</h2>
+              <p class="m-0 text-muted leading-relaxed" data-i18n="plugins.subtitle">管理已安装插件、配置与市场安装。</p>
+            </div>
+            <div class="flex flex-wrap gap-2 items-center">
+              <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2.5 border border-border bg-panel text-text hover:bg-panel-alt transition" id="pluginsRefreshBtn" type="button" data-i18n="plugins.refresh">刷新</button>
+              <span id="pluginsStatus" class="status-saved flex items-center" data-i18n="plugins.ready">就绪</span>
+            </div>
+          </div>
+          <div class="plugins-summary-bar mt-3" id="pluginsSummaryBar">
+            <span class="plugins-summary-chip plugins-chip-ok" id="pluginsSummaryLoaded">0</span>
+            <span class="plugins-summary-chip plugins-chip-err" id="pluginsSummaryFailed">0</span>
+            <span class="plugins-summary-chip plugins-chip-muted" id="pluginsSummaryInactive">0</span>
+          </div>
+          <div id="pluginsProgressWrap" class="hidden mt-3">
+            <div class="flex justify-between text-xs text-muted mb-1">
+              <span id="pluginsProgressMessage"></span>
+              <span id="pluginsProgressPercent">0%</span>
+            </div>
+            <div class="h-2 rounded-full bg-panel-soft overflow-hidden">
+              <div id="pluginsProgressBar" class="h-full bg-accent transition-all duration-300" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-3 border-b border-border pb-2">
+            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2 border border-accent text-accent bg-panel" id="pluginsTabInstalled" type="button" data-i18n="plugins.tabInstalled">已安装</button>
+            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2 border border-border bg-panel text-text hover:bg-panel-alt transition" id="pluginsTabMarket" type="button" data-i18n="plugins.tabMarket">市场</button>
+            <button class="tab-button cursor-pointer font-bold rounded-lg px-4 py-2 border border-border bg-panel text-text hover:bg-panel-alt transition" id="pluginsTabMirrors" type="button" data-i18n="plugins.mirrors">镜像源</button>
+          </div>
+          <div id="pluginsInstalledPane" class="mt-3">
+            <div class="plugins-toolbar">
+              <input id="pluginsSearch" class="config-input flex-1 min-w-[180px]" type="search" data-i18n-placeholder="plugins.searchPlaceholder" placeholder="搜索插件...">
+              <label class="plugins-check-label">
+                <input type="checkbox" id="pluginsShowUpdatesOnly">
+                <span data-i18n="plugins.showUpdatesOnly">仅显示有更新</span>
+              </label>
+            </div>
+            <div id="pluginsList" class="plugins-list mt-2"></div>
+          </div>
+          <div id="pluginsMarketPane" class="hidden mt-3">
+            <div class="plugins-toolbar">
+              <input id="pluginsMarketSearch" class="config-input flex-1 min-w-[180px]" type="search" data-i18n-placeholder="plugins.marketplaceSearch" placeholder="搜索插件...">
+              <select id="pluginsMarketType" class="config-input">
+                <option value="" data-i18n="plugins.filterAllTypes">全部类型</option>
+                <option value="platform" data-i18n="plugins.typePlatform">平台</option>
+                <option value="fncall" data-i18n="plugins.typeFncall">工具协议</option>
+                <option value="webui" data-i18n="plugins.typeWebui">WebUI</option>
+                <option value="coplan" data-i18n="plugins.typeCoplan">策略</option>
+                <option value="general" data-i18n="plugins.typeGeneral">通用</option>
+              </select>
+              <select id="pluginsMarketSort" class="config-input">
+                <option value="name" data-i18n="plugins.sortName">按名称</option>
+                <option value="type" data-i18n="plugins.sortType">按类型</option>
+              </select>
+              <label class="plugins-check-label">
+                <input type="checkbox" id="pluginsMarketShowInstalled">
+                <span data-i18n="plugins.showInstalled">显示已安装</span>
+              </label>
+              <button class="cursor-pointer font-bold rounded-lg px-4 py-2 border border-border bg-panel hover:bg-panel-alt transition" id="pluginsMarketRefreshBtn" type="button" data-i18n="plugins.marketplaceRefresh">刷新市场</button>
+              <button class="cursor-pointer font-bold rounded-lg px-4 py-2 border border-accent text-accent bg-panel" id="pluginsInstallFromGitBtn" type="button" data-i18n="plugins.installFromGit">从 Git 安装</button>
+            </div>
+            <div id="pluginsMarketGrid" class="plugins-market-grid mt-3"></div>
+          </div>
+          <div id="pluginsMirrorsPane" class="hidden mt-3">
+            <div class="plugins-mirrors-panel">
+              <div class="flex flex-wrap gap-2 mb-2">
+                <input id="pluginsMirrorName" class="config-input flex-1" type="text" data-i18n-placeholder="plugins.mirrorName" placeholder="镜像名称">
+                <input id="pluginsMirrorUrl" class="config-input flex-[2]" type="url" data-i18n-placeholder="plugins.mirrorUrl" placeholder="https://raw.githubusercontent.com">
+                <button type="button" class="cursor-pointer rounded-lg px-4 py-2 border border-accent text-white bg-accent" id="pluginsMirrorAdd" data-i18n="plugins.mirrorAdd">添加</button>
+              </div>
+              <div id="pluginsMirrorsList"></div>
+            </div>
+          </div>
+        </div>
+        <div id="pluginsEditorView" class="hidden">
+          <div class="plugins-editor-header">
+            <button type="button" class="plugins-back-btn" id="pluginsEditorBack" data-i18n="plugins.backToList">返回列表</button>
+            <div class="plugins-editor-title-wrap">
+              <img id="pluginsEditorIcon" class="plugins-editor-icon hidden" alt="">
+              <div>
+                <h3 class="m-0 text-lg font-bold" id="pluginsEditorTitle"></h3>
+                <div class="text-xs text-muted" id="pluginsEditorMeta"></div>
+              </div>
+            </div>
+            <div class="plugins-editor-actions">
+              <label class="config-toggle" title="启用">
+                <input type="checkbox" id="pluginsEditorSwitch">
+                <span class="toggle-slider"></span>
+              </label>
+              <button type="button" class="cursor-pointer rounded-lg px-3 py-1.5 border border-border bg-panel text-sm" id="pluginsEditorUpdate" data-i18n="plugins.update">更新</button>
+              <button type="button" class="cursor-pointer rounded-lg px-3 py-1.5 border border-err text-err bg-panel text-sm" id="pluginsEditorUninstall" data-i18n="plugins.uninstall">卸载</button>
+            </div>
+          </div>
+          <div class="plugins-editor-tabs">
+            <button type="button" class="plugins-editor-tab active" data-editor-tab="visual" data-i18n="plugins.tabVisual">可视化</button>
+            <button type="button" class="plugins-editor-tab" data-editor-tab="source" data-i18n="plugins.tabSource">源码</button>
+            <button type="button" class="plugins-editor-tab" data-editor-tab="detail" data-i18n="plugins.tabDetail">详情</button>
+          </div>
+          <div id="pluginsEditorVisual" class="plugins-editor-pane">
+            <div class="config-section-tabs hidden" id="pluginsConfigSectionTabs" role="tablist"></div>
+            <div id="pluginsConfigGrid"></div>
+          </div>
+          <div id="pluginsEditorSource" class="plugins-editor-pane hidden">
+            <textarea id="pluginsConfigEditor" class="config-edit-area min-h-[320px] w-full" spellcheck="false"></textarea>
+          </div>
+          <div id="pluginsEditorDetail" class="plugins-editor-pane hidden">
+            <div id="pluginsEditorReadme" class="plugins-detail-block"></div>
+            <div id="pluginsEditorChangelog" class="plugins-detail-block mt-3"></div>
+            <div id="pluginsEditorRuntime" class="plugins-runtime-list mt-3"></div>
+          </div>
+          <div class="plugins-editor-footer">
+            <span id="pluginsEditorMessage" class="text-sm text-muted"></span>
+            <div class="flex gap-2">
+              <button type="button" class="cursor-pointer rounded-lg px-4 py-2 border border-border bg-panel" id="pluginsConfigReset" data-i18n="plugins.resetConfig">重置</button>
+              <button type="button" class="cursor-pointer rounded-lg px-4 py-2 border border-accent text-white bg-accent" id="pluginsConfigSave" data-i18n="common.save">保存</button>
+            </div>
+          </div>
+        </div>
+        <div id="pluginsInstallModal" class="hidden fixed inset-0 z-[200] items-center justify-center bg-black/50 p-4">
+          <div class="bg-panel border border-border rounded-xl max-w-lg w-full overflow-hidden flex flex-col shadow-xl">
+            <div class="flex justify-between items-center px-4 py-3 border-b border-border">
+              <h3 class="m-0 text-lg font-bold" data-i18n="plugins.installTitle">从 Git 安装</h3>
+              <button type="button" class="cursor-pointer text-muted hover:text-text" id="pluginsInstallClose" data-i18n="common.close">关闭</button>
+            </div>
+            <div class="p-4 space-y-3">
+              <input id="pluginsInstallUrl" class="config-input w-full" type="text" data-i18n-placeholder="plugins.installUrlPlaceholder" placeholder="https://github.com/org/repo.git">
+              <input id="pluginsInstallRef" class="config-input w-full" type="text" data-i18n-placeholder="plugins.installRefPlaceholder" placeholder="分支或标签（可选）">
+            </div>
+            <div class="px-4 pb-4 flex justify-end gap-2">
+              <button type="button" class="cursor-pointer rounded-lg px-4 py-2 border border-border bg-panel" id="pluginsInstallCancel" data-i18n="common.cancel">取消</button>
+              <button type="button" class="cursor-pointer rounded-lg px-4 py-2 border border-accent text-white bg-accent" id="pluginsInstallBtn" data-i18n="plugins.install">安装</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="tab-panel hidden" id="tab-autoupdate" aria-labelledby="tab-autoupdate-button">
@@ -314,6 +482,7 @@
           <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
             <div class="text-[13px] text-muted m-0 mb-2" data-i18n="chat.protocol">协议</div>
             <select id="chatProtocolSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
+              <option value="entml">EntML</option>
               <option value="xml">XML</option>
               <option value="antml">AntML</option>
               <option value="original">Original</option>
@@ -516,77 +685,6 @@
     <div class="fixed bottom-4 right-4 grid gap-2 z-[9999]" id="toastWrap"></div>
   </div>
 
-  <div id="portablePanel" class="confirm-overlay" style="display:none;">
-    <div id="portableBackdrop" style="position:absolute;inset:0;"></div>
-    <section class="confirm-dialog bg-panel border border-border rounded-2xl shadow-panel p-5 grid gap-4" style="max-width:600px;min-width:300px;max-height:85vh;overflow-y:auto;">
-        <div class="flex flex-wrap justify-between items-end gap-3">
-          <div>
-            <h2 data-i18n="portable.title">便携设置</h2>
-            <p class="m-0 text-muted leading-relaxed" data-i18n="portable.subtitle">这些设置保存在浏览器本地，适合便携环境与临时运行环境。</p>
-          </div>
-          <div class="flex flex-wrap gap-2 items-center">
-            <button class="cursor-pointer font-bold rounded-xl w-10 h-10 border border-border bg-panel text-text hover:bg-panel-alt transition flex items-center justify-center" id="fabThemeButton" type="button" data-i18n="portable.toggleTheme" data-i18n-attr="aria-label" aria-label="切换主题"><span id="fabThemeIcon">&#9790;</span></button>
-          </div>
-        </div>
-        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]">
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="portable.themeMode">主题模式</div>
-            <select id="themeSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-              <option value="auto" data-i18n="portable.themeAuto">跟随系统</option>
-              <option value="light" data-i18n="portable.themeLight">浅色</option>
-              <option value="dark" data-i18n="portable.themeDark">深色</option>
-            </select>
-          </label>
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="portable.refreshInterval">自动刷新间隔（秒）</div>
-            <input id="refreshIntervalInput" type="number" min="0" max="300" step="5" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-          </label>
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="portable.requestTimeout">请求超时（毫秒）</div>
-            <input id="timeoutInput" type="number" min="500" max="30000" step="500" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-          </label>
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="portable.streamIdleTimeout">流式无数据超时（毫秒）</div>
-            <input id="streamIdleTimeoutInput" type="number" min="5000" max="600000" step="5000" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-          </label>
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="portable.compactLabel">显示紧凑模式</div>
-            <select id="compactSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-              <option value="0" data-i18n="common.off">关闭</option>
-              <option value="1" data-i18n="common.on">开启</option>
-            </select>
-          </label>
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="portable.tabLayout">标签栏布局</div>
-            <select id="tabLayoutSelect" class="rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]">
-              <option value="horizontal" data-i18n="portable.layoutHorizontal">横向顶部</option>
-              <option value="vertical" data-i18n="portable.layoutVertical">竖向侧边</option>
-            </select>
-          </label>
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="voice.sttModel">STT 模型（语音转文字）</div>
-            <select id="voiceSttModel" class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]"><option value="" data-i18n="common.loading">加载中...</option></select>
-          </label>
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="voice.ttsModel">TTS 模型（文字转语音）</div>
-            <select id="voiceTtsModel" class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]"><option value="" data-i18n="common.loading">加载中...</option></select>
-          </label>
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="text-[13px] text-muted m-0 mb-2" data-i18n="portable.recordingDevice">录音设备</div>
-            <select id="recordingDeviceSelect" class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]"><option value="" data-i18n="portable.defaultDevice">默认设备</option></select>
-          </label>
-          <label class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift" style="grid-column: 1 / -1;">
-            <div class="flex justify-between items-center mb-2">
-              <div class="text-[13px] text-muted m-0" data-i18n="portable.ttsPrompt">TTS 引导 Prompt</div>
-              <button type="button" id="voiceTtsPromptRestoreBtn" class="text-[12px] text-accent hover:underline cursor-pointer" data-i18n="voice.restoreDefault" data-i18n-attr="title" title="恢复默认 Prompt"><span data-i18n="voice.restoreDefault">恢复默认</span></button>
-            </div>
-            <textarea id="voiceTtsPrompt" rows="2" data-i18n-placeholder="voice.ttsPlaceholder" placeholder="引导语音输出的风格和指令..." class="w-full rounded-xl border border-border bg-panel text-text px-3 py-2.5 text-[14px]" style="resize:vertical;"></textarea>
-          </label>
-        </div>
-        <p class="m-0 text-muted leading-relaxed" data-i18n="portable.footer">设置保存到 webui_config.toml，不影响服务端运行配置。</p>
-      </section>
-  </div>
-
   <!-- Restart Overlay -->
   <div id="restartOverlay" class="restart-overlay">
     <div class="restart-bg-rings">
@@ -627,15 +725,16 @@
   </div>
 
   <script src="/static/i18n/i18n.js"></script>
-  <script src="/static/core/api.js"></script>
-  <script src="/static/core/router.js"></script>
-  <script src="/static/core/lazy.js"></script>
-  <script src="/static/core/motion.js"></script>
-  <script src="/static/core/state.js?v=20260708-2"></script>
-  <script src="/static/core/render.js"></script>
-  <script src="/static/config/actions.js"></script>
+  <script src="/static/base/core/api.js"></script>
+  <script src="/static/base/core/router.js"></script>
+  <script src="/static/base/core/lazy.js"></script>
+  <script src="/static/base/core/motion.js"></script>
+  <script src="/static/base/core/state.js?v=20260709-1"></script>
+  <script src="/static/base/core/render.js?v=20260709-1"></script>
+  <script src="/static/base/config/render.js?v=20260709-7"></script>
+  <script src="/static/base/config/actions.js?v=20260709-4"></script>
   <script src="/static/ui/widgets/dropdown.js"></script>
   <script src="/static/ui/widgets/datepicker.js"></script>
-  <script src="/static/ui/bootstrap.js"></script>
+  <script src="/static/ui/bootstrap.js?v=20260709-3"></script>
 </body>
 </html>

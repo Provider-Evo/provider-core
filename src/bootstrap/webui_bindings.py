@@ -7,8 +7,8 @@ from typing import Any, List
 
 import aiohttp.web
 
-from src.core.auth.session import register_session_verifier
-from src.core.observability import ObservabilityServices, set_observability_services
+from src.core.server.auth.session import register_session_verifier
+from src.core.utils.observability import ObservabilityServices, set_observability_services
 
 
 def register_webui_bindings() -> ObservabilityServices:
@@ -16,13 +16,13 @@ def register_webui_bindings() -> ObservabilityServices:
     from src.core.server.infra.terminal_sessions import get_terminal_store
     from src.webui.core.logs_ws import log_broker, setup_loguru_sink
     from src.webui.core.security import token_manager
-    from src.webui.routers.session.terminal import list_sessions, recover_sessions
-    from src.webui.services.request_log import (
+    from src.webui.routers.session.terminal.terminal import list_sessions, recover_sessions
+    from src.webui.data.services.request_log import (
         request_broker,
         save_requests,
         start_request_persist,
     )
-    from src.webui.services.stats import save_stats, start_persist
+    from src.webui.data.services.stats import save_stats, start_persist
 
     register_session_verifier(token_manager.verify)
 
@@ -82,7 +82,7 @@ def register_webui_bindings() -> ObservabilityServices:
 def log_webui_token_if_enabled() -> None:
     """鉴权开启时在日志中输出 WebUI token。"""
     from src.core.config import get_config
-    from src.logger import get_logger
+    from src.foundation.logger import get_logger
 
     cfg = get_config()
     if not cfg.auth.enabled:

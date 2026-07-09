@@ -15,7 +15,7 @@ from src.core.server import (
     get_json as _get_json,
 )
 from src.core.utils.compat.tools import parse_fncall_xml
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 from src.routes.anthropic.convert import (
     _anth_messages_to_openai,

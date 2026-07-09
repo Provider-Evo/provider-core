@@ -8,7 +8,7 @@ import uuid
 import aiohttp.web
 
 from src.core.server import get_json as _get_json
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from src.routes.openai.helpers import (
     _aid,
     _err,

@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 import aiohttp.web
 
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 
 __all__ = ["setup_routes"]
 logger = get_logger(__name__)

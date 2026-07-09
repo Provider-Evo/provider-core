@@ -28,7 +28,7 @@ from src.core.server import (
     safe_flush as _safe_flush,
 )
 from src.core.server import REGISTRY_KEY
-from src.logger import get_logger
+from src.foundation.logger import get_logger
 from src.routes.openai.helpers import (
     _cid,
     _err,
@@ -265,7 +265,7 @@ async def _stream_chat(
                     _log_id = request.get("_req_log_id")
                     if _log_id:
                         try:
-                            from src.core.observability import get_observability_services
+                            from src.core.utils.observability import get_observability_services
 
                             get_observability_services().push_request_event(
                                 {"type": "request_chunk", "id": _log_id, "delta": safe_part},

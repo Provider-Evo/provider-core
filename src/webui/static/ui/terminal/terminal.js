@@ -859,6 +859,7 @@ var TerminalManager = (function () {
         var msg = JSON.parse(event.data);
         if (msg.type === 'ready') {
           tab.sessionId = msg.session_id;
+          tab._restarting = false;
           tab.status = 'connected';
           tab._reconnectAttempts = 0;
           if (tab._reconnectTimer) {
@@ -885,12 +886,16 @@ var TerminalManager = (function () {
             }
           }
         } else if (msg.type === 'error') {
+          tab._restarting = false;
           if (tab.xterm) {
             tab.xterm.write(_stripDecResponses('\r\n\x1b[31m' + t('terminal.errorPrefix', { message: msg.message }) + '\x1b[0m'));
           }
           tab.status = 'disconnected';
           if (_bar) _bar.setStatus(tab.id, 'disconnected');
         } else if (msg.type === 'exit') {
+          if (tab._restarting) {
+            return;
+          }
           if (tab.xterm) {
             if (msg.code === -1) {
               // Non-reattachable session (recovered after server restart)
@@ -1552,6 +1557,9 @@ var TerminalManager = (function () {
       try {
         var cols = tab.xterm ? tab.xterm.cols : 80;
         var rows = tab.xterm ? tab.xterm.rows : 24;
+        tab._restarting = true;
+        tab.status = 'connecting';
+        if (_bar) _bar.setStatus(tabId, 'connecting');
         tab.ws.send(JSON.stringify({ type: 'restart', cols: cols, rows: rows }));
         if (tab.xterm) {
           tab.xterm.clear();
@@ -1822,14 +1830,7 @@ var TerminalManager = (function () {
           var conn = _savedConnections[idx];
           if (conn) {
             overlay.remove();
-            var opts = {
-              host: conn.host,
-              port: conn.port || 22,
-              username: conn.username,
-              password: conn.password || '',
-              key_data: conn.key_data || '',
-              name: conn.name || (conn.username + '@' + conn.host),
-            };
+            var opts = _normalizeSavedConnection(conn);
             if (chooserTabId) {
               _convertChooserTabToSSH(chooserTabId, opts);
             } else {
@@ -1909,28 +1910,27 @@ var TerminalManager = (function () {
 
     // Save connection if checked
     if (saveConn) {
-      var conn = {
+      _savedConnections.push(_normalizeSavedConnection({
         host: host,
         port: port,
         username: username,
         password: password,
         key_data: keyData,
         name: name || (username + '@' + host),
-      };
-      _savedConnections.push(conn);
+      }));
       _saveSavedConnections();
     }
 
     overlay.remove();
 
-    var opts = {
+    var opts = _normalizeSavedConnection({
       host: host,
       port: port,
       username: username,
       password: password,
       key_data: keyData,
       name: name || (username + '@' + host + ':' + port),
-    };
+    });
 
     if (chooserTabId) {
       _convertChooserTabToSSH(chooserTabId, opts);
@@ -1970,12 +1970,28 @@ var TerminalManager = (function () {
 
   // ========================= Saved Connections =========================
 
+  function _normalizeSavedConnection(conn) {
+    var copy = {
+      host: conn.host,
+      port: conn.port || 22,
+      username: conn.username,
+      password: conn.password || '',
+      name: conn.name || (conn.username + '@' + conn.host),
+    };
+    var key = (conn.key_data || '').trim();
+    if (key) {
+      copy.key_data = key;
+    }
+    return copy;
+  }
+
   async function _loadSavedConnections() {
     try {
       if (typeof persistLoad === 'function') {
         var data = await persistLoad('terminals.json');
         if (data && data.connections) {
-          _savedConnections = data.connections;
+          _savedConnections = data.connections.map(_normalizeSavedConnection);
+          await _saveSavedConnections();
         }
       }
     } catch (e) {
