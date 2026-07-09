@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from src.core.server.infra import win_asyncio
+from src.core.server.lifecycle.asyncio import win_asyncio
 
 
 def test_apply_windows_asyncio_patches_idempotent() -> None:

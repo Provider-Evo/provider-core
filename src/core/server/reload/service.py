@@ -7,8 +7,8 @@ from typing import Any, Optional, Sequence
 
 from src.foundation.logger import get_logger
 
-from src.core.server.infra.reload.coordinator import ReloadCoordinator
-from src.core.server.infra.reload.file_watcher import FileChange, FileWatcher
+from src.core.server.reload.coordinator import ReloadCoordinator
+from src.core.server.reload.file_watcher import FileChange, FileWatcher
 
 __all__ = ["HotReloadService"]
 

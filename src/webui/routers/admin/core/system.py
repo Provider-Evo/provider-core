@@ -8,7 +8,7 @@ from datetime import datetime
 import aiohttp.web
 
 from src.core.config import get_config, get_config_manager
-from src.core.server.infra.reload.internal.runtime_state import get_worker_start_time
+from src.core.server.reload.internal.runtime_state import get_worker_start_time
 
 __all__ = ["system_status"]
 

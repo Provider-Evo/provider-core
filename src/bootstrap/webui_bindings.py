@@ -7,15 +7,15 @@ from typing import Any, List
 
 import aiohttp.web
 
-from src.core.server.auth.session import register_session_verifier
+from src.core.server.http.auth.session import register_session_verifier
 from src.core.utils.observability import ObservabilityServices, set_observability_services
 
 
 def register_webui_bindings() -> ObservabilityServices:
     """构建并注册 WebUI 观测与会话校验实现。"""
-    from src.core.server.infra.terminal_sessions import get_terminal_store
-    from src.webui.core.logs_ws import log_broker, setup_loguru_sink
-    from src.webui.core.security import token_manager
+    from src.core.server.terminal.sessions import get_terminal_store
+    from src.webui.internal.core.logs_ws import log_broker, setup_loguru_sink
+    from src.webui.internal.core.security import token_manager
     from src.webui.routers.session.terminal.terminal import list_sessions, recover_sessions
     from src.webui.data.services.request_log import (
         request_broker,
@@ -87,7 +87,7 @@ def log_webui_token_if_enabled() -> None:
     cfg = get_config()
     if not cfg.auth.enabled:
         return
-    from src.webui.core.security import token_manager
+    from src.webui.internal.core.security import token_manager
 
     logger = get_logger(__name__)
     token = token_manager.token

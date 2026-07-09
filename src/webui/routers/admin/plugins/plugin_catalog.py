@@ -11,8 +11,8 @@ from urllib.request import Request, urlopen
 import aiohttp.web
 
 from src.core.config import get_config
-from src.webui.routers.admin.plugin.mirrors import resolve_fetch_urls
-from src.webui.routers.admin.plugin_support import (
+from src.webui.routers.admin.plugins.runtime.mirrors import resolve_fetch_urls
+from src.webui.routers.admin.plugins.plugin_support import (
     DEFAULT_PLUGIN_REPO,
     find_plugin_path_by_id,
     read_manifest,
@@ -112,7 +112,7 @@ async def plugins_fetch_raw(request: aiohttp.web.Request) -> aiohttp.web.Respons
 
 async def plugins_local_readme(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """GET /v1/admin/plugins/local-readme/{plugin_id}"""
-    from src.webui.routers.admin.plugin_support import read_plugin_readme
+    from src.webui.routers.admin.plugins.plugin_support import read_plugin_readme
 
     plugin_id = request.match_info.get("plugin_id", "")
     plugin_path = find_plugin_path_by_id(plugin_id)
@@ -126,7 +126,7 @@ async def plugins_local_readme(request: aiohttp.web.Request) -> aiohttp.web.Resp
 
 async def plugins_local_changelog(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """GET /v1/admin/plugins/local-changelog/{plugin_id}"""
-    from src.webui.routers.admin.plugin_support import read_plugin_changelog
+    from src.webui.routers.admin.plugins.plugin_support import read_plugin_changelog
 
     plugin_id = request.match_info.get("plugin_id", "")
     plugin_path = find_plugin_path_by_id(plugin_id)
@@ -150,7 +150,7 @@ def _find_plugin_icon(plugin_path: Path) -> Optional[Path]:
 
 
 def read_manifest_icon_path(plugin_path: Path) -> str:
-    from src.webui.routers.admin.plugin_support import read_manifest
+    from src.webui.routers.admin.plugins.plugin_support import read_manifest
 
     manifest = read_manifest(plugin_path)
     display = manifest.get("display") or {}

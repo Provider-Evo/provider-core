@@ -23,7 +23,7 @@ import string
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.paths import project_root as PROJECT_ROOT
+from src.foundation.paths import project_root as PROJECT_ROOT
 
 IS_WINDOWS = os.name == "nt"
 DRIVES_SENTINEL = object()

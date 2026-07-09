@@ -54,7 +54,7 @@ async def request_fast_restart(
     session: Optional[Any] = None,
 ) -> None:
     """快速进程重启：持久化 → 停插件运行时 → ``os._exit(42)``，跳过完整 ``_shutdown`` 链。"""
-    from src.core.server.infra.reload.internal.pre_restart import (
+    from src.core.server.reload.internal.pre_restart import (
         prepare_graceful_restart,
         stop_runtime_before_restart,
     )
@@ -101,7 +101,7 @@ async def request_process_restart(
             session=session,
         )
         return
-    from src.core.server.infra.reload.internal.pre_restart import prepare_graceful_restart
+    from src.core.server.reload.internal.pre_restart import prepare_graceful_restart
 
     await prepare_graceful_restart(registry, session, reason=reason)
     await request_graceful_restart(reason=reason)

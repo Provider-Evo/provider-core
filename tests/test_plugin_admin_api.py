@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.webui.routers.admin.plugin_catalog import _parse_host_version
-from src.webui.routers.admin.plugin_support import validate_plugin_id
+from src.webui.routers.admin.plugins.plugin_catalog import _parse_host_version
+from src.webui.routers.admin.plugins.plugin_support import validate_plugin_id
 
 
 def test_validate_plugin_id_rejects_traversal() -> None:
@@ -14,8 +14,8 @@ def test_validate_plugin_id_rejects_traversal() -> None:
 
 
 def test_parse_host_version_numeric() -> None:
-    parsed = _parse_host_version("2.2.276")
-    assert parsed == {"version_major": 2, "version_minor": 2, "version_patch": 276}
+    parsed = _parse_host_version("2.2.286")
+    assert parsed == {"version_major": 2, "version_minor": 2, "version_patch": 286}
 
 
 @pytest.mark.asyncio
@@ -23,7 +23,7 @@ async def test_plugins_config_bundle_not_found() -> None:
     from aiohttp import web
     from aiohttp.test_utils import TestClient, TestServer
 
-    from src.webui.routers.admin.plugins import plugins_config_bundle
+    from src.webui.routers.admin.plugins.plugins import plugins_config_bundle
 
     app = web.Application()
     app.router.add_get("/bundle/{plugin_id}", plugins_config_bundle)
@@ -33,7 +33,7 @@ async def test_plugins_config_bundle_not_found() -> None:
 
 
 def test_defaults_from_schema_boolean_and_nested() -> None:
-    from src.webui.routers.admin.plugins import _defaults_from_schema
+    from src.webui.routers.admin.plugins.plugins import _defaults_from_schema
 
     schema = {
         "type": "object",
@@ -59,7 +59,7 @@ async def test_plugins_mirrors_list() -> None:
     from aiohttp import web
     from aiohttp.test_utils import TestClient, TestServer
 
-    from src.webui.routers.admin.plugin.mirrors import plugins_mirror_list
+    from src.webui.routers.admin.plugins.runtime.mirrors import plugins_mirror_list
 
     app = web.Application()
     app.router.add_get("/mirrors", plugins_mirror_list)
@@ -85,7 +85,7 @@ async def test_plugins_host_version_handler() -> None:
     from aiohttp import web
     from aiohttp.test_utils import TestClient, TestServer
 
-    from src.webui.routers.admin.plugin_catalog import plugins_host_version
+    from src.webui.routers.admin.plugins.plugin_catalog import plugins_host_version
 
     app = web.Application()
     app.router.add_get("/version", plugins_host_version)

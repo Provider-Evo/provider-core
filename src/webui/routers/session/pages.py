@@ -7,13 +7,13 @@ from pathlib import Path
 import aiohttp.web
 
 from src.core.config import get_config
-from src.webui.core.auth import (
+from src.webui.internal.core.auth import (
     COOKIE_NAME,
     clear_session_cookie,
     set_session_cookie,
     verify_session_cookie,
 )
-from src.webui.core.security import token_manager
+from src.webui.internal.core.security import token_manager
 
 __all__ = ["webui_page", "login_page", "logout_page"]
 

@@ -10,7 +10,7 @@ import aiohttp.web
 
 from src.core.config import get_config_manager, reload_config, write_config
 from src.foundation.paths import config_dir
-from src.webui.services.config_panel_schema import CONFIG_PANEL_SCHEMA
+from src.webui.data.services.config_panel_schema import CONFIG_PANEL_SCHEMA
 
 __all__ = [
     "config_get",

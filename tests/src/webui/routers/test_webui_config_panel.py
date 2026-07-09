@@ -6,7 +6,7 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
-from src.webui.routers.admin.webui_config_panel import (
+from src.webui.routers.admin.panels.webui_config_panel import (
     webui_config_get,
     webui_config_put,
     webui_config_reload,
@@ -14,7 +14,7 @@ from src.webui.routers.admin.webui_config_panel import (
     webui_config_raw_get,
     webui_config_raw_put,
 )
-from src.webui.services.config_panel_schema import WEBUI_CONFIG_KNOWN_KEYS, WEBUI_CONFIG_PANEL_SCHEMA
+from src.webui.data.services.config_panel_schema import WEBUI_CONFIG_KNOWN_KEYS, WEBUI_CONFIG_PANEL_SCHEMA
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def webui_config_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> web.App
     cfg_dir.mkdir()
     webui_cfg = cfg_dir / "webui_config.toml"
     webui_cfg.write_text('theme = "dark"\nrefreshInterval = 30\n', encoding="utf-8")
-    monkeypatch.setattr("src.webui.routers.admin.webui_config_panel.config_dir", lambda: cfg_dir)
+    monkeypatch.setattr("src.webui.routers.admin.panels.webui_config_panel.config_dir", lambda: cfg_dir)
     app = web.Application()
     app.router.add_get("/v1/webui/config", webui_config_get)
     app.router.add_put("/v1/webui/config", webui_config_put)

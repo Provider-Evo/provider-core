@@ -19,8 +19,8 @@ from echotools.lifecycle.updater import get_updater, set_updater
 from echotools.process.port import *  # noqa: F401, F403
 from echotools.web.utils import json_response
 
-from src.core.server.lifecycle.app import REGISTRY_KEY, SESSION_KEY, create_app
-from src.core.server.lifecycle.app_host import AppHost
+from src.core.server.lifecycle.app.app import REGISTRY_KEY, SESSION_KEY, create_app
+from src.core.server.lifecycle.app.app_host import AppHost
 from src.core.server.http.http_utils import clean_fncall, get_json, safe_flush
 from src.core.server.net.proxy import (
     activate,
@@ -29,8 +29,7 @@ from src.core.server.net.proxy import (
     get_proxy_server,
     is_active,
 )
-from src.core.server.infra.reload import HotReloadService, ReloadCoordinator
-from src.core.server.infra.watcher import FileWatcher
+from src.core.server.reload import FileWatcher, HotReloadService, ReloadCoordinator
 
 __all__ = [
     # --- autoupdate ---

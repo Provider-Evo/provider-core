@@ -11,7 +11,7 @@ try:
 except ImportError:
     import tomli as tomllib
 
-from src.webui.services.config_panel_schema import (
+from src.webui.data.services.config_panel_schema import (
     CONFIG_PANEL_SCHEMA,
     KNOWN_TOP_LEVEL_SECTIONS,
     WEBUI_CONFIG_KNOWN_KEYS,

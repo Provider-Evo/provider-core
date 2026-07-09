@@ -18,8 +18,8 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-v2.2.285-blue)
-![Version](https://img.shields.io/badge/version-v2.2.285-blue)
+![Status](https://img.shields.io/badge/status-v2.2.286-blue)
+![Version](https://img.shields.io/badge/version-v2.2.286-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-24-orange)
@@ -680,7 +680,9 @@ provider-v2/
 │   │   ├── 📁 fncall/           # 工具调用（protocols/parsers/prompt）
 │   │   ├── 📁 observability/    # 观测 Protocol + AppKey（stats/logs/terminal）
 │   │   ├── 📁 server/           # HTTP 服务（app/runner/worker/middleware）
-│   │   │   └── 📁 infra/        # connector、reload、terminal_sessions
+│   │   │   ├── 📁 reload/       # 热重载与文件监视
+│   │   │   ├── 📁 terminal/     # 终端会话持久化
+│   │   │   └── 📁 lifecycle/    # app/runner/worker、关停、事件循环
 │   │   └── 📁 utils/
 │   │       └── 📁 compat/       # models_cache、tools、scriptgen 等兼容层
 │   ├── 📁 platforms/            # 平台适配器（*/core/adaptercore.py）
@@ -706,7 +708,10 @@ provider-v2/
 | `src/core/` | 核心网关逻辑，包括配置管理、请求分发、TAS 候选项选择、文件监视热重载 |
 | `src/platforms/` | 各平台适配器实现，自动发现机制，支持热重载 |
 | `src/routes/` | OpenAI / Anthropic 兼容 HTTP 路由 |
-| `src/core/server/infra/` | 连接器、IPC、热重载、文件监视、终端会话存储 |
+| `src/core/server/reload/` | 热重载与文件监视 |
+| `src/core/server/terminal/` | 终端会话持久化 |
+| `src/core/server/net/connector.py` | 共享 HTTP 连接池 |
+| `src/core/server/lifecycle/` | 应用生命周期、关停、事件循环、IPC |
 | `src/webui/` | 内置 WebUI（bootstrap 应用、session/api/admin 路由、静态资源） |
 
 ---
@@ -1252,7 +1257,7 @@ fix(gateway): 修复并发竞速时 token 计数错误
 
 ## 🗺️ 路线图
 
-### 当前版本：v2.2.285
+### 当前版本：v2.2.286
 
 ✅ 已完成（v2.2.234）：
 - fix(webui): rewrite log panel with structured rendering, module colors, mobile layout, and smart auto-scroll

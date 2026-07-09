@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import aiohttp.web
 
-from src.webui.core.security import token_manager
+from src.webui.internal.core.security import token_manager
 
 __all__ = [
     "COOKIE_NAME",

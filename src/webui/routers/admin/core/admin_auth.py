@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import aiohttp.web
 
-from src.webui.core.auth import set_session_cookie, verify_session_cookie
-from src.webui.core.security import token_manager
+from src.webui.internal.core.auth import set_session_cookie, verify_session_cookie
+from src.webui.internal.core.security import token_manager
 
 __all__ = ["auth_verify", "auth_update", "auth_regenerate"]
 

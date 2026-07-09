@@ -126,7 +126,7 @@ def _has_valid_credentials(request: aiohttp.web.Request, cfg: Any) -> bool:
     if token and token in cfg.auth.keys:
         return True
 
-    from src.core.server.auth import COOKIE_NAME, verify_session_token
+    from src.core.server.http.auth import COOKIE_NAME, verify_session_token
 
     cookie_val = request.cookies.get(COOKIE_NAME, "")
     return verify_session_token(cookie_val)

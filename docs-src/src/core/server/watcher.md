@@ -1,6 +1,6 @@
 # src/core/server/watcher.py
 
-向后兼容别名：`FileWatcher = HotReloadService`。实现见 `src/core/server/infra/reload/service.py`。
+向后兼容别名：`FileWatcher = HotReloadService`。实现见 `src/core/server/reload/service.py`。
 
 ## 监控范围
 
@@ -16,7 +16,7 @@
 
 ## 变更分类
 
-详见 [infra/reload/README.md](infra/reload/README.md)。摘要：
+详见 [reload/README.md](reload/README.md)。摘要：
 
 | 变更位置 | 行为 |
 |---------|------|

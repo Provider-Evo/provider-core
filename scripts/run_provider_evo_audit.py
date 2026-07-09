@@ -52,8 +52,8 @@ def main() -> int:
         "plugin_catalog.py": (ROOT / "src/webui/routers/admin/plugin_catalog.py").is_file(),
         "plugin_progress.py": (ROOT / "src/webui/routers/admin/plugin_progress.py").is_file(),
         "plugin_package": admin_plugin_pkg.is_dir(),
-        "plugins.css": (ROOT / "src/webui/static/plugins/plugins.css").is_file(),
-        "plugins.js": (ROOT / "src/webui/static/plugins/plugins.js").is_file(),
+        "plugins.css": (ROOT / "src/webui/static/features/plugins/plugins.css").is_file(),
+        "plugins.js": (ROOT / "src/webui/static/features/plugins/plugins.js").is_file(),
     }
 
     coplan_brand = {}

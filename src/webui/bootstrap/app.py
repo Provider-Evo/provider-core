@@ -36,7 +36,7 @@ def create_app(registry: Optional[Any] = None, server: Optional[Any] = None) -> 
         """启动钩子 — 加载持久化数据。"""
         # Show webui_token in log for first-time setup
         from src.core.config import get_config
-        from src.webui.core.security import token_manager
+        from src.webui.internal.core.security import token_manager
         cfg = get_config()
         if cfg.auth.enabled:
             logger.info("WebUI Token: %s", token_manager.token)
@@ -54,7 +54,7 @@ def create_app(registry: Optional[Any] = None, server: Optional[Any] = None) -> 
             pass
 
         try:
-            from src.webui.core.logs_ws import log_broker, setup_loguru_sink
+            from src.webui.internal.core.logs_ws import log_broker, setup_loguru_sink
             loop = asyncio.get_running_loop()
             log_broker.set_loop(loop)
             setup_loguru_sink()

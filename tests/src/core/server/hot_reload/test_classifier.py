@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.core.server.infra.reload.classifier import classify_paths
+from src.core.server.reload.classifier import classify_paths
 from src.core.server.plugins.plugin_catalog import resolve_platform_plugin_id
 from src.foundation.paths import project_root
 
@@ -24,7 +24,7 @@ def test_classify_routes_application() -> None:
 
 
 def test_classify_core_process() -> None:
-    result = classify_paths({r"X:\proj\src\core\server\infra\reload\coordinator.py"})
+    result = classify_paths({r"X:\proj\src\core\server\reload\coordinator.py"})
     assert result.process is True
 
 

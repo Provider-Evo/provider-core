@@ -9,7 +9,7 @@ from typing import Optional
 import aiohttp.web
 from echotools.terminal import LocalTerminal, SSHTerminal
 
-from src.core.server.infra.terminal_sessions import get_terminal_store
+from src.core.server.terminal.sessions import get_terminal_store
 from src.foundation.logger import get_logger
 from src.webui.routers.session.terminal.terminal_session import (
     TerminalSession,

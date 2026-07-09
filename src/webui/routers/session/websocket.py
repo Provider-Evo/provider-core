@@ -7,7 +7,7 @@ import time
 
 import aiohttp.web
 
-from src.webui.core.logs_ws import log_broker
+from src.webui.internal.core.logs_ws import log_broker
 
 __all__ = ["logs_ws"]
 

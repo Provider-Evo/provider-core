@@ -17,17 +17,17 @@ from src.core.config import get_config, get_config_manager
 from src.core.dispatch.engine.registry import Registry
 from src.core.utils.observability import get_observability_services
 from src.core.server import AutoUpdater, ensure_port_available
-from src.core.server.lifecycle.app_host import AppHost
-from src.core.server.infra.connector import close_shared_connector, make_connector
-from src.core.server.infra.reload import (
+from src.core.server.lifecycle.app.app_host import AppHost
+from src.core.server.net.connector import close_shared_connector, make_connector
+from src.core.server.reload import (
     HotReloadService,
     bind_worker_shutdown,
     consume_restart_flag,
 )
-from src.core.server.infra.reload.internal.connection_drain import close_live_connections
-from src.core.server.infra.shutdown import request_shutdown
-from src.core.server.infra.event_loop_policy import configure_event_loop_policy
-from src.core.server.infra.win_asyncio import apply_windows_asyncio_patches
+from src.core.server.reload.internal.connection_drain import close_live_connections
+from src.core.server.lifecycle.shutdown import request_shutdown
+from src.core.server.lifecycle.asyncio.event_loop_policy import configure_event_loop_policy
+from src.core.server.lifecycle.asyncio.win_asyncio import apply_windows_asyncio_patches
 from src.foundation.paths import resolve_project_root
 from src.foundation.logger import get_logger, shutdown_logging
 
@@ -346,7 +346,7 @@ async def _run() -> int:
         logger.error("注册表初始化异常��网关继续启动）: %s", exc)
     get_config_manager().bind_runtime(registry, session)
 
-    from src.core.server.infra.reload.internal.runtime_state import set_worker_start_time
+    from src.core.server.reload.internal.runtime_state import set_worker_start_time
 
     set_worker_start_time()
 

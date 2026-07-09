@@ -9,7 +9,7 @@ from typing import Any, Dict
 import aiohttp.web
 
 from src.foundation.paths import config_dir
-from src.webui.services.config_panel_schema import WEBUI_CONFIG_PANEL_SCHEMA
+from src.webui.data.services.config_panel_schema import WEBUI_CONFIG_PANEL_SCHEMA
 
 __all__ = [
     "webui_config_get",

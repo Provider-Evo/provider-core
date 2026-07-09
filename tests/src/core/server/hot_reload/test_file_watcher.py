@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from src.core.server.infra.reload.file_watcher import Change, FileChange, FileWatcher
+from src.core.server.reload.file_watcher import Change, FileChange, FileWatcher
 
 
 async def test_file_watcher_subscribe_and_dispatch() -> None:

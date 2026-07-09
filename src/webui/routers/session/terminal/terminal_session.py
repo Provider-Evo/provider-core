@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Set
 import aiohttp.web
 from echotools.terminal import TerminalCallback
 
-from src.core.server.infra.terminal_sessions import TerminalSessionStore
+from src.core.server.terminal.sessions import TerminalSessionStore
 from src.foundation.logger import get_logger
 from src.webui.routers.session.terminal.terminal_output_bridge import BridgedLocalTerminal, BridgedSSHTerminal
 

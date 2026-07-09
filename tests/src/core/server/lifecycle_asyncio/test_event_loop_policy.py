@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from unittest.mock import patch
 
-from src.core.server.infra import event_loop_policy
+from src.core.server.lifecycle.asyncio import event_loop_policy
 from src.core.server.lifecycle.runner import _describe_exit_code
 
 
@@ -31,7 +31,7 @@ def test_py314_uvloop_requires_min_version(monkeypatch) -> None:
         with patch.object(event_loop_policy.sys, "platform", "linux"):
             with patch.dict(event_loop_policy.sys.modules, {"uvloop": fake_uvloop}):
                 with patch(
-                    "src.core.server.infra.event_loop_policy._uvloop_version",
+                    "src.core.server.lifecycle.asyncio.event_loop_policy._uvloop_version",
                     return_value=(0, 21, 0),
                 ):
                     with patch.object(event_loop_policy.logger, "warning") as warn_log:

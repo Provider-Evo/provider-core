@@ -44,7 +44,7 @@ def reset_progress() -> None:
 
 async def _broadcast(progress_data: Dict[str, Any]) -> None:
     try:
-        from src.webui.core.logs_ws import log_broker
+        from src.webui.internal.core.logs_ws import log_broker
 
         await log_broker.broadcast(
             {"type": "plugin_progress", "progress": progress_data},

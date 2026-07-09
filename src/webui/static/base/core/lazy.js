@@ -20,13 +20,13 @@ var LazyLoader = (function() {
       { type: 'css', url: '/static/vendor/highlightjs/github-dark.min.css' },
       { type: 'js',  url: '/static/vendor/highlightjs/highlight.min.js' },
       { type: 'css', url: '/static/base/core/tabbar/tabbar.css' },
-      { type: 'css', url: '/static/files/files.css?v=20260709-5' },
+      { type: 'css', url: '/static/features/files/files.css?v=20260709-5' },
       { type: 'js',  url: '/static/base/core/tabbar/tabbar.js' },
-      { type: 'js',  url: '/static/files/files.js?v=20260709-5' },
+      { type: 'js',  url: '/static/features/files/files.js?v=20260709-5' },
     ],
     chat: [
       { type: 'css', url: '/static/vendor/highlightjs/github-dark.min.css' },
-      { type: 'css', url: '/static/files/files.css?v=20260709-6' },
+      { type: 'css', url: '/static/features/files/files.css?v=20260709-6' },
       { type: 'css', url: '/static/ui/widgets/input-box.css' },
       { type: 'js',  url: '/static/vendor/highlightjs/highlight.min.js' },
       { type: 'js',  url: '/static/ui/widgets/input-box.js?v=20260709-7' },
@@ -35,8 +35,8 @@ var LazyLoader = (function() {
       { type: 'js',  url: '/static/ui/chat/chat.js?v=20260709-13' },
     ],
     stats: [
-      { type: 'js', url: '/static/stats/stats.js' },
-      { type: 'js', url: '/static/stats/request-inspector.js' },
+      { type: 'js', url: '/static/features/stats/stats.js' },
+      { type: 'js', url: '/static/features/stats/request-inspector.js' },
     ],
     config: [],
     autoupdate: [
@@ -44,8 +44,8 @@ var LazyLoader = (function() {
       { type: 'js',  url: '/static/ui/sortable-list/sortable-list.js' },
     ],
     plugins: [
-      { type: 'css', url: '/static/plugins/plugins.css?v=20260709-3' },
-      { type: 'js', url: '/static/plugins/plugins.js?v=20260709-3' },
+      { type: 'css', url: '/static/features/plugins/plugins.css?v=20260709-3' },
+      { type: 'js', url: '/static/features/plugins/plugins.js?v=20260709-3' },
     ],
   };
 

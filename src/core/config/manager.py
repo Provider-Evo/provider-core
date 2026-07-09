@@ -88,7 +88,7 @@ class ConfigManager:
 
     def attach_file_watcher(self, watcher: object, config_path: Path) -> str:
         """公开方法 attach_file_watcher。"""
-        from src.core.server.infra.reload.file_watcher import FileWatcher
+        from src.core.server.reload.file_watcher import FileWatcher
 
         if not isinstance(watcher, FileWatcher):
             raise TypeError("watcher 必须是 FileWatcher 实例")
@@ -153,7 +153,7 @@ class ConfigManager:
             except Exception as exc:
                 logger.warning("平台配置热重载失败: %s", exc)
         if requires_process_restart(old_raw, new_raw):
-            from src.core.server.infra.reload.restart import request_process_restart
+            from src.core.server.reload.restart import request_process_restart
 
             await request_process_restart(
                 registry=self._registry,

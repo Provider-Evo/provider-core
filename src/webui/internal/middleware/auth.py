@@ -7,7 +7,7 @@ from typing import Awaitable, Callable
 import aiohttp.web
 
 from src.core.config import get_config
-from src.webui.core.auth import COOKIE_NAME
+from src.webui.internal.core.auth import COOKIE_NAME
 
 __all__ = ["auth_middleware"]
 
@@ -62,7 +62,7 @@ Authentication is disabled when ``[auth] enabled = false`` in
     # Check cookie
     cookie_val = request.cookies.get(COOKIE_NAME, "")
     if cookie_val:
-        from src.webui.core.security import token_manager
+        from src.webui.internal.core.security import token_manager
         if token_manager.verify(cookie_val):
             return await handler(request)
 

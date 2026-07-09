@@ -6,7 +6,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_update_progress_and_get() -> None:
-    from src.webui.routers.admin.plugin_progress import (
+    from src.webui.routers.admin.plugins.plugin_progress import (
         get_current_progress,
         plugins_progress,
         reset_progress,

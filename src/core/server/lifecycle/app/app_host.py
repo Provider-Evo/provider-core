@@ -9,8 +9,8 @@ import aiohttp.web
 
 from src.foundation.logger import get_logger
 
-from src.core.server.lifecycle.app import create_app
-from src.core.server.infra.reload.internal.connection_drain import close_live_connections
+from src.core.server.lifecycle.app.app import create_app
+from src.core.server.reload.internal.connection_drain import close_live_connections
 
 __all__ = ["AppHost"]
 
@@ -122,7 +122,7 @@ class AppHost:
         await runner.cleanup()
 
     async def _fallback_process_restart(self, reason: str) -> None:
-        from src.core.server.infra.reload.restart import request_process_restart
+        from src.core.server.reload.restart import request_process_restart
 
         await request_process_restart(
             registry=self._registry,

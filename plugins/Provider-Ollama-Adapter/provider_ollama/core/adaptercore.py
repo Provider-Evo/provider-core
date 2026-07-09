@@ -43,7 +43,7 @@ class OllamaAdapter(PlatformAdapter):
     async def _open_session(self) -> aiohttp.ClientSession:
         if self._session is not None and not self._session.closed:
             return self._session
-        from src.core.server.infra.connector import make_connector
+        from src.core.server.net.connector import make_connector
 
         timeout = aiohttp.ClientTimeout(total=None, connect=20, sock_connect=20, sock_read=None)
         connector = make_connector()

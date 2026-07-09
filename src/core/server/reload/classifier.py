@@ -146,9 +146,8 @@ def _classify_core_path(sub_parts: tuple[str, ...]) -> str:
     """返回 ``process`` | ``application``。"""
     if not sub_parts:
         return "process"
-    if sub_parts[0] == "server" and len(sub_parts) >= 3 and sub_parts[1] == "infra":
-        if sub_parts[2] == "reload":
-            return "process"
+    if sub_parts[0] == "server" and len(sub_parts) >= 2 and sub_parts[1] == "reload":
+        return "process"
     if sub_parts[0] in _CORE_L3_PARTS:
         return "application"
     return "process"

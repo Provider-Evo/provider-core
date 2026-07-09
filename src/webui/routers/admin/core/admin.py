@@ -13,7 +13,7 @@ async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """POST /v1/admin/reload — 优雅重启（清理运行时后 exit 42）。"""
     import asyncio
 
-    from src.core.server.lifecycle.app import REGISTRY_KEY, SESSION_KEY
+    from src.core.server.lifecycle.app.app import REGISTRY_KEY, SESSION_KEY
 
     registry = request.app.get(REGISTRY_KEY)
     session = request.app.get(SESSION_KEY)
@@ -24,7 +24,7 @@ async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
     async def _trigger_restart() -> None:
         await asyncio.sleep(0.5)
-        from src.core.server.infra.reload.restart import request_process_restart
+        from src.core.server.reload.restart import request_process_restart
 
         await request_process_restart(
             registry=registry,

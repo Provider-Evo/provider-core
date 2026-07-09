@@ -7,7 +7,7 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
-from src.webui.routers.admin.config_panel import (
+from src.webui.routers.admin.panels.config_panel import (
     config_get,
     config_put,
     config_reload,
@@ -15,7 +15,7 @@ from src.webui.routers.admin.config_panel import (
     config_raw_get,
     config_raw_put,
 )
-from src.webui.services.config_panel_schema import CONFIG_PANEL_SCHEMA, KNOWN_TOP_LEVEL_SECTIONS
+from src.webui.data.services.config_panel_schema import CONFIG_PANEL_SCHEMA, KNOWN_TOP_LEVEL_SECTIONS
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def config_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> web.Applicati
         '[server]\nversion = "0.0.0-test"\nhost = "127.0.0.1"\nport = 1337\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr("src.webui.routers.admin.config_panel.config_dir", lambda: cfg_dir)
+    monkeypatch.setattr("src.webui.routers.admin.panels.config_panel.config_dir", lambda: cfg_dir)
     app = web.Application()
     app.router.add_get("/v1/config", config_get)
     app.router.add_put("/v1/config", config_put)
@@ -67,7 +67,7 @@ async def test_config_put_writes_and_reloads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     write_mock = AsyncMock(return_value=True)
-    monkeypatch.setattr("src.webui.routers.admin.config_panel.write_config", write_mock)
+    monkeypatch.setattr("src.webui.routers.admin.panels.config_panel.write_config", write_mock)
 
     payload = {"server": {"host": "0.0.0.0", "port": 8080}}
     async with TestClient(TestServer(config_app)) as client:
@@ -81,7 +81,7 @@ async def test_config_put_writes_and_reloads(
 @pytest.mark.asyncio
 async def test_config_reload(config_app: web.Application, monkeypatch: pytest.MonkeyPatch) -> None:
     reload_mock = AsyncMock()
-    monkeypatch.setattr("src.webui.routers.admin.config_panel.reload_config", reload_mock)
+    monkeypatch.setattr("src.webui.routers.admin.panels.config_panel.reload_config", reload_mock)
 
     async with TestClient(TestServer(config_app)) as client:
         resp = await client.post("/v1/config/reload")
@@ -111,7 +111,7 @@ async def test_config_raw_put(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     reload_mock = AsyncMock()
-    monkeypatch.setattr("src.webui.routers.admin.config_panel.reload_config", reload_mock)
+    monkeypatch.setattr("src.webui.routers.admin.panels.config_panel.reload_config", reload_mock)
 
     raw = '[server]\nversion = "0.0.0-test"\nhost = "0.0.0.0"\nport = 8080\n'
     async with TestClient(TestServer(config_app)) as client:

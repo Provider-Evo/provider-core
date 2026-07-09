@@ -8,8 +8,8 @@ from typing import Any, Optional, Set
 
 from src.foundation.logger import get_logger
 
-from src.core.server.infra.reload.classifier import ClassifyResult, classify_paths
-from src.core.server.infra.reload.restart import request_process_restart
+from src.core.server.reload.classifier import ClassifyResult, classify_paths
+from src.core.server.reload.restart import request_process_restart
 
 __all__ = ["ReloadCoordinator"]
 
