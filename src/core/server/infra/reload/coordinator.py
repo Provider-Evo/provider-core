@@ -9,8 +9,7 @@ from typing import Any, Optional, Set
 from src.foundation.logger import get_logger
 
 from src.core.server.infra.reload.classifier import ClassifyResult, classify_paths
-from src.core.server.infra.reload.internal.pre_restart import prepare_graceful_restart
-from src.core.server.infra.reload.restart import request_graceful_restart
+from src.core.server.infra.reload.restart import request_process_restart
 
 __all__ = ["ReloadCoordinator"]
 
@@ -59,7 +58,9 @@ class ReloadCoordinator:
             return
 
         if result.process:
-            await request_graceful_restart(
+            await request_process_restart(
+                registry=self._registry,
+                session=self._session,
                 reason="core 或启动文件变更: {}".format(", ".join(names)),
             )
             return
@@ -108,7 +109,9 @@ class ReloadCoordinator:
 
     async def _reload_application(self, names: list[str]) -> None:
         if self._app_host is None:
-            await request_graceful_restart(
+            await request_process_restart(
+                registry=self._registry,
+                session=self._session,
                 reason="应用路由变更但 AppHost 不可用: {}".format(", ".join(names)),
             )
             return
@@ -116,12 +119,11 @@ class ReloadCoordinator:
             await self._app_host.reload_app()
         except Exception as exc:
             logger.error("应用热重载失败，回退进程重启: %s", exc, exc_info=True)
-            await prepare_graceful_restart(
-                self._registry,
-                self._session,
+            await request_process_restart(
+                registry=self._registry,
+                session=self._session,
                 reason="应用热重载失败",
             )
-            await request_graceful_restart(reason="应用热重载失败")
 
     async def _notify_static_changed(self, names: list[str]) -> None:
         logger.info("前端静态资源变更: %s", names)

@@ -2,11 +2,12 @@
 # 复制此文件到 config/ 目录并重命名为 main_config.toml
 
 [server]
-version = "2.2.281"               # 与 pyproject.toml / 打包脚本一致
+version = "2.2.282"               # 与 pyproject.toml / 打包脚本一致
 host = "0.0.0.0"
 port = 1337
 debug = false
 startup_force_kill_port = true
+fast_restart = true
 max_restarts = 3
 
 [anthropic]

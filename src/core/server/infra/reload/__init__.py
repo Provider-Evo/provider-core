@@ -8,7 +8,9 @@ from src.core.server.infra.reload.file_watcher import FileChange, FileWatcher, F
 from src.core.server.infra.reload.restart import (
     bind_worker_shutdown,
     consume_restart_flag,
+    request_fast_restart,
     request_graceful_restart,
+    request_process_restart,
 )
 from src.core.server.infra.reload.service import HotReloadService
 
@@ -22,5 +24,7 @@ __all__ = [
     "bind_worker_shutdown",
     "classify_paths",
     "consume_restart_flag",
+    "request_fast_restart",
     "request_graceful_restart",
+    "request_process_restart",
 ]

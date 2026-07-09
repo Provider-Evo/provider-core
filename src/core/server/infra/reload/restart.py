@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-"""进程级重启信号 — 优雅关闭后由 Worker 以退出码 42 通知 Runner。"""
+"""进程级重启信号 — 快速重启（MaiBot 对齐）与完整优雅关停。"""
 
 import asyncio
 import os
-from typing import Optional
+from typing import Any, Optional
 
 from src.foundation.logger import get_logger
 
 __all__ = [
     "bind_worker_shutdown",
     "consume_restart_flag",
+    "request_fast_restart",
     "request_graceful_restart",
+    "request_process_restart",
 ]
 
 logger = get_logger(__name__)
@@ -34,15 +36,72 @@ def consume_restart_flag() -> bool:
     return flag
 
 
+def _resolve_fast_restart(fast: Optional[bool]) -> bool:
+    if fast is not None:
+        return fast
+    try:
+        from src.core.config import get_config
+
+        return bool(get_config().server.fast_restart)
+    except Exception:
+        return True
+
+
+async def request_fast_restart(
+    *,
+    reason: str = "",
+    registry: Optional[Any] = None,
+    session: Optional[Any] = None,
+) -> None:
+    """快速进程重启：持久化 → 停插件运行时 → ``os._exit(42)``，跳过完整 ``_shutdown`` 链。"""
+    from src.core.server.infra.reload.internal.pre_restart import (
+        prepare_graceful_restart,
+        stop_runtime_before_restart,
+    )
+
+    if reason:
+        logger.info("请求快速重启: %s", reason)
+    else:
+        logger.info("请求快速重启")
+    await prepare_graceful_restart(registry, session, reason=reason)
+    try:
+        await stop_runtime_before_restart(registry, session)
+    except Exception as exc:
+        logger.warning("快速重启前停止运行时失败，继续 exit 42: %s", exc)
+    logger.info("快速重启退出 (exit 42)")
+    os._exit(42)
+
+
 async def request_graceful_restart(*, reason: str = "") -> None:
-    """请求优雅重启：触发 stop_event，由 ``main`` 在 shutdown 后以退出码 42 退出。"""
+    """完整优雅重启：触发 stop_event，由 Worker ``_shutdown`` 后 exit 42。"""
     global _RESTART_AFTER_SHUTDOWN
     _RESTART_AFTER_SHUTDOWN = True
     if reason:
-        logger.info("请求进程重启: %s", reason)
+        logger.info("请求优雅重启: %s", reason)
     else:
-        logger.info("请求进程重启")
+        logger.info("请求优雅重启")
     if _STOP_EVENT is not None:
         _STOP_EVENT.set()
     else:
         os._exit(42)
+
+
+async def request_process_restart(
+    *,
+    reason: str = "",
+    registry: Optional[Any] = None,
+    session: Optional[Any] = None,
+    fast: Optional[bool] = None,
+) -> None:
+    """按 ``server.fast_restart`` 或 ``fast`` 参数选择快速/优雅进程重启。"""
+    if _resolve_fast_restart(fast):
+        await request_fast_restart(
+            reason=reason,
+            registry=registry,
+            session=session,
+        )
+        return
+    from src.core.server.infra.reload.internal.pre_restart import prepare_graceful_restart
+
+    await prepare_graceful_restart(registry, session, reason=reason)
+    await request_graceful_restart(reason=reason)

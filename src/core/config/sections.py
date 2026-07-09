@@ -33,6 +33,7 @@ class ServerCfg(ConfigBase):
     port: int = 1337
     debug: bool = False
     startup_force_kill_port: bool = True
+    fast_restart: bool = True
 
 
 @dataclass

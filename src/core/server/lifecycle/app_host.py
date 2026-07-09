@@ -122,11 +122,13 @@ class AppHost:
         await runner.cleanup()
 
     async def _fallback_process_restart(self, reason: str) -> None:
-        from src.core.server.infra.reload.internal.pre_restart import prepare_graceful_restart
-        from src.core.server.infra.reload.restart import request_graceful_restart
+        from src.core.server.infra.reload.restart import request_process_restart
 
-        await prepare_graceful_restart(self._registry, self._session, reason=reason)
-        await request_graceful_restart(reason=reason)
+        await request_process_restart(
+            registry=self._registry,
+            session=self._session,
+            reason=reason,
+        )
 
     def abandon_runner(self) -> None:
         """超时或强制退出时丢弃 Runner 引用，避免关停协程被取消后仍持有站点。"""

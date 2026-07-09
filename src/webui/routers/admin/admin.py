@@ -24,11 +24,13 @@ async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
     async def _trigger_restart() -> None:
         await asyncio.sleep(0.5)
-        from src.core.server.infra.reload.internal.pre_restart import prepare_graceful_restart
-        from src.core.server.infra.reload.restart import request_graceful_restart
+        from src.core.server.infra.reload.restart import request_process_restart
 
-        await prepare_graceful_restart(registry, session, reason="admin reload")
-        await request_graceful_restart(reason="admin reload")
+        await request_process_restart(
+            registry=registry,
+            session=session,
+            reason="admin reload",
+        )
 
     asyncio.ensure_future(_trigger_restart())
     return response
