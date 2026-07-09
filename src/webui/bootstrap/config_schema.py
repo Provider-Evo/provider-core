@@ -18,6 +18,7 @@ class PortableWebUISettings:
     theme: str = "auto"
     refresh_interval: int = 0
     timeout_ms: int = 6000
+    stream_idle_timeout_ms: int = 60000
     compact: str = "0"
 
     def to_dict(self) -> Dict[str, Any]:

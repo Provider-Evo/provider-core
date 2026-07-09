@@ -23,6 +23,18 @@ function _chatCopyToClipboard(text) {
   return success ? Promise.resolve() : Promise.reject(new Error('Copy failed'));
 }
 
+function _getStreamIdleTimeoutMs() {
+  if (typeof getStreamIdleTimeoutMs === 'function') {
+    return getStreamIdleTimeoutMs();
+  }
+  return 60000;
+}
+
+function _streamTimeoutMessage() {
+  var seconds = Math.round(_getStreamIdleTimeoutMs() / 1000);
+  return t('chat.streamTimeout', { seconds: seconds });
+}
+
 // ========================= Simple Streaming Renderer =========================
 function renderStreamingContent(text) {
   var codeBlocks = [];
@@ -1637,18 +1649,19 @@ async function sendChatMessage(text, files, options) {
       return;
     }
 
-    // 设置流式读取超时（60 秒无数据）
+    // 设置流式读取超时（无数据时中止）
+    var streamIdleMs = _getStreamIdleTimeoutMs();
     streamTimeoutId = setTimeout(function() {
       _chatAbortReason = 'timeout';
       abortController.abort();
-    }, 60000);
+    }, streamIdleMs);
 
     function resetStreamTimeout() {
       clearTimeout(streamTimeoutId);
       streamTimeoutId = setTimeout(function() {
         _chatAbortReason = 'timeout';
         abortController.abort();
-      }, 60000);
+      }, streamIdleMs);
     }
 
     // Parse SSE stream
@@ -1745,7 +1758,7 @@ async function sendChatMessage(text, files, options) {
   } catch (error) {
     _cancelActiveStreaming();
     if (error.name === 'AbortError') {
-      _appendErrorAssistantMessage(_chatAbortReason === 'timeout' ? t('chat.streamTimeout') : t('chat.requestCancelled'));
+      _appendErrorAssistantMessage(_chatAbortReason === 'timeout' ? _streamTimeoutMessage() : t('chat.requestCancelled'));
     } else {
       _appendErrorAssistantMessage(t('chat.error', { error: String(error) }));
     }
@@ -1851,7 +1864,7 @@ async function runChatTests() {
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(60000)
+        signal: AbortSignal.timeout(_getStreamIdleTimeoutMs())
       });
 
       if (!response.ok) {

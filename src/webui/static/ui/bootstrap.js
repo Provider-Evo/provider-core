@@ -33,6 +33,19 @@ document.getElementById('timeoutInput').addEventListener('change', function(even
   state.settings.timeoutMs = Number(event.target.value || defaultSettings.timeoutMs);
   saveSettings();
 });
+var streamIdleTimeoutInput = document.getElementById('streamIdleTimeoutInput');
+if (streamIdleTimeoutInput) {
+  streamIdleTimeoutInput.value = String(typeof getStreamIdleTimeoutMs === 'function' ? getStreamIdleTimeoutMs() : 60000);
+  streamIdleTimeoutInput.addEventListener('change', function(event) {
+    var value = Number(event.target.value);
+    if (!Number.isFinite(value) || value < 5000) {
+      value = defaultSettings.streamIdleTimeoutMs;
+      event.target.value = String(value);
+    }
+    state.settings.streamIdleTimeoutMs = value;
+    saveSettings();
+  });
+}
 document.getElementById('compactSelect').addEventListener('change', function(event) {
   state.settings.compact = event.target.value;
   saveSettings();
