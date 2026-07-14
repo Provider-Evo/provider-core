@@ -78,3 +78,5 @@ template/old/
 
 logs/
 .htaccess
+
+plugins/
