@@ -11,8 +11,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate, make_id
-from src.core.errors import PlatformError
+from src.core.dispatch.cand import Candidate, make_id
+from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
 from .constants import (
     BASE_URL,
@@ -27,17 +27,13 @@ from .constants import (
     PROXY_REFRESH_INTERVAL,
     PROXY_SCORE_PERSIST_PATH,
 )
-from .headers import build_headers
-from .payloads import build_payload
+from .utils import build_headers, build_payload, parse_sse_line
 from .proxypool import ProxyInfo, ProxyPool, fetch_all_proxies
 from .proxyscore import DIRECT, ProxyPoolSelector
-from .sse import parse_sse_line
 
-# accounts.py 在 .gitignore 中；运行时导入，导入失败则使用空列表
-try:
-    from provider_zen.accounts import LOCAL_PROXIES
-except ImportError:
-    LOCAL_PROXIES: list = []
+from ..support.config_seed import load_local_proxies
+
+LOCAL_PROXIES: list = load_local_proxies()
 
 logger = get_logger(__name__)
 
@@ -430,7 +426,7 @@ class OpencodeClient:
                     last_exc = e
                     if new_addr:
                         failed_proxies.add(new_addr)
-                    logger.debug(
+                    logger.warning(
                         "opencode retry %d/%d (proxy=%s failed): %s",
                         attempt, MAX_RETRIES, new_addr or "direct", e,
                     )
@@ -450,7 +446,7 @@ class OpencodeClient:
                     last_exc = e
                     if new_addr:
                         failed_proxies.add(new_addr)
-                    logger.debug(
+                    logger.warning(
                         "opencode retry %d/%d (proxy=%s, unexpected error): %s",
                         attempt, MAX_RETRIES, new_addr or "direct", e,
                     )
@@ -661,7 +657,7 @@ class OpencodeClient:
                             _should_record_failure = False
                         raise
                     except Exception as e:
-                        logger.debug(
+                        logger.warning(
                             "Stream processing error with proxy %s: %s",
                             proxy_addr, e,
                         )
@@ -678,7 +674,7 @@ class OpencodeClient:
                         yield {"tool_calls": tool_calls}
 
         except aiohttp.ClientError as e:
-            logger.debug(
+            logger.warning(
                 "Network error with proxy %s: %s (%s)",
                 proxy_addr, type(e).__name__, e,
             )
@@ -689,7 +685,7 @@ class OpencodeClient:
             ) from e
             
         except asyncio.TimeoutError as e:
-            logger.debug(
+            logger.warning(
                 "Timeout with proxy %s after %.1fs: %s",
                 proxy_addr, time.time() - t0, e,
             )
@@ -710,7 +706,7 @@ class OpencodeClient:
             raise
             
         except Exception as e:
-            logger.debug(
+            logger.warning(
                 "Unexpected error with proxy %s: %s (%s)",
                 proxy_addr, type(e).__name__, e,
             )
@@ -772,7 +768,7 @@ class OpencodeClient:
                     return all_models
                 return []
         except Exception as e:
-            logger.debug("opencode fetch models exception: %s", e)
+            logger.warning("opencode fetch models exception: %s", e)
             return []
 
     # ------------------------------------------------------------------

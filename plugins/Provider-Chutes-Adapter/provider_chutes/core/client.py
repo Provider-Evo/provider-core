@@ -8,9 +8,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate, make_id
+from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.logger import get_logger
-from ..accounts import API_KEYS
 
 from .constants import BASE_URL, CHAT_PATH, CAPS
 from .headers import build_headers
@@ -20,6 +19,8 @@ from .sse import parse_sse_line
 logger = get_logger(__name__)
 
 MAX_RETRIES: int = 3
+
+
 # 连续失败阈值，超过后进入冷却
 _FAILURE_THRESHOLD: int = 3
 # Key 失效冷却时间（秒）
@@ -126,8 +127,10 @@ class ChutesClient:
             session: 共享的 aiohttp 会话。
         """
         self._session = session
+        from ..accounts import API_KEYS
+
         self._key_states = [
-            _KeyState(k) for k in API_KEYS if k and k.strip()
+            _KeyState(k) for k in API_KEYS if isinstance(k, str) and k.strip()
         ]
         self._rebuild_candidates()
         logger.info(

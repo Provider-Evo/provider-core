@@ -1,6 +1,13 @@
-from __future__ import annotations
+"""restart 模块 — 项目标准模块。
 
-"""进程级重启信号 — 快速重启（MaiBot 对齐）与完整优雅关停。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 restart 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 import asyncio
 import os
@@ -40,7 +47,7 @@ def _resolve_fast_restart(fast: Optional[bool]) -> bool:
     if fast is not None:
         return fast
     try:
-        from src.core.config import get_config
+        from src.foundation.config import get_config
 
         return bool(get_config().server.fast_restart)
     except Exception:

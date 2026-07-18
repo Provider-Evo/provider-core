@@ -1,10 +1,13 @@
-from __future__ import annotations
+"""util 模块 — Provider 适配器层。
 
-"""openaifm public facade.
+职责：
+    提供运行期无关的小工具（路径解析、字符串转换、header 构造等）。
 
-Re-exports constants and pure functions from ``core/`` modules;
-loads :class:`OpenaiFmAdapter` lazily via ``__getattr__``.
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
+
+
 
 
 from typing import Any

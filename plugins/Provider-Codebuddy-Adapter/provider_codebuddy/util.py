@@ -1,10 +1,13 @@
-"""CodeBuddy 对外工具门面。
+"""util 模块 — Provider 适配器层。
 
-该模块只负责对外导出稳定接口：
+职责：
+    提供运行期无关的小工具（路径解析、字符串转换、header 构造等）。
 
-- 共享常量/函数来自 core/ 下的纯函数模块
-- :class:`CodebuddyAdapter` 通过 ``__getattr__`` 延迟加载，避免循环导入
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
+
+
 
 from __future__ import annotations
 

@@ -227,9 +227,9 @@ class _RawWebSocket:
             try:
                 self._send_frame(0x8, b"")
             except Exception as exc:
-                _logger.debug("发送 WebSocket 关闭帧失败: %s", exc)
+                _logger.warning("发送 WebSocket 关闭帧失败: %s", exc)
             self._closed = True
         try:
             self._sock.close()
         except Exception as exc:
-            _logger.debug("关闭 WebSocket 连接失败: %s", exc)
+            _logger.warning("关闭 WebSocket 连接失败: %s", exc)

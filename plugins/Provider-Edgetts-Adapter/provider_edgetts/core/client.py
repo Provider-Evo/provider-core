@@ -20,14 +20,16 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
 import certifi
 
-from src.core.dispatch.candidate import Candidate, make_id
-from src.core.errors import NotSupportedError
+from dataclasses import dataclass, field
+
+from src.core.dispatch.cand import Candidate, make_id
+from src.core.utils.errors import NotSupportedError
 from src.foundation.logger import get_logger
-from ..accounts import ACCOUNTS
 from .constants import (
     CAPS,
     DEFAULT_VOICE,
     MAX_RETRIES,
+    MODELS,
     SEC_MS_GEC_VERSION,
     TRUSTED_CLIENT_TOKEN,
     WSS_HOST,
@@ -236,12 +238,12 @@ class _RawWebSocket:
             try:
                 self._send_frame(0x8, b"")
             except Exception as exc:
-                logger.debug("edgetts 发送关闭帧失败: %s", exc)
+                logger.warning("edgetts 发送关闭帧失败: %s", exc)
             self._closed = True
         try:
             self._sock.close()
         except Exception as exc:
-            logger.debug("edgetts 关闭 socket 失败: %s", exc)
+            logger.warning("edgetts 关闭 socket 失败: %s", exc)
 
 
 def _drm_generate_sec_ms_gec() -> str:
@@ -322,6 +324,36 @@ def _parse_tts_binary_frame(data: bytes) -> Tuple[Dict[bytes, bytes], bytes]:
     return headers, data[2 + header_length:]
 
 
+@dataclass(frozen=True)
+class Account:
+    """Edge TTS 账号数据类（Edge TTS 免费服务，无需真实凭证）。"""
+
+    key: str = ""
+    models: List[str] = field(default_factory=lambda: list(MODELS))
+    caps: Dict[str, bool] = field(default_factory=lambda: dict(CAPS))
+    is_login: bool = True
+    context_length: int = 131072
+
+
+def _load_accounts() -> List[Account]:
+    """从插件自身 config.toml 读取账号配置并返回列表（Edge TTS 为免费服务，无需真实凭证）。"""
+    from pathlib import Path
+    from src.foundation.config.reader import get_config_reader
+
+    plugin_dir = Path(__file__).resolve().parents[2]
+    reader = get_config_reader()
+    config, _schema, _raw = reader.get_plugin_config(plugin_dir)
+    raw_accounts = config.get("accounts", [])
+    if not isinstance(raw_accounts, list) or not raw_accounts:
+        return [Account()]
+    accounts: List[Account] = []
+    for item in raw_accounts:
+        if not isinstance(item, dict):
+            continue
+        accounts.append(Account(key=str(item.get("key", ""))))
+    return accounts or [Account()]
+
+
 class Client:
     """Edge TTS 客户端协调器。"""
 
@@ -337,6 +369,7 @@ class Client:
             session: 共享的 aiohttp ClientSession。
         """
         self._session = session
+        self._accounts = _load_accounts()
         self._rebuild_candidates()
         logger.debug("edgetts 初始化完成")
 
@@ -354,7 +387,7 @@ class Client:
                 meta={"api_key": acc.key},
                 **acc.caps,
             )
-            for acc in ACCOUNTS
+            for acc in self._accounts
         ]
 
     def get_candidates(self) -> List[Candidate]:

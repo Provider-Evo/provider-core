@@ -1,0 +1,4 @@
+[tts_default]
+display_name = "TTS デフォルトガイド"
+advanced = false
+description = "WebUI TTS 設定の「デフォルトに戻す」で使用するシステムガイド Prompt。"

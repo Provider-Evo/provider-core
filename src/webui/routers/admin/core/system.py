@@ -1,20 +1,38 @@
-from __future__ import annotations
+"""system 模块 — WebUI 层。
 
-"""系统状态与重启 API。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 system 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 import time
 from datetime import datetime
 
 import aiohttp.web
 
-from src.core.config import get_config, get_config_manager
-from src.core.server.reload.internal.runtime_state import get_worker_start_time
+from src.foundation.config import get_config, get_config_manager
+from src.core.server.reload.internal.runtime_state import get_hot_reload_service, get_worker_start_time
 
 __all__ = ["system_status"]
 
 
+def _hot_reload_health() -> dict:
+    """返回热重载文件监视器的健康状态（服务未启动时返回 unavailable）。"""
+    service = get_hot_reload_service()
+    if service is None:
+        return {"status": "unavailable"}
+    watcher = service.watcher
+    if watcher is None:
+        return {"status": "unavailable"}
+    return watcher.get_health_status()
+
+
 async def system_status(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """GET /v1/webui/system/status — 运行状态、uptime、版本。"""
+    """GET /v1/webui/system/status — 运行状态、uptime、版本、热重载健康状态。"""
     cfg = get_config()
     start_time = get_worker_start_time()
     uptime = time.time() - start_time
@@ -26,5 +44,6 @@ async def system_status(request: aiohttp.web.Request) -> aiohttp.web.Response:
             "version": cfg.server.version,
             "start_time": datetime.fromtimestamp(start_time).isoformat(),
             "reload_revision": mgr.reload_revision,
+            "hot_reload": _hot_reload_health(),
         },
     )

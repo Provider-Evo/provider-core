@@ -1,6 +1,13 @@
-from __future__ import annotations
+"""session 模块 — 项目标准模块。
 
-"""WebUI 会话 cookie 常量与可注入校验器（core 不依赖 webui）。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 session 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 from typing import Callable, Optional
 

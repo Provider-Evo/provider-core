@@ -8,16 +8,16 @@ from __future__ import annotations
 
 import asyncio
 import time
+from dataclasses import dataclass
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
 from echotools.translate import extract_text_from_messages, split_text_chunks
 
-from src.core.dispatch.candidate import Candidate, make_id
-from src.core.errors import PlatformError
+from src.core.dispatch.cand import Candidate, make_id
+from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
-from ..accounts import ACCOUNTS, Account
 from .constants import (
     API_VERSION,
     BASE_URL,
@@ -32,6 +32,13 @@ from .constants import (
 
 logger = get_logger(__name__)
 MAX_RETRIES: int = 3
+
+
+@dataclass(frozen=True)
+class Account:
+    """Azure Translator 账号。"""
+    api_key: str
+    region: str = "global"
 
 
 class _AccountState:
@@ -128,8 +135,10 @@ class AzureTranslateClient:
             session: 共享 aiohttp 会话。
         """
         self._session = session
+        from ..accounts import ACCOUNTS
+        accounts = [Account(**a) if isinstance(a, dict) else a for a in ACCOUNTS]
         self._accounts = [
-            _AccountState(a) for a in ACCOUNTS
+            _AccountState(a) for a in accounts
             if a.api_key and a.api_key.strip()
         ]
         logger.debug(

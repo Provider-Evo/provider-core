@@ -1,23 +1,13 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-from __future__ import annotations
+"""main 模块 — 项目标准模块。
 
-"""Provider-V2 主入口——Runner-Worker 双进程架构。
+职责：
+    作为 Provider-Evo 项目标准模块，提供 main 能力。
 
-Runner 进程：
-  - 守护 Worker 子进程
-  - 监控退出码，处理自动重启（码 42）
-  - 传递 Ctrl+C 给 Worker，Runner 本身不重启
-
-Worker 进程：
-  - asyncio 事件循环
-  - 初始化全部子系统
-  - 永久运行直到收到退出信号或触发重启
-
-IDLE 环境：
-  - 检测到 IDLE 时直接以单进程 Worker 模式运行
-  - 文件监视器只提示，不触发重启
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
+
+
 
 import os
 import sys
@@ -34,7 +24,10 @@ _ROOT = _resolve_project_root()
 import src.core.server  # noqa: F401 — 触发 proxy monkey-patch
 
 from src.core.server.lifecycle.runner import run_runner
-from src.core.server.lifecycle.worker import is_idle, run_worker
+from src.core.server.lifecycle.worker.worker import is_idle, run_worker
+from src.foundation.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def main() -> None:
@@ -50,7 +43,7 @@ def main() -> None:
     if is_worker:
         run_worker()
     elif is_idle():
-        print("IDLE 环境：直接以 Worker 模式运行（单进程）。", flush=True)
+        logger.info("IDLE 环境：直接以 Worker 模式运行（单进程）")
         os.environ["NO_COLOR"] = "1"
         os.environ.pop("CLICOLOR_FORCE", None)
         run_worker()

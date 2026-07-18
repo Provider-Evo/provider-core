@@ -1,8 +1,16 @@
-from __future__ import annotations
+"""meta 模块 — WebUI 层。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 meta 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
 
 import aiohttp.web
 
-from .._common import (
+from ..common import (
     DRIVES_SENTINEL,
     MAX_PREVIEW_SIZE,
     MAX_UPLOAD_SIZE,

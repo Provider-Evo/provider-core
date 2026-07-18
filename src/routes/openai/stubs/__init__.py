@@ -2,22 +2,55 @@ from __future__ import annotations
 
 """OpenAI Stub 路由包。"""
 
+from src.routes.openai.stubs.assist import (
+    create_assistant,
+    delete_assistant,
+    list_assistants,
+    modify_assistant,
+    retrieve_assistant,
+)
 from src.routes.openai.stubs.files import (
     add_upload_part,
     cancel_upload,
     complete_upload,
     create_upload,
+    create_vector_store,
+    create_vector_store_file,
     delete_file,
+    delete_vector_store,
     list_files,
+    list_vector_store_files,
+    list_vector_stores,
     retrieve_file,
     retrieve_file_content,
+    retrieve_vector_store,
     upload_file,
 )
-from src.routes.openai.stubs.jobs import create_fine_tuning_job, list_fine_tuning_jobs, retrieve_fine_tuning_job, cancel_fine_tuning_job, list_fine_tuning_events, create_batch, list_batches, retrieve_batch, cancel_batch
-from src.routes.openai.stubs.assistants import create_assistant, list_assistants, retrieve_assistant, modify_assistant, delete_assistant
-from src.routes.openai.stubs.threads import create_thread, retrieve_thread, modify_thread, delete_thread, create_thread_message, list_thread_messages
-from src.routes.openai.stubs.runs import create_run, list_runs, retrieve_run, cancel_run, submit_tool_outputs
-from src.routes.openai.stubs.stores import create_vector_store, list_vector_stores, retrieve_vector_store, delete_vector_store, create_vector_store_file, list_vector_store_files
+from src.routes.openai.stubs.runs import (
+    cancel_batch,
+    cancel_fine_tuning_job,
+    cancel_run,
+    create_batch,
+    create_fine_tuning_job,
+    create_run,
+    list_batches,
+    list_fine_tuning_events,
+    list_fine_tuning_jobs,
+    list_runs,
+    retrieve_batch,
+    retrieve_fine_tuning_job,
+    retrieve_run,
+    submit_tool_outputs,
+)
+from src.routes.openai.stubs.threads import (
+    create_thread,
+    create_thread_message,
+    delete_thread,
+    list_thread_messages,
+    modify_thread,
+    retrieve_thread,
+)
+
 __all__ = [
     "upload_file",
     "list_files",

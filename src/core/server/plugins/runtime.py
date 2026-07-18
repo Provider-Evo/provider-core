@@ -1,22 +1,23 @@
 """Provider-Evo 统一插件运行时（容错式加载）。"""
 from __future__ import annotations
 
+import time
+from collections import deque
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Deque, Dict, List, Optional, Tuple
 
 from src.foundation.logger import get_logger
 from src.foundation.paths import project_root
-from src.core.server.plugins.hook_registry import get_hook_registry
-from src.core.server.plugins.plugin_catalog import (
-    find_plugin_dir_by_id,
-    is_plugin_enabled,
-)
+from src.core.server.plugins.hook_reg import get_hook_registry
+from src.core.server.plugins.plugin_lifecycle import PluginLifecycle
 
 __all__ = ["PluginRuntime", "get_plugin_runtime"]
 
 logger = get_logger(__name__)
 
 _runtime: Optional["PluginRuntime"] = None
+
+_FAILURE_RING_MAX = 50
 
 
 class PluginRuntime:
@@ -26,15 +27,17 @@ class PluginRuntime:
     - 单插件加载失败仅记录，不阻断同类型其他插件
     - 单类型全部失败不阻断其他类型插件
     - 全部插件失败也不 raise，网关仍可启动
-    - 启动结束输出汇��日志：loaded / failed / inactive
+    - 启动结束输出汇总日志：loaded / failed / inactive
     """
 
     def __init__(self) -> None:
         self._loaders: Dict[str, Any] = {}
         self._records: Dict[str, Any] = {}
         self._failed: Dict[str, str] = {}
+        self._failure_ring: Deque[Tuple[str, str, float]] = deque(maxlen=_FAILURE_RING_MAX)
         self._inactive_count = 0
         self._plugins_root = project_root / "plugins"
+        self._lifecycle = PluginLifecycle(self)
 
     @property
     def failed_plugins(self) -> Dict[str, str]:
@@ -47,13 +50,32 @@ class PluginRuntime:
     def loaded(self) -> Dict[str, Any]:
         return dict(self._records)
 
+    def _record_failure(self, plugin_id: str, reason: str) -> None:
+        self._failed[plugin_id] = reason
+        self._failure_ring.append((plugin_id, reason, time.time()))
+
+    def get_recent_failures(self) -> List[Dict[str, Any]]:
+        """返回最近 N 条插件失败记录（环形缓冲）。"""
+        return [
+            {"plugin_id": pid, "reason": reason, "ts": ts}
+            for pid, reason, ts in self._failure_ring
+        ]
+
     def _host_version(self) -> str:
         try:
-            from src.core.config import get_config
+            from src.foundation.config import get_config
 
             return str(get_config().server.version or "")
         except Exception:
             return ""
+
+    def _primary_loader(self) -> Any | None:
+        loader = self._loaders.get("")
+        if loader is not None:
+            return loader
+        for candidate in self._loaders.values():
+            return candidate
+        return None
 
     def _count_inactive_manifests(self) -> int:
         if not self._plugins_root.is_dir():
@@ -77,7 +99,7 @@ class PluginRuntime:
             from provider_sdk.runtime.loader import PluginLoader
         except ImportError:
             logger.error("provider-sdk 未安装，无法加载插件")
-            self._failed["provider-sdk"] = "provider-sdk 未安装，无法加载插件"
+            self._record_failure("provider-sdk", "provider-sdk 未安装，无法加载插件")
             return
 
         host_ver = self._host_version()
@@ -85,31 +107,29 @@ class PluginRuntime:
         failed_count = 0
         self._inactive_count = self._count_inactive_manifests()
 
-        for ptype in ("fncall", "platform", "webui", "coplan", "general"):
-            try:
-                loader = PluginLoader(host_version=host_ver, plugin_type_filter=ptype)
-                loaded = await loader.discover_and_load(self._plugins_root, session)
-                self._loaders[ptype] = loader
-                for rec in loaded:
-                    self._records[rec.manifest.id] = rec
-                    loaded_count += 1
-                    logger.info(
-                        "插件已加载 [%s] %s v%s",
-                        ptype,
-                        rec.manifest.id,
-                        rec.manifest.version,
-                    )
-                # 记录该类型的失败插件
-                for pid, reason in loader.failed_plugins.items():
-                    self._failed[pid] = reason
-                    failed_count += 1
-                    logger.error("插件加载失败 [%s]: %s", pid, reason)
-            except Exception as exc:
-                # 单类型加载异常不阻断其他类型
-                logger.error("插件类型 [%s] 加载异常: %s", ptype, exc)
+        try:
+            loader = PluginLoader(host_version=host_ver, plugin_type_filter="")
+            loaded = await loader.discover_and_load(self._plugins_root, session)
+            self._loaders[""] = loader
+            for rec in loaded:
+                ptype = str(rec.manifest.plugin_type or "general")
+                self._loaders.setdefault(ptype, loader)
+                self._records[rec.manifest.id] = rec
+                loaded_count += 1
+                logger.info(
+                    "插件已加载 [%s] %s v%s",
+                    ptype,
+                    rec.manifest.id,
+                    rec.manifest.version,
+                )
+            for pid, reason in loader.failed_plugins.items():
+                self._record_failure(pid, reason)
                 failed_count += 1
+                logger.error("插件加载失败 [%s]: %s", pid, reason)
+        except Exception as exc:
+            logger.error("插件加载异常: %s", exc)
+            failed_count += 1
 
-        # 启动汇总日志
         logger.info(
             "插件初始化完成: loaded=%d failed=%d inactive=%d",
             loaded_count,
@@ -117,6 +137,36 @@ class PluginRuntime:
             self._inactive_count,
         )
         self._rebuild_hooks()
+        self._inject_plugin_configs()
+
+    def _inject_plugin_configs(self) -> None:
+        """自动注入插件配置：读取 config.toml → set_plugin_config()。
+
+        对每个已声明 ``config_model`` 的插件，自动从插件目录读取
+        config.toml 并调用 SDK 的 ``set_plugin_config()`` 注入配置。
+        插件可在 ``on_load()`` 中通过 ``self.config`` 访问注入后的配置。
+        """
+        from src.foundation.config.reader import get_config_reader
+
+        reader = get_config_reader()
+        for pid, rec in self._records.items():
+            plugin = rec.plugin
+            has_model = getattr(type(plugin), "has_config_model", lambda: False)()
+            if not has_model:
+                continue
+            plugin_dir = getattr(rec, "plugin_dir", None)
+            if plugin_dir is None:
+                continue
+            from pathlib import Path as _P
+            pdir = _P(plugin_dir)
+            config, _schema, _raw = reader.get_plugin_config(pdir)
+            if not config:
+                continue
+            try:
+                plugin.set_plugin_config(config)
+                logger.debug("已注入插件配置: %s", pid)
+            except Exception as exc:
+                logger.warning("插件配置注入失败 [%s]: %s", pid, exc)
 
     def _rebuild_hooks(self) -> None:
         try:
@@ -125,182 +175,27 @@ class PluginRuntime:
             logger.warning("Hook 注册表重建失败: %s", exc)
 
     async def unload_plugin(self, plugin_id: str) -> bool:
-        """卸载插件（on_unload + 模块清理），不重新加载。"""
-        found = self._find_plugin_record(plugin_id)
-        if found is None:
-            return False
-        loader, record, _ptype = found
-
-        if record.adapter is not None:
-            try:
-                await record.adapter.close()
-            except Exception as exc:
-                logger.warning("关闭旧适配器 [%s] 失败: %s", plugin_id, exc)
-
-        try:
-            await record.plugin.on_unload()
-        except Exception as exc:
-            logger.warning("插件 on_unload 失败 [%s]: %s", plugin_id, exc)
-
-        try:
-            loader.purge_plugin_modules(plugin_id, record.plugin_dir)
-        except Exception as exc:
-            logger.warning("清理插件模块缓存失败 [%s]: %s", plugin_id, exc)
-
-        loader.loaded_plugins.pop(plugin_id, None)
-        self._records.pop(plugin_id, None)
-        self._failed.pop(plugin_id, None)
-        logger.info("插件已卸载: %s", plugin_id)
-        self._rebuild_hooks()
-        return True
+        return await self._lifecycle.unload_plugin(plugin_id)
 
     async def load_plugin(self, plugin_dir: Path, session: Any) -> bool:
-        """从目录加载单个启用中的插件。"""
-        if not is_plugin_enabled(plugin_dir):
-            return False
-        try:
-            from provider_sdk.runtime.loader import PluginLoader
-            from provider_sdk.types.manifest import load_manifest_file
-        except ImportError:
-            return False
-
-        manifest_path = plugin_dir / "_manifest.json"
-        try:
-            manifest = load_manifest_file(manifest_path)
-        except Exception as exc:
-            self._failed[str(plugin_dir.name)] = str(exc)
-            return False
-
-        plugin_id = manifest.id
-        if plugin_id in self._records:
-            return True
-
-        ptype = str(manifest.plugin_type or "general")
-        loader = self._loaders.get(ptype)
-        if loader is None:
-            loader = PluginLoader(
-                host_version=self._host_version(),
-                plugin_type_filter=ptype,
-            )
-            self._loaders[ptype] = loader
-
-        try:
-            new_record = await loader._load_one(  # noqa: SLF001
-                plugin_dir,
-                manifest,
-                session,
-            )
-        except Exception as exc:
-            self._failed[plugin_id] = str(exc)
-            logger.error("插件加载失败 [%s]: %s", plugin_id, exc)
-            return False
-
-        loader.loaded_plugins[plugin_id] = new_record
-        self._records[plugin_id] = new_record
-        self._failed.pop(plugin_id, None)
-        logger.info("插件已加载: %s", plugin_id)
-        self._rebuild_hooks()
-        return True
+        return await self._lifecycle.load_plugin(plugin_dir, session)
 
     async def sync_plugin_manifest(self, plugin_id: str, session: Any) -> str:
-        """根据磁盘 manifest 状态同步插件：load / unload / reload。"""
-        plugin_dir = find_plugin_dir_by_id(plugin_id)
-        if plugin_dir is None:
-            return "missing"
-
-        enabled = is_plugin_enabled(plugin_dir)
-        loaded = plugin_id in self._records
-
-        if enabled and not loaded:
-            return "loaded" if await self.load_plugin(plugin_dir, session) else "failed"
-        if not enabled and loaded:
-            return "unloaded" if await self.unload_plugin(plugin_id) else "failed"
-        if enabled and loaded:
-            return "reloaded" if await self.reload_plugin(plugin_id, session) else "failed"
-        return "unchanged"
-
-    def _find_platform_record(
-        self, platform_name: str
-    ) -> Optional[Tuple[Any, Any, str]]:
-        loader = self._loaders.get("platform")
-        if loader is None:
-            return None
-        for plugin_id, record in loader.loaded_plugins.items():
-            adapter = record.adapter
-            if adapter is not None and getattr(adapter, "name", "") == platform_name:
-                return loader, record, plugin_id
-        return None
-
-    def _find_plugin_record(
-        self, plugin_id: str
-    ) -> Optional[Tuple[Any, Any, str]]:
-        for ptype, loader in self._loaders.items():
-            record = loader.loaded_plugins.get(plugin_id)
-            if record is not None:
-                return loader, record, ptype
-        return None
+        return await self._lifecycle.sync_plugin_manifest(plugin_id, session)
 
     async def reload_plugin(self, plugin_id: str, session: Any) -> bool:
-        """热重载单个插件（on_unload → 清模块缓存 → on_load）。"""
-        found = self._find_plugin_record(plugin_id)
-        if found is None:
-            return False
-        loader, record, _ptype = found
-
-        if record.adapter is not None:
-            try:
-                await record.adapter.close()
-            except Exception as exc:
-                logger.warning("关闭旧适配器 [%s] 失败: %s", plugin_id, exc)
-
-        try:
-            await record.plugin.on_unload()
-        except Exception as exc:
-            logger.warning("插件 on_unload 失败 [%s]: %s", plugin_id, exc)
-
-        try:
-            loader.purge_plugin_modules(plugin_id, record.plugin_dir)
-        except Exception as exc:
-            logger.warning("清理插件模块缓存失败 [%s]: %s", plugin_id, exc)
-
-        loader.loaded_plugins.pop(plugin_id, None)
-        self._records.pop(plugin_id, None)
-
-        try:
-            new_record = await loader._load_one(  # noqa: SLF001
-                record.plugin_dir,
-                record.manifest,
-                session,
-            )
-        except Exception as exc:
-            self._failed[plugin_id] = str(exc)
-            logger.error("插件热重载失败 [%s]: %s", plugin_id, exc)
-            return False
-
-        loader.loaded_plugins[plugin_id] = new_record
-        self._records[plugin_id] = new_record
-        self._failed.pop(plugin_id, None)
-        logger.info("插件已热重载: %s", plugin_id)
-        self._rebuild_hooks()
-        return True
+        return await self._lifecycle.reload_plugin(plugin_id, session)
 
     async def reload_platform(self, platform_name: str, session: Any) -> Optional[Any]:
-        """热重载单个平台插件适配器。"""
-        found = self._find_platform_record(platform_name)
-        if found is None:
-            return None
-        _loader, _record, plugin_id = found
-        ok = await self.reload_plugin(plugin_id, session)
-        if not ok:
-            return None
-        new_record = self._records.get(plugin_id)
-        if new_record is None:
-            return None
-        logger.info("平台插件已热重载: %s", platform_name)
-        return new_record.adapter
+        return await self._lifecycle.reload_platform(platform_name, session)
 
     async def close(self) -> None:
+        seen: set[int] = set()
         for loader in self._loaders.values():
+            loader_id = id(loader)
+            if loader_id in seen:
+                continue
+            seen.add(loader_id)
             try:
                 await loader.unload_all()
             except Exception as exc:
@@ -352,23 +247,35 @@ class PluginRuntime:
         for pid in self.failed_plugins:
             if pid not in statuses:
                 statuses[pid] = "open"
-        if self._plugins_root.is_dir():
-            for child in self._plugins_root.iterdir():
-                if not child.is_dir():
-                    continue
-                manifest = child / "_manifest.json"
-                disabled = child / "_manifest.json.disabled"
-                if disabled.is_file() and not manifest.is_file():
-                    try:
-                        import json
-
-                        data = json.loads(disabled.read_text(encoding="utf-8"))
-                        pid = str(data.get("id", ""))
-                        if pid:
-                            statuses[pid] = "disabled"
-                    except Exception:
-                        pass
+        self._add_disabled_statuses(statuses)
         return statuses
+
+    def _add_disabled_statuses(self, statuses: Dict[str, str]) -> None:
+        """辅助函数：添加禁用插件的状态。"""
+        if not self._plugins_root.is_dir():
+            return
+        for child in self._plugins_root.iterdir():
+            if not child.is_dir():
+                continue
+            manifest = child / "_manifest.json"
+            disabled = child / "_manifest.json.disabled"
+            if disabled.is_file() and not manifest.is_file():
+                self._try_set_disabled_status(statuses, disabled)
+
+    def _try_set_disabled_status(
+        self, statuses: Dict[str, str], disabled_path: Path
+    ) -> None:
+        """尝试从禁用manifest中读取plugin_id并设置disabled状态。"""
+        try:
+            import json
+
+            data = json.loads(disabled_path.read_text(encoding="utf-8"))
+            pid = str(data.get("id", ""))
+            if pid:
+                statuses[pid] = "disabled"
+        except Exception:
+            pass
+
 
     def get_plugin_summary(self) -> Dict[str, int]:
         """返回插件加载汇总。"""

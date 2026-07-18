@@ -2,8 +2,8 @@ from __future__ import annotations
 
 """热重载子系统 — 分层重载 + 统一监视器。"""
 
-from src.core.server.reload.classifier import ClassifyResult, classify_paths
-from src.core.server.reload.coordinator import ReloadCoordinator
+from src.core.server.reload.clsfy import ClassifyResult, classify_paths
+from src.core.server.reload.coord import ReloadCoordinator
 from src.core.server.reload.file_watcher import FileChange, FileWatcher, FileWatcherStats
 from src.core.server.reload.restart import (
     bind_worker_shutdown,

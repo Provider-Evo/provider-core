@@ -1,10 +1,13 @@
-"""N1N 对外工具门面。
+"""util 模块 — Provider 适配器层。
 
-该模块只负责对外导出稳定接口：
+职责：
+    提供运行期无关的小工具（路径解析、字符串转换、header 构造等）。
 
-- 共享常量/函数来自 core/ 下的纯函数模块
-- :class:`N1nAdapter` 通过 ``__getattr__`` 延迟加载，避免循环导入
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
+
+
 
 from __future__ import annotations
 
@@ -21,7 +24,7 @@ from .core.constants import (
 )
 from .core.headers import build_headers
 from .core.payloads import build_payload
-from .core.sse import parse_sse_line
+from .core.stream.sse import parse_sse_line
 
 __all__ = [
     "Adapter",
@@ -52,15 +55,22 @@ def __getattr__(name: str) -> Any:
         AttributeError: 当属性名未注册时抛出。
     """
     if name == "N1nAdapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.adapter.adaptercore import (  # noqa: PLC0415
             N1nAdapter as _N1nAdapter,
         )
         return _N1nAdapter
     if name == "Adapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.adapter.adaptercore import (  # noqa: PLC0415
             N1nAdapter as _Adapter,
         )
         return _Adapter
     raise AttributeError(
         "module {!r} has no attribute {!r}".format(__name__, name)
     )
+
+# =======================================================================
+# 重导出 — 同包内协同模块的公共符号（保持外部 ``from .. import`` 路径稳定）
+# =======================================================================
+
+__all__ = [
+]

@@ -1,4 +1,11 @@
-from __future__ import annotations
+"""xml_parser 模块 — 项目标准模块。
 
-"""XML 协议解析 → echotools 重导出。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 xml_parser 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 from echotools.fncall.parsers.xml_parser import *  # noqa: F401,F403

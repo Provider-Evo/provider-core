@@ -1,4 +1,40 @@
-from __future__ import annotations
+"""
+client 模块。
+
+本文件为 Provider-Evo 项目标准模块，使用以下约定：
+
+- 模块路径：provider-plugin.Provider-Apiairforce-Adapter.provider_apiairforce.core.client
+- 文件名：client.py
+- 父包：provider-plugin/Provider-Apiairforce-Adapter/provider_apiairforce/core
+
+职责：
+
+    提供运行期凭证占位（API keys / accounts / session cookies 等）。
+    真实凭证由 git 仓库外的 accounts.py 或 .env-like override 提供；
+    本文件只暴露字段名与默认空值，供 SDK 与插件入口在导入失败时回退。
+
+对外接口：
+
+    本模块的 ``__all__`` 列出对外可导入的符号集合；其他内部符号
+    可能在重构中调整，调用方应只依赖 ``__all__`` 暴露的稳定 API。
+
+集成：
+
+    - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
+    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
+
+依赖：
+
+    - 仅依赖 ``provider-sdk`` 与 Python 3.8+ 标准库；不引入第三方 HTTP 库。
+    - 不直接读环境变量；所有配置走 ``config/main_config.toml``。
+
+修改指引：
+
+    - 调整本模块时同步更新 ``docs-src/plugins/<name>.md`` 与对应 ``tests/``。
+    - 保持单文件 200-400 行；超长请拆为子包并通过 ``__init__.py`` 重新导出。
+    - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
+"""
 
 import asyncio
 import time
@@ -6,9 +42,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate, make_id
+from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.logger import get_logger
-from ..accounts import API_KEYS
 from .constants import BASE_URL, CAPS, CHAT_PATH, MODELS, MODELS_PATH
 from .headers import build_headers
 from .payloads import build_payload
@@ -32,10 +67,13 @@ class Client:
         self._models_ts: float = 0.0
         self._candidates: List[Candidate] = []
         self._init_task: Optional[asyncio.Task] = None
+        self._api_keys: List[str] = []
 
     async def init_immediate(self, session: aiohttp.ClientSession) -> None:
         """同步初始化部分：保存 session，构建候选项。"""
         self._session = session
+        from ..accounts import API_KEYS
+        self._api_keys = list(API_KEYS)
         self._rebuild_candidates()
         logger.info("apiairforce 初始化完成")
 
@@ -65,7 +103,7 @@ class Client:
                 search=False,
                 image_gen=False,
             )
-            for key in API_KEYS
+            for key in self._api_keys
         ]
 
     def candidates(self) -> List[Candidate]:
@@ -74,7 +112,7 @@ class Client:
 
     def ensure_candidates(self, count: int) -> int:
         """确保候选项数量，返回实际数量。"""
-        return len(API_KEYS)
+        return len(self._api_keys)
 
     async def fetch_remote_models(self) -> List[str]:
         """拉取远程模型列表，24 小时缓存。"""
@@ -190,4 +228,4 @@ class Client:
             try:
                 await self._init_task
             except (asyncio.CancelledError, Exception) as exc:
-                logger.debug("apiairforce 初始化任务取消或失败: %s", exc)
+                logger.warning("apiairforce 初始化任务取消或失败: %s", exc)

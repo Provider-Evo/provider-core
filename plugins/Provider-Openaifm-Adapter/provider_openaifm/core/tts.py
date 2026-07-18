@@ -1,6 +1,13 @@
-from __future__ import annotations
+"""tts 模块 — Provider 适配器层。
 
-"""openaifm TTS 相关定义。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 tts 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 from typing import Dict, List
 
@@ -47,3 +54,15 @@ def build_tts_form_data(
     form.add_field("voice", voice or DEFAULT_VOICE)
     form.add_field("vibe", vibe or "")
     return form
+
+# =======================================================================
+# 重导出 — 同包内协同模块的公共符号（保持外部 ``from .. import`` 路径稳定）
+# =======================================================================
+
+from .headers import (
+    build_headers,
+)
+
+__all__ = [
+    "build_headers",
+]

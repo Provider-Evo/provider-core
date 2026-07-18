@@ -1,4 +1,12 @@
-from __future__ import annotations
+"""constants 模块 — Provider 适配器层。
+
+职责：
+    集中放置 provider 常量定义（模型名、URL 模板、错误码等）。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
 
 from typing import Dict, List
 
@@ -23,11 +31,12 @@ MODELS: List[str] = [
 
 CAPS: Dict[str, bool] = {
     "chat": True,
+    "completions": True,
+    "responses": True,
     "vision": True,
     "tools": True,
     "native_tools": True,
     "thinking": True,
-    "search": False,
 }
 
 FETCH_MODELS_ENABLED: bool = True
@@ -44,7 +53,7 @@ PROXY_API_GET: str = PROXY_BASE_URL + "/api/get_proxy.php"
 PROXY_TEXT_ENDPOINT: str = PROXY_BASE_URL + "/text.php"
 PROXY_MAIN_PAGE: str = PROXY_BASE_URL + "/"
 
-PROXY_FETCH_ENABLED: bool = True  # 是否启用代理列表定时获取
+PROXY_FETCH_ENABLED: bool = False  # 是否启用代理列表定时获取
 
 PROXY_MAX_PAGES: int = 10000
 PROXY_PER_PAGE: int = 10

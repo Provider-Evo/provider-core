@@ -6,7 +6,7 @@ from .meta import files_drives, files_project_root
 from .mutate import files_delete, files_mkdir, files_rename, files_write
 from .read import files_download, files_list, files_read
 from .search import files_search
-from .transfer import files_copy, files_move
+from .xfer import files_copy, files_move
 from .upload import files_upload
 
 __all__ = [

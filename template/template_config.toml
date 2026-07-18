@@ -3,7 +3,7 @@
 # 字段与 WebUI 配置面板（config_panel_schema）及 src/core/config/sections.py 对齐。
 
 [server]
-version = "2.2.286"               # 与 pyproject.toml / 打包脚本一致
+version = "2.2.297"               # 与 pyproject.toml / 打包脚本一致
 host = "0.0.0.0"
 port = 1337
 debug = false
@@ -56,10 +56,15 @@ proxy_server = ""
 proxy_enabled = false
 proxy_urls = []                 # 正则；非空时匹配 URL 走 proxy_server
 
-[platforms_proxy]
-# 允许代理切换的插件平台（语义由 group_list_type 决定）
-enabled_platforms = ["qwen", "ollama"]
+[adapter_proxy]
+# 允许代理切换的适配器（语义由 group_list_type 决定）
+enable_adapters = ["qwen", "ollama"]
 group_list_type = "whitelist"   # "whitelist" | "blacklist"
+
+# 向后兼容
+[platforms_proxy]
+enabled_platforms = ["qwen", "ollama"]
+group_list_type = "whitelist"
 
 [platforms]
 # 启用的平台插件（plugins/ 下目录名 / manifest id）
@@ -89,7 +94,7 @@ custom_prompt_zh = ""
 level = "INFO"                  # DEBUG | INFO | WARNING | ERROR | CRITICAL
 color = true
 access_log = true
-log_name = "provider-v2"        # 日志文件名前缀（logs/{log_name}-*.log）
+log_name = "provider-core"      # 日志文件名前缀（logs/{log_name}-*.log）
 
 [autoupdate]
 enabled = false
@@ -98,7 +103,43 @@ interval = 300
 diff_update = true
 mirrors = ["https://github.com/"]
 
+[fallback]
+enabled = true
+# [fallback.chains]
+# "primary-model" = ["backup-model", "ollama-local"]
+
+[cache]
+enabled = false
+max_entries = 512
+ttl_seconds = 3600
+
+[circuit]
+enabled = true
+window_size = 20
+failure_threshold = 0.5
+cooldown_seconds = 300
+
+[virtual_keys]
+enabled = false
+
+[rate_limit]
+enabled = false
+key_rpm = 600
+ip_rpm = 180
+
+[metrics]
+enabled = true
+
 [terminal]
+backend = "direct"                # direct | tmux (Unix，重启后可 attach)
+preserve_on_reload = true         # L3 exit 42 不 kill shell
+preserve_on_shutdown = false      # SIGTERM 时是否保留 shell（仅 detach+flush）
+ring_buffer_kb = 256
+orphan_alive_hours = 24
+orphan_destroyed_days = 7
+require_ssh_host_key = true
 max_history_lines = 5000
 subprocess_monitor_interval = 1
 enable_subprocess_monitoring = true
+audit_enabled = true                # 是否记录终端会话审计日志（供录像审计功能查看）
+

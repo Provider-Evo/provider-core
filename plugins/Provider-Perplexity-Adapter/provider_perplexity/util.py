@@ -1,11 +1,13 @@
-from __future__ import annotations
+"""util 模块 — Provider 适配器层。
 
-"""Perplexity 对外工具门面。
+职责：
+    提供运行期无关的小工具（路径解析、字符串转换、header 构造等）。
 
-该模块只负责导出稳定接口：
-- 共享常量/函数来自 ``src.platforms.perplexity.core`` 子模块
-- ``PerplexityAdapter`` 与 ``Adapter`` 通过 ``__getattr__`` 延迟加载
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
+
+
 
 from typing import Any
 
@@ -16,15 +18,15 @@ from provider_perplexity.core.constants import (
     CHAT_PATH,
 )
 from provider_perplexity.core.headers import build_headers
-from provider_perplexity.core.models import MODEL_ALIASES, MODELS
+from provider_perplexity.core.catalog.models import MODEL_ALIASES, MODELS
 from provider_perplexity.core.payloads import build_payload
-from provider_perplexity.core.sse import parse_sse_line
+from provider_perplexity.core.stream.sse import parse_sse_line
 
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("PerplexityAdapter", "Adapter"):
-        from provider_perplexity.core.adaptercore import (  # noqa: PLC0415
+        from provider_perplexity.core.adapter.adaptercore import (  # noqa: PLC0415
             PerplexityAdapter as _PerplexityAdapter,
         )
 

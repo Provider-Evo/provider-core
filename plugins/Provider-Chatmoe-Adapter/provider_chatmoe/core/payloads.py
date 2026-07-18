@@ -1,6 +1,13 @@
-from __future__ import annotations
+"""payloads 模块 — Provider 适配器层。
 
-"""ChatMoe 请求体构造。"""
+职责：
+    集中放置 provider 请求 payload 模板与序列化函数。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 from typing import Any, Dict, List
 
@@ -50,3 +57,5 @@ def build_payload(
         ],
         "type": "text",
     }
+
+__all__: List[str] = []

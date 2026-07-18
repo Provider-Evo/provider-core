@@ -18,7 +18,13 @@ from src.webui.routers.admin.plugins.plugin_support import (
     reload_plugins_from_request,
     validate_plugin_id,
 )
-from src.webui.routers.admin.plugins.plugin_progress import reset_progress, update_progress
+from src.webui.routers.admin.plugins.plugin_prog import reset_progress, update_progress
+from src.webui.routers.admin.plugins.plugins_config import (
+    plugins_config_bundle,
+    plugins_config_get,
+    plugins_config_put,
+    plugins_config_reset,
+)
 
 __all__ = [
     "plugins_install",
@@ -130,14 +136,17 @@ async def plugins_status(request: aiohttp.web.Request) -> aiohttp.web.Response:
         statuses = runtime.get_load_statuses()
         failure_reasons = runtime.get_plugin_load_failure_reasons()
         summary = runtime.get_plugin_summary()
+        recent_failures = runtime.get_recent_failures()
     except Exception as exc:
         logger.warning("插件状态读取失败: %s", exc)
         statuses = {}
         failure_reasons = {}
         summary = {"loaded": 0, "failed": 0, "inactive": 0}
+        recent_failures = []
     return aiohttp.web.json_response({
         "statuses": statuses,
         "failure_reasons": failure_reasons,
+        "recent_failures": recent_failures,
         "summary": summary,
     })
 
@@ -179,10 +188,13 @@ async def plugins_install(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
         await update_progress("clone", 20, "正在克隆仓库...", operation="install", plugin_id=plugin_id or None)
         dest = install_plugin_from_git(url, plugins_root(), ref=ref)
-        await update_progress("reload", 70, f"正在加载 {dest.name}...", operation="install", plugin_id=plugin_id or None)
-        summary = await reload_plugins_from_request(request)
-        await update_progress("done", 100, f"已安装 {dest.name}", operation="install", plugin_id=plugin_id or None)
-        return aiohttp.web.json_response({"status": "ok", "path": str(dest.name), "summary": summary})
+        await update_progress("reload", 70, "正在加载 {}...".format(dest.name), operation="install", plugin_id=plugin_id or None)
+
+        # 异步重载，避免阻塞响应
+        import asyncio
+        asyncio.ensure_future(reload_plugins_from_request(request, reload_app=False))
+        await update_progress("done", 100, "已安装 {}".format(dest.name), operation="install", plugin_id=plugin_id or None)
+        return aiohttp.web.json_response({"status": "ok", "path": str(dest.name)})
     except Exception as exc:
         logger.error("插件安装失败: %s", exc)
         await update_progress("error", 100, str(exc), operation="install", error=str(exc), plugin_id=plugin_id or None)
@@ -217,12 +229,13 @@ async def plugins_uninstall(request: aiohttp.web.Request) -> aiohttp.web.Respons
         return aiohttp.web.json_response({"error": "symlink not allowed"}, status=400)
 
     try:
-        await update_progress("remove", 30, f"正在删除 {folder}...", operation="uninstall")
+        await update_progress("remove", 30, "正在删除 {}...".format(folder), operation="uninstall")
         shutil.rmtree(target)
         await update_progress("reload", 70, "正在热重载...", operation="uninstall")
-        summary = await reload_plugins_from_request(request)
+        import asyncio
+        asyncio.ensure_future(reload_plugins_from_request(request, reload_app=False))
         await update_progress("done", 100, "卸载完成", operation="uninstall")
-        return aiohttp.web.json_response({"status": "ok", "summary": summary})
+        return aiohttp.web.json_response({"status": "ok"})
     except Exception as exc:
         logger.error("插件卸载失败: %s", exc)
         await update_progress("error", 100, str(exc), operation="uninstall", error=str(exc))
@@ -262,15 +275,15 @@ async def plugins_update(request: aiohttp.web.Request) -> aiohttp.web.Response:
             if proc.returncode != 0:
                 await update_progress("error", 100, stderr.decode(errors="ignore"), operation="update", error="git pull failed", plugin_id=plugin_id)
                 return aiohttp.web.json_response({
-                    "error": f"git pull failed: {stderr.decode(errors='ignore')}",
+                    "error": "git pull failed: {}".format(stderr.decode(errors="ignore")),
                 }, status=500)
             await update_progress("reload", 70, "正在热重载...", operation="update", plugin_id=plugin_id)
-            summary = await reload_plugins_from_request(request)
+            import asyncio
+            asyncio.ensure_future(reload_plugins_from_request(request, reload_app=False))
             await update_progress("done", 100, "更新完成", operation="update", plugin_id=plugin_id)
             return aiohttp.web.json_response({
                 "status": "ok",
                 "output": stdout.decode(errors="ignore"),
-                "summary": summary,
             })
         except Exception as exc:
             await update_progress("error", 100, str(exc), operation="update", error=str(exc), plugin_id=plugin_id)
@@ -279,170 +292,6 @@ async def plugins_update(request: aiohttp.web.Request) -> aiohttp.web.Response:
             reset_progress()
 
     return aiohttp.web.json_response({"error": "非 Git 安装的插件不支持更新"}, status=400)
-
-
-async def plugins_config_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """GET /v1/admin/plugins/config/{plugin_id} — 获取插件配置。"""
-    plugin_id = request.match_info.get("plugin_id", "")
-    plugin_path = find_plugin_path_by_id(plugin_id)
-    if not plugin_path:
-        return aiohttp.web.json_response({"error": "plugin not found"}, status=404)
-
-    config, schema, raw_text = _read_plugin_config_files(plugin_path)
-
-    return aiohttp.web.json_response({
-        "plugin_id": plugin_id,
-        "config": config,
-        "schema": schema,
-        "raw": raw_text,
-    })
-
-
-def _read_plugin_config_files(plugin_path: Any) -> tuple[Dict[str, Any], Dict[str, Any], str]:
-    config_path = plugin_path / "config.toml"
-    config: Dict[str, Any] = {}
-    if config_path.is_file():
-        try:
-            import tomlkit
-
-            config = dict(tomlkit.loads(config_path.read_text(encoding="utf-8")))
-        except Exception:
-            config = {}
-
-    schema: Dict[str, Any] = {}
-    schema_path = plugin_path / "config_schema.json"
-    if schema_path.is_file():
-        try:
-            schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-
-    raw_text = config_path.read_text(encoding="utf-8") if config_path.is_file() else ""
-    return config, schema, raw_text
-
-
-def _defaults_from_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
-    if not schema or schema.get("type") != "object":
-        return {}
-    props = schema.get("properties") or {}
-    result: Dict[str, Any] = {}
-    for key, field in props.items():
-        if not isinstance(field, dict):
-            continue
-        if "default" in field:
-            result[key] = field["default"]
-            continue
-        ftype = field.get("type")
-        if ftype == "object":
-            nested = _defaults_from_schema(field)
-            if nested:
-                result[key] = nested
-        elif ftype == "boolean":
-            result[key] = False
-        elif ftype in ("integer", "number"):
-            result[key] = 0
-        elif ftype == "string":
-            result[key] = ""
-    return result
-
-
-async def plugins_config_bundle(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """GET /v1/admin/plugins/config/{plugin_id}/bundle — 配置页初始化数据。"""
-    plugin_id = request.match_info.get("plugin_id", "")
-    plugin_path = find_plugin_path_by_id(plugin_id)
-    if not plugin_path:
-        return aiohttp.web.json_response({"success": False, "error": "plugin not found"}, status=404)
-
-    config, schema, raw_text = _read_plugin_config_files(plugin_path)
-    config_path = plugin_path / "config.toml"
-    message = ""
-    if not config_path.is_file() and schema:
-        config = _defaults_from_schema(schema)
-        message = "配置文件不存在，已返回默认配置"
-
-    return aiohttp.web.json_response({
-        "success": True,
-        "plugin_id": plugin_id,
-        "schema": schema,
-        "config": config,
-        "raw_config": raw_text,
-        "message": message,
-    })
-
-
-async def plugins_config_reset(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """POST /v1/admin/plugins/config/{plugin_id}/reset — 重置插件配置。"""
-    plugin_id = request.match_info.get("plugin_id", "")
-    plugin_path = find_plugin_path_by_id(plugin_id)
-    if not plugin_path:
-        return aiohttp.web.json_response({"success": False, "error": "plugin not found"}, status=404)
-
-    config_path = plugin_path / "config.toml"
-    _, schema, _ = _read_plugin_config_files(plugin_path)
-    defaults = _defaults_from_schema(schema) if schema else {}
-
-    try:
-        import tomlkit
-
-        if defaults:
-            config_path.write_text(tomlkit.dumps(defaults), encoding="utf-8")
-        elif config_path.is_file():
-            config_path.unlink()
-    except Exception as exc:
-        logger.error("插件配置重置失败: %s", exc)
-        return aiohttp.web.json_response({"success": False, "error": str(exc)}, status=500)
-
-    return aiohttp.web.json_response({
-        "success": True,
-        "config": defaults,
-        "raw_config": config_path.read_text(encoding="utf-8") if config_path.is_file() else "",
-    })
-
-
-async def plugins_config_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """PUT /v1/admin/plugins/config/{plugin_id} — 更新插件配置。"""
-    plugin_id = request.match_info.get("plugin_id", "")
-    plugin_path = find_plugin_path_by_id(plugin_id)
-    if not plugin_path:
-        return aiohttp.web.json_response({"error": "plugin not found"}, status=404)
-
-    try:
-        body = await request.json()
-    except Exception:
-        return aiohttp.web.json_response({"error": "invalid json"}, status=400)
-
-    config_path = plugin_path / "config.toml"
-    if "raw" in body and isinstance(body.get("raw"), str):
-        config_path.write_text(body["raw"], encoding="utf-8")
-        return aiohttp.web.json_response({"status": "ok"})
-
-    config_data = body.get("config", {})
-    if not isinstance(config_data, dict):
-        return aiohttp.web.json_response({"error": "config must be dict"}, status=400)
-
-    try:
-        import tomlkit
-
-        if config_path.is_file():
-            existing = tomlkit.loads(config_path.read_text(encoding="utf-8"))
-        else:
-            existing = tomlkit.document()
-
-        def _merge(base: dict, patch: dict) -> dict:
-            for key, value in patch.items():
-                if isinstance(value, dict) and isinstance(base.get(key), dict):
-                    _merge(base[key], value)
-                else:
-                    base[key] = value
-            return base
-
-        _merge(existing, config_data)
-        config_path.write_text(tomlkit.dumps(existing), encoding="utf-8")
-    except Exception as exc:
-        logger.error("插件配置保存失败: %s", exc)
-        return aiohttp.web.json_response({"error": str(exc)}, status=500)
-
-    return aiohttp.web.json_response({"status": "ok"})
 
 
 async def plugins_toggle(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -475,7 +324,14 @@ async def plugins_toggle(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
     await update_progress("reload", 50, "正在热重载...", operation="toggle", plugin_id=plugin_id)
     try:
-        summary = await reload_plugins_from_request(request)
+        from src.core.server import REGISTRY_KEY, SESSION_KEY
+
+        registry = request.app.get(REGISTRY_KEY)
+        session = request.app.get(SESSION_KEY)
+        if registry is not None and session is not None:
+            await registry.sync_plugin_manifest(plugin_id, session, reload_app=False)
+        runtime = registry._plugin_runtime() if registry else None
+        summary = runtime.get_plugin_summary() if runtime else {"loaded": 0, "failed": 0, "inactive": 0}
         await update_progress("done", 100, "切换完成", operation="toggle", plugin_id=plugin_id)
         return aiohttp.web.json_response({"status": "ok", "enabled": enabled, "summary": summary})
     finally:

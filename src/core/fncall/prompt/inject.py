@@ -1,4 +1,13 @@
-"""fncall 注入 — 复用 echotools inject_fncall，附加项目配置驱动的 prompt 转储。"""
+"""inject 模块 — 项目标准模块。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 inject 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -11,7 +20,7 @@ __all__ = ["inject_fncall"]
 
 def _get_dump_dir() -> Optional[str]:
     try:
-        from src.core.config import get_config
+        from src.foundation.config import get_config
         cfg = get_config()
         if cfg.fncall.print_prompt or cfg.fncall.record_prompt:
             return "logs/prompts"

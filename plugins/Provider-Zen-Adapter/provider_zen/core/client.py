@@ -8,11 +8,11 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate, make_id
-from src.core.errors import PlatformError
+from src.core.dispatch.cand import Candidate, make_id
+from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
 from ..accounts import API_KEYS
-from .constants import (
+from .support.constants import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -21,9 +21,7 @@ from .constants import (
     RATE_LIMIT_COOLDOWN,
     RECOVERY_INTERVAL,
 )
-from .headers import build_headers
-from .payloads import build_payload
-from .sse import parse_sse_line
+from .support.utils import build_headers, build_payload, parse_sse_line
 
 logger = get_logger(__name__)
 MAX_RETRIES: int = 3

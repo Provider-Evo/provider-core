@@ -1,10 +1,19 @@
-"""WebUI cookie helpers — set, clear, and verify HttpOnly session cookies."""
+"""auth 模块 — WebUI 层。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 auth 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 from __future__ import annotations
 
 import aiohttp.web
 
-from src.webui.internal.core.security import token_manager
+from src.webui.internal.core.secure import token_manager
 
 __all__ = [
     "COOKIE_NAME",

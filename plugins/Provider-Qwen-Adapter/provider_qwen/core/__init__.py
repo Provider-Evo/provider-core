@@ -2,12 +2,17 @@ from __future__ import annotations
 
 """Core exports for the Qwen adapter package."""
 
-try:
-    from ..accounts import ACCOUNTS, Account
-except ImportError:
-    from accounts import ACCOUNTS, Account
+ACCOUNTS = []
 
-from .crypto import (
+
+def __getattr__(name):
+    if name == "Account":
+        from .adapter.client import Account as _Account
+        return _Account
+    raise AttributeError("module 'provider_qwen.core' has no attribute '{}'".format(name))
+
+
+from .auth.crypto import (
     BAXIA_VERSION,
     collect_fingerprint_data,
     custom_encode,
@@ -20,8 +25,8 @@ from .crypto import (
     hash_password,
     lzw_compress,
 )
-from .bxumid import validate_bxumidtoken
-from .endpoints import *
+from .auth.bxumid import validate_bxumidtoken
+from .config.endpoints import *
 
 __all__ = [
     "BAXIA_VERSION",

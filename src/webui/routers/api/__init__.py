@@ -17,7 +17,7 @@ from .files import (
     files_upload,
     files_write,
 )
-from .stats import requests_list, requests_ws, stats_api, stats_reset
+from .stats import requests_list, requests_ws, stats_api, stats_reset, stats_ws
 from .summary import export_summary, summary_api
 
 __all__ = [
@@ -39,5 +39,6 @@ __all__ = [
     "requests_ws",
     "stats_api",
     "stats_reset",
+    "stats_ws",
     "summary_api",
 ]

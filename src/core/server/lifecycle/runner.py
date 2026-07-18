@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import IO, Optional
 
-from src.core.server.lifecycle.worker import RESTART_EXIT_CODE, finalize_exit
+from src.core.server.lifecycle.worker.worker import RESTART_EXIT_CODE, finalize_exit
 from src.foundation.logger import get_logger
 from src.foundation.paths import resolve_project_root
 
@@ -125,6 +125,180 @@ def _pipe_reader(stream: IO[bytes]) -> None:
             pass
 
 
+def _resolve_max_error_restarts() -> int:
+    """从配置读取 max_restarts，读取失败时回退到默认值。从 run_runner 抽出。"""
+    try:
+        from src.foundation.config import get_config
+
+        cfg = get_config()
+        return getattr(cfg.server, "max_restarts", _DEFAULT_MAX_ERROR_RESTARTS)
+    except Exception:
+        return _DEFAULT_MAX_ERROR_RESTARTS
+
+
+def _check_rapid_restart(rapid_restart_count: int, elapsed: float) -> "tuple[int, bool]":
+    """更新快速重启计数，返回 (新计数, 是否应放弃重启)。从 run_runner 抽出。"""
+    if elapsed >= _RAPID_RESTART_THRESHOLD:
+        return 0, False
+
+    rapid_restart_count += 1
+    if rapid_restart_count > _MAX_RAPID_RESTARTS:
+        logger.error(
+            "Worker 在 %.1f 秒内连续快速重启 %d 次，Runner 放弃重启并退出",
+            _RAPID_RESTART_THRESHOLD,
+            rapid_restart_count,
+        )
+        return rapid_restart_count, True
+
+    logger.warning(
+        "快速重启检测：第 %d 次（上限 %d 次）",
+        rapid_restart_count,
+        _MAX_RAPID_RESTARTS,
+    )
+    return rapid_restart_count, False
+
+
+def _spawn_worker(args: list, worker_env: dict) -> "tuple[Optional[subprocess.Popen], Optional[threading.Thread]]":
+    """启动 Worker 子进程与其输出读取线程。从 run_runner 抽出。"""
+    logger.debug("启动 Worker 子进程...")
+    try:
+        proc = subprocess.Popen(
+            args,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=worker_env,
+        )
+    except OSError as exc:
+        logger.error("无法启动 Worker 进程: %s", exc)
+        return None, None
+
+    assert proc.stdout is not None, "proc.stdout 不应为 None（已指定 PIPE）"
+
+    reader_thread = threading.Thread(
+        target=_pipe_reader,
+        args=(proc.stdout,),
+        daemon=True,
+        name=f"pipe-reader-{proc.pid}",
+    )
+    reader_thread.start()
+    return proc, reader_thread
+
+
+def _wait_worker(
+    proc: subprocess.Popen,
+    reader_thread: Optional[threading.Thread],
+) -> Optional[int]:
+    """等待 Worker 退出，处理 Ctrl+C。返回退出码，Ctrl+C 时返回 None（已终止进程）。
+
+    从 run_runner 抽出。
+    """
+    try:
+        return proc.wait()
+    except KeyboardInterrupt:
+        logger.info("Runner 收到 Ctrl+C，正在终止 Worker (PID=%d)...", proc.pid)
+        proc.terminate()
+        try:
+            proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        if reader_thread is not None:
+            reader_thread.join(timeout=2.0)
+        logger.info("Worker 已终止，Runner 退出")
+        finalize_exit(0)
+        return None
+
+
+def _handle_worker_exit(
+    exit_code: int,
+    error_restart_count: int,
+    max_error_restarts: int,
+) -> "tuple[int, bool]":
+    """处理 Worker 退出码，决定是否重启。返回 (新的错误重启计数, 是否放弃重启)。
+
+    从 run_runner 抽出。
+    """
+    if exit_code == RESTART_EXIT_CODE:
+        logger.info(
+            "触发自动重启（退出码 %d），冷却 %.1f 秒后重启...",
+            exit_code,
+            _RESTART_COOLDOWN,
+        )
+        time.sleep(_RESTART_COOLDOWN)
+        return error_restart_count, False
+
+    if exit_code != 0:
+        error_restart_count += 1
+        if error_restart_count > max_error_restarts:
+            logger.error(
+                "Worker 因错误退出 %d 次（最大 %d 次），Runner 放弃重启并退出",
+                error_restart_count - 1,
+                max_error_restarts,
+            )
+            return error_restart_count, True
+        logger.warning(
+            "Worker 因错误退出（%s），等待 %.1f 秒后重启（第 %d/%d 次）...",
+            _describe_exit_code(exit_code),
+            _ERROR_RESTART_DELAY,
+            error_restart_count,
+            max_error_restarts,
+        )
+        time.sleep(_ERROR_RESTART_DELAY)
+        return error_restart_count, False
+
+    logger.info("Worker 正常退出（退出码 %d），Runner 退出", exit_code)
+    return error_restart_count, True
+
+
+def _run_worker_loop(
+    args: list, worker_env: dict, max_error_restarts: int,
+) -> tuple:
+    """执行 Worker 守护主循环，返回最终的进程与读取线程句柄。"""
+    rapid_restart_count = 0
+    error_restart_count = 0
+    last_start_time: float = 0.0
+
+    proc: Optional[subprocess.Popen] = None
+    reader_thread: Optional[threading.Thread] = None
+
+    while True:
+        elapsed = time.time() - last_start_time
+        rapid_restart_count, give_up = _check_rapid_restart(rapid_restart_count, elapsed)
+        if give_up:
+            break
+
+        last_start_time = time.time()
+        worker_started_at = time.time()
+
+        proc, reader_thread = _spawn_worker(args, worker_env)
+        if proc is None:
+            break
+
+        exit_code = _wait_worker(proc, reader_thread)
+        if exit_code is None:
+            return proc, reader_thread, True
+
+        if reader_thread is not None:
+            reader_thread.join(timeout=2.0)
+
+        worker_runtime = time.time() - worker_started_at
+        if exit_code == 0 and worker_runtime < 3.0:
+            logger.warning(
+                "Worker 在 %.1f 秒内正常退出；若服务未启动，请检查 1337 端口是否已被占用"
+                "（netstat -ano | findstr 1337）或查看上方 Worker 日志",
+                worker_runtime,
+            )
+
+        error_restart_count, give_up = _handle_worker_exit(
+            exit_code, error_restart_count, max_error_restarts,
+        )
+        if give_up:
+            break
+
+    return proc, reader_thread, False
+
+
 def run_runner() -> None:
     """Runner 进程入口——守护 Worker 子进程，处理自动重启。
 
@@ -142,124 +316,11 @@ def run_runner() -> None:
     python = sys.executable
     args = [python, "-u", str(_ROOT / "main.py")]
 
-    max_error_restarts = _DEFAULT_MAX_ERROR_RESTARTS
-    try:
-        from src.core.config import get_config
+    max_error_restarts = _resolve_max_error_restarts()
 
-        cfg = get_config()
-        max_error_restarts = getattr(cfg.server, "max_restarts", _DEFAULT_MAX_ERROR_RESTARTS)
-    except Exception:
-        pass
-
-    rapid_restart_count = 0
-    error_restart_count = 0
-    last_start_time: float = 0.0
-
-    proc: Optional[subprocess.Popen] = None
-    reader_thread: Optional[threading.Thread] = None
-
-    while True:
-        now = time.time()
-        elapsed = now - last_start_time
-
-        if elapsed < _RAPID_RESTART_THRESHOLD:
-            rapid_restart_count += 1
-            if rapid_restart_count > _MAX_RAPID_RESTARTS:
-                logger.error(
-                    "Worker 在 %.1f 秒内连续快速重启 %d 次，Runner 放弃重启并退出",
-                    _RAPID_RESTART_THRESHOLD,
-                    rapid_restart_count,
-                )
-                break
-            logger.warning(
-                "快速重启检测：第 %d 次（上限 %d 次）",
-                rapid_restart_count,
-                _MAX_RAPID_RESTARTS,
-            )
-        else:
-            rapid_restart_count = 0
-
-        last_start_time = time.time()
-
-        logger.debug("启动 Worker 子进程...")
-        worker_started_at = time.time()
-
-        try:
-            proc = subprocess.Popen(
-                args,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                env=worker_env,
-            )
-        except OSError as exc:
-            logger.error("无法启动 Worker 进程: %s", exc)
-            break
-
-        assert proc.stdout is not None, "proc.stdout 不应为 None（已指定 PIPE）"
-
-        reader_thread = threading.Thread(
-            target=_pipe_reader,
-            args=(proc.stdout,),
-            daemon=True,
-            name=f"pipe-reader-{proc.pid}",
-        )
-        reader_thread.start()
-
-        exit_code: int
-        try:
-            exit_code = proc.wait()
-        except KeyboardInterrupt:
-            logger.info("Runner 收到 Ctrl+C，正在终止 Worker (PID=%d)...", proc.pid)
-            proc.terminate()
-            try:
-                proc.wait(timeout=5.0)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-            if reader_thread is not None:
-                reader_thread.join(timeout=2.0)
-            logger.info("Worker 已终止，Runner 退出")
-            finalize_exit(0)
-
-        if reader_thread is not None:
-            reader_thread.join(timeout=2.0)
-
-        worker_runtime = time.time() - worker_started_at
-        if exit_code == 0 and worker_runtime < 3.0:
-            logger.warning(
-                "Worker 在 %.1f 秒内正常退出；若服务未启动，请检查 1337 端口是否已被占用"
-                "（netstat -ano | findstr 1337）或查看上方 Worker 日志",
-                worker_runtime,
-            )
-
-        if exit_code == RESTART_EXIT_CODE:
-            logger.info(
-                "触发自动重启（退出码 %d），冷却 %.1f 秒后重启...",
-                exit_code,
-                _RESTART_COOLDOWN,
-            )
-            time.sleep(_RESTART_COOLDOWN)
-        elif exit_code != 0:
-            error_restart_count += 1
-            if error_restart_count > max_error_restarts:
-                logger.error(
-                    "Worker 因错误退出 %d 次（最大 %d 次），Runner 放弃重启并退出",
-                    error_restart_count - 1,
-                    max_error_restarts,
-                )
-                break
-            logger.warning(
-                "Worker 因错误退出（%s），等待 %.1f 秒后重启（第 %d/%d 次）...",
-                _describe_exit_code(exit_code),
-                _ERROR_RESTART_DELAY,
-                error_restart_count,
-                max_error_restarts,
-            )
-            time.sleep(_ERROR_RESTART_DELAY)
-        else:
-            logger.info("Worker 正常退出（退出码 %d），Runner 退出", exit_code)
-            break
+    proc, reader_thread, should_return = _run_worker_loop(args, worker_env, max_error_restarts)
+    if should_return:
+        return
 
     if proc is not None and proc.poll() is None:
         proc.kill()

@@ -1,12 +1,13 @@
-from __future__ import annotations
+"""util 模块 — Provider 适配器层。
 
-"""Edge TTS 对外门面。
+职责：
+    提供运行期无关的小工具（路径解析、字符串转换、header 构造等）。
 
-该模块只负责对外导出稳定接口：
-
-- 共享常量/函数来自 core/ 下的纯函数模块
-- :class:`EdgeTtsAdapter` 通过 ``__getattr__`` 延迟加载，避免循环导入
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
+
+
 
 
 from typing import Any
@@ -50,6 +51,10 @@ def __getattr__(name: str) -> Any:
         )
 
         return _Adapter
+    if name == "Account":
+        from .core.client import Account as _Account  # noqa: PLC0415
+
+        return _Account
     raise AttributeError(
         "module {!r} has no attribute {!r}".format(__name__, name)
     )

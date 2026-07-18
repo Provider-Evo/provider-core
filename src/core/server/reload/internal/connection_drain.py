@@ -1,13 +1,20 @@
-from __future__ import annotations
+"""connection_drain 模块 — 项目标准模块。
 
-"""L3 热重载前关闭长连接，避免 runner.cleanup() 无限等待。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 connection_drain 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 import asyncio
 from typing import Iterable
 
 import aiohttp.web
 
-from src.core.utils.observability import get_observability_services
+from src.core.utils.compat.observability import get_observability_services
 from src.foundation.logger import get_logger
 
 __all__ = ["close_live_connections"]

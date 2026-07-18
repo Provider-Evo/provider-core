@@ -14,10 +14,9 @@ import aiohttp
 
 from echotools.translate import extract_text_from_messages, split_text_chunks
 
-from src.core.dispatch.candidate import Candidate, make_id
-from src.core.errors import PlatformError
+from src.core.dispatch.cand import Candidate, make_id
+from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
-from ..accounts import API_KEYS
 from .constants import (
     BASE_URL,
     CAPS,
@@ -124,7 +123,8 @@ class YandexTranslateClient:
             session: 共享 aiohttp 会话。
         """
         self._session = session
-        self._keys = [_KeyState(k) for k in API_KEYS if k and k.strip()]
+        from ..accounts import API_KEYS
+        self._keys = [_KeyState(k) for k in API_KEYS if isinstance(k, str) and k.strip()]
         logger.debug(
             "yandextranslate 客户端初始化完成, %d 个 APIKey",
             len(self._keys),

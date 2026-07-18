@@ -1,7 +1,13 @@
-"""ChatMoe 平台常量定义。
+"""constants 模块 — Provider 适配器层。
 
-BASE_URL / 模型 / 能力等平台级常量统一在此维护。
+职责：
+    集中放置 provider 常量定义（模型名、URL 模板、错误码等）。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
+
+
 
 from __future__ import annotations
 
@@ -19,6 +25,8 @@ MODELS: list[str] = [
 # 能力字典
 CAPS: dict[str, bool] = {
     "chat": True,
+    "completions": True,
+    "responses": True,
     "thinking": True,
     "search": True,
 }

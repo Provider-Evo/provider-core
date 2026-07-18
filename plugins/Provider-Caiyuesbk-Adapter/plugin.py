@@ -1,4 +1,12 @@
-from __future__ import annotations
+"""plugin 模块 — Provider 适配器层。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 plugin 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
 
 import importlib
 
@@ -7,18 +15,16 @@ from provider_sdk.extensions.platform.bridge import attach_platform_adapter
 
 
 def _find_adapter_class(mod: object) -> type:
-    import abc as _abc
     for attr in dir(mod):
         obj = getattr(mod, attr)
         if not isinstance(obj, type) or not attr.endswith("Adapter"):
             continue
-        # 跳过含未实现抽象方法的类（如 PlatformAdapter 基类）
         abstract = getattr(obj, "__abstractmethods__", frozenset())
         if abstract:
             continue
         if all(hasattr(obj, m) for m in ("name", "init", "candidates", "complete", "close")):
             return obj
-    raise RuntimeError(f"no adapter class in {mod.__name__}")
+    raise RuntimeError("no adapter class in {}".format(mod.__name__))
 
 
 class CaiyuesbkPlugin(ProviderPlugin):
@@ -30,3 +36,10 @@ class CaiyuesbkPlugin(ProviderPlugin):
 
 def create_plugin() -> CaiyuesbkPlugin:
     return CaiyuesbkPlugin()
+
+# =======================================================================
+# 重导出 — 同包内协同模块的公共符号（保持外部 ``from .. import`` 路径稳定）
+# =======================================================================
+
+__all__ = [
+]

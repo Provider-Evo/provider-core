@@ -7,9 +7,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from src.core.dispatch.candidate import Candidate, make_id
+from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.logger import get_logger
-from ..accounts import API_KEYS
 from .extract import (
     extract_delta_content,
     extract_nonstream_content,
@@ -23,7 +22,7 @@ logger = get_logger(__name__)
 MAX_RETRIES: int = 3
 
 # 线程池大小（每个 Key 一个线程，保证并发）
-_THREAD_POOL_SIZE: int = max(len(API_KEYS), 4)
+_THREAD_POOL_SIZE: int = 4  # 默认值，init 时根据实际 key 数量调整
 
 # 哨兵对象，用于标识流式结束
 _SENTINEL = object()
@@ -49,9 +48,12 @@ class CerebrasClient:
             session: 共享 aiohttp ClientSession（Cerebras 使用 SDK，存储备用）。
         """
         self._session = session
+        from ..accounts import API_KEYS
+
+        self._api_keys = list(API_KEYS)
         # 创建线程池（同步 SDK 需要）
         self._executor = ThreadPoolExecutor(
-            max_workers=_THREAD_POOL_SIZE,
+            max_workers=max(len(self._api_keys), 4),
             thread_name_prefix="cerebras",
         )
         # 设置 SSL 环境变量（避免 SDK 内部 SSL 校验失败）
@@ -59,7 +61,7 @@ class CerebrasClient:
         os.environ.setdefault("CURL_CA_BUNDLE", "")
         # 以硬编码列表构建初始候选项
         self._rebuild_candidates()
-        logger.info("cerebras 客户端初始化完成，%d 个 Key", len(API_KEYS))
+        logger.info("cerebras 客户端初始化完成，%d 个 Key", len(self._api_keys))
 
     async def background_setup(self) -> None:
         """后台完善——Cerebras 使用 API Key，无需登录，直接返回。"""
@@ -89,7 +91,7 @@ class CerebrasClient:
                 meta={"api_key": key},
                 **CAPS,
             )
-            for key in API_KEYS
+            for key in self._api_keys
             if key
         ]
 
@@ -118,9 +120,9 @@ class CerebrasClient:
         Returns:
             模型 ID 列表，失败时返回空列表（由 ModelsCache 使用 fallback）。
         """
-        if not API_KEYS or self._executor is None:
+        if not self._api_keys or self._executor is None:
             return []
-        api_key = API_KEYS[0]
+        api_key = self._api_keys[0]
         loop = asyncio.get_running_loop()
         try:
             model_ids = await loop.run_in_executor(

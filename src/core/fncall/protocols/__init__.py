@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from echotools.fncall.protocols import *  # noqa: F401,F403
 
-from ._echotools_shims import (
+from .echotoolslocal import (
     AntmlProtocol,
     BracketProtocol,
     CustomProtocol,

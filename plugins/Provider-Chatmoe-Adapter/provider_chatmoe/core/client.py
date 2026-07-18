@@ -8,9 +8,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate, make_id
+from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.logger import get_logger
-from ..accounts import API_KEYS
 from .constants import (
     ABORT_PATH, BASE_URL, CHAT_PATH, CONTEXT_LENGTH,
     KEY_REFRESH_INTERVAL, RESUME_PATH,
@@ -46,6 +45,9 @@ class ChatmoeClient:
     async def init_immediate(self, session: aiohttp.ClientSession) -> None:
         """立即初始化，不阻塞。"""
         self._session = session
+        from ..accounts import API_KEYS
+
+        self._api_keys = [k for k in API_KEYS if k and k.strip()]
         self._rebuild_candidates()
         logger.debug("chatmoe 客户端初始化完成，候选项: %d 个", len(self._candidates))
 
@@ -73,7 +75,7 @@ class ChatmoeClient:
                 meta={"api_key": key},
                 **CAPS,
             )
-            for key in API_KEYS
+            for key in self._api_keys
             if key
         ]
 
@@ -99,10 +101,14 @@ class ChatmoeClient:
             pass
 
     def _regenerate_key(self) -> None:
-        """生成新 UUID 并重建候选项。"""
+        """生成新 UUID 并重建候选项。
+
+        注意：此刷新仅更新内存中的 ``self._api_keys``，不再写回持久化存储。
+        进程重启后动态生成的 Key 会丢失，届时重新从 accounts.py 中的初始
+        Key 启动（这是撤销 AdapterStore 依赖后的预期行为变化）。
+        """
         new_key = str(_uuid.uuid4())
-        API_KEYS.clear()
-        API_KEYS.append(new_key)
+        self._api_keys = [new_key]
         self._rebuild_candidates()
         logger.info("chatmoe Key 已重新生成: %s...", new_key[:8])
 

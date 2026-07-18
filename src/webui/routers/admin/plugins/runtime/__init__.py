@@ -1,4 +1,4 @@
-"""插件管理 WebUI 子模块（对照 MaiBot src/webui/routers/plugin/）。"""
+"""插件管理 WebUI 子模块（对照 Provider-V2 src/webui/routers/plugin/）。"""
 from __future__ import annotations
 
 from .mirrors import (

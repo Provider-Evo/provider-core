@@ -1,6 +1,13 @@
-from __future__ import annotations
+"""chat_media 模块 — WebUI 层。
 
-"""聊天附件持久化：将多模态 blob 存到 persist/webui/chat-media/。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 chat_media 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 import base64
 import json

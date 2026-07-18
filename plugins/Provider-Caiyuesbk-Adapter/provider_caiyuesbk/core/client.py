@@ -7,9 +7,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate, make_id
+from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.logger import get_logger
-from ..accounts import API_KEYS
 from .constants import BASE_URL, CHAT_PATH
 from .headers import build_headers, make_ssl_ctx
 from .payloads import build_payload
@@ -28,6 +27,7 @@ class CaiyuesbkClient:
         self._session: Optional[aiohttp.ClientSession] = None
         self._models: List[str] = []
         self._candidates: List[Candidate] = []
+        self._api_keys: List[str] = []
 
     # ------------------------------------------------------------------
     # 生命周期
@@ -40,8 +40,10 @@ class CaiyuesbkClient:
             session: 共享的 aiohttp 客户端会话。
         """
         self._session = session
+        from ..accounts import API_KEYS
+        self._api_keys = [k for k in API_KEYS if isinstance(k, str) and k.strip()]
         self._rebuild_candidates()
-        logger.info("caiyuesbk 客户端初始化完成: %d keys", len(API_KEYS))
+        logger.info("caiyuesbk 客户端初始化完成: %d keys", len(self._api_keys))
 
     async def background_setup(self) -> None:
         """后台完善：并发验证所有 API Key 的有效性，更新候选项状态。"""
@@ -49,7 +51,7 @@ class CaiyuesbkClient:
             return
 
         results = await asyncio.gather(
-            *[self._test_key(key) for key in API_KEYS],
+            *[self._test_key(key) for key in self._api_keys],
             return_exceptions=True,
         )
 
@@ -149,7 +151,7 @@ class CaiyuesbkClient:
                 meta={"api_key": key},
                 **caps,
             )
-            for key in API_KEYS
+            for key in self._api_keys
             if key
         ]
 
@@ -385,5 +387,5 @@ class CaiyuesbkClient:
             ) as resp:
                 return resp.status == 200
         except Exception as exc:
-            logger.debug("caiyuesbk key 测试失败 %s: %s", api_key[:8], exc)
+            logger.warning("caiyuesbk key 测试失败 %s: %s", api_key[:8], exc)
             return False

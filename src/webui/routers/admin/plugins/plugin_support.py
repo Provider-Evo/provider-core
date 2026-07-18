@@ -1,4 +1,13 @@
-"""插件管理 WebUI 共享工具。"""
+"""plugin_support 模块 — WebUI 层。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 plugin_support 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 from __future__ import annotations
 
 import json
@@ -97,7 +106,9 @@ def read_plugin_changelog(plugin_dir: Path) -> str:
     return str(changelog) if changelog else ""
 
 
-async def reload_plugins_from_request(request: aiohttp.web.Request) -> Dict[str, int]:
+async def reload_plugins_from_request(
+    request: aiohttp.web.Request, *, reload_app: bool = True
+) -> Dict[str, int]:
     """安装/启用变更后热重载插件与平台注册表。"""
     from src.core.server import REGISTRY_KEY, SESSION_KEY
 
@@ -107,7 +118,7 @@ async def reload_plugins_from_request(request: aiohttp.web.Request) -> Dict[str,
         logger.warning("插件热重载跳过：registry 或 session 不可用")
         return {"loaded": 0, "failed": 0, "inactive": 0}
     try:
-        return await registry.reload_plugins(session)
+        return await registry.reload_plugins(session, reload_app=reload_app)
     except Exception as exc:
         logger.error("插件热重载失败: %s", exc)
         return {"loaded": 0, "failed": 0, "inactive": 0}

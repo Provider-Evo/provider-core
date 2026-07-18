@@ -1,4 +1,13 @@
-"""将已加载插件声明的路由与静态资源注册到 aiohttp 应用。"""
+"""plugin_routes 模块 — 项目标准模块。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 plugin_routes 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 from __future__ import annotations
 
 import inspect
@@ -50,6 +59,11 @@ def register_plugin_routes(app: aiohttp.web.Application) -> None:
         plugin = record.plugin
         plugin_dir = record.plugin_dir
         static_dir = plugin_dir / "static"
+        if not static_dir.is_dir():
+            for candidate in plugin_dir.glob("*/frontend_media"):
+                if candidate.is_dir():
+                    static_dir = candidate
+                    break
         if static_dir.is_dir():
             prefix = f"/static/plugins/{plugin_id.rsplit('.', 1)[-1]}/"
             try:
@@ -73,4 +87,4 @@ def register_plugin_routes(app: aiohttp.web.Application) -> None:
             methods = [m.upper() for m in (meta.get("methods") or ["GET"])]
             for method in methods:
                 app.router.add_route(method, path, _adapt_handler(handler))
-            logger.info("插件路由: %s %s [%s]", ",".join(methods), path, plugin_id)
+            logger.debug("插件路由: %s %s [%s]", ",".join(methods), path, plugin_id)

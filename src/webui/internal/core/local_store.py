@@ -1,6 +1,13 @@
-from __future__ import annotations
+"""local_store 模块 — WebUI 层。
 
-"""WebUI 本地存储。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 local_store 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 import json
 import os

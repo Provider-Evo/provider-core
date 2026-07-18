@@ -1,6 +1,13 @@
-from __future__ import annotations
+"""http_utils 模块 — 项目标准模块。
 
-"""HTTP utility functions: fncall cleaning, buffer flushing, JSON parsing."""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 http_utils 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 from typing import Any, Tuple
 
@@ -24,7 +31,10 @@ Returns:
 
 
 def safe_flush(
-    buffer: str, platform_id: str = "", protocol_id: str = ""
+    buffer: str,
+    platform_id: str = "",
+    protocol_id: str = "",
+    protocol: Any = None,
 ) -> Tuple[str, str]:
     """中文说明：safe_flush。
 
@@ -41,9 +51,10 @@ Args:
 Returns:
     (flushable_part, kept_part): Two strings whose concatenation equals the
     original buffer."""
-    from src.core.utils.compat.tools import get_protocol
+    if protocol is None:
+        from src.core.utils.compat.tools import get_protocol
 
-    protocol = get_protocol(protocol_id=protocol_id, platform_id=platform_id)
+        protocol = get_protocol(protocol_id=protocol_id, platform_id=platform_id)
     tags = protocol.get_trigger_tags()
     if not tags:
         return buffer, ""
@@ -65,16 +76,17 @@ Returns:
 
 
 async def get_json(request: Any) -> Any:
-    """中文说明：get_json。
+    """Safely read request JSON body, returning None on failure.
 
-Safely read request JSON body, returning None on failure.
-
-Args:
-    request: aiohttp.web.Request instance.
-
-Returns:
-    Parsed JSON object, or None if parsing fails."""
+    Reuses body parsed by stats middleware when present to avoid double
+    ``json.loads`` on large POST payloads.
+    """
+    cached = request.get("_parsed_json_body")
+    if cached is not None:
+        return cached
     try:
-        return await request.json()
+        body = await request.json()
+        request["_parsed_json_body"] = body
+        return body
     except Exception:
         return None

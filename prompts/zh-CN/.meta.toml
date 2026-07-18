@@ -1,0 +1,4 @@
+[tts_default]
+display_name = "TTS 默认引导"
+advanced = false
+description = "WebUI TTS 配置页「恢复默认」使用的系统引导 Prompt。"

@@ -1,23 +1,30 @@
-from __future__ import annotations
+"""pages 模块 — WebUI 层。
 
-"""WebUI 页面路由。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 pages 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 from pathlib import Path
 
 import aiohttp.web
 
-from src.core.config import get_config
+from src.foundation.config import get_config
 from src.webui.internal.core.auth import (
     COOKIE_NAME,
     clear_session_cookie,
     set_session_cookie,
     verify_session_cookie,
 )
-from src.webui.internal.core.security import token_manager
+from src.webui.internal.core.secure import token_manager
 
 __all__ = ["webui_page", "login_page", "logout_page"]
 
-STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "static"
+STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "frontend_media"
 
 _LOGIN_HTML = """<!doctype html>
 <html lang="zh-CN">

@@ -1,8 +1,47 @@
 from __future__ import annotations
 
-# src/routes/anthropic/__init__.py
 """Anthropic 兼容路由包。"""
 
-from src.routes.anthropic.messages import setup_routes  # noqa: F401
+import aiohttp.web
+
+from src.routes.anthropic.batches import (
+    cancel_message_batch,
+    create_message_batch,
+    list_message_batches,
+    retrieve_message_batch,
+    retrieve_message_batch_results,
+)
+from src.routes.anthropic.catalog import register_anthropic_catalog_routes
+from src.routes.anthropic.handler import (
+    count_tokens,
+    list_models,
+    messages_handler,
+    retrieve_model,
+)
 
 __all__ = ["setup_routes"]
+
+
+def setup_routes(app: aiohttp.web.Application) -> None:
+    """注册所有 Anthropic 兼容路由。"""
+    app.router.add_post("/v1/messages", messages_handler)
+    app.router.add_post("/messages", messages_handler)
+    app.router.add_post("/v1/messages/count_tokens", count_tokens)
+
+    app.router.add_post("/v1/messages/batches", create_message_batch)
+    app.router.add_get("/v1/messages/batches", list_message_batches)
+    app.router.add_get(
+        "/v1/messages/batches/{message_batch_id}", retrieve_message_batch
+    )
+    app.router.add_post(
+        "/v1/messages/batches/{message_batch_id}/cancel", cancel_message_batch
+    )
+    app.router.add_get(
+        "/v1/messages/batches/{message_batch_id}/results",
+        retrieve_message_batch_results,
+    )
+
+    app.router.add_get("/anthropic/v1/models", list_models)
+    app.router.add_get("/anthropic/v1/models/{model_id}", retrieve_model)
+
+    register_anthropic_catalog_routes(app)

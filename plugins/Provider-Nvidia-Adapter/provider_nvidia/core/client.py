@@ -8,10 +8,9 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate, make_id
-from src.core.errors import PlatformError
+from src.core.dispatch.cand import Candidate, make_id
+from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
-from ..accounts import API_KEYS
 from .headers import build_headers
 from .payloads import build_payload, MAX_TOKENS
 from .sse import parse_sse_line
@@ -105,6 +104,8 @@ class NvidiaClient:
             session: 共享的 aiohttp ClientSession。
         """
         self._session = session
+        from ..accounts import API_KEYS
+
         self._keys = [_KeyState(k) for k in API_KEYS if k and k.strip()]
         self._rebuild_candidates()
         logger.info(

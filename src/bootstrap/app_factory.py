@@ -1,16 +1,23 @@
-from __future__ import annotations
+"""app_factory 模块 — 项目标准模块。
 
-"""单一组合根 — 组装 aiohttp 应用、中间件与路由。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 app_factory 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 from typing import Any
 
 import aiohttp.web
 
-from src.bootstrap.lifecycle import on_cleanup, on_startup
+from src.bootstrap.life import on_cleanup, on_startup
 from src.bootstrap.webui_bindings import log_webui_token_if_enabled, register_webui_bindings
-from src.core.utils.observability import OBSERVABILITY_KEY, ObservabilityServices
-from src.core.server.net.keys import REGISTRY_KEY, SESSION_KEY
-from src.core.server.http.middleware import _auth_middleware, _cors, _error
+from src.core.utils.compat.observability import OBSERVABILITY_KEY, ObservabilityServices
+from src.core.server.lifecycle.net.keys import REGISTRY_KEY, SESSION_KEY
+from src.core.server.http.mw import _auth_middleware, _cors, _error
 
 __all__ = ["create_application"]
 

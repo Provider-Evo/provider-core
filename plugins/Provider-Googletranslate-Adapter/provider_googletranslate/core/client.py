@@ -13,8 +13,8 @@ import aiohttp
 
 from echotools.translate import extract_text_from_messages, split_text_chunks
 
-from src.core.dispatch.candidate import Candidate, make_id
-from src.core.errors import PlatformError
+from src.core.dispatch.cand import Candidate, make_id
+from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
 from .constants import (
     API_KEY,

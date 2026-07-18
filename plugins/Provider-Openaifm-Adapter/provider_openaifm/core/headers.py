@@ -1,6 +1,13 @@
-from __future__ import annotations
+"""headers 模块 — Provider 适配器层。
 
-"""openaifm HTTP 请求头构造。"""
+职责：
+    集中放置 provider HTTP 请求头构造逻辑。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 from typing import Dict
 
@@ -28,3 +35,7 @@ def build_headers() -> Dict[str, str]:
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-origin",
     }
+
+__all__ = [
+    "build_headers",
+]

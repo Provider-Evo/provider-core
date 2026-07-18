@@ -22,7 +22,7 @@ from echotools.web.utils import json_response
 from src.core.server.lifecycle.app.app import REGISTRY_KEY, SESSION_KEY, create_app
 from src.core.server.lifecycle.app.app_host import AppHost
 from src.core.server.http.http_utils import clean_fncall, get_json, safe_flush
-from src.core.server.net.proxy import (
+from src.core.server.lifecycle.net.proxy import (
     activate,
     deactivate,
     get_proxy_dict,

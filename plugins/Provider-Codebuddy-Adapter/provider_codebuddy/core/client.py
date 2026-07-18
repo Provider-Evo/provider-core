@@ -9,13 +9,13 @@ from __future__ import annotations
 import asyncio
 import secrets
 import uuid
+from dataclasses import dataclass, field
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate, make_id
+from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.logger import get_logger
-from ..accounts import ACCOUNTS, Account
 from .headers import (
     BASE_URL,
     CHAT_PATH,
@@ -26,6 +26,18 @@ from .sse import parse_sse_line
 
 logger = get_logger(__name__)
 MAX_RETRIES: int = 3
+
+
+@dataclass
+class Account:
+    """CodeBuddy 账号凭证。
+
+    将 token 与 user_id 绑定，便于统一管理和候选项构建。
+    """
+
+    token: str
+    user_id: str
+    context_length: Optional[int] = field(default=None)
 
 
 class CodebuddyClient:
@@ -50,10 +62,13 @@ class CodebuddyClient:
             session: 共享的 aiohttp 会话。
         """
         self._session = session
+        from ..accounts import ACCOUNTS
+
+        self._accounts = [Account(**a) if isinstance(a, dict) else a for a in ACCOUNTS]
         self._rebuild_candidates()
         logger.info(
             "codebuddy 客户端初始化完成，账号数量: %d",
-            len(ACCOUNTS),
+            len(self._accounts),
         )
 
     async def background_setup(self) -> None:
@@ -101,7 +116,7 @@ class CodebuddyClient:
         """
         self._candidates = [
             self._build_candidate(acc)
-            for acc in ACCOUNTS
+            for acc in self._accounts
             if acc.token
         ]
 

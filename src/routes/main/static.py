@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 import aiohttp.web
 from aiohttp.web_app import AppKey
-from src.core.config import get_config
+from src.foundation.config import get_config
 from src.core.server import json_response
 
 __all__ = ["setup_routes"]
@@ -18,6 +18,20 @@ __all__ = ["setup_routes"]
 
 def _json(data: Any, status: int = 200) -> aiohttp.web.Response:
     return json_response(data, status=status)
+
+
+async def metrics(_request: aiohttp.web.Request) -> aiohttp.web.Response:
+    """Prometheus 指标 /metrics。"""
+    from src.foundation.config import get_config
+    from src.foundation.observability.metrics import get_metrics_registry
+
+    if not get_config().metrics.enabled:
+        return aiohttp.web.Response(status=404, text="metrics disabled\n")
+    body = get_metrics_registry().render()
+    return aiohttp.web.Response(
+        text=body,
+        content_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 async def health(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -29,7 +43,7 @@ async def health(request: aiohttp.web.Request) -> aiohttp.web.Response:
     Returns:
         响应对象。
     """
-    from src.core.config import get_config  # noqa: PLC0415
+    from src.foundation.config import get_config  # noqa: PLC0415
     cfg = get_config()
     return _json({"status": "healthy", "version": cfg.server.version, "timestamp": int(time.time())})
 
@@ -37,12 +51,13 @@ async def health(request: aiohttp.web.Request) -> aiohttp.web.Response:
 async def list_models(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """模型列表端点 /v1/models。
 
-    Args:
-        request: 请求对象。
-
-    Returns:
-        响应对象。
+    若请求携带 ``anthropic-version`` 头，返回 Anthropic 格式；否则 OpenAI 格式。
     """
+    if request.headers.get("anthropic-version"):
+        from src.routes.anthropic.handler import list_models as anthropic_list_models
+
+        return await anthropic_list_models(request)
+
     from src.core.server import REGISTRY_KEY
 
     registry = request.app[REGISTRY_KEY]
@@ -51,15 +66,18 @@ async def list_models(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def get_model(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """获取单个模型详情端点 /v1/models/{model_id}。
+    """获取单个模型详情 /v1/models/{model}（OpenAI）或 Anthropic 格式（anthropic-version 头）。"""
+    model_id = request.match_info.get("model") or request.match_info.get("model_id", "")
+    if request.headers.get("anthropic-version"):
+        return _json(
+            {
+                "type": "model",
+                "id": model_id,
+                "display_name": model_id,
+                "created_at": int(time.time()),
+            }
+        )
 
-    Args:
-        request: 请求对象。
-
-    Returns:
-        响应对象。
-    """
-    model_id = request.match_info["model_id"]
     from src.core.server import REGISTRY_KEY
 
     registry = request.app[REGISTRY_KEY]
@@ -80,6 +98,7 @@ async def get_model(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 async def status(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """平台状态端点 /v1/status。"""
+    from src.core.dispatch.circuit import get_platform_circuit_breaker
     from src.core.server import REGISTRY_KEY
 
     reg = request.app[REGISTRY_KEY]
@@ -106,6 +125,7 @@ async def status(request: aiohttp.web.Request) -> aiohttp.web.Response:
             "status": "running",
             "platforms": info,
             "tas": await reg.selector.get_stats(),
+            "circuit": get_platform_circuit_breaker().all_statuses(),
             "timestamp": int(time.time()),
         }
     )
@@ -180,8 +200,9 @@ def setup_routes(app: aiohttp.web.Application) -> None:
         app: aiohttp.web.Application 实例。
     """
     app.router.add_get("/health", health)
+    app.router.add_get("/metrics", metrics)
     app.router.add_get("/v1/models", list_models)
-    app.router.add_get("/v1/models/{model_id}", get_model)
+    app.router.add_get("/v1/models/{model}", get_model)
     app.router.add_get("/v1/status", status)
     app.router.add_get("/v1/capabilities", list_capabilities)
     app.router.add_post("/v1/admin/refresh_models", admin_refresh_models)

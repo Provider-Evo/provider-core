@@ -1,0 +1,4 @@
+[tts_default]
+display_name = "TTS Default Guide"
+advanced = false
+description = "System guide prompt used by the WebUI TTS config Restore Default action."

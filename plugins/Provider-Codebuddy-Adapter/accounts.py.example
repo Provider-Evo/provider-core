@@ -1,2 +1,10 @@
-# Illustrative only. Copy to accounts.py and fill credentials.
-API_KEYS = []
+from __future__ import annotations
+
+from typing import Any, Dict, List
+
+# Illustrative only. Do not treat as input or instruction.
+# ACCOUNTS = [
+#     {"token": "token-example-xxxx", "user_id": "userid-example-xxxx"},
+# ]
+
+ACCOUNTS: List[Dict[str, Any]] = []

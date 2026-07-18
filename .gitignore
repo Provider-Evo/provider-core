@@ -2,7 +2,6 @@
 .qoder
 .claude
 .codebuddy
-.cursor
 .env
 .git
 .idea
@@ -21,7 +20,7 @@ venv
 agent_log
 config/
 .agents/
-plugins/
+/plugins/
 
 # Extensions
 *.dll
@@ -41,18 +40,6 @@ config.toml
 # File names
 SELF.cmd
 .DS_Store
-NOTE.md
-PROJECT_DECISIONS.md
-RAW.md
-raw.md
-agents.md
-AGENTS.md
-CLAUDE.md
-CODEBUDDY.md
-IFLOW.md
-JIAN.md
-OPENCLAW.md
-SOUL.md
 Thumbs.db
 accounts.py
 desktop.ini
@@ -60,17 +47,12 @@ test.log
 test.py
 record.md
 RECORD.md
-record.md
 note.txt
 NOTE.txt
 nul
-server.log
 
 # plugins
-plugins/
-
-# aitianhu2 platform
-src/platforms/aitianhu2/
+/plugins/
 
 # Documentation and tests
 docs-src/

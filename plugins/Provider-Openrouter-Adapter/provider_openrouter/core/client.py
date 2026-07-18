@@ -8,8 +8,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate, make_id
-from src.core.errors import EmbeddingError, PlatformError
+from src.core.dispatch.cand import Candidate, make_id
+from src.core.utils.errors import EmbeddingError, PlatformError
 from src.foundation.logger import get_logger
 from ..accounts import API_KEYS
 from .constants import (
@@ -121,44 +121,49 @@ class OpenRouterClient:
             logger.warning("openrouter后台拉取模型失败: %s", e)
 
     async def fetch_remote_models(self) -> List[str]:
-        """从OpenRouter API拉取可用模型列表。
+        """从OpenRouter前端API拉取free模型列表。
+
+        API端点: GET https://openrouter.ai/api/frontend/v1/models/find
+        查询参数: active=true, fmt=cards, q=free
+        响应结构: {"data": {"models": [{"slug": "...", ...}]}}
 
         Returns:
             模型ID列表，失败时返回空列表。
         """
-        if not self._session or not self._keys:
+        if not self._session:
             return []
 
-        ks = next((k for k in self._keys if k.available), None)
-        if ks is None:
-            return []
-
-        headers = build_headers(ks.key)
-        url = "{}{}".format(BASE_URL, MODELS_PATH)
+        url = "https://openrouter.ai/api/frontend/v1/models/find"
+        params = {"active": "true", "fmt": "cards", "q": "free"}
+        headers = {
+            "accept": "application/json",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        }
 
         try:
             async with self._session.get(
                 url,
+                params=params,
                 headers=headers,
                 ssl=False,
                 timeout=aiohttp.ClientTimeout(connect=10, total=30),
             ) as resp:
                 if resp.status != 200:
                     logger.warning(
-                        "openrouter拉取模型列表失败, HTTP%d", resp.status
+                        "openrouter拉取free模型列表失败, HTTP%d", resp.status
                     )
                     return []
                 data = await resp.json()
-                model_data = data.get("data", [])
-                if isinstance(model_data, list):
+                models = data.get("data", {}).get("models", [])
+                if isinstance(models, list):
                     return [
-                        m.get("id", "")
-                        for m in model_data
-                        if isinstance(m, dict) and m.get("id")
+                        m.get("slug", "")
+                        for m in models
+                        if isinstance(m, dict) and m.get("slug")
                     ]
                 return []
         except Exception as e:
-            logger.warning("openrouter拉取模型列表异常: %s", e)
+            logger.warning("openrouter拉取free模型列表异常: %s", e)
             return []
 
     def update_models(self, models: List[str]) -> None:

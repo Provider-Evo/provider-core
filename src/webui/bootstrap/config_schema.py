@@ -1,4 +1,13 @@
-"""WebUI 配置与视图模型。"""
+"""config_schema 模块 — WebUI 层。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 config_schema 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -20,6 +29,7 @@ class PortableWebUISettings:
     timeout_ms: int = 6000
     stream_idle_timeout_ms: int = 60000
     compact: str = "0"
+    font_size_base: int = 14
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典。"""

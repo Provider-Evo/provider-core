@@ -10,7 +10,7 @@ from .config_panel import (
     config_raw_put,
     config_schema_get,
 )
-from .webui_config_panel import (
+from .cfg_panel import (
     webui_config_get,
     webui_config_put,
     webui_config_reload,

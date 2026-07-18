@@ -1,12 +1,19 @@
-from __future__ import annotations
+"""auth 模块 — WebUI 层。
 
-"""WebUI authentication middleware — verifies webui_token cookie."""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 auth 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+from __future__ import annotations
 
 from typing import Awaitable, Callable
 
 import aiohttp.web
 
-from src.core.config import get_config
+from src.foundation.config import get_config
 from src.webui.internal.core.auth import COOKIE_NAME
 
 __all__ = ["auth_middleware"]
@@ -62,7 +69,7 @@ Authentication is disabled when ``[auth] enabled = false`` in
     # Check cookie
     cookie_val = request.cookies.get(COOKIE_NAME, "")
     if cookie_val:
-        from src.webui.internal.core.security import token_manager
+        from src.webui.internal.core.secure import token_manager
         if token_manager.verify(cookie_val):
             return await handler(request)
 

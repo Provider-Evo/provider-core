@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from .adapter import Adapter, CodebuddyAdapter
+from provider_codebuddy.adapter import Adapter, CodebuddyAdapter
 
 __all__ = ["Adapter", "CodebuddyAdapter"]

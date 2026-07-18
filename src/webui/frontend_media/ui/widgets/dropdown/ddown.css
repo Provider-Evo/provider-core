@@ -1,0 +1,196 @@
+/* Custom dropdown — portal 浮层，避免被父级 overflow 裁剪 */
+
+#ui-dropdown-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 120000;
+  pointer-events: none;
+  overflow: visible;
+}
+
+#ui-dropdown-portal .custom-dropdown-list {
+  pointer-events: auto;
+}
+
+.custom-dropdown {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.custom-dropdown.is-open {
+  z-index: 5;
+}
+
+.custom-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid var(--border) !important;
+  background: var(--panel);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  text-align: left;
+  line-height: 1.4;
+  min-height: 40px;
+}
+
+.custom-dropdown-trigger:hover {
+  background: var(--panel-alt);
+}
+
+.custom-dropdown-trigger:focus-visible {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+
+.custom-dropdown-trigger[aria-expanded="true"] {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.custom-dropdown-trigger .custom-dropdown-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.custom-dropdown-trigger .custom-dropdown-label.is-placeholder {
+  color: var(--muted);
+}
+
+.custom-dropdown-trigger .custom-dropdown-value {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.custom-dropdown-chevron {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+
+.custom-dropdown-trigger[aria-expanded="true"] .custom-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+.custom-dropdown-list {
+  position: fixed;
+  z-index: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(21, 33, 56, 0.16);
+  padding: 4px;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+  box-sizing: border-box;
+}
+
+.custom-dropdown-list.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.custom-dropdown-list.opens-up {
+  transform: translateY(6px);
+}
+
+.custom-dropdown-list.opens-up.is-open {
+  transform: translateY(0);
+}
+
+.custom-dropdown-search {
+  display: block;
+  width: calc(100% - 8px);
+  margin: 0 4px 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border) !important;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.custom-dropdown-search:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.custom-dropdown-search::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.custom-dropdown-option {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.custom-dropdown-option:hover,
+.custom-dropdown-option[data-highlighted="true"] {
+  background: var(--panel-alt);
+}
+
+.custom-dropdown-option[aria-selected="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.custom-dropdown-option[data-value=""] {
+  color: var(--muted);
+}
+
+[data-compact="1"] .custom-dropdown-trigger {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+[data-compact="1"] .custom-dropdown-option {
+  padding: 6px 10px;
+  font-size: 13px;
+}

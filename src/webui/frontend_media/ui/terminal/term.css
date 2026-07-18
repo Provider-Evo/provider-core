@@ -1,0 +1,987 @@
+/* ==========================================================================
+   Terminal-specific styles.
+   Tab bar, layout, and compressed mode styles are in core/tabbar.css.
+   ========================================================================== */
+
+/* ========================= Terminal Container ========================= */
+
+.terminal-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Vertical layout: container becomes row */
+.terminal-container.tabbar-vertical {
+  flex-direction: row;
+  /* Ensure vertical layout also clips overflow properly */
+  overflow: hidden;
+}
+
+/* ========================= Terminal Body ========================= */
+
+.terminal-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Classic black terminal background mode */
+.terminal-body.terminal-body--original {
+  background: #1e1e1e;
+}
+
+/* Custom background image mode - use pseudo-element for background */
+.terminal-body.terminal-body--custom {
+  background-color: var(--bg);
+  position: relative;
+}
+
+.terminal-body.terminal-body--custom::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: var(--custom-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--custom-bg-opacity, 0.3);
+  pointer-events: none;
+  z-index: 0;
+  /* Removed margin: -2px which caused overflow beyond container bounds */
+}
+
+/* Ensure terminal content stays above background */
+.terminal-body.terminal-body--custom > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ========================= Custom Background Controls ========================= */
+
+.terminal-custom-bg-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  /* Ensure controls don't overflow */
+  flex-shrink: 0;
+}
+
+.terminal-bg-opacity-range {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border);
+  border-radius: 0;
+  outline: none;
+}
+
+.terminal-bg-opacity-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.terminal-bg-opacity-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+
+/* ========================= Background Mode Button ========================= */
+
+.terminal-bg-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  /* Ensure button doesn't overflow */
+  flex-shrink: 0;
+}
+
+.terminal-bg-mode-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.terminal-bg-mode-btn .terminal-bg-mode-icon {
+  font-size: 14px;
+}
+
+.terminal-container.tabbar-vertical .terminal-body {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ========================= xterm.js ========================= */
+
+.xterm-container {
+  width: 100%;
+  height: 100%;
+  /* Ensure xterm container doesn't overflow */
+  overflow: hidden;
+}
+
+.xterm-container .xterm {
+  height: 100%;
+  /* Ensure xterm doesn't overflow its container */
+  max-height: 100%;
+}
+
+.terminal-pane {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* Ensure terminal pane doesn't overflow */
+  overflow: hidden;
+}
+
+/* ========================= Empty State ========================= */
+
+.terminal-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--muted);
+  padding: var(--space-xl) var(--space-lg);
+  text-align: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.terminal-empty-state-icon {
+  font-size: 36px;
+  opacity: 0.4;
+}
+
+.terminal-empty-state-text {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.terminal-empty-state-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.terminal-empty-state-actions button {
+  padding: 6px 16px;
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.terminal-empty-state-actions button:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ========================= Context Menu ========================= */
+
+.terminal-context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  min-width: 160px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.terminal-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.1s;
+}
+
+.terminal-context-menu-item:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.terminal-context-menu-item.danger {
+  color: var(--err);
+}
+
+.terminal-context-menu-item.danger:hover {
+  background: rgba(217, 72, 72, 0.1);
+}
+
+.terminal-context-menu-separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border);
+}
+
+/* ========================= SSH Dialog ========================= */
+
+.terminal-ssh-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  /* Ensure overlay doesn't cause overflow */
+  overflow: hidden;
+}
+
+.terminal-ssh-dialog {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 24px;
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+}
+
+.terminal-ssh-dialog h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.terminal-ssh-dialog-subtitle {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.terminal-ssh-field {
+  margin-bottom: 14px;
+}
+
+.terminal-ssh-field label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.terminal-ssh-field input,
+.terminal-ssh-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 0;
+  border: 1px solid var(--border);
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.terminal-ssh-field textarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.terminal-ssh-field input:focus,
+.terminal-ssh-field textarea:focus {
+  border-color: var(--accent) !important;
+}
+
+.terminal-ssh-row {
+  display: flex;
+  gap: 12px;
+}
+
+.terminal-ssh-row .terminal-ssh-field {
+  flex: 1;
+}
+
+.terminal-ssh-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.terminal-ssh-actions button {
+  padding: 10px 20px;
+  border-radius: 0;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.terminal-ssh-btn-cancel {
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.terminal-ssh-btn-cancel:hover {
+  background: var(--panel);
+}
+
+.terminal-ssh-btn-connect {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent) !important;
+}
+
+.terminal-ssh-btn-connect:hover {
+  opacity: 0.9;
+}
+
+.terminal-ssh-quick-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Saved connections list in dialog */
+.terminal-ssh-saved {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.terminal-ssh-saved-title {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.terminal-ssh-saved-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+
+.terminal-ssh-saved-item:hover {
+  background: var(--accent-soft);
+}
+
+.terminal-ssh-saved-item-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.terminal-ssh-saved-item-name {
+  font-weight: 500;
+}
+
+.terminal-ssh-saved-item-host {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.terminal-ssh-saved-item-del {
+  opacity: 0;
+  color: var(--err);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 14px;
+}
+
+.terminal-ssh-saved-item:hover .terminal-ssh-saved-item-del {
+  opacity: 0.7;
+}
+
+.terminal-ssh-saved-item-del:hover {
+  opacity: 1 !important;
+}
+
+/* ========================= Context Menu Submenu ========================= */
+
+.terminal-context-menu-item.has-submenu {
+  position: relative;
+}
+
+.terminal-context-menu-submenu {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  min-width: 120px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  /* Ensure submenu doesn't overflow viewport */
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+/* ========================= Color Picker ========================= */
+
+.terminal-color-picker {
+  position: fixed;
+  z-index: 1000;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 6px;
+  min-width: 160px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.color-picker-header {
+  font-weight: bold;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px;
+}
+
+.color-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 0;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.color-cell:hover {
+  opacity: 0.8;
+}
+
+.color-cell.selected {
+  border-color: var(--accent);
+}
+
+.color-actions {
+  display: flex;
+  padding: 4px;
+}
+
+.color-reset, .color-custom {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.color-reset:hover, .color-custom:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.color-custom-panel {
+  border-top: 1px solid var(--border);
+  padding: 8px;
+}
+
+.color-preview-box {
+  margin-bottom: 8px;
+}
+
+.color-preview {
+  width: 100%;
+  height: 32px;
+  border-radius: 0;
+  background: #ff4444;
+}
+
+.color-hue-slider, .color-alpha-slider {
+  margin-bottom: 8px;
+}
+
+.color-hue-slider input, .color-alpha-slider input {
+  width: 100%;
+}
+
+.color-more {
+  margin-top: 8px;
+}
+
+.color-more button {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.color-more button:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.color-rgb-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.rgb-inputs {
+  margin-bottom: 8px;
+}
+
+.rgb-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  align-items: center;
+  padding: 4px 8px;
+}
+
+.rgb-row:hover {
+  background: var(--accent-soft);
+}
+
+.rgb-row label {
+  width: 40px;
+  font-size: 12px;
+}
+
+.rgb-hex {
+  width: 100px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.rgb-r, .rgb-g, .rgb-b {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.color-confirm {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 0;
+  background: var(--accent);
+  color: var(--bg);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.color-confirm:hover {
+  opacity: 0.9;
+}
+
+/* ========================= Search Dialog ========================= */
+
+.terminal-search-dialog {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 100;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px;
+  /* Ensure search dialog doesn't overflow its container */
+  max-height: calc(100% - 10px);
+  overflow: auto;
+}
+
+.terminal-search-dialog .search-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.search-input {
+  width: 150px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.search-count {
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 30px;
+  text-align: center;
+  user-select: none;
+}
+
+.search-prev, .search-next, .search-case, .search-regex, .search-close {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  background: var(--bg-secondary, var(--bg));
+  color: var(--text);
+  font-size: 12px;
+}
+
+.search-prev:hover, .search-next:hover, .search-case:hover, .search-regex:hover, .search-close:hover {
+  background: var(--accent-soft);
+}
+
+.search-case.active, .search-regex.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ========================= Color Picker SV Area ========================= */
+
+.color-sv-area {
+  position: relative;
+  width: 200px;
+  height: 140px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.color-sv-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.color-sv-cursor {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* ========================= Split Layout ========================= */
+
+.terminal-split-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  /* Ensure split container doesn't overflow its parent */
+  overflow: hidden;
+}
+
+.terminal-split-vertical {
+  display: flex;
+  flex-direction: row;
+}
+
+.terminal-split-horizontal {
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-split-pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  /* Ensure split pane doesn't overflow its container */
+  box-sizing: border-box;
+}
+
+.terminal-split-vertical .terminal-split-left {
+  border-right: 1px solid var(--border);
+}
+
+.terminal-split-vertical .terminal-split-right {
+  border-left: none;
+}
+
+.terminal-split-horizontal .terminal-split-left {
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-split-horizontal .terminal-split-right {
+  border-top: none;
+}
+
+/* ========================= Server Sidebar ========================= */
+
+.terminal-page-layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-lg);
+}
+
+.terminal-page-layout .terminal-container {
+  min-width: 0;
+}
+
+.terminal-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  position: relative;
+  transition: width 0.15s ease;
+  box-sizing: border-box;
+}
+
+.terminal-sidebar.collapsed {
+  width: 28px;
+}
+
+.terminal-sidebar.collapsed .terminal-sidebar-inner {
+  display: none;
+}
+
+.terminal-sidebar-toggle {
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px 2px;
+}
+
+.terminal-sidebar-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.terminal-sidebar-inner {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.terminal-sidebar-tabs {
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.terminal-sidebar-tab {
+  flex: 1;
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+}
+
+.terminal-sidebar-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.terminal-sidebar-panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-lg);
+}
+
+.terminal-sidebar-panel.active {
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-sidebar-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.terminal-sidebar-table th,
+.terminal-sidebar-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 4px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.terminal-sidebar-row {
+  cursor: pointer;
+}
+
+.terminal-sidebar-row:hover {
+  background: var(--accent-soft);
+}
+
+.terminal-sidebar-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.terminal-sidebar-actions button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.terminal-sidebar-btn-ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.terminal-toggle-switch {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--border);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.terminal-toggle-switch .knob {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left 0.15s;
+}
+
+.terminal-toggle-switch.on {
+  background: var(--accent);
+}
+
+.terminal-toggle-switch.on .knob {
+  left: 18px;
+}
+
+.terminal-sidebar-panel .terminal-empty-state {
+  padding: var(--space-lg) var(--space-lg);
+}
+
+.terminal-sidebar-pagination {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-shrink: 0;
+}
+
+.terminal-sidebar-pagination button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 0;
+  font-size: 12px;
+}
+
+.terminal-sidebar-pagination span {
+  font-size: 12px;
+  color: var(--muted);
+}

@@ -1,4 +1,13 @@
-"""插件运行时组件 API（对照 MaiBot runtime_routes）。"""
+"""runtime_routes 模块 — WebUI 层。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 runtime_routes 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -39,7 +48,7 @@ async def plugins_runtime_hooks(_request: aiohttp.web.Request) -> aiohttp.web.Re
     hooks = runtime.get_components("hook")
     registered = []
     try:
-        from src.core.server.plugins.hook_registry import get_hook_registry
+        from src.core.server.plugins.hook_reg import get_hook_registry
 
         registered = get_hook_registry().list_registered()
     except Exception:
@@ -50,6 +59,6 @@ async def plugins_runtime_hooks(_request: aiohttp.web.Request) -> aiohttp.web.Re
 
 
 async def plugins_runtime_hook_specs(_request: aiohttp.web.Request) -> aiohttp.web.Response:
-    from src.core.server.plugins.hook_registry import HOOK_SPECS
+    from src.core.server.plugins.hook_reg import HOOK_SPECS
 
     return aiohttp.web.json_response({"success": True, "specs": HOOK_SPECS})

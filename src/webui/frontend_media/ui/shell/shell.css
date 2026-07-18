@@ -1,0 +1,618 @@
+/* WebUI shell — app grid, sidebar rail, content scroll */
+
+:root {
+  --font-size-base: 14px;
+}
+
+.webui-app {
+  min-height: 100vh;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.webui-topbar {
+  flex-shrink: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  min-height: 40px;
+}
+
+.webui-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.webui-topbar-brand h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.webui-topbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  align-items: center;
+}
+
+.webui-topbar-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.webui-topbar-btn {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  height: 28px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+.webui-topbar-btn:hover {
+  background: var(--panel-alt);
+}
+
+.webui-topbar-btn--danger {
+  border-color: var(--err);
+  color: #fff;
+  background: var(--err);
+}
+
+.webui-topbar-btn--danger:hover {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
+
+/* Backward compat: rename warn to danger */
+.webui-topbar-btn--warn {
+  border-color: var(--err);
+  color: #fff;
+  background: var(--err);
+}
+
+.webui-topbar-btn--warn:hover {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
+
+.webui-topbar-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-alt);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+}
+
+/* ── Body: sidebar + main ── */
+.webui-body {
+  --sidebar-item-h: 40px;
+  --sidebar-rail-w: 52px;
+  --sidebar-expanded-w: 196px;
+  display: grid;
+  grid-template-columns: var(--sidebar-rail-w) minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  height: 100%;
+  transition: grid-template-columns 0.25s ease;
+}
+
+.webui-body.expanded {
+  grid-template-columns: var(--sidebar-expanded-w) minmax(0, 1fr);
+}
+
+/* ── Sidebar rail ── */
+.webui-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  overflow: hidden;
+  position: relative;
+  z-index: 300;
+}
+
+.sidebar-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  padding: 8px 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--sidebar-item-h);
+  height: var(--sidebar-item-h);
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s, width 0.25s ease, min-width 0.25s ease, max-width 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar-nav-item {
+  flex-shrink: 0;
+}
+
+.sidebar-nav-item .nav-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-nav-item .nav-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.sidebar-nav-item .nav-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.2s ease, max-width 0.25s ease;
+  max-width: 160px;
+  opacity: 1;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.sidebar-nav-item.active,
+.webui-sidebar .tab-button.active {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+  border-color: transparent !important;
+}
+
+.webui-body:not(.expanded) .sidebar-nav-item .nav-label {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  flex: 0 0 0;
+  width: 0;
+}
+
+.webui-body:not(.expanded) .sidebar-nav-item {
+  justify-content: center;
+  padding: 0;
+  gap: 0;
+  width: 100%;
+}
+
+.webui-body:not(.expanded) .sidebar-primary {
+  padding-left: 6px;
+  padding-right: 6px;
+  align-items: center;
+}
+
+.webui-body:not(.expanded) .sidebar-nav-item {
+  width: var(--sidebar-item-h);
+  min-width: var(--sidebar-item-h);
+  max-width: var(--sidebar-item-h);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 0;
+  width: 100%;
+  min-height: var(--sidebar-item-h);
+  height: var(--sidebar-item-h);
+  border: none;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.sidebar-collapse-btn svg {
+  transition: transform 0.25s ease;
+}
+
+.webui-body:not(.expanded) .sidebar-collapse-btn svg {
+  transform: rotate(180deg);
+}
+
+/* ── Main content area ── */
+#mainTabSection {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel-soft);
+}
+
+.webui-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+}
+
+.tool-view-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-bottom: var(--space-sm);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--panel-soft);
+}
+
+.webui-body.is-tool-view .tool-view-bar {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.webui-body.is-tool-view .tool-view-back {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tool-view-bar.hidden {
+  display: none;
+}
+
+.tool-view-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tool-view-back:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.tool-view-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tab-panel.active {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Terminal and logs panels must not grow beyond the flex-allocated height.
+   .webui-content has overflow-y:auto which can cause flex children to size
+   to content; overflow:hidden constrains them to the flex-allocated space. */
+#tab-terminal.active,
+#tab-logs.active {
+  overflow: hidden;
+  /* Prevent terminal body from pushing beyond flex allocation */
+  max-height: 100%;
+}
+
+/* When terminal tab is active, make webui-content a flex column so the
+   terminal panel's flex:1 fills the viewport height instead of sizing to
+   content (which would grow the window as vertical tabs are added). */
+.webui-content:has(#tab-terminal.active) {
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Terminal tab provides its own gap; remove page-header margin to avoid double spacing */
+#tab-terminal .page-header {
+  margin-bottom: 0;
+}
+
+/* ── Page chrome ── */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.page-header h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--panel-soft);
+}
+
+.settings-subnav-btn {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.settings-subnav-btn.active {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.settings-pane {
+  display: none;
+}
+
+.settings-pane.active {
+  display: grid;
+  gap: 14px;
+}
+
+.routing-section {
+  display: grid;
+  gap: 12px;
+}
+
+.routing-section + .routing-section {
+  margin-top: 4px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.routing-section-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.routing-health-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.dashboard-kpi-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+/* In-content tab buttons (plugins, etc.) keep filled active style */
+.tab-panel .tab-button.active:not(.sidebar-nav-item) {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* ── Mobile / portrait: bottom tab bar ── */
+@media (max-width: 768px), (orientation: portrait) and (max-width: 1024px) {
+  .webui-app {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .webui-topbar {
+    flex-wrap: wrap;
+  }
+
+  .webui-body,
+  .webui-body.expanded {
+    grid-template-columns: 1fr !important;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .webui-sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    height: auto;
+    min-height: 56px;
+    flex-direction: row;
+    align-items: stretch;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+    z-index: 200;
+    overflow: visible;
+  }
+
+  .sidebar-primary {
+    flex: 1;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar-primary::-webkit-scrollbar {
+    display: none;
+  }
+
+  .webui-body:not(.expanded) .sidebar-nav-item .nav-label,
+  .webui-body.expanded .sidebar-nav-item .nav-label {
+    max-width: 160px !important;
+    opacity: 1 !important;
+    overflow: hidden;
+  }
+
+  .sidebar-nav-item {
+    flex: 1 0 auto;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    width: auto;
+    min-width: 64px;
+    max-width: none;
+    height: 56px;
+    min-height: 56px;
+    padding: 6px 8px !important;
+    border-radius: 0;
+    font-size: 10px;
+    text-align: center;
+    border: none;
+    background: transparent;
+    margin-top: 0;
+  }
+
+  .sidebar-nav-item .nav-label {
+    flex: none;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .sidebar-nav-item .nav-icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sidebar-nav-item .nav-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .sidebar-collapse-btn {
+    display: none;
+  }
+
+  #mainTabSection {
+    min-height: calc(100vh - 49px);
+  }
+
+  .webui-content {
+    padding: 16px 14px calc(56px + 16px);
+  }
+}

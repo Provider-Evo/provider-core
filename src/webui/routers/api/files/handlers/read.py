@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from .._common import (
+from ..common import (
     DRIVES_SENTINEL,
     MAX_PREVIEW_SIZE,
     PROJECT_ROOT,

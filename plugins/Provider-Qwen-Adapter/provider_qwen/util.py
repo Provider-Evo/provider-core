@@ -1,15 +1,17 @@
-from __future__ import annotations
+"""util 模块 — Provider 适配器层。
 
-"""Qwen 对外工具门面。
+职责：
+    提供运行期无关的小工具（路径解析、字符串转换、header 构造等）。
 
-该模块只负责对外导出稳定接口：
-- 共享常量/函数来自 ``src.platforms.qwen.core.shared``
-- ``QwenAdapter`` 与 ``Adapter`` 通过 ``__getattr__`` 延迟加载，避免循环导入
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
+
+
 
 from typing import Any
 
-from provider_qwen.core.shared import (
+from provider_qwen.core.http.shared import (
     CAPS,
     MODELS,
     MODELS_PERSIST_PATH,
@@ -23,7 +25,7 @@ from provider_qwen.core.shared import (
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入 QwenAdapter。"""
     if name in ("QwenAdapter", "Adapter"):
-        from provider_qwen.core.adaptercore import (  # noqa: PLC0415
+        from provider_qwen.core.adapter.adaptercore import (  # noqa: PLC0415
             QwenAdapter as _QwenAdapter,
         )
 

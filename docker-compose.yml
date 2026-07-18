@@ -1,0 +1,12 @@
+services:
+  provider:
+    build: .
+    ports:
+      - "1337:1337"
+    volumes:
+      - ./config:/app/config
+      - ./plugins:/app/plugins
+      - ./persist:/app/persist
+    environment:
+      - WORKER_PROCESS=1
+    restart: unless-stopped

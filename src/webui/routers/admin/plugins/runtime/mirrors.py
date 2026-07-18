@@ -1,4 +1,13 @@
-"""插件 Git 镜像源 CRUD（对照 MaiBot catalog mirrors）。"""
+"""mirrors 模块 — WebUI 层。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 mirrors 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 from __future__ import annotations
 
 import json

@@ -1,27 +1,23 @@
-from __future__ import annotations
+"""env 模块 — Provider 适配器层。
 
-"""Credential helpers for the standalone MVP chat script."""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 env 能力。
 
-import os
-import sys
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
+
 from pathlib import Path
 from typing import Tuple
 
-try:
-    from ..accounts import ACCOUNTS
-except ImportError:
-    root = Path(__file__).resolve().parents[1]
-    if str(root) not in sys.path:
-        sys.path.insert(0, str(root))
-    from accounts import ACCOUNTS
+from provider_qwen.core.adapter.client import _load_accounts
 
 
 def get_credentials() -> Tuple[str, str]:
-    """Return credentials from environment variables or the first account."""
-    email = os.environ.get("QWEN_EMAIL", "").strip()
-    password = os.environ.get("QWEN_PASSWORD", "").strip()
-    if email and password:
-        return email, password
-    if not ACCOUNTS:
+    """Return credentials for the first account configured in config.toml."""
+    accounts = _load_accounts()
+    if not accounts:
         raise SystemExit("no Qwen accounts configured")
-    return ACCOUNTS[0].username, ACCOUNTS[0].password
+    return accounts[0].username, accounts[0].password

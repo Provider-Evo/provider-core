@@ -1,6 +1,40 @@
-from __future__ import annotations
+"""
+routes 模块。
 
-"""WebUI 路由注册。"""
+本文件为 Provider-Evo 项目标准模块，使用以下约定：
+
+- 模块路径：provider-self.src.webui.bootstrap.routes
+- 文件名：routes.py
+- 父包：provider-self/src/webui/bootstrap
+
+职责：
+
+    作为 provider / 核心子系统的标准模块入口；
+    通常被 ``plugin.py`` 或上层 ``client.py`` 通过显式 import 使用。
+
+对外接口：
+
+    本模块的 ``__all__`` 列出对外可导入的符号集合；其他内部符号
+    可能在重构中调整，调用方应只依赖 ``__all__`` 暴露的稳定 API。
+
+集成：
+
+    - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
+    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
+
+依赖：
+
+    - 仅依赖 ``provider-sdk`` 与 Python 3.8+ 标准库；不引入第三方 HTTP 库。
+    - 不直接读环境变量；所有配置走 ``config/main_config.toml``。
+
+修改指引：
+
+    - 调整本模块时同步更新 ``docs-src/plugins/<name>.md`` 与对应 ``tests/``。
+    - 保持单文件 200-400 行；超长请拆为子包并通过 ``__init__.py`` 重新导出。
+    - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
+"""
+
 
 from pathlib import Path
 
@@ -21,7 +55,10 @@ from src.webui.routers import (
     login_page, logout_page,
     chat_media_get, chat_media_put,
     logs_ws, persist_get, persist_put, reload_service, requests_list, requests_ws,
-    stats_api, stats_reset, summary_api, system_status, terminal_sessions_api, terminal_ws, webui_page,
+    stats_api, stats_reset, stats_ws, summary_api, system_status, terminal_sessions_api,
+    terminal_ssh_connections_api, terminal_ws, webui_page,
+    terminal_audit_api, terminal_audit_config_api, terminal_audit_detail_api,
+    terminal_commands_api, terminal_commands_export_api, terminal_commands_import_api,
     plugins_config_get, plugins_config_put, plugins_config_bundle, plugins_config_reset, plugins_fetch_raw, plugins_git_status,
     plugins_host_version, plugins_icon, plugins_install, plugins_installed, plugins_list,
     plugins_local_changelog, plugins_local_readme, plugins_market_config, plugins_reload,
@@ -31,12 +68,17 @@ from src.webui.routers import (
     plugins_stats_proxy_summary, plugins_stats_proxy_toggle_like,
 )
 from src.webui.routers.admin import auth_regenerate, auth_update, auth_verify
+from src.webui.routers.admin.keys import (
+    virtual_keys_create,
+    virtual_keys_delete,
+    virtual_keys_list,
+)
 
 __all__ = ["setup_routes"]
 
 
 def _register_static_routes(app: aiohttp.web.Application) -> None:
-    static_dir = Path(__file__).resolve().parent.parent / "static"
+    static_dir = Path(__file__).resolve().parent.parent / "frontend_media"
     app.router.add_static(
         "/static/", path=str(static_dir), name="webui_static",
         show_index=False, append_version=True,
@@ -58,7 +100,7 @@ def _register_page_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/webui/system/status", system_status)
 
 
-def _register_admin_routes(app: aiohttp.web.Application) -> None:
+def _register_admin_config_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/admin/reload", reload_service)
     app.router.add_get("/v1/config", config_get)
     app.router.add_put("/v1/config", config_put)
@@ -77,6 +119,10 @@ def _register_admin_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/admin/autoupdate/check", autoupdate_check)
     app.router.add_post("/v1/admin/autoupdate/diff", autoupdate_diff)
     app.router.add_post("/v1/admin/autoupdate/apply", autoupdate_apply)
+
+
+def _register_admin_routes(app: aiohttp.web.Application) -> None:
+    _register_admin_config_routes(app)
     # 插件管理路由
     app.router.add_get("/v1/admin/plugins", plugins_list)
     app.router.add_get("/v1/admin/plugins/installed", plugins_installed)
@@ -109,6 +155,9 @@ def _register_admin_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/admin/plugins/runtime/hook-specs", plugins_runtime_hook_specs)
     app.router.add_get("/v1/admin/plugins/stats/{plugin_id}", plugins_stats_proxy_summary)
     app.router.add_post("/v1/admin/plugins/stats/{plugin_id}/like", plugins_stats_proxy_toggle_like)
+    app.router.add_get("/v1/admin/keys", virtual_keys_list)
+    app.router.add_post("/v1/admin/keys", virtual_keys_create)
+    app.router.add_delete("/v1/admin/keys/{key_id}", virtual_keys_delete)
 
 
 def _register_file_routes(app: aiohttp.web.Application) -> None:
@@ -127,24 +176,76 @@ def _register_file_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/webui/files/project-root", files_project_root)
 
 
-def setup_routes(app: aiohttp.web.Application) -> None:
-    """注册 WebUI 路由。"""
-    _register_static_routes(app)
-    _register_page_routes(app)
-    _register_admin_routes(app)
+def _register_terminal_routes(app: aiohttp.web.Application) -> None:
+    app.router.add_get("/v1/webui/ws/terminal/{session_id}", terminal_ws)
+    app.router.add_get("/v1/webui/terminal/sessions", terminal_sessions_api)
+    app.router.add_route(
+        "*",
+        "/v1/webui/terminal/ssh-connections",
+        terminal_ssh_connections_api,
+        name="terminal_ssh_connections",
+    )
+    app.router.add_route(
+        "DELETE",
+        "/v1/webui/terminal/ssh-connections/{connection_id}",
+        terminal_ssh_connections_api,
+        name="terminal_ssh_connection_delete",
+    )
+    app.router.add_get("/v1/webui/terminal/audit", terminal_audit_api)
+    app.router.add_route(
+        "*",
+        "/v1/webui/terminal/audit/config",
+        terminal_audit_config_api,
+        name="terminal_audit_config",
+    )
+    app.router.add_route(
+        "*",
+        "/v1/webui/terminal/audit/{session_id}",
+        terminal_audit_detail_api,
+        name="terminal_audit_detail",
+    )
+    app.router.add_route(
+        "*",
+        "/v1/webui/terminal/commands",
+        terminal_commands_api,
+        name="terminal_commands",
+    )
+    app.router.add_route(
+        "DELETE",
+        "/v1/webui/terminal/commands/{command_id}",
+        terminal_commands_api,
+        name="terminal_command_delete",
+    )
+    app.router.add_get("/v1/webui/terminal/commands/export", terminal_commands_export_api)
+    app.router.add_post("/v1/webui/terminal/commands/import", terminal_commands_import_api)
+
+
+def _register_stats_persist_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/webui/stats", stats_api)
     app.router.add_post("/v1/webui/stats/reset", stats_reset)
+    app.router.add_get("/v1/webui/ws/stats", stats_ws)
     app.router.add_get("/v1/webui/ws/requests", requests_ws)
     app.router.add_get("/v1/webui/requests", requests_list)
     app.router.add_get("/v1/webui/persist/{filename}", persist_get)
     app.router.add_post("/v1/webui/persist/{filename}", persist_put)
     app.router.add_post("/v1/webui/chat-media", chat_media_put)
     app.router.add_get("/v1/webui/chat-media/{id}", chat_media_get)
-    app.router.add_get("/v1/webui/ws/terminal/{session_id}", terminal_ws)
-    app.router.add_get("/v1/webui/terminal/sessions", terminal_sessions_api)
-    _register_file_routes(app)
+
+
+def _register_bgimage_auth_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/webui/bg-image", bg_image_upload)
     app.router.add_get("/v1/webui/bg-image/{filename}", bg_image_get)
     app.router.add_post("/v1/webui/auth/verify", auth_verify)
     app.router.add_post("/v1/webui/auth/update", auth_update)
     app.router.add_post("/v1/webui/auth/regenerate", auth_regenerate)
+
+
+def setup_routes(app: aiohttp.web.Application) -> None:
+    """注册 WebUI 路由。"""
+    _register_static_routes(app)
+    _register_page_routes(app)
+    _register_admin_routes(app)
+    _register_stats_persist_routes(app)
+    _register_terminal_routes(app)
+    _register_file_routes(app)
+    _register_bgimage_auth_routes(app)

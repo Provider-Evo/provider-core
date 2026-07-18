@@ -1,11 +1,19 @@
-from __future__ import annotations
+"""adaptercore 模块 — Provider 适配器层。
+
+职责：
+    作为 Provider-Evo 项目标准模块，提供 adaptercore 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
 
 import asyncio
 from typing import Any, AsyncGenerator, Dict, List, Union
 
 import aiohttp
 
-from src.core.dispatch.candidate import Candidate
+from src.core.dispatch.cand import Candidate
 from src.foundation.logger import get_logger
 from provider_sdk.extensions.platform.adapter import PlatformAdapter
 from .client import Client
@@ -82,7 +90,7 @@ class Adapter(PlatformAdapter):
             try:
                 await self._init_task
             except (asyncio.CancelledError, Exception) as exc:
-                logger.debug("apiairforce 适配器后台任务取消或失败: %s", exc)
+                logger.warning("apiairforce 适配器后台任务取消或失败: %s", exc)
         if self._client is not None:
             await self._client.close()
 

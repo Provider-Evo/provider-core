@@ -1,6 +1,13 @@
-from __future__ import annotations
+"""static_nocache 模块 — WebUI 层。
 
-"""WebUI 静态资源禁缓存中间件。"""
+职责：
+    作为 Provider-Evo 项目标准模块，提供 static_nocache 能力。
+
+本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
+修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
+"""
+
+
 
 from typing import Awaitable, Callable
 

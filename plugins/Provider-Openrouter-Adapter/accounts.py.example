@@ -1,2 +1,2 @@
-# Copy to accounts.py
-API_KEYS = ["sk-example"]
+# Copy to provider_openrouter/accounts.py
+API_KEYS = ["sk-example-xxxx"]
