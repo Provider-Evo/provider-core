@@ -64,7 +64,7 @@ function _logModuleStyleAttr(entry) {
   return parts.length ? ' style="' + parts.join(';') + '"' : '';
 }
 
-function _createLogEntryHTML(entry) {
+function _createLogEntryHTML(entry, entryIndex) {
   var level = entry.level || 'INFO';
   var levelTag = _escapeHtml(_formatLogLevelTag(level));
   var levelClass = 'log-col-level log-level-' + _escapeHtml(level);
@@ -72,8 +72,11 @@ function _createLogEntryHTML(entry) {
   var mod = _escapeHtml(entry.module || '');
   var msg = _escapeHtml(entry.message || '');
   var modStyle = _logModuleStyleAttr(entry);
+  var idxAttr = (entryIndex === undefined || entryIndex === null)
+    ? ''
+    : ' data-log-index="' + entryIndex + '"';
 
-  return '<div class="log-entry">' +
+  return '<div class="log-entry"' + idxAttr + '>' +
     '<div class="log-entry-mobile">' +
       '<div class="log-mobile-meta">' +
         '<span class="log-col-time">' + ts + '</span>' +

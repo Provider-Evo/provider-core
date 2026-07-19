@@ -219,7 +219,7 @@ Start the periodic persistence loop. Call once at app startup."""
 #     [ ] ``pytest tests/ -q`` 全部通过。
 #     [ ] ``black --check src tests`` 格式化通过。
 #     [ ] ``flake8 src tests`` 无 warning。
-#     [ ] 若有 import 变更：``python provider-self/scripts/overlay_plugins_to_self.py --dry-run``。
+#     [ ] 若有 import 变更：``python provider-core/scripts/overlay_plugins_to_self.py --dry-run``。
 #
 # 19. 联系与升级路径
 #     - 紧急修复：直接在 PR 中 @ maintainer。

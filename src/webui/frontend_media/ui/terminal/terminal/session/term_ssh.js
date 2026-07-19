@@ -121,6 +121,39 @@ function _attachSshDialogHtmlMethods(ctx) {
   ctx.buildSshDialogHtml = _buildSshDialogHtml;
 }
 
+function _bindOneSavedConnectionItem(ctx, item, overlay, chooserTabId) {
+  var delBtn = item.querySelector('.terminal-ssh-saved-item-del');
+  if (delBtn) {
+    delBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var idx = parseInt(delBtn.dataset.idx, 10);
+      ctx.savedConnections.splice(idx, 1);
+      ctx.saveSavedConnections();
+      overlay.remove();
+      ctx.showSSHDialog(chooserTabId);
+    });
+  }
+  item.addEventListener('click', function () {
+    var idx = parseInt(item.dataset.idx, 10);
+    var conn = ctx.savedConnections[idx];
+    if (!conn) return;
+    overlay.remove();
+    var opts = {
+      host: conn.host,
+      port: conn.port || 22,
+      username: conn.username,
+      password: conn.password || '',
+      key_data: conn.key_data || '',
+      name: conn.name || (conn.username + '@' + conn.host),
+    };
+    if (chooserTabId) {
+      ctx.convertChooserTabToSSH(chooserTabId, opts);
+    } else {
+      ctx.createTab('ssh', opts);
+    }
+  });
+}
+
 function _attachSshSavedItemsMethods(ctx) {
   /**
    * Wire up click/delete handlers for each saved-connection list item.
@@ -128,39 +161,7 @@ function _attachSshSavedItemsMethods(ctx) {
   function _bindSavedConnectionItems(overlay, chooserTabId) {
     var savedItems = overlay.querySelectorAll('.terminal-ssh-saved-item');
     for (var i = 0; i < savedItems.length; i++) {
-      (function (item) {
-        var delBtn = item.querySelector('.terminal-ssh-saved-item-del');
-        if (delBtn) {
-          delBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            var idx = parseInt(delBtn.dataset.idx, 10);
-            ctx.savedConnections.splice(idx, 1);
-            ctx.saveSavedConnections();
-            overlay.remove();
-            ctx.showSSHDialog(chooserTabId);
-          });
-        }
-        item.addEventListener('click', function () {
-          var idx = parseInt(item.dataset.idx, 10);
-          var conn = ctx.savedConnections[idx];
-          if (conn) {
-            overlay.remove();
-            var opts = {
-              host: conn.host,
-              port: conn.port || 22,
-              username: conn.username,
-              password: conn.password || '',
-              key_data: conn.key_data || '',
-              name: conn.name || (conn.username + '@' + conn.host),
-            };
-            if (chooserTabId) {
-              ctx.convertChooserTabToSSH(chooserTabId, opts);
-            } else {
-              ctx.createTab('ssh', opts);
-            }
-          }
-        });
-      })(savedItems[i]);
+      _bindOneSavedConnectionItem(ctx, savedItems[i], overlay, chooserTabId);
     }
   }
 

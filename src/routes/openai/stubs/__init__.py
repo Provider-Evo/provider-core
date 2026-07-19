@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """OpenAI Stub 路由包。"""
+
+from __future__ import annotations
 
 from src.routes.openai.stubs.assist import (
     create_assistant,

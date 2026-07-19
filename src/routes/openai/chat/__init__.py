@@ -8,7 +8,7 @@ from typing import Any, Dict
 import aiohttp.web
 
 from src.foundation.config.resolve import resolve_model
-from src.core.utils.errors import NoCandidateError, ProviderError
+from src.core.utils.errors import ModerationError, NoCandidateError, ProviderError
 from src.core.server import clean_fncall as _clean_fncall
 from src.core.server import get_json as _get_json
 from src.foundation.logger import get_logger
@@ -83,6 +83,13 @@ async def _collect_and_build_payload(
         )
     except NoCandidateError as e:
         return None, _err(503, str(e), "no_candidate", "service_unavailable")
+    except ModerationError as e:
+        return None, _err(
+            e.status_code,
+            str(e),
+            "content_policy_violation",
+            "invalid_request_error",
+        )
     except ProviderError as e:
         return None, _err(502, str(e), "provider_error", "upstream_error")
     except Exception as e:

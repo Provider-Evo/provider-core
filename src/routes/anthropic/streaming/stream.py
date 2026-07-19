@@ -90,6 +90,30 @@ async def _emit_thinking_delta(
         )
 
 
+async def _handle_gateway_dict_chunk(
+    resp: aiohttp.web.StreamResponse,
+    ch: Dict[str, Any],
+    text_state: TextDeltaState,
+    effective_thinking: bool,
+    tool_calls_data: List[Dict[str, Any]],
+    usage_d: Optional[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    if "_meta" in ch:
+        platform_id = ch["_meta"].get("platform", "")
+        if platform_id:
+            text_state.platform_id = platform_id
+            resp._platform = platform_id
+        return tool_calls_data, usage_d
+    if "thinking" in ch and effective_thinking:
+        await _emit_thinking_delta(resp, ch["thinking"])
+        return tool_calls_data, usage_d
+    if "tool_calls" in ch:
+        return ch["tool_calls"], usage_d
+    if "usage" in ch:
+        return tool_calls_data, ch["usage"]
+    return tool_calls_data, usage_d
+
+
 async def _consume_gateway(
     request: aiohttp.web.Request,
     resp: aiohttp.web.StreamResponse,
@@ -120,19 +144,11 @@ async def _consume_gateway(
                 buffered_text_chunks.append(ch)
             else:
                 await text_state.emit(ch)
-
-        elif isinstance(ch, dict):
-            if "_meta" in ch:
-                platform_id = ch["_meta"].get("platform", "")
-                if platform_id:
-                    text_state.platform_id = platform_id
-                    resp._platform = platform_id
-            elif "thinking" in ch and effective_thinking:
-                await _emit_thinking_delta(resp, ch["thinking"])
-            elif "tool_calls" in ch:
-                tool_calls_data = ch["tool_calls"]
-            elif "usage" in ch:
-                usage_d = ch["usage"]
+            continue
+        if isinstance(ch, dict):
+            tool_calls_data, usage_d = await _handle_gateway_dict_chunk(
+                resp, ch, text_state, effective_thinking, tool_calls_data, usage_d,
+            )
 
     return {
         "tool_calls_data": tool_calls_data,

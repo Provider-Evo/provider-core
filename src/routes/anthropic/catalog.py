@@ -66,6 +66,30 @@ def _pick_handler(method: str, path: str) -> Callable:
     return make_not_supported("Anthropic API")
 
 
+def _register_anthropic_catalog_entry(
+    app: aiohttp.web.Application,
+    method: str,
+    path: str,
+    handler: Callable,
+) -> bool:
+    if method == "GET":
+        app.router.add_get(path, handler)
+        return True
+    if method == "POST":
+        app.router.add_post(path, handler)
+        return True
+    if method == "DELETE":
+        app.router.add_delete(path, handler)
+        return True
+    if method == "PUT":
+        app.router.add_put(path, handler)
+        return True
+    if method == "PATCH":
+        app.router.add_patch(path, handler)
+        return True
+    return False
+
+
 def register_anthropic_catalog_routes(app: aiohttp.web.Application) -> int:
     """注册 Anthropic 官方端点 catalog 中尚未绑定的路由。"""
     if not _CATALOG_PATH.is_file():
@@ -81,17 +105,7 @@ def register_anthropic_catalog_routes(app: aiohttp.web.Application) -> int:
         if key in _MANUAL or key in registered:
             continue
         handler = _pick_handler(method, path)
-        if method == "GET":
-            app.router.add_get(path, handler)
-        elif method == "POST":
-            app.router.add_post(path, handler)
-        elif method == "DELETE":
-            app.router.add_delete(path, handler)
-        elif method == "PUT":
-            app.router.add_put(path, handler)
-        elif method == "PATCH":
-            app.router.add_patch(path, handler)
-        else:
+        if not _register_anthropic_catalog_entry(app, method, path, handler):
             continue
         registered.add(key)
         count += 1

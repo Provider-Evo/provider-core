@@ -3,9 +3,9 @@ catalog 模块。
 
 本文件为 Provider-Evo 项目标准模块，使用以下约定：
 
-- 模块路径：provider-self.src.routes.openai.catalog.catalog
+- 模块路径：provider-core.src.routes.openai.catalog.catalog
 - 文件名：catalog.py
-- 父包：provider-self/src/routes/openai/catalog
+- 父包：provider-core/src/routes/openai/catalog
 
 职责：
 
@@ -20,7 +20,7 @@ catalog 模块。
 集成：
 
     - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
     - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
 
 依赖：
@@ -183,6 +183,30 @@ def _load_catalog() -> list[dict]:
     return json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
 
 
+def _register_catalog_entry(
+    app: aiohttp.web.Application,
+    method: str,
+    path: str,
+    handler: Callable,
+) -> bool:
+    if method == "GET":
+        app.router.add_get(path, handler)
+        return True
+    if method == "POST":
+        app.router.add_post(path, handler)
+        return True
+    if method == "DELETE":
+        app.router.add_delete(path, handler)
+        return True
+    if method == "PUT":
+        app.router.add_put(path, handler)
+        return True
+    if method == "PATCH":
+        app.router.add_patch(path, handler)
+        return True
+    return False
+
+
 def register_catalog_routes(app: aiohttp.web.Application) -> int:
     """注册 catalog 中尚未手动绑定的端点，返回新增数量。"""
     registered: Set[RouteKey] = set()
@@ -194,17 +218,7 @@ def register_catalog_routes(app: aiohttp.web.Application) -> int:
         if key in _MANUAL or key in registered:
             continue
         handler = _pick_handler(method, path)
-        if method == "GET":
-            app.router.add_get(path, handler)
-        elif method == "POST":
-            app.router.add_post(path, handler)
-        elif method == "DELETE":
-            app.router.add_delete(path, handler)
-        elif method == "PUT":
-            app.router.add_put(path, handler)
-        elif method == "PATCH":
-            app.router.add_patch(path, handler)
-        else:
+        if not _register_catalog_entry(app, method, path, handler):
             continue
         registered.add(key)
         count += 1

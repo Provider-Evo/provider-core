@@ -10,7 +10,6 @@
 
 
 import time
-import uuid
 
 import aiohttp.web
 
@@ -19,15 +18,8 @@ from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import (
     _aid,
     _err,
-    _fid,
     _json,
-    _not_supported,
-    _rid,
-    _tid,
-    _uid,
-    _vid,
 )
-from src.core.utils.compat.tools import normalize_content
 
 logger = get_logger(__name__)
 

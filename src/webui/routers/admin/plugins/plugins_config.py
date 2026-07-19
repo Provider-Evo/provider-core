@@ -42,6 +42,22 @@ def _read_plugin_config_files(plugin_path: Any) -> "tuple[Dict[str, Any], Dict[s
     return config, schema, raw_text
 
 
+def _default_for_schema_field(field: Dict[str, Any]) -> Any:
+    if "default" in field:
+        return field["default"]
+    ftype = field.get("type")
+    if ftype == "object":
+        nested = _defaults_from_schema(field)
+        return nested if nested else None
+    if ftype == "boolean":
+        return False
+    if ftype in ("integer", "number"):
+        return 0
+    if ftype == "string":
+        return ""
+    return None
+
+
 def _defaults_from_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
     if not schema or schema.get("type") != "object":
         return {}
@@ -50,20 +66,9 @@ def _defaults_from_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
     for key, field in props.items():
         if not isinstance(field, dict):
             continue
-        if "default" in field:
-            result[key] = field["default"]
-            continue
-        ftype = field.get("type")
-        if ftype == "object":
-            nested = _defaults_from_schema(field)
-            if nested:
-                result[key] = nested
-        elif ftype == "boolean":
-            result[key] = False
-        elif ftype in ("integer", "number"):
-            result[key] = 0
-        elif ftype == "string":
-            result[key] = ""
+        value = _default_for_schema_field(field)
+        if value is not None:
+            result[key] = value
     return result
 
 

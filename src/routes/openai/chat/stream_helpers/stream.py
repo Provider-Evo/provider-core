@@ -12,6 +12,7 @@ import aiohttp.web
 from src.foundation.config.resolve import resolve_model
 from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import _cid, _extract_upload_files, _normalize_messages
+from src.routes.openai.chat.stream_helpers.sse_processor import SSEStreamProcessor
 from src.routes.openai.chat.stream_helpers.stream_events import build_stream_state
 from src.routes.openai.chat.stream_helpers.stream_helpers import _SSE_HEADERS, _build_dispatch_kwargs, _handle_dispatch_exception
 
@@ -20,13 +21,35 @@ __all__ = ["stream_chat"]
 logger = get_logger(__name__)
 
 
+async def _run_stream_dispatch(
+    state: Any,
+    dispatch_kwargs: Dict[str, Any],
+    processor: SSEStreamProcessor,
+    resp: aiohttp.web.StreamResponse,
+) -> aiohttp.web.StreamResponse | None:
+    from src.core import gateway
+
+    try:
+        async for ch in gateway.dispatch(**dispatch_kwargs):
+            processor.stop()
+            if isinstance(ch, str):
+                await state.process_str_chunk(ch)
+            elif isinstance(ch, dict):
+                await state.process_dict_chunk(ch)
+    except asyncio.CancelledError:
+        return resp
+    except ConnectionResetError:
+        return resp
+    except Exception as e:
+        return await _handle_dispatch_exception(e, resp)
+    return None
+
+
 async def stream_chat(
     request: aiohttp.web.Request,
     body: Dict[str, Any],
 ) -> aiohttp.web.StreamResponse:
     """流式聊天补全。"""
-    from src.core import gateway
-
     cid = _cid()
     ct = int(time.time())
     mdl = resolve_model(body.get("model", ""), "openai")
@@ -46,18 +69,18 @@ async def stream_chat(
         request, body, messages, mdl, tools_raw, extra, upload_files, proto_override,
     )
 
+    processor = SSEStreamProcessor()
+    comment_task = asyncio.create_task(processor.run_initial_comments(resp))
+
+    early = await _run_stream_dispatch(state, dispatch_kwargs, processor, resp)
+    processor.stop()
+    comment_task.cancel()
     try:
-        async for ch in gateway.dispatch(**dispatch_kwargs):
-            if isinstance(ch, str):
-                await state.process_str_chunk(ch)
-            elif isinstance(ch, dict):
-                await state.process_dict_chunk(ch)
+        await comment_task
     except asyncio.CancelledError:
-        return resp
-    except ConnectionResetError:
-        return resp
-    except Exception as e:
-        return await _handle_dispatch_exception(e, resp)
+        pass
+    if early is not None:
+        return early
 
     await state.finalize()
     return resp

@@ -1,8 +1,8 @@
-from __future__ import annotations
-
 """OpenAI Files + Vector Stores stub 端点集合。"""
 
-from src.routes.openai.stubs.files.files_impl import (
+from __future__ import annotations
+
+from src.routes.openai.stubs.files.files_ops import (
     add_upload_part,
     cancel_upload,
     complete_upload,
@@ -13,7 +13,7 @@ from src.routes.openai.stubs.files.files_impl import (
     retrieve_file_content,
     upload_file,
 )
-from src.routes.openai.stubs.files.stores_impl import (
+from src.routes.openai.stubs.files.stores_ops import (
     create_vector_store,
     create_vector_store_file,
     delete_vector_store,

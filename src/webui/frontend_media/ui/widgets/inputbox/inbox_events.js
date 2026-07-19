@@ -23,6 +23,19 @@ InputBox.prototype._bindTextareaEvents = function(ta) {
   });
 };
 
+function _extractImageFilesFromClipboard(clipboard) {
+  var imageItems = [];
+  if (!clipboard.items || !clipboard.items.length) return imageItems;
+  for (var pi = 0; pi < clipboard.items.length; pi++) {
+    var item = clipboard.items[pi];
+    if (item.kind === 'file' && item.type && item.type.indexOf('image/') === 0) {
+      var imageFile = item.getAsFile();
+      if (imageFile) imageItems.push(imageFile);
+    }
+  }
+  return imageItems;
+}
+
 InputBox.prototype._bindPasteEvent = function(ta) {
   var self = this;
   var o = this._opts;
@@ -31,16 +44,7 @@ InputBox.prototype._bindPasteEvent = function(ta) {
     var clipboard = e.clipboardData || window.clipboardData;
     if (!clipboard) return;
 
-    var imageItems = [];
-    if (clipboard.items && clipboard.items.length) {
-      for (var pi = 0; pi < clipboard.items.length; pi++) {
-        var item = clipboard.items[pi];
-        if (item.kind === 'file' && item.type && item.type.indexOf('image/') === 0) {
-          var imageFile = item.getAsFile();
-          if (imageFile) imageItems.push(imageFile);
-        }
-      }
-    }
+    var imageItems = _extractImageFilesFromClipboard(clipboard);
 
     if (imageItems.length > 0) {
       e.preventDefault();

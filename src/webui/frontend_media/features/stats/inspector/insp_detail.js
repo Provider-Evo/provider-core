@@ -16,8 +16,7 @@ function _idBuildModalMetaHtml(req) {
   html += '<span>Tools: ' + (req.has_tools ? 'yes' : 'no') + '</span>';
   html += '<span>Stream: ' + (req.stream ? 'yes' : 'no') + '</span>';
   if (req.latency_ms !== null) html += '<span>Latency: <strong>' + req.latency_ms + 'ms</strong></span>';
-  var time = new Date(req.ts * 1000);
-  html += '<span>Time: ' + time.toLocaleString() + '</span>';
+  html += '<span>Time: ' + _inspectorFormatDateTime(req.ts) + '</span>';
   html += '</div>';
   return html;
 }

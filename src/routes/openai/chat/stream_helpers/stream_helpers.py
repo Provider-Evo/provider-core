@@ -49,12 +49,19 @@ def _sse_chunk(
 
 def _build_error_payload(err: Exception) -> bytes:
     """构造流式错误 SSE 数据块。从 stream_chat 异常分支抽出以控制行数。"""
-    err_code = err.error_type if hasattr(err, "error_type") else "internal_error"
+    from src.core.utils.errors import ModerationError
+
+    if isinstance(err, ModerationError):
+        err_code = "content_policy_violation"
+        err_type = "invalid_request_error"
+    else:
+        err_code = err.error_type if hasattr(err, "error_type") else "internal_error"
+        err_type = "server_error"
     err_data = json.dumps(
         {
             "error": {
                 "message": str(err),
-                "type": "server_error",
+                "type": err_type,
                 "code": err_code,
             }
         },
@@ -71,10 +78,13 @@ async def _handle_dispatch_exception(
 
     从 stream_chat 的 except Exception 分支抽出，保持主函数在行数上限内。
     """
+    from src.core.utils.errors import ModerationError
     from src.core.utils.errors.biz import NetworkError
 
-    if isinstance(e, aiohttp.ClientConnectorError):
-        err: Exception = NetworkError("连接失败: {}".format(e), original=e)
+    if isinstance(e, ModerationError):
+        err = e
+    elif isinstance(e, aiohttp.ClientConnectorError):
+        err = NetworkError("连接失败: {}".format(e), original=e)
         logger.error("流式连接错误: %s", e, exc_info=True)
     else:
         err = e

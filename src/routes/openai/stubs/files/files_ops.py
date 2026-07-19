@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """OpenAI 兼容路由 Stub 端点。"""
+
+from __future__ import annotations
 
 import time
 import uuid
@@ -10,17 +10,11 @@ import aiohttp.web
 from src.core.server import get_json as _get_json
 from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import (
-    _aid,
     _err,
     _fid,
     _json,
-    _not_supported,
-    _rid,
-    _tid,
     _uid,
-    _vid,
 )
-from src.core.utils.compat.tools import normalize_content
 
 logger = get_logger(__name__)
 
@@ -207,4 +201,3 @@ async def cancel_upload(
     """取消上传端点 /v1/uploads/{upload_id}/cancel。"""
     upload_id = request.match_info["upload_id"]
     return _json({"id": upload_id, "object": "upload", "status": "cancelled"})
-

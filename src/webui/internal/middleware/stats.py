@@ -3,9 +3,9 @@ stats 模块。
 
 本文件为 Provider-Evo 项目标准模块，使用以下约定：
 
-- 模块路径：provider-self.src.webui.internal.middleware.stats
+- 模块路径：provider-core.src.webui.internal.middleware.stats
 - 文件名：stats.py
-- 父包：provider-self/src/webui/internal/middleware
+- 父包：provider-core/src/webui/internal/middleware
 
 职责：
 
@@ -20,7 +20,7 @@ stats 模块。
 集成：
 
     - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
     - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
 
 依赖：
@@ -122,9 +122,11 @@ def _record_and_emit_end(
     request: aiohttp.web.Request,
     req_id: str,
     start: float,
+    start_wall: float,
     status: int,
     platform: str,
     model: str,
+    body_info: Dict[str, Any],
 ) -> None:
     """Record stats and push the request_end event; called from the finally block."""
     stats = get_stats()
@@ -141,10 +143,15 @@ def _record_and_emit_end(
     broker.push_event({
         "type": "request_end",
         "id": req_id,
+        "ts": start_wall,
         "status": status,
         "latency_ms": round(latency_ms, 1),
         "platform": platform,
         "model": model,
+        "messages_count": body_info.get("messages_count", 0),
+        "messages": body_info.get("messages", []),
+        "has_tools": body_info.get("has_tools", False),
+        "stream": body_info.get("stream", False),
         "response": response_text,
     })
 
@@ -189,6 +196,7 @@ async def stats_middleware(
 
     broker = request_broker
     start = time.monotonic()
+    start_wall = time.time()
     state: Dict[str, Any] = {"status": 200, "platform": ""}
     req_id = uuid.uuid4().hex[:16]
     track_live = broker.has_listeners
@@ -199,7 +207,7 @@ async def stats_middleware(
     broker.push_event({
         "type": "request_start",
         "id": req_id,
-        "ts": time.time(),
+        "ts": start_wall,
         **body_info,
     })
 
@@ -209,7 +217,16 @@ async def stats_middleware(
     try:
         return await _run_handler_and_track(request, handler, body_info, state)
     finally:
-        _record_and_emit_end(request, req_id, start, state["status"], state["platform"], model)
+        _record_and_emit_end(
+            request,
+            req_id,
+            start,
+            start_wall,
+            state["status"],
+            state["platform"],
+            model,
+            body_info,
+        )
 
 # =======================================================================
 # 相关模块

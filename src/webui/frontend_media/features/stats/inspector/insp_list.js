@@ -59,8 +59,7 @@ function _attachListMethodsSubRenderItems(instance) {
       var req = filtered[i];
       var cls = 'req-item' + (instance._selectedId === req.id ? ' req-selected' : '');
       var statusCls = req.status === 'pending' ? 'req-pending' : (req.status >= 400 ? 'req-error' : 'req-ok');
-      var time = new Date(req.ts * 1000);
-      var ts = instance.pad(time.getHours()) + ':' + instance.pad(time.getMinutes()) + ':' + instance.pad(time.getSeconds());
+      var ts = _inspectorFormatTime(req.ts, instance.pad);
       var modelShort = (req.model || '').split('/').pop().split('-').slice(0, 2).join('-');
       var platformShort = (req.platform || '').charAt(0).toUpperCase() + (req.platform || '').slice(1);
       var latency = req.latency_ms !== null ? req.latency_ms + 'ms' : '...';

@@ -100,6 +100,15 @@ CustomDatePicker.prototype._bindCalendarClickEvents = function() {
   });
 };
 
+CustomDatePicker.prototype._handleCalendarEnterKey = function() {
+  var focused = this._calendarEl.querySelector('.datepicker-day:focus');
+  if (!focused) return;
+  var dateStr = focused.getAttribute('data-date');
+  if (!dateStr) return;
+  this.setValue(dateStr);
+  this.close();
+};
+
 CustomDatePicker.prototype._bindKeyboardEvents = function() {
   var self = this;
 
@@ -127,14 +136,7 @@ CustomDatePicker.prototype._bindKeyboardEvents = function() {
         break;
       case 'Enter':
         e.preventDefault();
-        var focused = self._calendarEl.querySelector('.datepicker-day:focus');
-        if (focused) {
-          var dateStr = focused.getAttribute('data-date');
-          if (dateStr) {
-            self.setValue(dateStr);
-            self.close();
-          }
-        }
+        self._handleCalendarEnterKey();
         break;
     }
   });

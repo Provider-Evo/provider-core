@@ -3,9 +3,9 @@ threads 模块。
 
 本文件为 Provider-Evo 项目标准模块，使用以下约定：
 
-- 模块路径：provider-self.src.routes.openai.stubs.threads
+- 模块路径：provider-core.src.routes.openai.stubs.threads
 - 文件名：threads.py
-- 父包：provider-self/src/routes/openai/stubs
+- 父包：provider-core/src/routes/openai/stubs
 
 职责：
 
@@ -20,7 +20,7 @@ threads 模块。
 集成：
 
     - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
     - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
 
 依赖：
@@ -44,15 +44,8 @@ import aiohttp.web
 from src.core.server import get_json as _get_json
 from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import (
-    _aid,
-    _err,
-    _fid,
     _json,
-    _not_supported,
-    _rid,
     _tid,
-    _uid,
-    _vid,
 )
 from src.core.utils.compat.tools import normalize_content
 

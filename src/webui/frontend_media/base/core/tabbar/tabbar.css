@@ -82,6 +82,17 @@
   background: var(--accent-soft);
 }
 
+.vertical .unified-tab.active {
+  align-self: stretch;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.vertical .unified-tab.has-split-status.active {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
 /* Left-edge accent bar for user-assigned tab colors (context menu "change color") */
 .unified-tab.has-tab-color {
   box-shadow: inset 2px 0 0 0 var(--tab-color);
@@ -103,8 +114,8 @@
 .vertical .unified-tab.active::before {
   content: '';
   position: absolute;
-  top: 6px;
-  bottom: 6px;
+  top: 0;
+  bottom: 0;
   left: 0;
   width: 2px;
   background: var(--accent);
@@ -194,26 +205,25 @@
 }
 
 /* ========================= Split Tab Status Group ========================= */
-/* Two status dots for a split tab (one per pane), rendered as a single
-   unit -- no listeners of its own, clicks/hovers fall through to the tab.
-   Orientation follows the tabbar's own layout so the pair always reads as
-   one visual block: side-by-side in a horizontal tabbar, stacked in a
-   vertical one (including the compressed sidebar). */
+/* Two status dots for a split tab (one per pane). Each slot is independently
+   clickable so pane selection/close never treats the pair as one unit. */
 .unified-tab-status-group {
   display: inline-flex;
   flex-shrink: 0;
-  gap: 3px;
-  pointer-events: none;
-}
-
-.horizontal .unified-tab-status-group {
   flex-direction: row;
   align-items: center;
+  gap: 6px;
 }
 
-.vertical .unified-tab-status-group {
-  flex-direction: column;
+.unified-tab-status-slot {
+  position: relative;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 /* Split dots are always visible (even with no explicit state) so the pair
@@ -221,8 +231,16 @@
    stays hidden until a state class is applied. */
 .unified-tab-status-group .unified-tab-status {
   display: inline-block;
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
   background: var(--muted);
   opacity: 0.5;
+}
+
+.unified-tab-status-slot.is-pane-active .unified-tab-status {
+  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 3px var(--accent);
+  opacity: 1;
 }
 
 .unified-tab-status-group .unified-tab-status.connecting {
@@ -241,9 +259,37 @@
   background: var(--err, #e74c3c);
 }
 
-/* Compressed sidebar: keep the pair compact and centered */
-.unified-tabbar.tabbar-compressed .unified-tab-status-group {
-  margin: 0 auto;
+.unified-tab-status-close {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.unified-tab-status-close:hover {
+  color: var(--err);
+  background: var(--err-soft, rgba(231, 76, 60, 0.12));
+}
+
+.unified-tab.has-split-status .unified-tab-close {
+  display: none;
+}
+
+.unified-tab.has-split-status.active .unified-tab-status-slot:hover .unified-tab-status {
+  visibility: hidden;
+}
+
+.unified-tab.has-split-status.active .unified-tab-status-slot:hover .unified-tab-status-close {
+  display: inline-flex;
 }
 
 /* ========================= Add Button ========================= */
@@ -374,9 +420,23 @@
   display: none;
 }
 
-/* Center status dot in compressed mode */
-.unified-tabbar.tabbar-compressed .unified-tab-status {
+/* Split tabs use per-dot close buttons instead of the tab-level close. */
+.unified-tabbar.tabbar-compressed .unified-tab.has-split-status .unified-tab-close {
+  display: none !important;
+}
+
+/* Center single status dot in compressed mode */
+.unified-tabbar.tabbar-compressed .unified-tab:not(.has-split-status) .unified-tab-status {
   margin: 0 auto;
+}
+
+/* Compressed: per-slot hover swaps only that dot for a close button */
+.unified-tabbar.tabbar-compressed .unified-tab.active .unified-tab-status-slot:hover .unified-tab-status {
+  visibility: hidden;
+}
+
+.unified-tabbar.tabbar-compressed .unified-tab.active .unified-tab-status-slot:hover .unified-tab-status-close {
+  display: inline-flex;
 }
 
 /* Compressed: hide close button by default, show × on hover replacing status dot */
@@ -398,24 +458,23 @@
   transition: opacity 0.12s ease, color 0.1s ease, background 0.1s ease;
 }
 
-/* On hover: hide status dot (or split pair), show close button (active tab only) */
-.unified-tabbar.tabbar-compressed .unified-tab.active:hover .unified-tab-status,
-.unified-tabbar.tabbar-compressed .unified-tab.active:hover .unified-tab-status-group {
+/* On hover: hide single status dot, show tab-level close (active tab only) */
+.unified-tabbar.tabbar-compressed .unified-tab.active:not(.has-split-status):hover .unified-tab-status {
   display: none;
 }
 
-.unified-tabbar.tabbar-compressed .unified-tab.active:hover .unified-tab-close {
+.unified-tabbar.tabbar-compressed .unified-tab.active:not(.has-split-status):hover .unified-tab-close {
   display: inline-flex;
   opacity: 0.7;
 }
 
 /* On hover: also show icon (if no status) and close replaces it (active tab only) */
-.unified-tabbar.tabbar-compressed .unified-tab.active:hover .unified-tab-status ~ .unified-tab-icon,
-.unified-tabbar.tabbar-compressed .unified-tab.active:hover .unified-tab-status-group ~ .unified-tab-icon {
+.unified-tabbar.tabbar-compressed .unified-tab.active:not(.has-split-status):hover .unified-tab-status ~ .unified-tab-icon,
+.unified-tabbar.tabbar-compressed .unified-tab.active:not(.has-split-status):hover .unified-tab-status-group ~ .unified-tab-icon {
   display: none;
 }
 
-.unified-tabbar.tabbar-compressed .unified-tab.active:hover .unified-tab-icon {
+.unified-tabbar.tabbar-compressed .unified-tab.active:not(.has-split-status):hover .unified-tab-icon {
   display: none;
 }
 

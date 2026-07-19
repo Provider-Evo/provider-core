@@ -3,7 +3,32 @@
 
 function _attachSplitMethods(ctx) {
   var _createSplitXterm = _attachSplitSubXterm(ctx);
+  _attachSplitCloseMethods(ctx);
   _attachSplitSubTab(ctx, _createSplitXterm);
+}
+
+function _wireSplitXtermIo(xterm, splitState) {
+  function _sendInput(data) {
+    if (splitState.ws && splitState.ws.readyState === WebSocket.OPEN) {
+      splitState.ws.send(JSON.stringify({ type: 'input', data: data }));
+    }
+  }
+  xterm.onData(_sendInput);
+  xterm.onBinary(_sendInput);
+}
+
+function _wireSplitXtermFocus(ctx, splitState, splitXtermContainer) {
+  function _focusSplitPane() {
+    ctx.focusPane(splitState._parentId, 'split');
+  }
+  splitXtermContainer.addEventListener('click', function (e) {
+    e.stopPropagation();
+    _focusSplitPane();
+  });
+  splitXtermContainer.addEventListener('focusin', function (e) {
+    e.stopPropagation();
+    _focusSplitPane();
+  });
 }
 
 function _attachSplitSubXterm(ctx) {
@@ -34,21 +59,8 @@ function _attachSplitSubXterm(ctx) {
     ro.observe(splitXtermContainer.parentNode);
     splitState._resizeObserver = ro;
 
-    xterm.onData(function (data) {
-      if (splitState.ws && splitState.ws.readyState === WebSocket.OPEN) {
-        splitState.ws.send(JSON.stringify({ type: 'input', data: data }));
-      }
-    });
-    xterm.onBinary(function (data) {
-      if (splitState.ws && splitState.ws.readyState === WebSocket.OPEN) {
-        splitState.ws.send(JSON.stringify({ type: 'input', data: data }));
-      }
-    });
-    splitXtermContainer.addEventListener('click', function (e) {
-      e.stopPropagation();
-      xterm.focus();
-    });
-
+    _wireSplitXtermIo(xterm, splitState);
+    _wireSplitXtermFocus(ctx, splitState, splitXtermContainer);
     ctx.connectWebSocket(splitState);
   }
 
@@ -110,6 +122,110 @@ function _attachSplitSubDom(ctx) {
   return { buildSplitDom: _buildSplitDom, createSplitState: _createSplitState };
 }
 
+function _teardownPaneResources(paneState, markClosing) {
+  if (markClosing !== false) paneState._closing = true;
+  if (paneState._reconnectTimer) {
+    clearTimeout(paneState._reconnectTimer);
+    paneState._reconnectTimer = null;
+  }
+  if (paneState.ws && paneState.ws.readyState === WebSocket.OPEN) {
+    try { paneState.ws.send(JSON.stringify({ type: 'close_session' })); } catch (e) {}
+  }
+  var wsRef = paneState.ws;
+  setTimeout(function () {
+    if (wsRef) { try { wsRef.close(); } catch (e) {} }
+  }, 50);
+  if (paneState._resizeObserver) {
+    try { paneState._resizeObserver.disconnect(); } catch (e) {}
+    paneState._resizeObserver = null;
+  }
+  if (paneState.xterm) {
+    try { paneState.xterm.dispose(); } catch (e) {}
+    paneState.xterm = null;
+  }
+  if (paneState.fitAddon) {
+    try { paneState.fitAddon.dispose(); } catch (e) {}
+    paneState.fitAddon = null;
+  }
+  paneState.ws = null;
+}
+
+function _unsplitDom(pane, tab) {
+  var splitContainer = pane.querySelector('.terminal-split-container');
+  if (!splitContainer || !tab._container) return;
+  pane.removeChild(splitContainer);
+  pane.appendChild(tab._container);
+}
+
+function _splitClosePane(ctx, tab) {
+  if (!tab.split) return;
+  ctx.teardownSplitState(tab.split);
+  tab.split = null;
+  tab._activePane = 'primary';
+  var pane = document.getElementById('terminal-pane-' + tab.id);
+  if (pane) _unsplitDom(pane, tab);
+  if (ctx.bar) {
+    ctx.bar.setSplitStatus(tab.id, null);
+    ctx.bar.setActivePane(tab.id, 'primary');
+  }
+  setTimeout(function () { ctx.fitAndResize(tab, true); }, 50);
+}
+
+function _splitPromotePane(ctx, tab) {
+  var survivor = tab.split;
+  if (!survivor) return;
+
+  _teardownPaneResources(tab, false);
+  tab._closing = false;
+
+  survivor._isSplit = false;
+  survivor.id = tab.id;
+  survivor._parentId = null;
+  survivor._closing = false;
+
+  tab.xterm = survivor.xterm;
+  tab.fitAddon = survivor.fitAddon;
+  tab.ws = survivor.ws;
+  tab.sessionId = survivor.sessionId;
+  tab._container = survivor._container;
+  tab._resizeObserver = survivor._resizeObserver;
+  tab._reconnectAttempts = survivor._reconnectAttempts || 0;
+  tab._reconnectTimer = survivor._reconnectTimer || null;
+  tab.status = survivor.status || tab.status || '';
+  tab.split = null;
+  tab._activePane = 'primary';
+
+  var pane = document.getElementById('terminal-pane-' + tab.id);
+  if (pane) _unsplitDom(pane, tab);
+
+  if (ctx.bar) {
+    ctx.bar.setStatus(tab.id, tab.status || '');
+    ctx.bar.setSplitStatus(tab.id, null);
+    ctx.bar.setActivePane(tab.id, 'primary');
+  }
+  setTimeout(function () { ctx.fitAndResize(tab, true); }, 50);
+}
+
+function _splitCloseTabPane(ctx, tabId, pane) {
+  var tab = ctx.getTabById(tabId);
+  if (!tab) return;
+  if (!tab.split) {
+    if (pane === 'primary') ctx.closeTab(tabId);
+    return;
+  }
+  if (pane === 'split') {
+    _splitClosePane(ctx, tab);
+    return;
+  }
+  _splitPromotePane(ctx, tab);
+}
+
+function _attachSplitCloseMethods(ctx) {
+  ctx.closeTabPane = function (tabId, pane) {
+    _splitCloseTabPane(ctx, tabId, pane);
+  };
+}
+
 function _attachSplitSubTab(ctx, _createSplitXterm) {
   var domHelpers = _attachSplitSubDom(ctx);
   var _buildSplitDom = domHelpers.buildSplitDom;
@@ -135,7 +251,10 @@ function _attachSplitSubTab(ctx, _createSplitXterm) {
     var splitXtermContainer = _buildSplitDom(pane, tab);
     var splitState = _createSplitState(tabId, tab, splitXtermContainer);
     tab.split = splitState;
-    if (ctx.bar) ctx.bar.setSplitStatus(tabId, 'connecting');
+    if (ctx.bar) {
+      ctx.bar.setSplitStatus(tabId, 'connecting');
+      ctx.bar.setActivePane(tabId, 'primary');
+    }
 
     if (typeof Terminal !== 'undefined') {
       _createSplitXterm(splitState, splitXtermContainer);

@@ -20,6 +20,8 @@ function _tiCreateTerminalTabBar(ctx) {
     closeAllThreshold: 6,
     onSwitch: function (id) { ctx.switchToTab(id); },
     onClose: function (id) { ctx.closeTab(id); },
+    onSplitPaneSelect: function (id, pane) { ctx.focusPane(id, pane); },
+    onPaneClose: function (id, pane) { ctx.closeTabPane(id, pane); },
     onContextMenu: function (id, event) { ctx.showContextMenu(event, id); },
     onAdd: function () { ctx.createChooserTab(); },
     onCloseAll: function () { ctx.closeAllTabs(); },
@@ -113,10 +115,8 @@ function _tiWireWindowResize(ctx) {
 function _tiWireBodyClickHandlers(ctx) {
   // Click on terminal body to focus the active xterm instance
   ctx.body.addEventListener('click', function () {
-    var tab = ctx.getActiveTab();
-    if (tab && tab.xterm) {
-      tab.xterm.focus();
-    }
+    var target = ctx.resolveActiveTerminalTarget();
+    if (target && target.xterm) target.xterm.focus();
   });
 
   // Close context menu on click outside

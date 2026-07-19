@@ -159,9 +159,10 @@ function _attachTabElementEventMethods(instance) {
       el.appendChild(closeEl);
     }
 
-    // Tab click -> switch (left-click only)
+    // Tab click -> switch (left-click only); status slots handle their own clicks.
     el.addEventListener('click', function (e) {
       if (e.button !== 0) return;
+      if (e.target.closest('.unified-tab-status-slot')) return;
       if (self._opts.onSwitch) self._opts.onSwitch(tab.id);
     });
 
@@ -210,6 +211,11 @@ function _attachTabElementDomMethods(instance) {
     // to the tab's own click/switch behavior.
     var statusNode = this._buildStatusNode(tab);
     if (statusNode) el.appendChild(statusNode);
+    this._syncSplitTabClass(el, tab);
+    if (statusNode && statusNode.classList.contains('unified-tab-status-group')) {
+      this._bindTabStatusEvents(el, tab);
+      this._syncActivePaneDots(el, tab.activePane || 'primary');
+    }
 
     // Icon slot -- skip when status dot is present and icon is empty
     if ((tab.status || tab.splitStatus) && !tab.icon) {
@@ -339,6 +345,18 @@ function _attachToggleBtnMethods(instance) {
  * Attach the close-all floating button lifecycle method.
  * Split out of _attachToggleAndCloseAllMethods to keep it under the line cap.
  */
+function _ensureCloseAllBtn(instance) {
+  if (instance._closeAllBtn) return;
+  instance._closeAllBtn = document.createElement('div');
+  instance._closeAllBtn.className = 'unified-close-all-btn';
+  instance._closeAllBtn.textContent = t('tabbar.closeAllShort');
+  var self = instance;
+  instance._closeAllBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (self._opts.onCloseAll) self._opts.onCloseAll();
+  });
+}
+
 function _attachCloseAllBtnMethods(instance) {
   /**
    * Show or hide the close-all floating button based on tab count.
@@ -347,26 +365,17 @@ function _attachCloseAllBtnMethods(instance) {
   instance._updateCloseAll = function () {
     var shouldShow = this._tabs.length >= this._closeAllThreshold;
 
-    if (shouldShow) {
-      if (!this._closeAllBtn) {
-        this._closeAllBtn = document.createElement('div');
-        this._closeAllBtn.className = 'unified-close-all-btn';
-        this._closeAllBtn.textContent = t('tabbar.closeAllShort');
-        var self = this;
-        this._closeAllBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          if (self._opts.onCloseAll) self._opts.onCloseAll();
-        });
-      }
-      if (!this._closeAllBtn.parentNode) {
-        this._tabBarEl.appendChild(this._closeAllBtn);
-      }
-      this._closeAllBtn.style.display = '';
-    } else {
+    if (!shouldShow) {
       if (this._closeAllBtn && this._closeAllBtn.parentNode) {
         this._closeAllBtn.parentNode.removeChild(this._closeAllBtn);
       }
       this._closeAllBtn = null;
+      return;
     }
+    _ensureCloseAllBtn(this);
+    if (!this._closeAllBtn.parentNode) {
+      this._tabBarEl.appendChild(this._closeAllBtn);
+    }
+    this._closeAllBtn.style.display = '';
   };
 }

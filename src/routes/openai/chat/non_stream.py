@@ -28,6 +28,24 @@ __all__ = [
 logger = get_logger(__name__)
 
 
+def _collect_nonstream_dict_chunk(
+    ch: Dict[str, Any],
+    tp: List[str],
+    tcs: List[Dict],
+    usage_d: Optional[Dict],
+    platform_id: str,
+) -> tuple[List[Dict], Optional[Dict], str]:
+    if "_meta" in ch:
+        return tcs, usage_d, ch["_meta"].get("platform", "")
+    if "thinking" in ch:
+        tp.append(ch["thinking"])
+    elif "tool_calls" in ch:
+        tcs = ch["tool_calls"]
+    elif "usage" in ch:
+        usage_d = ch["usage"]
+    return tcs, usage_d, platform_id
+
+
 async def collect_nonstream_chat(
     request: aiohttp.web.Request,
     body: Dict[str, Any],
@@ -65,15 +83,11 @@ async def collect_nonstream_chat(
     ):
         if isinstance(ch, str):
             cp.append(ch)
-        elif isinstance(ch, dict):
-            if "_meta" in ch:
-                platform_id = ch["_meta"].get("platform", "")
-            elif "thinking" in ch:
-                tp.append(ch["thinking"])
-            elif "tool_calls" in ch:
-                tcs = ch["tool_calls"]
-            elif "usage" in ch:
-                usage_d = ch["usage"]
+            continue
+        if isinstance(ch, dict):
+            tcs, usage_d, platform_id = _collect_nonstream_dict_chunk(
+                ch, tp, tcs, usage_d, platform_id,
+            )
     return cp, tp, tcs, usage_d, platform_id
 
 

@@ -37,6 +37,24 @@ logger = get_logger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+def _collect_dispatch_dict_chunk(
+    ch: Dict[str, Any],
+    thinking_parts: List[str],
+    tool_calls: List[Dict[str, Any]],
+    usage_d: Optional[Dict[str, Any]],
+    platform_id: str,
+) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]], str]:
+    if "_meta" in ch:
+        return tool_calls, usage_d, ch["_meta"].get("platform", "")
+    if "thinking" in ch:
+        thinking_parts.append(ch["thinking"])
+    elif "tool_calls" in ch:
+        tool_calls = ch["tool_calls"]
+    elif "usage" in ch:
+        usage_d = ch["usage"]
+    return tool_calls, usage_d, platform_id
+
+
 async def _consume_dispatch_chunks(
     body: Dict[str, Any],
     msgs: List[Dict[str, Any]],
@@ -57,15 +75,11 @@ async def _consume_dispatch_chunks(
     ):
         if isinstance(ch, str):
             content_parts.append(ch)
-        elif isinstance(ch, dict):
-            if "_meta" in ch:
-                platform_id = ch["_meta"].get("platform", "")
-            elif "thinking" in ch:
-                thinking_parts.append(ch["thinking"])
-            elif "tool_calls" in ch:
-                tool_calls = ch["tool_calls"]
-            elif "usage" in ch:
-                usage_d = ch["usage"]
+            continue
+        if isinstance(ch, dict):
+            tool_calls, usage_d, platform_id = _collect_dispatch_dict_chunk(
+                ch, thinking_parts, tool_calls, usage_d, platform_id,
+            )
 
     return content_parts, thinking_parts, tool_calls, usage_d, platform_id
 

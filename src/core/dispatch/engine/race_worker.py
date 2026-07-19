@@ -15,6 +15,7 @@ from src.core.dispatch.engine.support.fncall_context import (
     prepare_worker_messages,
     resolve_protocol,
 )
+from src.core.dispatch.engine.support.race_chunk import apply_race_chunk_event
 from src.core.utils.errors import NoCandidateError
 from src.foundation.logger import get_logger
 
@@ -31,22 +32,11 @@ def _apply_race_event(
 ) -> Optional[Dict[str, Any]]:
     """处理竞速 worker 队列事件，满足 min_tok 时返回 winner info。"""
     if tp == "chunk":
-        info["buf"].append(data)
-        if isinstance(data, str):
-            info["tok"] += 1
-            info["acc_len"] += len(data)
-            if info["ft"] is None:
-                info["ft"] = time.monotonic()
-        elif isinstance(data, dict):
-            if "usage" in data:
-                info["usage"] = data["usage"]
-            elif data.get("thinking"):
-                info["acc_len"] += len(str(data["thinking"]))
-        if info["tok"] >= min_tok:
-            return info
-    elif tp == "done":
+        return apply_race_chunk_event(info, data, min_tok)
+    if tp == "done":
         info["done"] = True
-    elif tp in ("err", "cancel"):
+        return None
+    if tp in ("err", "cancel"):
         info["err"] = True
         if data:
             info["err_msg"] = str(data)

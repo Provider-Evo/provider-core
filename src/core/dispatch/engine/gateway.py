@@ -19,7 +19,7 @@ from src.core.dispatch.engine.support.fncall_context import (
     fold_system_into_user,
 )
 from src.core.dispatch.fback import resolve_fallback_chain
-from src.core.utils.errors import NoCandidateError, ProviderError
+from src.core.utils.errors import ContextLengthError, ModerationError, NoCandidateError, ProviderError
 from src.foundation.observability.metrics import get_metrics_registry
 
 __all__ = ["dispatch"]
@@ -33,21 +33,26 @@ def _estimate_prompt_tokens(messages: List[Dict]) -> int:
     return total + 64
 
 
+def _tokens_for_content_part(part: Dict) -> int:
+    part_type = part.get("type", "")
+    if part_type == "text":
+        return max(1, len(str(part.get("text", ""))) // 4)
+    if part_type in ("image_url", "input_audio"):
+        return 256
+    return 0
+
+
 def _estimate_message_content_tokens(content: Any) -> int:
     """辅助函数：计算单条消息内容的 token 估算值。"""
     if isinstance(content, str):
         return max(1, len(content) // 4)
-    elif isinstance(content, list):
-        token_count = 0
-        for part in content:
-            if isinstance(part, dict):
-                part_type = part.get("type", "")
-                if part_type == "text":
-                    token_count += max(1, len(str(part.get("text", ""))) // 4)
-                elif part_type in ("image_url", "input_audio"):
-                    token_count += 256
-        return token_count
-    return 0
+    if not isinstance(content, list):
+        return 0
+    token_count = 0
+    for part in content:
+        if isinstance(part, dict):
+            token_count += _tokens_for_content_part(part)
+    return token_count
 
 
 async def _wait_for_candidates(
@@ -322,6 +327,8 @@ async def dispatch(
                 yield chunk
             return
         except (NoCandidateError, ProviderError) as exc:
+            if isinstance(exc, (ModerationError, ContextLengthError)):
+                raise
             last_err = exc
             metrics.inc_fallback()
             continue

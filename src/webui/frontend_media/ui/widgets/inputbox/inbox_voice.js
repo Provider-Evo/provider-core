@@ -173,6 +173,62 @@ InputBox.prototype._stopSilenceDetection = function() {
   this._silenceDetected = false;
 };
 
+function _fetchTranscriptionFormData(fd) {
+  if (typeof Api !== 'undefined' && Api.postForm) {
+    return Api.postForm('/v1/audio/transcriptions', fd);
+  }
+  return fetch('/v1/audio/transcriptions', { method: 'POST', body: fd }).then(function(r) {
+    return r.json().then(function(data) {
+      if (!r.ok) throw new Error((data && data.error) || r.statusText);
+      return data;
+    });
+  });
+}
+
+InputBox.prototype._applyVoiceTranscription = function(text) {
+  var ta = this._el('textarea');
+  if (!ta) return;
+  if (ta.value && !/\s$/.test(ta.value)) ta.value += ' ';
+  ta.value += text;
+  this._syncHeight();
+  ta.focus();
+};
+
+InputBox.prototype._processVoiceAudio = function(blob) {
+  var sttModel = this._opts.voice.sttModel;
+  if (!sttModel) {
+    if (typeof toast === 'function') {
+      toast(typeof t === 'function' ? t('voice.sttNotConfigured') : 'STT model not configured', 'warning');
+    }
+    return;
+  }
+  var self = this;
+  if (typeof toast === 'function') {
+    toast(typeof t === 'function' ? t('voice.transcribing') : 'Transcribing...', 'info');
+  }
+  var fd = new FormData();
+  fd.append('file', blob, 'voice.webm');
+  fd.append('model', sttModel);
+
+  var request = _fetchTranscriptionFormData(fd);
+
+  request.then(function(data) {
+    var text = data && data.text ? String(data.text).trim() : '';
+    if (!text) {
+      if (typeof toast === 'function') {
+        toast(typeof t === 'function' ? t('voice.transcribeFailed', { error: 'empty result' }) : 'Empty transcription', 'warning');
+      }
+      return;
+    }
+    self._applyVoiceTranscription(text);
+  }).catch(function(err) {
+    console.error('InputBox STT error:', err);
+    if (typeof toast === 'function') {
+      toast(typeof t === 'function' ? t('voice.transcribeFailed', { error: err.message || String(err) }) : String(err), 'error');
+    }
+  });
+};
+
 InputBox.prototype._audioConstraints = function() {
   var deviceId = (this._opts.voice && this._opts.voice.recordingDeviceId) || '';
   if (!deviceId) return { audio: true };

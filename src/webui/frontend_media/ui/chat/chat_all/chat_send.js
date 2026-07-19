@@ -1,7 +1,7 @@
 // ========================= SSE Stream Parsing Helpers =========================
 function _applySseDelta(delta, state) {
   if (delta.content) { state.assistantContent += delta.content; updateStreamingMessage(state.assistantContent); }
-  if (delta.reasoning_content) { state.reasoningContent += delta.reasoning_content; updateStreamingReasoning(state.reasoningContent); }
+  if (delta.reasoning) { state.reasoningContent += delta.reasoning; updateStreamingReasoning(state.reasoningContent); }
   if (!delta.tool_calls || !delta.tool_calls.length) return;
   for (var k = 0; k < delta.tool_calls.length; k++) {
     var tc = delta.tool_calls[k];
@@ -59,7 +59,7 @@ async function _handleSendNonStream(response) {
   }
   var choice = (payload.choices || [])[0] || {};
   var message = choice.message || {};
-  return { assistantContent: message.content || "", reasoningContent: message.reasoning_content || "", toolCalls: message.tool_calls || [] };
+  return { assistantContent: message.content || "", reasoningContent: message.reasoning || "", toolCalls: message.tool_calls || [] };
 }
 
 // ========================= sendChatMessage =========================

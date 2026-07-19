@@ -34,6 +34,7 @@ function _buildTabRecord(tabId, kind, name, options) {
     _reconnectTimer: null,
     color: options.color || '',
     split: null,
+    _activePane: 'primary',
   };
 }
 
@@ -144,10 +145,13 @@ function _wireXtermIO(ctx, tab, xterm, xtermContainer, termDiv) {
     }
   });
 
-  // Ensure xterm gets focus on click inside its container.
-  xtermContainer.addEventListener('click', function () {
-    xterm.focus();
-  });
+  function _focusPrimaryPane() {
+    ctx.focusPane(tab.id, 'primary');
+  }
+
+  // Ensure xterm gets focus on click/focus inside its container.
+  xtermContainer.addEventListener('click', _focusPrimaryPane);
+  xtermContainer.addEventListener('focusin', _focusPrimaryPane);
 }
 
 function _createXtermInstance(ctx, xtermContainer) {

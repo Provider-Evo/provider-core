@@ -26,7 +26,8 @@ function _renderLogs() {
   }
   var parts = ['<div class="log-list">'];
   for (var i = 0; i < filtered.length; i++) {
-    parts.push(_createLogEntryHTML(filtered[i]));
+    var entryIndex = _logEntries.indexOf(filtered[i]);
+    parts.push(_createLogEntryHTML(filtered[i], entryIndex));
   }
   parts.push('</div>');
   box.innerHTML = parts.join('');

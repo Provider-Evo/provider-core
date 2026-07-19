@@ -244,38 +244,36 @@ function _attachThemeBgUiMethods(ctx) {
 function _attachThemePersistMethods(ctx) {
   async function _saveTerminalBgMode() {
     try {
-      if (typeof persistSave === 'function') {
-        var existing = await persistLoad('terminals.json') || {};
-        existing.bgMode = ctx.terminalBgMode;
-        existing.termFontSize = ctx.termFontSize || 14;
-        // 始终保留图片数据，不随模式切换删除，以便切回 custom 时能恢复
-        if (ctx.customBgImage) {
-          existing.bgImage = ctx.customBgImage;
-          existing.bgOpacity = ctx.customBgOpacity;
-        } else {
-          delete existing.bgImage;
-          delete existing.bgOpacity;
-        }
-        await persistSave('terminals.json', existing);
+      if (typeof persistSave !== 'function') return;
+      var existing = await persistLoad('terminals.json') || {};
+      existing.bgMode = ctx.terminalBgMode;
+      existing.termFontSize = ctx.termFontSize || 14;
+      // 始终保留图片数据，不随模式切换删除，以便切回 custom 时能恢复
+      if (ctx.customBgImage) {
+        existing.bgImage = ctx.customBgImage;
+        existing.bgOpacity = ctx.customBgOpacity;
+      } else {
+        delete existing.bgImage;
+        delete existing.bgOpacity;
       }
+      await persistSave('terminals.json', existing);
     } catch (e) { /* ignore */ }
   }
   async function _loadTerminalBgMode() {
     try {
-      if (typeof persistLoad === 'function') {
-        var data = await persistLoad('terminals.json');
-        if (data && data.bgMode) ctx.terminalBgMode = data.bgMode;
-        if (data && typeof data.termFontSize === 'number') {
-          ctx.termFontSize = data.termFontSize;
-        } else {
-          ctx.termFontSize = ctx.termFontSize || 14;
-        }
-        if (data && data.bgImage) {
-          if (data.bgImage.indexOf('data:') === 0) ctx.migrateBgImageToServer(data.bgImage);
-          else ctx.customBgImage = data.bgImage;
-        }
-        if (data && typeof data.bgOpacity === 'number') ctx.customBgOpacity = data.bgOpacity;
+      if (typeof persistLoad !== 'function') return;
+      var data = await persistLoad('terminals.json');
+      if (data && data.bgMode) ctx.terminalBgMode = data.bgMode;
+      if (data && typeof data.termFontSize === 'number') {
+        ctx.termFontSize = data.termFontSize;
+      } else {
+        ctx.termFontSize = ctx.termFontSize || 14;
       }
+      if (data && data.bgImage) {
+        if (data.bgImage.indexOf('data:') === 0) ctx.migrateBgImageToServer(data.bgImage);
+        else ctx.customBgImage = data.bgImage;
+      }
+      if (data && typeof data.bgOpacity === 'number') ctx.customBgOpacity = data.bgOpacity;
     } catch (e) { /* ignore */ }
     ctx.applyTerminalBgMode(ctx.terminalBgMode);
   }

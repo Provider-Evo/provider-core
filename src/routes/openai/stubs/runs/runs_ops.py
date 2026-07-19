@@ -1,11 +1,11 @@
 """
-stores_impl 模块。
+runs_ops 模块。
 
 本文件为 Provider-Evo 项目标准模块，使用以下约定：
 
-- 模块路径：provider-self.src.routes.openai.stubs.files.stores_impl
-- 文件名：stores_impl.py
-- 父包：provider-self/src/routes/openai/stubs/files
+- 模块路径：provider-core.src.routes.openai.stubs.runs.runs_ops
+- 文件名：runs_ops.py
+- 父包：provider-core/src/routes/openai/stubs/runs
 
 职责：
 
@@ -20,7 +20,7 @@ stores_impl 模块。
 集成：
 
     - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
     - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
 
 依赖：
@@ -37,35 +37,26 @@ stores_impl 模块。
 
 
 import time
-import uuid
 
 import aiohttp.web
 
 from src.core.server import get_json as _get_json
 from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import (
-    _aid,
-    _err,
-    _fid,
     _json,
-    _not_supported,
     _rid,
-    _tid,
-    _uid,
-    _vid,
 )
-from src.core.utils.compat.tools import normalize_content
 
 logger = get_logger(__name__)
 
 # =======================================================================
-# Vector Stores
+# Runs
 # =======================================================================
 
-async def create_vector_store(
+async def create_run(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
-    """创建向量存储端点 /v1/vector_stores。
+    """创建运行端点 /v1/threads/{thread_id}/runs。
 
     Args:
         request: 请求对象。
@@ -73,31 +64,28 @@ async def create_vector_store(
     Returns:
         响应对象。
     """
+    thread_id = request.match_info["thread_id"]
     body = await _get_json(request) or {}
     return _json(
         {
-            "id": _vid(),
-            "object": "vector_store",
+            "id": _rid(),
+            "object": "thread.run",
             "created_at": int(time.time()),
-            "name": body.get("name", ""),
-            "usage_bytes": 0,
-            "file_counts": {
-                "in_progress": 0,
-                "completed": 0,
-                "failed": 0,
-                "cancelled": 0,
-                "total": 0,
-            },
-            "status": "completed",
+            "thread_id": thread_id,
+            "assistant_id": body.get("assistant_id", ""),
+            "status": "queued",
+            "model": body.get("model", ""),
+            "instructions": body.get("instructions"),
+            "tools": body.get("tools", []),
             "metadata": body.get("metadata", {}),
         }
     )
 
 
-async def list_vector_stores(
+async def list_runs(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
-    """向量存储列表端点 /v1/vector_stores。
+    """运行列表端点 /v1/threads/{thread_id}/runs。
 
     Args:
         request: 请求对象。
@@ -108,10 +96,10 @@ async def list_vector_stores(
     return _json({"object": "list", "data": []})
 
 
-async def retrieve_vector_store(
+async def retrieve_run(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
-    """获取向量存储详情端点 /v1/vector_stores/{store_id}。
+    """获取运行详情端点 /v1/threads/{thread_id}/runs/{run_id}。
 
     Args:
         request: 请求对象。
@@ -119,51 +107,24 @@ async def retrieve_vector_store(
     Returns:
         响应对象。
     """
-    return _err(404, "Vector store not found", "not_found")
-
-
-async def delete_vector_store(
-    request: aiohttp.web.Request,
-) -> aiohttp.web.Response:
-    """删除向量存储端点 /v1/vector_stores/{store_id}。
-
-    Args:
-        request: 请求对象。
-
-    Returns:
-        响应对象。
-    """
-    store_id = request.match_info.get("vector_store_id") or request.match_info.get("store_id", "")
-    return _json({"id": store_id, "object": "vector_store.deleted", "deleted": True})
-
-
-async def create_vector_store_file(
-    request: aiohttp.web.Request,
-) -> aiohttp.web.Response:
-    """向量存储文件关联端点 /v1/vector_stores/{store_id}/files。
-
-    Args:
-        request: 请求对象。
-
-    Returns:
-        响应对象。
-    """
-    store_id = request.match_info.get("vector_store_id") or request.match_info.get("store_id", "")
+    thread_id = request.match_info["thread_id"]
+    run_id = request.match_info["run_id"]
     return _json(
         {
-            "id": _fid(),
-            "object": "vector_store.file",
+            "id": run_id,
+            "object": "thread.run",
             "created_at": int(time.time()),
-            "vector_store_id": store_id,
+            "thread_id": thread_id,
             "status": "completed",
+            "model": "",
         }
     )
 
 
-async def list_vector_store_files(
+async def cancel_run(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
-    """向量存储文件列表端点 /v1/vector_stores/{store_id}/files。
+    """取消运行端点 /v1/threads/{thread_id}/runs/{run_id}/cancel。
 
     Args:
         request: 请求对象。
@@ -171,7 +132,39 @@ async def list_vector_store_files(
     Returns:
         响应对象。
     """
-    return _json({"object": "list", "data": []})
+    thread_id = request.match_info["thread_id"]
+    run_id = request.match_info["run_id"]
+    return _json(
+        {
+            "id": run_id,
+            "object": "thread.run",
+            "status": "cancelled",
+            "thread_id": thread_id,
+        }
+    )
+
+
+async def submit_tool_outputs(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
+    """提交工具输出端点 /v1/threads/{thread_id}/runs/{run_id}/submit_tool_outputs。
+
+    Args:
+        request: 请求对象。
+
+    Returns:
+        响应对象。
+    """
+    thread_id = request.match_info["thread_id"]
+    run_id = request.match_info["run_id"]
+    return _json(
+        {
+            "id": run_id,
+            "object": "thread.run",
+            "status": "completed",
+            "thread_id": thread_id,
+        }
+    )
 
 # =======================================================================
 # 相关模块

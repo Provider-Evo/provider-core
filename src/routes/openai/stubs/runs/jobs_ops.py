@@ -1,11 +1,11 @@
 """
-runs_impl 模块。
+jobs_ops 模块。
 
 本文件为 Provider-Evo 项目标准模块，使用以下约定：
 
-- 模块路径：provider-self.src.routes.openai.stubs.runs.runs_impl
-- 文件名：runs_impl.py
-- 父包：provider-self/src/routes/openai/stubs/runs
+- 模块路径：provider-core.src.routes.openai.stubs.runs.jobs_ops
+- 文件名：jobs_ops.py
+- 父包：provider-core/src/routes/openai/stubs/runs
 
 职责：
 
@@ -20,7 +20,7 @@ runs_impl 模块。
 集成：
 
     - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
     - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
 
 依赖：
@@ -36,36 +36,26 @@ runs_impl 模块。
 """
 
 
-import time
-import uuid
 
 import aiohttp.web
 
-from src.core.server import get_json as _get_json
 from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import (
-    _aid,
     _err,
-    _fid,
     _json,
     _not_supported,
-    _rid,
-    _tid,
-    _uid,
-    _vid,
 )
-from src.core.utils.compat.tools import normalize_content
 
 logger = get_logger(__name__)
 
 # =======================================================================
-# Runs
+# Fine-tuning
 # =======================================================================
 
-async def create_run(
+async def create_fine_tuning_job(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
-    """创建运行端点 /v1/threads/{thread_id}/runs。
+    """创建微调任务端点 /v1/fine_tuning/jobs。
 
     Args:
         request: 请求对象。
@@ -73,28 +63,13 @@ async def create_run(
     Returns:
         响应对象。
     """
-    thread_id = request.match_info["thread_id"]
-    body = await _get_json(request) or {}
-    return _json(
-        {
-            "id": _rid(),
-            "object": "thread.run",
-            "created_at": int(time.time()),
-            "thread_id": thread_id,
-            "assistant_id": body.get("assistant_id", ""),
-            "status": "queued",
-            "model": body.get("model", ""),
-            "instructions": body.get("instructions"),
-            "tools": body.get("tools", []),
-            "metadata": body.get("metadata", {}),
-        }
-    )
+    return _not_supported("Fine-tuning")
 
 
-async def list_runs(
+async def list_fine_tuning_jobs(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
-    """运行列表端点 /v1/threads/{thread_id}/runs。
+    """微调任务列表端点 /v1/fine_tuning/jobs。
 
     Args:
         request: 请求对象。
@@ -105,10 +80,10 @@ async def list_runs(
     return _json({"object": "list", "data": []})
 
 
-async def retrieve_run(
+async def retrieve_fine_tuning_job(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
-    """获取运行详情端点 /v1/threads/{thread_id}/runs/{run_id}。
+    """获取微调任务详情端点 /v1/fine_tuning/jobs/{job_id}。
 
     Args:
         request: 请求对象。
@@ -116,24 +91,13 @@ async def retrieve_run(
     Returns:
         响应对象。
     """
-    thread_id = request.match_info["thread_id"]
-    run_id = request.match_info["run_id"]
-    return _json(
-        {
-            "id": run_id,
-            "object": "thread.run",
-            "created_at": int(time.time()),
-            "thread_id": thread_id,
-            "status": "completed",
-            "model": "",
-        }
-    )
+    return _err(404, "Job not found", "job_not_found")
 
 
-async def cancel_run(
+async def cancel_fine_tuning_job(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
-    """取消运行端点 /v1/threads/{thread_id}/runs/{run_id}/cancel。
+    """取消微调任务端点 /v1/fine_tuning/jobs/{job_id}/cancel。
 
     Args:
         request: 请求对象。
@@ -141,22 +105,13 @@ async def cancel_run(
     Returns:
         响应对象。
     """
-    thread_id = request.match_info["thread_id"]
-    run_id = request.match_info["run_id"]
-    return _json(
-        {
-            "id": run_id,
-            "object": "thread.run",
-            "status": "cancelled",
-            "thread_id": thread_id,
-        }
-    )
+    return _err(404, "Job not found", "job_not_found")
 
 
-async def submit_tool_outputs(
+async def list_fine_tuning_events(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
-    """提交工具输出端点 /v1/threads/{thread_id}/runs/{run_id}/submit_tool_outputs。
+    """微调任务事件列表端点 /v1/fine_tuning/jobs/{job_id}/events。
 
     Args:
         request: 请求对象。
@@ -164,16 +119,67 @@ async def submit_tool_outputs(
     Returns:
         响应对象。
     """
-    thread_id = request.match_info["thread_id"]
-    run_id = request.match_info["run_id"]
-    return _json(
-        {
-            "id": run_id,
-            "object": "thread.run",
-            "status": "completed",
-            "thread_id": thread_id,
-        }
-    )
+    return _json({"object": "list", "data": []})
+
+
+# =======================================================================
+# Batch
+# =======================================================================
+
+async def create_batch(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
+    """创建批处理任务端点 /v1/batches。
+
+    Args:
+        request: 请求对象。
+
+    Returns:
+        响应对象。
+    """
+    return _not_supported("Batch")
+
+
+async def list_batches(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
+    """批处理任务列表端点 /v1/batches。
+
+    Args:
+        request: 请求对象。
+
+    Returns:
+        响应对象。
+    """
+    return _json({"object": "list", "data": []})
+
+
+async def retrieve_batch(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
+    """获取批处理任务详情端点 /v1/batches/{batch_id}。
+
+    Args:
+        request: 请求对象。
+
+    Returns:
+        响应对象。
+    """
+    return _err(404, "Batch not found", "batch_not_found")
+
+
+async def cancel_batch(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
+    """取消批处理任务端点 /v1/batches/{batch_id}/cancel。
+
+    Args:
+        request: 请求对象。
+
+    Returns:
+        响应对象。
+    """
+    return _err(404, "Batch not found", "batch_not_found")
 
 # =======================================================================
 # 相关模块

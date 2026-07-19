@@ -3,25 +3,34 @@
  */
 'use strict';
 
+function _buildSplitStatusSlot(tab, pane, statusClass) {
+  var slot = document.createElement('span');
+  slot.className = 'unified-tab-status-slot';
+  slot.setAttribute('data-pane', pane);
+
+  var dot = document.createElement('span');
+  dot.className = 'unified-tab-status unified-tab-status-split-' + (pane === 'primary' ? 'a' : 'b');
+  if (statusClass) dot.className += ' ' + statusClass;
+  slot.appendChild(dot);
+
+  var closeEl = document.createElement('span');
+  closeEl.className = 'unified-tab-status-close';
+  closeEl.innerHTML = '&times;';
+  slot.appendChild(closeEl);
+
+  return slot;
+}
+
 /**
- * Build the status area for a tab: a single dot normally, or a paired
- * group of two dots when the tab has a split pane (tab.splitStatus is
- * set, even to ''). The group's layout (row vs column) follows the
- * current tabbar layout so it always reads as one visual unit, and the
- * whole group is treated as a single clickable/hoverable region -- it
- * has no listeners of its own, so clicks/hovers fall through to the
- * tab element exactly like a single dot would.
+ * Build the status area for a tab: a single dot normally, or two independently
+ * interactive slots when the tab has a split pane.
  */
 function _buildTabStatusNode(tab) {
   if (tab.splitStatus !== undefined && tab.splitStatus !== null) {
     var group = document.createElement('span');
     group.className = 'unified-tab-status-group';
-    var primary = document.createElement('span');
-    primary.className = 'unified-tab-status unified-tab-status-split-a' + (tab.status ? ' ' + tab.status : '');
-    var secondary = document.createElement('span');
-    secondary.className = 'unified-tab-status unified-tab-status-split-b' + (tab.splitStatus ? ' ' + tab.splitStatus : '');
-    group.appendChild(primary);
-    group.appendChild(secondary);
+    group.appendChild(_buildSplitStatusSlot(tab, 'primary', tab.status || ''));
+    group.appendChild(_buildSplitStatusSlot(tab, 'split', tab.splitStatus || ''));
     return group;
   }
   if (tab.status) {
@@ -32,11 +41,45 @@ function _buildTabStatusNode(tab) {
   return null;
 }
 
+function _syncSplitTabClass(el, tab) {
+  var hasSplit = tab.splitStatus !== undefined && tab.splitStatus !== null;
+  el.classList.toggle('has-split-status', hasSplit);
+}
+
+function _bindSplitStatusSlotEvents(instance, el, tab, slot) {
+  var pane = slot.getAttribute('data-pane');
+  if (!pane) return;
+
+  slot.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (e.target.closest('.unified-tab-status-close')) return;
+    if (instance._opts.onSplitPaneSelect) {
+      instance._opts.onSplitPaneSelect(tab.id, pane);
+    }
+  });
+
+  var closeEl = slot.querySelector('.unified-tab-status-close');
+  if (!closeEl) return;
+  closeEl.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (instance._opts.onPaneClose) {
+      instance._opts.onPaneClose(tab.id, pane);
+    }
+  });
+}
+
+function _bindTabStatusEvents(instance, el, tab) {
+  var slots = el.querySelectorAll('.unified-tab-status-slot');
+  for (var i = 0; i < slots.length; i++) {
+    _bindSplitStatusSlotEvents(instance, el, tab, slots[i]);
+  }
+}
+
 /**
  * Refresh the status area for an already-rendered tab element in place,
  * replacing whatever status node exists (single dot or split group).
  */
-function _refreshTabStatusNode(el, tab) {
+function _refreshTabStatusNode(instance, el, tab) {
   var existing = el.querySelector('.unified-tab-status-group, .unified-tab-status');
   var node = _buildTabStatusNode(tab);
   if (existing) {
@@ -56,6 +99,19 @@ function _refreshTabStatusNode(el, tab) {
       el.insertBefore(node, el.firstChild);
     }
   }
+  _syncSplitTabClass(el, tab);
+  if (node && node.classList.contains('unified-tab-status-group')) {
+    _bindTabStatusEvents(instance, el, tab);
+    _syncActivePaneDots(el, tab.activePane || 'primary');
+  }
+}
+
+function _syncActivePaneDots(el, pane) {
+  var slots = el.querySelectorAll('.unified-tab-status-slot');
+  for (var i = 0; i < slots.length; i++) {
+    var isActive = slots[i].getAttribute('data-pane') === pane;
+    slots[i].classList.toggle('is-pane-active', isActive);
+  }
 }
 
 function _attachStatusMethods(instance) {
@@ -69,5 +125,12 @@ function _attachStatusMethods(instance) {
   };
 
   instance._buildStatusNode = _buildTabStatusNode;
-  instance._refreshStatusNode = _refreshTabStatusNode;
+  instance._refreshStatusNode = function (el, tab) {
+    _refreshTabStatusNode(this, el, tab);
+  };
+  instance._bindTabStatusEvents = function (el, tab) {
+    _bindTabStatusEvents(this, el, tab);
+  };
+  instance._syncSplitTabClass = _syncSplitTabClass;
+  instance._syncActivePaneDots = _syncActivePaneDots;
 }

@@ -33,21 +33,40 @@ function _tmShowTabPane(ctx, tabId) {
   }
 }
 
-function _tmSwitchToTab(ctx, tabId) {
-  ctx.activeTabId = tabId;
-  if (ctx.bar) ctx.bar.setActive(tabId);
-  ctx.showTabPane(tabId);
-
-  // 持久化上次激活的 tab，供页面刷新后恢复使用
-  try { localStorage.setItem('term_last_active_tab', tabId); } catch (e) {}
-
+function _tmResolveActiveTerminalTarget(ctx) {
   var tab = ctx.getActiveTab();
-  if (tab && tab.fitAddon) {
-    setTimeout(function () {
-      ctx.fitAndResize(tab, true);
-      if (tab.xterm) tab.xterm.focus();
-    }, 50);
+  if (!tab) return null;
+  if (tab.split && tab._activePane === 'split') {
+    return tab.split;
   }
+  return tab;
+}
+
+function _tmFocusPane(ctx, tabId, pane) {
+  var switchingTab = ctx.activeTabId !== tabId;
+  if (switchingTab) {
+    ctx.activeTabId = tabId;
+    if (ctx.bar) ctx.bar.setActive(tabId);
+    ctx.showTabPane(tabId);
+    try { localStorage.setItem('term_last_active_tab', tabId); } catch (e) {}
+  }
+
+  var tab = ctx.getTabById(tabId);
+  if (!tab) return;
+  if (pane === 'split' && !tab.split) pane = 'primary';
+  tab._activePane = pane;
+  if (ctx.bar && ctx.bar.setActivePane) ctx.bar.setActivePane(tabId, pane);
+
+  var target = pane === 'split' ? tab.split : tab;
+  if (!target) return;
+  setTimeout(function () {
+    ctx.fitAndResize(target, true);
+    if (target.xterm) target.xterm.focus();
+  }, switchingTab ? 50 : 0);
+}
+
+function _tmSwitchToTab(ctx, tabId) {
+  _tmFocusPane(ctx, tabId, 'primary');
 }
 
 function _attachTerminalManagerTabOps(ctx) {
@@ -55,7 +74,9 @@ function _attachTerminalManagerTabOps(ctx) {
   ctx.initTerminal = function (tab) { return _tmInitTerminal(ctx, tab); };
   ctx.showTabPane = function (tabId) { return _tmShowTabPane(ctx, tabId); };
   ctx.switchToTab = function (tabId) { return _tmSwitchToTab(ctx, tabId); };
+  ctx.focusPane = function (tabId, pane) { return _tmFocusPane(ctx, tabId, pane); };
   ctx.updateTabTitle = function (tab) { return _tmUpdateTabTitle(ctx, tab); };
+  ctx.resolveActiveTerminalTarget = function () { return _tmResolveActiveTerminalTarget(ctx); };
 }
 
 /**
@@ -106,6 +127,16 @@ function _wireTerminalManagerSubmodules(ctx) {
   _attachTerminalManagerTabOps(ctx);
 }
 
+function _refreshTerminalTheme(ctx) {
+  if (ctx.terminalBgMode !== 'theme') return;
+  var theme = ctx.getTerminalTheme('theme');
+  for (var i = 0; i < ctx.tabs.length; i++) {
+    if (ctx.tabs[i].xterm) {
+      ctx.tabs[i].xterm.options.theme = theme;
+    }
+  }
+}
+
 /**
  * Builds the public API object returned by the TerminalManager IIFE.
  * Extracted from term.js for the same reason as _createTerminalManagerCtx
@@ -123,21 +154,12 @@ function _buildTerminalManagerPublicApi(ctx, init) {
     getActiveTab: ctx.getActiveTab,
     convertChooserTabToSSH: ctx.convertChooserTabToSSH,
     sendToActiveTab: function (text) {
-      var tab = ctx.getActiveTab();
-      if (!tab || !tab.ws || tab.ws.readyState !== WebSocket.OPEN) return false;
-      tab.ws.send(JSON.stringify({ type: 'input', data: text }));
+      var target = ctx.resolveActiveTerminalTarget();
+      if (!target || !target.ws || target.ws.readyState !== WebSocket.OPEN) return false;
+      target.ws.send(JSON.stringify({ type: 'input', data: text }));
       return true;
     },
-    refreshTheme: function () {
-      if (ctx.terminalBgMode === 'theme') {
-        var theme = ctx.getTerminalTheme('theme');
-        for (var i = 0; i < ctx.tabs.length; i++) {
-          if (ctx.tabs[i].xterm) {
-            ctx.tabs[i].xterm.options.theme = theme;
-          }
-        }
-      }
-    },
+    refreshTheme: function () { _refreshTerminalTheme(ctx); },
   };
 }
 

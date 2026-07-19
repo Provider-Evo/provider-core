@@ -38,6 +38,20 @@ function _inspectorCopyToClipboard(text) {
 
 function _inspectorPad(n) { return n < 10 ? '0' + n : '' + n; }
 
+function _inspectorFormatTime(ts, padFn) {
+  if (ts == null || !isFinite(ts)) return '--:--:--';
+  var time = new Date(ts * 1000);
+  if (isNaN(time.getTime())) return '--:--:--';
+  return padFn(time.getHours()) + ':' + padFn(time.getMinutes()) + ':' + padFn(time.getSeconds());
+}
+
+function _inspectorFormatDateTime(ts) {
+  if (ts == null || !isFinite(ts)) return '--';
+  var time = new Date(ts * 1000);
+  if (isNaN(time.getTime())) return '--';
+  return time.toLocaleString();
+}
+
 function _inspectorRequestContent(req) {
   if (!req) return '';
   if (req.content) return req.content;
@@ -221,6 +235,7 @@ function _inspectorHandleRequestEnd(instance, msg) {
     req.status = msg.status;
     req.latency_ms = msg.latency_ms;
     req.platform = msg.platform || '';
+    if (msg.ts != null && isFinite(msg.ts)) req.ts = msg.ts;
     req.model = req.model || msg.model || '';
     if (msg.messages && msg.messages.length) req.messages = msg.messages;
     if (msg.messages_count) req.messages_count = msg.messages_count;

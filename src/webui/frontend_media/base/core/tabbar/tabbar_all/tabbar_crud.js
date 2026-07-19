@@ -106,6 +106,23 @@ function _attachTabStatusMethods(instance) {
     this._refreshStatusNode(el, tab);
     this._syncTabIconEl(el, tab);
   };
+
+  /**
+   * Highlight which split pane is currently targeted for input/commands.
+   */
+  instance.setActivePane = function (id, pane) {
+    var tab = null;
+    for (var i = 0; i < this._tabs.length; i++) {
+      if (this._tabs[i].id === id) {
+        this._tabs[i].activePane = pane || 'primary';
+        tab = this._tabs[i];
+        break;
+      }
+    }
+    var el = this._findTabEl(id);
+    if (!el) return;
+    this._syncActivePaneDots(el, (tab && tab.activePane) || pane || 'primary');
+  };
 }
 
 function _attachTabSplitStatusMethods(instance) {
@@ -132,6 +149,7 @@ function _attachTabSplitStatusMethods(instance) {
     var el = this._findTabEl(id);
     if (!el) return;
 
+    this._syncSplitTabClass(el, tab);
     this._refreshStatusNode(el, tab);
     this._syncTabIconEl(el, tab);
   };

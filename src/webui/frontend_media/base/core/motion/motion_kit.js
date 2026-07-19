@@ -65,19 +65,23 @@ function _motionCreateLoop(step) {
     return { stop: function () { running = false; } };
 }
 
+function _motionAnimateStep(element, update, done, finish, resolve, frameFn) {
+    var state = _motionGetState(element);
+    update(state);
+    _motionApplyState(element);
+    if (done(state)) {
+        finish(state);
+        _motionApplyState(element);
+        resolve();
+        return;
+    }
+    requestAnimationFrame(frameFn);
+}
+
 function _motionAnimateState(element, update, done, finish) {
     return new Promise(function (resolve) {
         function frame() {
-            var state = _motionGetState(element);
-            update(state);
-            _motionApplyState(element);
-            if (done(state)) {
-                finish(state);
-                _motionApplyState(element);
-                resolve();
-                return;
-            }
-            requestAnimationFrame(frame);
+            _motionAnimateStep(element, update, done, finish, resolve, frame);
         }
         requestAnimationFrame(frame);
     });
