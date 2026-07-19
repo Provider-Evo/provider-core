@@ -1116,6 +1116,19 @@
   overflow: hidden;
 }
 
+.files-editor2-content-col.tabbar-vertical {
+  flex-direction: row;
+}
+
+.files-editor2-content-col.tabbar-vertical .files-editor2-editarea {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.files-editor2-content-col .unified-tabbar {
+  flex-shrink: 0;
+}
+
 /* ---- Title bar ---- */
 .files-editor2-titlebar {
   display: flex;

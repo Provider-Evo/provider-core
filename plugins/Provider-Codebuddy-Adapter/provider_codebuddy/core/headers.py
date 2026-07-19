@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from .constants import BASE_URL, CHAT_PATH, IDE_VERSION
+from .consts import BASE_URL, CHAT_PATH, IDE_VERSION
 
 
 def build_headers(
@@ -68,7 +68,7 @@ def build_headers(
 # 重导出 — 同包内协同模块的公共符号（保持外部 ``from .. import`` 路径稳定）
 # =======================================================================
 
-from .payloads import (
+from .payload import (
     build_payload,
 )
 
@@ -122,7 +122,7 @@ __all__ = [
 # 重导出 — 同包协同模块（保持外部 ``from .. import`` 路径稳定）
 # =======================================================================
 
-from .adaptercore import (
+from .adapt_core import (
     CodebuddyAdapter,
 )
 
@@ -130,7 +130,7 @@ from .client import (
     CodebuddyClient,
 )
 
-from .payloads import (
+from .payload import (
     build_payload,
 )
 

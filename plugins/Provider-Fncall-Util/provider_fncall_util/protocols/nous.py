@@ -20,7 +20,7 @@ nous 模块。
 集成：
 
     - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
     - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
 
 依赖：

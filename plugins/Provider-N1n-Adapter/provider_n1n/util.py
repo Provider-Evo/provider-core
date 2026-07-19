@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .core.constants import (
+from .core.consts import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -23,7 +23,7 @@ from .core.constants import (
     MODEL_FETCH_INTERVAL,
 )
 from .core.headers import build_headers
-from .core.payloads import build_payload
+from .core.payload import build_payload
 from .core.stream.sse import parse_sse_line
 
 __all__ = [

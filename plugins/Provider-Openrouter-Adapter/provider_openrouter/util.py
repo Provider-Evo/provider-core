@@ -18,7 +18,7 @@
 
 from typing import Any, Dict, List, Optional, Union
 
-from provider_openrouter.core.constants import (
+from provider_openrouter.core.consts import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -31,14 +31,14 @@ from provider_openrouter.core.constants import (
     RECOVERY_INTERVAL,
 )
 from provider_openrouter.core.headers import DEFAULT_HEADERS, build_headers
-from provider_openrouter.core.payloads import build_payload
+from provider_openrouter.core.payload import build_payload
 from provider_openrouter.core.sse import parse_sse_line
 
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("OpenRouterAdapter", "Adapter"):
-        from provider_openrouter.core.adaptercore import (  # noqa: PLC0415
+        from provider_openrouter.core.acore import (  # noqa: PLC0415
             OpenRouterAdapter as _OpenRouterAdapter,
         )
 

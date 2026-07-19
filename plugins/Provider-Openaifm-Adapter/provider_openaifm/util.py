@@ -12,7 +12,7 @@
 
 from typing import Any
 
-from .core.constants import (
+from .core.consts import (
     CAPS,
     DEFAULT_STYLE,
     DEFAULT_VOICE,
@@ -52,13 +52,13 @@ def __getattr__(name: str) -> Any:
         AttributeError: If the name is not recognized.
     """
     if name == "OpenaiFmAdapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.acore import (  # noqa: PLC0415
             OpenaiFmAdapter as _OpenaiFmAdapter,
         )
 
         return _OpenaiFmAdapter
     if name == "Adapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.acore import (  # noqa: PLC0415
             OpenaiFmAdapter as _Adapter,
         )
 

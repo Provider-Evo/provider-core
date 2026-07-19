@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Dict, List, Optional, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 
@@ -18,7 +18,7 @@ from echotools.translate import extract_text_from_messages, split_text_chunks
 from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
-from .constants import (
+from .consts import (
     API_VERSION,
     BASE_URL,
     CAPS,
@@ -181,33 +181,15 @@ class AzureTranslateClient:
         """返回可用账号数量。"""
         return sum(1 for a in self._accounts if a.available)
 
-    async def complete(
+    async def _retry_request(
         self,
         candidate: Candidate,
-        messages: List[Dict[str, Any]],
-        model: str,
+        text: str,
+        source_lang: str,
+        target_lang: str,
         stream: bool,
-        **kw: Any,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
-        """执行翻译请求，含重试逻辑。
-
-        Args:
-            candidate: 候选项。
-            messages: 消息列表。
-            model: 模型名（忽略）。
-            stream: 是否流式返回。
-            **kw: 额外参数，支持 target_lang / source_lang 覆盖。
-        """
-        target_lang = kw.get("target_lang", DEFAULT_TARGET_LANG)
-        source_lang_override = kw.get("source_lang", "")
-
-        text, msg_source, _target = extract_text_from_messages(messages)
-        source_lang = source_lang_override or msg_source or DEFAULT_SOURCE_LANG
-
-        if not text or not text.strip():
-            yield ""
-            return
-
+        """执行带重试的请求主循环。"""
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:
@@ -240,6 +222,134 @@ class AzureTranslateClient:
         if last_exc:
             raise last_exc
 
+    async def complete(
+        self,
+        candidate: Candidate,
+        messages: List[Dict[str, Any]],
+        model: str,
+        stream: bool,
+        **kw: Any,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """执行翻译请求，含重试逻辑。
+
+        Args:
+            candidate: 候选项。
+            messages: 消息列表。
+            model: 模型名（忽略）。
+            stream: 是否流式返回。
+            **kw: 额外参数，支持 target_lang / source_lang 覆盖。
+        """
+        target_lang = kw.get("target_lang", DEFAULT_TARGET_LANG)
+        source_lang_override = kw.get("source_lang", "")
+
+        text, msg_source, _target = extract_text_from_messages(messages)
+        source_lang = source_lang_override or msg_source or DEFAULT_SOURCE_LANG
+
+        if not text or not text.strip():
+            yield ""
+            return
+
+        async for chunk in self._retry_request(candidate, text, source_lang, target_lang, stream):
+            yield chunk
+
+    @staticmethod
+    def _build_translate_request(
+        account: Account,
+        text: str,
+        source_lang: str,
+        target_lang: str,
+    ) -> Tuple[str, Dict[str, str], Dict[str, str], List[Dict[str, str]]]:
+        """构造 Azure Translator 请求的 URL/params/headers/body。
+
+        Args:
+            account: 目标账号。
+            text: 待翻译文本。
+            source_lang: 源语言代码。
+            target_lang: 目标语言代码。
+
+        Returns:
+            (url, params, headers, body) 四元组。
+        """
+        url = "{}{}".format(BASE_URL, TRANSLATE_PATH)
+        params = {
+            "api-version": API_VERSION,
+            "to": target_lang,
+        }
+        if source_lang:
+            params["from"] = source_lang
+
+        headers = {
+            "Ocp-Apim-Subscription-Key": account.api_key,
+            "Content-Type": "application/json",
+        }
+        # Region header (required for multi-service resources)
+        if account.region and account.region != "global":
+            headers["Ocp-Apim-Subscription-Region"] = account.region
+
+        # Azure Translator body: [{"Text": "..."}]
+        body = [{"Text": text}]
+        return url, params, headers, body
+
+    @staticmethod
+    def _extract_translated_text(data: Any) -> str:
+        """从 Azure Translator 响应中提取翻译文本。
+
+        Response 结构: [{"translations": [{"text": "..."}]}]
+        """
+        translated_text = ""
+        if isinstance(data, list) and len(data) > 0:
+            first = data[0]
+            if isinstance(first, dict):
+                translations = first.get("translations", [])
+                if translations and isinstance(translations, list):
+                    translated_text = translations[0].get("text", "")
+        return translated_text
+
+    async def _fetch_translation(
+        self,
+        acc_state: "_AccountState",
+        text: str,
+        source_lang: str,
+        target_lang: str,
+    ) -> str:
+        """发起 Azure Translator HTTP 请求并返回译文。
+
+        Args:
+            acc_state: 账号状态。
+            text: 待翻译文本。
+            source_lang: 源语言代码。
+            target_lang: 目标语言代码。
+
+        Returns:
+            翻译后的文本。
+
+        Raises:
+            PlatformError: HTTP 状态码非 200 时抛出。
+        """
+        url, params, headers, body = self._build_translate_request(
+            acc_state.account, text, source_lang, target_lang
+        )
+        async with self._session.post(
+            url,
+            headers=headers,
+            params=params,
+            json=body,
+            ssl=False,
+            timeout=aiohttp.ClientTimeout(connect=10, total=60),
+        ) as resp:
+            if resp.status != 200:
+                body_text = await resp.text()
+                acc_state.mark_failure(resp.status, body_text)
+                raise PlatformError(
+                    "azuretranslate HTTP{}: {}".format(
+                        resp.status, body_text[:200]
+                    )
+                )
+
+            data = await resp.json()
+            acc_state.mark_success()
+            return self._extract_translated_text(data)
+
     async def _do_request(
         self,
         candidate: Candidate,
@@ -261,65 +371,16 @@ class AzureTranslateClient:
         if not acc_state:
             raise PlatformError("azuretranslate: 未找到对应账号")
 
-        account = acc_state.account
-
-        # Build URL with query params
-        url = "{}{}".format(BASE_URL, TRANSLATE_PATH)
-        params = {
-            "api-version": API_VERSION,
-            "to": target_lang,
-        }
-        if source_lang:
-            params["from"] = source_lang
-
-        headers = {
-            "Ocp-Apim-Subscription-Key": account.api_key,
-            "Content-Type": "application/json",
-        }
-        # Region header (required for multi-service resources)
-        if account.region and account.region != "global":
-            headers["Ocp-Apim-Subscription-Region"] = account.region
-
-        # Azure Translator body: [{"Text": "..."}]
-        body = [{"Text": text}]
-
         acc_state.busy = True
         try:
-            async with self._session.post(
-                url,
-                headers=headers,
-                params=params,
-                json=body,
-                ssl=False,
-                timeout=aiohttp.ClientTimeout(connect=10, total=60),
-            ) as resp:
-                if resp.status != 200:
-                    body_text = await resp.text()
-                    acc_state.mark_failure(resp.status, body_text)
-                    raise PlatformError(
-                        "azuretranslate HTTP{}: {}".format(
-                            resp.status, body_text[:200]
-                        )
-                    )
-
-                data = await resp.json()
-                acc_state.mark_success()
-
-                # Response: [{"translations": [{"text": "..."}]}]
-                translated_text = ""
-                if isinstance(data, list) and len(data) > 0:
-                    first = data[0]
-                    if isinstance(first, dict):
-                        translations = first.get("translations", [])
-                        if translations and isinstance(translations, list):
-                            translated_text = translations[0].get("text", "")
-
-                if stream:
-                    for chunk_text in split_text_chunks(translated_text):
-                        yield chunk_text
-                else:
-                    yield translated_text
-
+            translated_text = await self._fetch_translation(
+                acc_state, text, source_lang, target_lang
+            )
+            if stream:
+                for chunk_text in split_text_chunks(translated_text):
+                    yield chunk_text
+            else:
+                yield translated_text
         except PlatformError:
             raise
         except Exception as e:

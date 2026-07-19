@@ -18,7 +18,7 @@
 
 from typing import Any
 
-from provider_azuretranslate.core.constants import (
+from provider_azuretranslate.core.consts import (
     API_VERSION,
     BASE_URL,
     CAPS,
@@ -36,7 +36,7 @@ from provider_azuretranslate.core.constants import (
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("AzureTranslateAdapter", "Adapter"):
-        from provider_azuretranslate.core.adaptercore import (  # noqa: PLC0415
+        from provider_azuretranslate.core.acore import (  # noqa: PLC0415
             AzureTranslateAdapter as _AzureTranslateAdapter,
         )
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .core.constants import (
+from .core.consts import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -22,7 +22,7 @@ from .core.constants import (
     MODELS_JS_URL,
     MODEL_FETCH_INTERVAL,
 )
-from .core.response.conversation import (
+from .core.response.convo import (
     build_cursor_messages,
     clean_system_prompt,
     derive_conversation_id,
@@ -34,7 +34,7 @@ from .core.response.extract import (
     split_top_level_objects,
 )
 from .core.headers import build_headers
-from .core.payloads import build_payload
+from .core.payload import build_payload
 from .core.stream.sse import parse_sse_line
 
 __all__ = [
@@ -73,12 +73,12 @@ def __getattr__(name: str) -> Any:
         AttributeError: 当属性名未注册时抛出。
     """
     if name == "CursorAdapter":
-        from .core.adapter.adaptercore import (  # noqa: PLC0415
+        from .core.adapter.acore import (  # noqa: PLC0415
             CursorAdapter as _CursorAdapter,
         )
         return _CursorAdapter
     if name == "Adapter":
-        from .core.adapter.adaptercore import (  # noqa: PLC0415
+        from .core.adapter.acore import (  # noqa: PLC0415
             CursorAdapter as _Adapter,
         )
         return _Adapter

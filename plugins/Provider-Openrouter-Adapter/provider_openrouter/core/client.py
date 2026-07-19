@@ -12,7 +12,7 @@ from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import EmbeddingError, PlatformError
 from src.foundation.logger import get_logger
 from ..accounts import API_KEYS
-from .constants import (
+from .consts import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -22,7 +22,7 @@ from .constants import (
     RECOVERY_INTERVAL,
 )
 from .headers import build_headers
-from .payloads import build_payload
+from .payload import build_payload
 from .sse import parse_sse_line
 
 logger = get_logger(__name__)
@@ -235,6 +235,69 @@ class OpenRouterClient:
         if last_exc:
             raise last_exc
 
+    @staticmethod
+    def _non_stream_events(
+        data: Dict[str, Any],
+    ) -> List[Union[str, Dict[str, Any]]]:
+        """从非流式响应体中构造待产出的事件列表。"""
+        choice = (data.get("choices") or [{}])[0]
+        msg = choice.get("message", {})
+        content = msg.get("content", "")
+        events: List[Union[str, Dict[str, Any]]] = []
+        if content:
+            events.append(content)
+        tc = msg.get("tool_calls")
+        if tc:
+            events.append({"tool_calls": tc})
+        usage = data.get("usage")
+        if usage:
+            events.append({"usage": {
+                "prompt_tokens": usage.get("prompt_tokens", 0),
+                "completion_tokens": usage.get("completion_tokens", 0),
+            }})
+        return events
+
+    @staticmethod
+    async def _iter_sse_lines(
+        resp: aiohttp.ClientResponse,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """逐行解析流式响应体中的 SSE 数据。"""
+        async for line in resp.content:
+            text = line.decode("utf-8", errors="replace").strip()
+            if not text or not text.startswith("data:"):
+                continue
+            data_str = text[5:].strip()
+            if data_str == "[DONE]":
+                break
+            parsed = parse_sse_line(data_str)
+            if parsed is not None:
+                yield parsed
+
+    async def _handle_chat_response(
+        self,
+        resp: aiohttp.ClientResponse,
+        ks: "_KeyState",
+        stream: bool,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """处理聊天补全响应，成功/失败分支均更新 Key 状态。"""
+        if resp.status != 200:
+            body = await resp.text()
+            ks.mark_failure(resp.status)
+            raise PlatformError(
+                "openrouter HTTP{}: {}".format(resp.status, body[:200])
+            )
+
+        if not stream:
+            data = await resp.json()
+            ks.mark_success()
+            for event in self._non_stream_events(data):
+                yield event
+            return
+
+        async for parsed in self._iter_sse_lines(resp):
+            yield parsed
+        ks.mark_success()
+
     async def _do_request(
         self,
         candidate: Candidate,
@@ -264,42 +327,8 @@ class OpenRouterClient:
                     total=600 if stream else 120,
                 ),
             ) as resp:
-                if resp.status != 200:
-                    body = await resp.text()
-                    ks.mark_failure(resp.status)
-                    raise PlatformError(
-                        "openrouter HTTP{}: {}".format(resp.status, body[:200])
-                    )
-
-                if not stream:
-                    data = await resp.json()
-                    ks.mark_success()
-                    choice = (data.get("choices") or [{}])[0]
-                    msg = choice.get("message", {})
-                    content = msg.get("content", "")
-                    if content:
-                        yield content
-                    tc = msg.get("tool_calls")
-                    if tc:
-                        yield {"tool_calls": tc}
-                    usage = data.get("usage")
-                    if usage:
-                        yield {"usage": {
-                            "prompt_tokens": usage.get("prompt_tokens", 0),
-                            "completion_tokens": usage.get("completion_tokens", 0),
-                        }}
-                else:
-                    async for line in resp.content:
-                        text = line.decode("utf-8", errors="replace").strip()
-                        if not text or not text.startswith("data:"):
-                            continue
-                        data_str = text[5:].strip()
-                        if data_str == "[DONE]":
-                            break
-                        parsed = parse_sse_line(data_str)
-                        if parsed is not None:
-                            yield parsed
-                    ks.mark_success()
+                async for event in self._handle_chat_response(resp, ks, stream):
+                    yield event
         except PlatformError:
             raise
         except Exception as e:

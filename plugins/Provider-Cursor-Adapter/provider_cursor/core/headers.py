@@ -83,7 +83,7 @@ def build_resume_headers(
 # 重导出 — 同包内协同模块的公共符号（保持外部 ``from .. import`` 路径稳定）
 # =======================================================================
 
-from .payloads import (
+from .payload import (
     build_payload,
     new_chat_id,
     new_message_id,
@@ -136,7 +136,7 @@ __all__ = [
 # 重导出 — 同包协同模块（保持外部 ``from .. import`` 路径稳定）
 # =======================================================================
 
-from .payloads import (
+from .payload import (
     build_payload,
     new_chat_id,
     new_message_id,

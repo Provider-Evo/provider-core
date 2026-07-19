@@ -12,6 +12,26 @@
 from typing import Any, Dict, List
 
 
+def _extract_content_parts(
+    content: List[Any],
+) -> "tuple[List[str], List[str]]":
+    """从多模态消息内容中提取文本片段与 base64 图片数据。"""
+    text_parts: List[str] = []
+    images: List[str] = []
+    for part in content:
+        if not isinstance(part, dict):
+            continue
+        if part.get("type") == "text":
+            text_parts.append(part.get("text", ""))
+            continue
+        if part.get("type") != "image_url":
+            continue
+        url = part.get("image_url", {}).get("url", "")
+        if url.startswith("data:") and ";base64," in url:
+            images.append(url.split(";base64,", 1)[1])
+    return text_parts, images
+
+
 def build_image_messages(
     messages: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
@@ -38,17 +58,7 @@ def build_image_messages(
             continue
 
         if isinstance(content, list):
-            text_parts: List[str] = []
-            images: List[str] = []
-            for part in content:
-                if not isinstance(part, dict):
-                    continue
-                if part.get("type") == "text":
-                    text_parts.append(part.get("text", ""))
-                elif part.get("type") == "image_url":
-                    url = part.get("image_url", {}).get("url", "")
-                    if url.startswith("data:") and ";base64," in url:
-                        images.append(url.split(";base64,", 1)[1])
+            text_parts, images = _extract_content_parts(content)
             entry: Dict[str, Any] = {
                 "role": role,
                 "content": "\n".join(text_parts),

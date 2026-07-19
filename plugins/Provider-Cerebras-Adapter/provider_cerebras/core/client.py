@@ -14,7 +14,7 @@ from .extract import (
     extract_nonstream_content,
     extract_usage,
 )
-from .payloads import build_params
+from .payload import build_params
 
 logger = get_logger(__name__)
 
@@ -79,7 +79,7 @@ class CerebrasClient:
 
     def _rebuild_candidates(self) -> None:
         """根据当前 API_KEYS 重建候选项列表。"""
-        from .adaptercore import CAPS
+        from .acore import CAPS
 
         self._candidates = [
             Candidate(
@@ -213,6 +213,75 @@ class CerebrasClient:
         if last_exc is not None:
             raise last_exc
 
+    async def _do_nonstream_request(
+        self, api_key: str, params: Dict[str, Any],
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """执行单次非流式 SDK 请求。
+
+        Args:
+            api_key: 用于鉴权的 API Key。
+            params: SDK create() 所需参数字典。
+
+        Yields:
+            str 类型的文本片段，或含 usage 键的 dict。
+        """
+        if self._executor is None:
+            raise RuntimeError("cerebras client 未初始化，executor 为 None")
+        loop = asyncio.get_running_loop()
+        resp = await loop.run_in_executor(
+            self._executor,
+            lambda: self._call_sync(api_key, params),
+        )
+        content = extract_nonstream_content(resp)
+        if content:
+            yield content
+        if hasattr(resp, "usage") and resp.usage is not None:
+            yield {"usage": extract_usage(resp.usage)}
+
+    async def _do_stream_request(
+        self, api_key: str, params: Dict[str, Any],
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """执行单次流式 SDK 请求，通过队列桥接线程池产出的 chunk。
+
+        Args:
+            api_key: 用于鉴权的 API Key。
+            params: SDK create() 所需参数字典。
+
+        Yields:
+            str 类型的文本片段。
+        """
+        if self._executor is None:
+            raise RuntimeError("cerebras client 未初始化，executor 为 None")
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue = asyncio.Queue()
+
+        def _consume() -> None:
+            """在线程池中消费流式响应，将 chunk 推入队列。"""
+            try:
+                client = self._make_client(api_key)
+                resp = client.chat.completions.create(**params)
+                for chunk in resp:
+                    loop.call_soon_threadsafe(queue.put_nowait, chunk)
+            except Exception as exc:
+                loop.call_soon_threadsafe(queue.put_nowait, exc)
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, _SENTINEL)
+
+        self._executor.submit(_consume)
+
+        while True:
+            item = await queue.get()
+            if item is _SENTINEL:
+                break
+            if isinstance(item, Exception):
+                logger.error(
+                    "cerebras 流式失败 key=%s: %s", api_key[:8], item
+                )
+                raise item
+            content = extract_delta_content(item)
+            if content:
+                yield content
+
     async def _do_request(
         self,
         candidate: Candidate,
@@ -249,47 +318,13 @@ class CerebrasClient:
             stop=kw.get("stop"),
             user=kw.get("user"),
         )
-        loop = asyncio.get_running_loop()
 
         if not stream:
-            resp = await loop.run_in_executor(
-                self._executor,
-                lambda: self._call_sync(api_key, params),
-            )
-            content = extract_nonstream_content(resp)
-            if content:
-                yield content
-            if hasattr(resp, "usage") and resp.usage is not None:
-                yield {"usage": extract_usage(resp.usage)}
+            async for item in self._do_nonstream_request(api_key, params):
+                yield item
         else:
-            queue: asyncio.Queue = asyncio.Queue()
-
-            def _consume() -> None:
-                """在线程池中消费流式响应，将 chunk 推入队列。"""
-                try:
-                    client = self._make_client(api_key)
-                    resp = client.chat.completions.create(**params)
-                    for chunk in resp:
-                        loop.call_soon_threadsafe(queue.put_nowait, chunk)
-                except Exception as exc:
-                    loop.call_soon_threadsafe(queue.put_nowait, exc)
-                finally:
-                    loop.call_soon_threadsafe(queue.put_nowait, _SENTINEL)
-
-            self._executor.submit(_consume)
-
-            while True:
-                item = await queue.get()
-                if item is _SENTINEL:
-                    break
-                if isinstance(item, Exception):
-                    logger.error(
-                        "cerebras 流式失败 key=%s: %s", api_key[:8], item
-                    )
-                    raise item
-                content = extract_delta_content(item)
-                if content:
-                    yield content
+            async for item in self._do_stream_request(api_key, params):
+                yield item
 
     def _call_sync(self, api_key: str, params: Dict[str, Any]) -> Any:
         """同步调用 SDK（在线程池中执行）。

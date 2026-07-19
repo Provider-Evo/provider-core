@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
@@ -11,109 +10,20 @@ import aiohttp
 from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
-from .constants import (
+from .protocol.constants import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
     MODELS_PATH,
-    RATE_LIMIT_COOLDOWN,
-    RECOVERY_INTERVAL,
 )
-from .headers import build_headers
-from .payloads import build_payload
-from .sse import parse_sse_line
+from .protocol.headers import build_headers
+from .helpers import _extract_error_message, _iter_non_stream_items
+from .keystate import _KeyState
+from .protocol.payloads import build_payload
+from .protocol.sse import parse_sse_line
 
 logger = get_logger(__name__)
 MAX_RETRIES: int = 3
-
-
-class _KeyState:
-    """单个 API Key 的运行时状态。"""
-
-    __slots__ = (
-        "key",
-        "valid",
-        "busy",
-        "error_count",
-        "consecutive_failures",
-        "last_error_time",
-        "rate_limit_until",
-    )
-
-    def __init__(self, key: str) -> None:
-        """初始化 Key 状态。"""
-        self.key: str = key
-        self.valid: bool = True
-        self.busy: bool = False
-        self.error_count: int = 0
-        self.consecutive_failures: int = 0
-        self.last_error_time: float = 0.0
-        self.rate_limit_until: float = 0.0
-
-    @property
-    def available(self) -> bool:
-        """判断是否可用。"""
-        if not self.valid:
-            if time.time() - self.last_error_time >= RECOVERY_INTERVAL:
-                self.valid = True
-                self.error_count = 0
-                self.consecutive_failures = 0
-            else:
-                return False
-        if self.busy:
-            return False
-        if self.rate_limit_until > time.time():
-            return False
-        if self.consecutive_failures >= 3:
-            if time.time() - self.last_error_time < RATE_LIMIT_COOLDOWN:
-                return False
-            self.consecutive_failures = 0
-        return True
-
-    def mark_success(self) -> None:
-        """标记请求成功。"""
-        self.busy = False
-        self.consecutive_failures = 0
-
-    def mark_failure(self, status: int = 0, message: str = "") -> None:
-        """根据 HTTP 状态码与上游错误信息分类处理失败。
-
-        Args:
-            status: HTTP 状态码。
-            message: 上游返回的 ``error.message`` 原文（用于识别余额不足等）。
-        """
-        self.busy = False
-        self.last_error_time = time.time()
-        if status in (401, 403) or "authentication" in message.lower():
-            self.valid = False
-            logger.warning(
-                "noobkeys Key 无效 (HTTP%d): %s... | %s",
-                status,
-                self.key[:12],
-                message[:100],
-            )
-        elif status == 402 or "insufficient" in message.lower():
-            self.valid = False
-            logger.warning(
-                "noobkeys Key 余额不足 (HTTP%d): %s...",
-                status,
-                self.key[:12],
-            )
-        elif status == 429:
-            self.rate_limit_until = time.time() + RATE_LIMIT_COOLDOWN
-            logger.warning("noobkeys Key 限速: %s...", self.key[:12])
-        elif status in (500, 502, 503, 504):
-            self.consecutive_failures += 1
-            self.error_count += 1
-        elif status in (400, 404, 422):
-            logger.debug(
-                "noobkeys 请求参数或模型错误 (HTTP%d): %s",
-                status,
-                message[:120],
-            )
-        else:
-            self.consecutive_failures += 1
-            self.error_count += 1
 
 
 class NoobKeysClient:
@@ -265,22 +175,9 @@ class NoobKeysClient:
                 ):
                     yield chunk
                 return
-            except PlatformError as e:
-                msg = str(e).lower()
-                if (
-                    "balance" in msg
-                    or "insufficient" in msg
-                    or "authentication" in msg
-                ):
+            except (PlatformError, Exception) as e:
+                if isinstance(e, PlatformError) and self._is_fatal_platform_error(e):
                     raise
-                last_exc = e
-                logger.warning(
-                    "noobkeys 重试 %d/%d: %s",
-                    attempt + 1,
-                    MAX_RETRIES,
-                    e,
-                )
-            except Exception as e:
                 last_exc = e
                 logger.warning(
                     "noobkeys 重试 %d/%d: %s",
@@ -290,6 +187,43 @@ class NoobKeysClient:
                 )
         if last_exc:
             raise last_exc
+
+    @staticmethod
+    def _is_fatal_platform_error(exc: PlatformError) -> bool:
+        """判断平台错误是否属于不应重试的致命错误。"""
+        msg = str(exc).lower()
+        return (
+            "balance" in msg
+            or "insufficient" in msg
+            or "authentication" in msg
+        )
+
+    async def _handle_response(
+        self,
+        resp: aiohttp.ClientResponse,
+        ks: _KeyState,
+        stream: bool,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """处理 HTTP 响应，产出结果片段。"""
+        if resp.status != 200:
+            body = await resp.text()
+            error_msg = _extract_error_message(body)
+            ks.mark_failure(resp.status, error_msg)
+            raise PlatformError(
+                "noobkeys HTTP{}: {}".format(
+                    resp.status,
+                    body[:200],
+                )
+            )
+
+        if not stream:
+            data = await resp.json()
+            ks.mark_success()
+            for item in _iter_non_stream_items(data):
+                yield item
+        else:
+            async for item in self._iter_stream(resp, ks):
+                yield item
 
     async def _do_request(
         self,
@@ -320,25 +254,8 @@ class NoobKeysClient:
                     total=600 if stream else 120,
                 ),
             ) as resp:
-                if resp.status != 200:
-                    body = await resp.text()
-                    error_msg = _extract_error_message(body)
-                    ks.mark_failure(resp.status, error_msg)
-                    raise PlatformError(
-                        "noobkeys HTTP{}: {}".format(
-                            resp.status,
-                            body[:200],
-                        )
-                    )
-
-                if not stream:
-                    data = await resp.json()
-                    ks.mark_success()
-                    for item in _iter_non_stream_items(data):
-                        yield item
-                else:
-                    async for item in self._iter_stream(resp, ks):
-                        yield item
+                async for item in self._handle_response(resp, ks, stream):
+                    yield item
         except PlatformError:
             raise
         except Exception as e:
@@ -368,58 +285,3 @@ class NoobKeysClient:
     async def close(self) -> None:
         """清理资源。"""
         return
-
-
-def _extract_error_message(body: str) -> str:
-    """从响应体中提取 ``error.message``，便于按业务分类错误。
-
-    Args:
-        body: HTTP 响应体原文。
-
-    Returns:
-        错误消息字符串；无法解析时返回空字符串。
-    """
-    if not body:
-        return ""
-    try:
-        import json as _json
-
-        obj = _json.loads(body)
-        err = obj.get("error") if isinstance(obj, dict) else None
-        if isinstance(err, dict):
-            return str(err.get("message", ""))
-        if isinstance(err, str):
-            return err
-    except (ValueError, AttributeError):
-        return ""
-    return ""
-
-
-def _iter_non_stream_items(
-    data: Dict[str, Any],
-) -> Any:
-    """从非流式响应 JSON 中依次产出 thinking / 文本 / usage。
-
-    Args:
-        data: 非流式响应 JSON。
-
-    Yields:
-        ``str``（文本片段）或 ``dict``（thinking / usage）。
-    """
-    choices = data.get("choices") or []
-    if choices:
-        msg = choices[0].get("message", {}) or {}
-        reasoning = msg.get("reasoning_content") or msg.get("reasoning")
-        if reasoning:
-            yield {"thinking": reasoning}
-        content = msg.get("content", "") or ""
-        if content:
-            yield content
-    usage = data.get("usage")
-    if usage and isinstance(usage, dict):
-        yield {
-            "usage": {
-                "prompt_tokens": usage.get("prompt_tokens", 0),
-                "completion_tokens": usage.get("completion_tokens", 0),
-            }
-        }

@@ -9,15 +9,27 @@ import aiohttp
 
 from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.logger import get_logger
-from .constants import BASE_URL, CHAT_PATH
+from .consts import BASE_URL, CHAT_PATH
 from .headers import build_headers, make_ssl_ctx
-from .payloads import build_payload
+from .payload import build_payload
 from .sse import parse_sse_line
 
 logger = get_logger(__name__)
 
 MAX_RETRIES: int = 3
 _SSL_CTX = make_ssl_ctx()
+
+
+async def _sleep_before_retry(attempt: int) -> None:
+    """按指数退避策略等待后重试，从 complete() 抽出。"""
+    wait = 1.0 * (2 ** (attempt - 1))
+    logger.warning(
+        "caiyuesbk 第 %d/%d 次重试，等待 %.1fs",
+        attempt,
+        MAX_RETRIES,
+        wait,
+    )
+    await asyncio.sleep(wait)
 
 
 class CaiyuesbkClient:
@@ -185,34 +197,11 @@ class CaiyuesbkClient:
         search: bool = False,
         **kw: Any,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
-        """执行聊天补全请求，含指数退避重试。
-
-        Args:
-            candidate: 选中的候选项（含 api_key）。
-            messages: 对话消息列表。
-            model: 模型名称。
-            stream: 是否流式响应。
-            thinking: 是否启用思考模式（参数透传，caiyuesbk 通过 fncall 处理）。
-            search: 是否启用搜索增强（参数透传）。
-            **kw: 其他透传参数（temperature、top_p、max_tokens、stop）。
-
-        Yields:
-            文本增量（str）或元数据字典（dict，含 usage 键）。
-
-        Raises:
-            Exception: 超过最大重试次数后抛出最后一次异常。
-        """
+        """执行聊天补全请求，含指数退避重试；thinking/search 参数透传给 fncall。"""
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:
-                wait = 1.0 * (2 ** (attempt - 1))
-                logger.warning(
-                    "caiyuesbk 第 %d/%d 次重试，等待 %.1fs",
-                    attempt,
-                    MAX_RETRIES,
-                    wait,
-                )
-                await asyncio.sleep(wait)
+                await _sleep_before_retry(attempt)
             try:
                 async for chunk in self._do_request(
                     candidate, messages, model, stream, **kw
@@ -225,6 +214,58 @@ class CaiyuesbkClient:
 
         if last_exc is not None:
             raise last_exc
+
+    async def _raise_for_status(
+        self,
+        resp: aiohttp.ClientResponse,
+        api_key: str,
+    ) -> None:
+        """非 200 状态码时记录日志并抛出异常。"""
+        if resp.status == 200:
+            return
+        error_text = await resp.text()
+        logger.error(
+            "caiyuesbk 请求失败 %s: HTTP %d %s",
+            api_key[:8],
+            resp.status,
+            error_text[:200],
+        )
+        raise Exception(
+            f"caiyuesbk HTTP {resp.status}: {error_text[:100]}"
+        )
+
+    async def _send_request(
+        self,
+        api_key: str,
+        payload: Dict[str, Any],
+        stream: bool,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """发送 HTTP 请求并按流式/非流式消费响应，从 _do_request 抽出。"""
+        headers = build_headers(api_key)
+        url = f"{BASE_URL}{CHAT_PATH}"
+
+        try:
+            async with self._session.post(
+                url,
+                json=payload,
+                headers=headers,
+                ssl=_SSL_CTX,
+                timeout=aiohttp.ClientTimeout(connect=10, total=300),
+            ) as resp:
+                await self._raise_for_status(resp, api_key)
+
+                if stream:
+                    async for chunk in self._read_stream(resp, api_key):
+                        yield chunk
+                else:
+                    async for chunk in self._read_non_stream(resp):
+                        yield chunk
+
+        except asyncio.TimeoutError:
+            logger.error(
+                "caiyuesbk 请求超时 %s (stream=%s)", api_key[:8], stream
+            )
+            raise
 
     async def _do_request(
         self,
@@ -255,7 +296,6 @@ class CaiyuesbkClient:
             raise RuntimeError("Client not initialized")
 
         api_key: str = candidate.meta["api_key"]
-        headers = build_headers(api_key)
         payload = build_payload(
             messages,
             model,
@@ -265,40 +305,9 @@ class CaiyuesbkClient:
             max_tokens=kw.get("max_tokens"),
             stop=kw.get("stop"),
         )
-        url = f"{BASE_URL}{CHAT_PATH}"
 
-        try:
-            async with self._session.post(
-                url,
-                json=payload,
-                headers=headers,
-                ssl=_SSL_CTX,
-                timeout=aiohttp.ClientTimeout(connect=10, total=300),
-            ) as resp:
-                if resp.status != 200:
-                    error_text = await resp.text()
-                    logger.error(
-                        "caiyuesbk 请求失败 %s: HTTP %d %s",
-                        api_key[:8],
-                        resp.status,
-                        error_text[:200],
-                    )
-                    raise Exception(
-                        f"caiyuesbk HTTP {resp.status}: {error_text[:100]}"
-                    )
-
-                if stream:
-                    async for chunk in self._read_stream(resp, api_key):
-                        yield chunk
-                else:
-                    async for chunk in self._read_non_stream(resp):
-                        yield chunk
-
-        except asyncio.TimeoutError:
-            logger.error(
-                "caiyuesbk 请求超时 %s (stream=%s)", api_key[:8], stream
-            )
-            raise
+        async for chunk in self._send_request(api_key, payload, stream):
+            yield chunk
 
     async def _read_stream(
         self,

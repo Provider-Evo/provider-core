@@ -11,7 +11,7 @@
 
 from typing import Dict
 
-from .constants import USER_AGENT
+from .consts import USER_AGENT
 
 
 def build_headers() -> Dict[str, str]:

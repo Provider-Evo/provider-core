@@ -83,66 +83,56 @@ function _editorFindTabByPath(path) {
   return null;
 }
 
-function _editorTabbarHtml(win, showCollapsed) {
-  var html = '';
-  if (win.layout === 'vertical') {
-    html += '<button type="button" class="files-editor2-tabbar-toggle" title="' +
-      _escapeHtml(t(showCollapsed ? 'files.expandSidebar' : 'files.compressSidebar')) + '">' +
-      (showCollapsed ? '&#9654;' : '&#9664;') + '</button>';
-  }
-  for (var i = 0; i < win.tabs.length; i++) {
-    var tab = win.tabs[i];
-    html += '<div class="files-editor2-tab' + (tab.id === win.activeId ? ' is-active' : '') + '" data-id="' + tab.id + '" title="' + _escapeHtml(tab.entry.name) + '">';
-    if (!showCollapsed) {
-      html += '<span class="files-editor2-tab-name">' + _escapeHtml(tab.entry.name) + (tab.dirty ? ' &#9679;' : '') + '</span>' +
-        '<span class="files-editor2-tab-close" data-id="' + tab.id + '">&#10005;</span>';
-    } else {
-      html += '<span class="files-editor2-tab-icon">' + (tab.dirty ? '&#9679;' : '&#128196;') + '</span>';
-    }
-    html += '</div>';
-  }
-  if (!showCollapsed) {
-    html += '<div class="files-editor2-tabbar-add" title="' + _escapeHtml(t('tabbar.addTab')) + '">+</div>';
-  }
-  return html;
+function _editorTabTitle(tab) {
+  return tab.entry.name + (tab.dirty ? ' \u25CF' : '');
 }
 
-function _editorWireTabbarEvents(win) {
-  var toggleBtn = win.tabbarEl.querySelector('.files-editor2-tabbar-toggle');
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      win.setCollapsed(!win.collapsed);
-    });
+function _editorSyncTabTitle(tab) {
+  if (_editorWin && _editorWin.bar) {
+    _editorWin.bar.setTitle(tab.id, _editorTabTitle(tab));
   }
-  var addBtn = win.tabbarEl.querySelector('.files-editor2-tabbar-add');
-  if (addBtn) {
-    addBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      _editorPromptNewFile();
-    });
-  }
-  win.tabbarEl.querySelectorAll('.files-editor2-tab').forEach(function (el) {
-    el.addEventListener('click', function (e) {
-      if (e.target.classList.contains('files-editor2-tab-close')) return;
-      _editorActivateTab(el.getAttribute('data-id'));
-    });
-  });
-  win.tabbarEl.querySelectorAll('.files-editor2-tab-close').forEach(function (el) {
-    el.addEventListener('click', function (e) {
-      e.stopPropagation();
-      _editorCloseTab(el.getAttribute('data-id'));
-    });
-  });
 }
 
-function _editorRenderTabbar() {
+function _editorAddTabToBar(tab) {
+  if (!_editorWin || !_editorWin.bar) return;
+  _editorWin.bar.addTab({
+    id: tab.id,
+    type: 'editor',
+    icon: '&#128196;',
+    title: _editorTabTitle(tab),
+    closable: true,
+  });
+  _editorWin.bar.setActive(tab.id);
+}
+
+function _editorCloseAllTabs() {
   var win = _editorWin;
-  var showCollapsed = win.layout === 'vertical' && win.collapsed;
-  win.tabbarEl.innerHTML = _editorTabbarHtml(win, showCollapsed);
-  _editorWireTabbarEvents(win);
+  if (!win) return;
+  var ids = win.tabs.map(function (t) { return t.id; });
+  for (var i = 0; i < ids.length; i++) {
+    _editorCloseTab(ids[i]);
+  }
 }
 
+function _editorFlushActiveTab() {
+  var win = _editorWin;
+  if (!win) return;
+  var tab = _editorActiveTab();
+  if (!tab || !tab.editable) return;
+  var ta = win.bodyEl.querySelector('.files-editor2-textarea');
+  if (!ta) return;
+  tab.content = ta.value;
+}
+
+function _editorActivateTab(id) {
+  var win = _editorWin;
+  if (!win) return;
+  var same = win.activeId === id;
+  if (!same) _editorFlushActiveTab();
+  win.activeId = id;
+  if (!same && win.bar) win.bar.setActive(id);
+  _editorRenderBody();
+}
 function _editorPromptNewFile() {
   var win = _editorWin;
   var baseDir = win.treeRoot || '';
@@ -159,12 +149,6 @@ function _editorPromptNewFile() {
       if (typeof toast === 'function') toast(t('files.genericFailed', { error: e.message }), 'error');
     });
   });
-}
-
-function _editorActivateTab(id) {
-  _editorWin.activeId = id;
-  _editorRenderTabbar();
-  _editorRenderBody();
 }
 
 function _editorApplyWrap() {
@@ -208,6 +192,9 @@ async function _editorCloseWindow() {
   _editorWin.tabs.forEach(function (tab) {
     if (tab.htmlHost) _clearHtmlPreviewHost(tab.htmlHost);
   });
+  if (_editorWin.bar) {
+    _editorWin.bar.dispose();
+  }
   _editorWin.overlay.remove();
   document.removeEventListener('keydown', _editorGlobalKeydown);
   if (typeof window !== 'undefined' && window._tabBars) {
@@ -221,6 +208,7 @@ async function _editorCloseTab(id) {
   var idx = -1;
   for (var i = 0; i < win.tabs.length; i++) { if (win.tabs[i].id === id) { idx = i; break; } }
   if (idx === -1) return;
+  if (win.activeId === id) _editorFlushActiveTab();
   var tab = win.tabs[idx];
   if (tab.dirty) {
     var confirmed = await showConfirmDialog(t('files.discardConfirm'), {
@@ -231,22 +219,23 @@ async function _editorCloseTab(id) {
   }
   if (tab.htmlHost) _clearHtmlPreviewHost(tab.htmlHost);
   win.tabs.splice(idx, 1);
+  if (win.bar) win.bar.removeTab(id);
   if (win.activeId === id) {
     if (win.tabs.length > 0) {
       var next = win.tabs[Math.min(idx, win.tabs.length - 1)];
       win.activeId = next.id;
+      if (win.bar) win.bar.setActive(win.activeId);
     } else {
       win.activeId = null;
     }
   }
-  _editorRenderTabbar();
   _editorRenderBody();
 }
 
 function _editorMarkDirty(tab) {
   if (!tab.dirty) {
     tab.dirty = true;
-    _editorRenderTabbar();
+    _editorSyncTabTitle(tab);
   }
 }
 
@@ -255,7 +244,7 @@ async function _editorSaveTab(tab) {
     await Api.post('/v1/webui/files/write', { path: tab.entry.path, content: tab.content });
     tab.originalContent = tab.content;
     tab.dirty = false;
-    _editorRenderTabbar();
+    _editorSyncTabTitle(tab);
     if (typeof toast === 'function') toast(t('files.saveOk'), 'ok');
   } catch (e) {
     if (typeof toast === 'function') toast(t('files.saveFailed', { error: e.message }), 'error');

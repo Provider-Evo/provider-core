@@ -10,7 +10,7 @@
 
 from typing import Dict
 
-from .constants import BASE_URL
+from .consts import BASE_URL
 
 
 def build_headers(token: str = "") -> Dict[str, str]:

@@ -1,11 +1,10 @@
 /**
  * File Manager -- editor window construction and chrome event wiring
- * (window state object, layout persistence, toolbar/win-control clicks).
+ * (window state object, TabBar setup, toolbar/win-control clicks).
  *
  * Part of the files.js split. Depends on editor.js (_editorWin,
- * _editorRenderTabbar, _editorGlobalKeydown and the various tab-action
- * functions it dispatches to) and editor_tmpl.js
- * (_editorWindowTemplate).
+ * _editorGlobalKeydown and the various tab-action functions it dispatches
+ * to) and editor_tmpl.js (_editorWindowTemplate).
  */
 
 function _editorBuildWinState(overlay) {
@@ -33,23 +32,39 @@ function _editorBuildWinState(overlay) {
   };
 }
 
-function _editorWireLayout(win) {
-  win.setCollapsed = function (collapsed) {
-    win.collapsed = !!collapsed;
-    win.dialog.classList.toggle('files-editor2-tabs-collapsed', win.layout === 'vertical' && win.collapsed);
-    _editorRenderTabbar();
+function _editorBuildTabBarOptions(win) {
+  return {
+    tabBarEl: win.tabbarEl,
+    bodyEl: win.bodyEl,
+    layout: 'horizontal',
+    collapsed: false,
+    closeAllThreshold: 6,
+    onSwitch: function (id) { _editorActivateTab(id); },
+    onClose: function (id) { _editorCloseTab(id); },
+    onAdd: function () { _editorPromptNewFile(); },
+    onCloseAll: function () { _editorCloseAllTabs(); },
+    onToggleCollapsed: function (collapsed) {
+      propagateTabBarCollapsed(win.bar, collapsed);
+    },
   };
-  win.setLayout = function (layout, collapsed) {
-    win.layout = layout || 'horizontal';
-    win.dialog.classList.toggle('files-editor2-tabs-vertical', win.layout === 'vertical');
-    win.setCollapsed(collapsed);
-  };
-  if (typeof window !== 'undefined' && window._tabLayoutConfig) {
-    win.setLayout(window._tabLayoutConfig.layout, window._tabLayoutConfig.sidebarCompressed);
-  }
+}
+
+function _editorSetupTabBar(win) {
+  if (typeof TabBar === 'undefined') return;
+
+  var contentCol = win.dialog.querySelector('.files-editor2-content-col');
+  win.bar = TabBar.create(contentCol || win.dialog, _editorBuildTabBarOptions(win));
+
   if (typeof window !== 'undefined') {
     window._tabBars = window._tabBars || {};
-    window._tabBars.filesEditor2 = win;
+    window._tabBars.filesEditor2 = win.bar;
+  }
+
+  if (typeof window !== 'undefined' && window._tabLayoutConfig) {
+    win.bar.setLayout(
+      window._tabLayoutConfig.layout || 'horizontal',
+      window._tabLayoutConfig.sidebarCompressed || false
+    );
   }
 }
 
@@ -130,7 +145,7 @@ function _ensureEditorWindow() {
   var win = _editorBuildWinState(overlay);
   _editorWin = win;
 
-  _editorWireLayout(win);
+  _editorSetupTabBar(win);
   _editorWireWinEvents(win);
 
   return win;

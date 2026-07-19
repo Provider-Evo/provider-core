@@ -25,7 +25,7 @@ from provider_qwen.core.http.shared import (
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入 QwenAdapter。"""
     if name in ("QwenAdapter", "Adapter"):
-        from provider_qwen.core.adapter.adaptercore import (  # noqa: PLC0415
+        from provider_qwen.core.adapter.acore import (  # noqa: PLC0415
             QwenAdapter as _QwenAdapter,
         )
 

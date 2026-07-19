@@ -21,7 +21,7 @@ util 模块。
 集成：
 
     - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
     - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
 
 依赖：
@@ -40,8 +40,8 @@ util 模块。
 from typing import Any, Dict, Optional
 
 from src.foundation.logger import get_logger
-from provider_deepseek.core.protocol.payloads import make_stream_id
-from provider_deepseek.core.protocol.constants import (
+from provider_deepseek.core.protocol.payload import make_stream_id
+from provider_deepseek.core.protocol.consts import (
     CAPS,
     CAPS_FLASH,
     CAPS_PRO,
@@ -59,9 +59,9 @@ from provider_deepseek.core.protocol.constants import (
 )
 from provider_deepseek.core.protocol.headers import build_basic_headers, build_headers
 from provider_deepseek.core.guard.hif import HifTokenManager, fetch_hif_tokens
-from provider_deepseek.core.guard.modelcache import ModelsCache
+from provider_deepseek.core.guard.mdlcache import ModelsCache
 from provider_deepseek.core.guard.pow import WasmPow, download_wasm, get_pow_response
-from provider_deepseek.core.session.sessionapi import (
+from provider_deepseek.core.session.sessapi import (
     create_session,
     delete_all_sessions,
     delete_session,
@@ -72,7 +72,7 @@ from provider_deepseek.core.session.sessionapi import (
     update_pinned,
     update_session_title,
 )
-from provider_deepseek.core.stream.streamparser import StreamParser
+from provider_deepseek.core.stream.strmpars import StreamParser
 from provider_deepseek.core.user.userapi import (
     export_all_history,
     get_client_settings,
@@ -128,7 +128,7 @@ def parse_sse_line(
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in {"DeepseekAdapter", "Adapter"}:
-        from provider_deepseek.core.adapter.adaptercore import (  # noqa: PLC0415
+        from provider_deepseek.core.adapter.acore import (  # noqa: PLC0415
             DeepseekAdapter as _DeepseekAdapter,
         )
 

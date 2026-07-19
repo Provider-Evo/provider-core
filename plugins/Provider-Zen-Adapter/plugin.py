@@ -31,7 +31,7 @@ def _find_adapter_class(mod: object) -> type:
 
 class ZenPlugin(ProviderPlugin):
     async def on_load(self) -> None:
-        mod = importlib.import_module("provider_zen.core.adaptercore")
+        mod = importlib.import_module("provider_zen.core.acore")
         adapter = _find_adapter_class(mod)()
         attach_platform_adapter(self, adapter)
 

@@ -1,7 +1,7 @@
 """Anthropic ML (antml) 协议实现。
 
-使用 <antml:function_calls> 作为触发标记，
-<antml:invoke name="..."> 作为调用格式。
+使用 <function_calls> 作为触发标记，
+<invoke name="..."> 作为调用格式。
 """
 
 from __future__ import annotations
@@ -36,13 +36,13 @@ All functions are defined inside a `<functions>` wrapper block. Each function is
 
 When calling tools, respond with ONLY the following XML block format:
 
-<antml:function_calls>
-<antml:invoke name="tool_name">
-<antml:parameters>{"param_name": "value"}</antml:parameters>
-</antml:invoke>
-</antml:function_calls>
+<function_calls>
+<invoke name="tool_name">
+<parameters>{"param_name": "value"}</parameters>
+</invoke>
+</function_calls>
 
-Multiple invocations can be stacked inside one `<antml:function_calls>` block for parallel execution.
+Multiple invocations can be stacked inside one `<function_calls>` block for parallel execution.
 
 ## Function Call Instructions
 
@@ -58,19 +58,19 @@ If you intend to call multiple tools and there are no dependencies between the c
 # ---------------------------------------------------------------------------
 
 _BLOCK_RE = re.compile(
-    r"<antml:function_calls\b[^>]*>([\s\S]*?)</antml:function_calls>",
+    r"<function_calls\b[^>]*>([\s\S]*?)</function_calls>",
     re.DOTALL,
 )
 _INVOKE_RE = re.compile(
-    r'<antml:invoke\s+name="([^"]+)">\s*([\s\S]*?)\s*</antml:invoke>',
+    r'<invoke\s+name="([^"]+)">\s*([\s\S]*?)\s*</invoke>',
     re.DOTALL,
 )
 _PARAM_RE = re.compile(
-    r'<antml:parameter\s+name="([^"]+)">\s*([\s\S]*?)\s*</antml:parameter>',
+    r'<parameter\s+name="([^"]+)">\s*([\s\S]*?)\s*</parameter>',
     re.DOTALL,
 )
 _PARAMETERS_RE = re.compile(
-    r'<antml:parameters>([\s\S]*?)</antml:parameters>',
+    r'<parameters>([\s\S]*?)</parameters>',
     re.DOTALL,
 )
 
@@ -82,7 +82,7 @@ _PARAMETERS_RE = re.compile(
 class AntmlProtocol(ToolProtocol):
     """Anthropic ML 格式工具调用协议适配器。
 
-    使用 <antml:function_calls><antml:invoke name="...">...</antml:invoke>
+    使用 <function_calls><invoke name="...">...</invoke>
     作为触发标记和调用格式。
     """
 
@@ -90,8 +90,8 @@ class AntmlProtocol(ToolProtocol):
     def id(self) -> str:
         return "antml"
 
-    _TRIGGER = "<antml:function_calls>"
-    _END_TAG = "</antml:function_calls>"
+    _TRIGGER = "<function_calls>"
+    _END_TAG = "</function_calls>"
 
     def get_trigger_tags(self) -> List[str]:
         return [self._TRIGGER]
@@ -113,19 +113,21 @@ class AntmlProtocol(ToolProtocol):
 
         if user_system_prompt and user_system_prompt.strip():
             sections.append(
-                f"<user_system_prompt>\n{user_system_prompt.strip()}\n</user_system_prompt>"
+                "<user_system_prompt>\n{}\n</user_system_prompt>".format(user_system_prompt.strip())
             )
 
         if history_text:
             clarify = _HISTORY_CLARIFY_ZH if lang == "zh" else _HISTORY_CLARIFY_EN
-            sections.append(f"<conversation_history>\n{clarify}\n\n{history_text}\n</conversation_history>")
+            sections.append(
+                "<conversation_history>\n{}\n\n{}\n</conversation_history>".format(clarify, history_text)
+            )
 
         if loop_warning:
-            sections.append(f"<loop_warning>\n{loop_warning}\n</loop_warning>")
+            sections.append("<loop_warning>\n{}\n</loop_warning>".format(loop_warning))
 
         if current_user_message:
             sections.append(
-                f"<current_user_message>\n{current_user_message}\n</current_user_message>"
+                "<current_user_message>\n{}\n</current_user_message>".format(current_user_message)
             )
         else:
             sections.append("<current_user_message>\n</current_user_message>")
@@ -134,13 +136,13 @@ class AntmlProtocol(ToolProtocol):
 
         return prompt
 
-    _TRIGGER_PREFIX = "<antml:function_calls"
+    _TRIGGER_PREFIX = "<function_calls"
 
     def detect_start(self, buffer: str) -> Tuple[bool, int]:
-        """检测 buffer 中是否包含 ``<antml:function_calls...>`` 触发标记。
+        """检测 buffer 中是否包含 ``<function_calls...>`` 触发标记。
 
-        容忍变体（如 ``<antml:function_calls >`` 或带属性），只要前缀
-        ``<antml:function_calls`` 后跟任意字符并以 ``>`` 闭合即视为触发。
+        容忍变体（如 ``<function_calls >`` 或带属性），只要前缀
+        ``<function_calls`` 后跟任意字符并以 ``>`` 闭合即视为触发。
         """
         pos = buffer.find(self._TRIGGER_PREFIX)
         if pos < 0:
@@ -150,6 +152,74 @@ class AntmlProtocol(ToolProtocol):
             # 标签未闭合：视为待流入的增量
             return (False, -1)
         return (True, pos)
+
+    def _extract_args_from_parameters_json(self, body: str) -> Optional[Dict[str, Any]]:
+        """尝试从 <parameters>{json}</parameters> 格式中提取参数。"""
+        params_m = _PARAMETERS_RE.search(body)
+        if not params_m:
+            return None
+        params_json = params_m.group(1).strip()
+        try:
+            return json.loads(params_json)
+        except json.JSONDecodeError:
+            return {"value": params_json}
+
+    def _extract_args_from_parameter_tags(
+        self,
+        body: str,
+        name: str,
+        schema_index: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """从 <parameter name="...">value</parameter> 格式中提取参数。"""
+        args: Dict[str, Any] = {}
+        for param_m in _PARAM_RE.finditer(body):
+            pname = param_m.group(1).strip()
+            pval = param_m.group(2).strip()
+            pschema = (
+                schema_index.get(name, {}).get(pname, {})
+                if schema_index
+                else {}
+            )
+            if pschema:
+                args[pname] = _coerce_param_value(pval, pschema)
+            else:
+                try:
+                    args[pname] = json.loads(pval)
+                except json.JSONDecodeError:
+                    args[pname] = pval
+        return args
+
+    def _extract_invoke_args(
+        self,
+        body: str,
+        name: str,
+        schema_index: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """从单个 invoke 体中提取参数，兼容两种参数格式。"""
+        args = self._extract_args_from_parameters_json(body)
+        if args is not None:
+            return args
+        return self._extract_args_from_parameter_tags(body, name, schema_index)
+
+    def _parse_block(
+        self,
+        block_body: str,
+        schema_index: Optional[Dict[str, Any]],
+        tool_calls: List[Dict[str, Any]],
+    ) -> None:
+        """解析单个 <function_calls> 块内的所有 invoke，追加到 tool_calls。"""
+        for invoke_m in _INVOKE_RE.finditer(block_body):
+            name = invoke_m.group(1).strip()
+            body = invoke_m.group(2)
+            args = self._extract_invoke_args(body, name, schema_index)
+            arguments = json.dumps(args, ensure_ascii=False)
+            tool_calls.append(
+                {
+                    "id": "call_{:04d}".format(len(tool_calls)),
+                    "type": "function",
+                    "function": {"name": name, "arguments": arguments},
+                }
+            )
 
     def parse(
         self,
@@ -167,47 +237,7 @@ class AntmlProtocol(ToolProtocol):
             if schema_index is None and tools is not None:
                 schema_index = _build_param_schema_index(tools)
 
-            for invoke_m in _INVOKE_RE.finditer(block_body):
-                name = invoke_m.group(1).strip()
-                body = invoke_m.group(2)
-
-                # Extract parameters - support both <antml:parameter> and <antml:parameters>
-                args: Dict[str, Any] = {}
-
-                # Try <antml:parameters>{json}</antml:parameters> format first
-                params_m = _PARAMETERS_RE.search(body)
-                if params_m:
-                    params_json = params_m.group(1).strip()
-                    try:
-                        args = json.loads(params_json)
-                    except json.JSONDecodeError:
-                        args = {"value": params_json}
-                else:
-                    # Try <antml:parameter name="...">value</antml:parameter> format
-                    for param_m in _PARAM_RE.finditer(body):
-                        pname = param_m.group(1).strip()
-                        pval = param_m.group(2).strip()
-                        pschema = (
-                            schema_index.get(name, {}).get(pname, {})
-                            if schema_index
-                            else {}
-                        )
-                        if pschema:
-                            args[pname] = _coerce_param_value(pval, pschema)
-                        else:
-                            try:
-                                args[pname] = json.loads(pval)
-                            except json.JSONDecodeError:
-                                args[pname] = pval
-
-                arguments = json.dumps(args, ensure_ascii=False)
-                tool_calls.append(
-                    {
-                        "id": f"call_{len(tool_calls):04d}",
-                        "type": "function",
-                        "function": {"name": name, "arguments": arguments},
-                    }
-                )
+            self._parse_block(block_body, schema_index, tool_calls)
 
         clean = text
         if tool_calls:
@@ -225,7 +255,7 @@ class AntmlProtocol(ToolProtocol):
         return tool_calls
 
     def clean_tags(self, content: str) -> str:
-        """从响应文本中移除 <antml:function_calls> 标签残留。"""
+        """从响应文本中移除 <function_calls> 标签残留。"""
         return _BLOCK_RE.sub("", content).strip()
 
     def format_assistant_tool_calls(
@@ -242,11 +272,11 @@ class AntmlProtocol(ToolProtocol):
             name = fn.get("name", "")
             args = fn.get("arguments", "{}")
             parts.append(
-                f'<antml:invoke name="{name}">'
-                f"<antml:parameters>{args}</antml:parameters>"
-                f"</antml:invoke>"
+                '<invoke name="{}">'
+                "<parameters>{}</parameters>"
+                "</invoke>".format(name, args)
             )
-        return f"<antml:function_calls>{''.join(parts)}</antml:function_calls>"
+        return "<function_calls>{}</function_calls>".format(''.join(parts))
 
     def supports_streaming(self) -> bool:
         """antml 协议支持流式检测。"""

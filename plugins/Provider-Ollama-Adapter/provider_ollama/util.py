@@ -20,7 +20,7 @@ util 模块。
 集成：
 
     - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-self/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
+    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
     - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
 
 依赖：
@@ -38,29 +38,31 @@ util 模块。
 
 from typing import Any, Dict
 
-from provider_ollama.core.adapter.client import (
-    BASE_URL,
-    CHAT_PATH,
-    MAX_WORKERS,
-    PAGE_SIZE,
-    REFRESH_INTERVAL,
-    TIMEOUT,
-    OllamaClient,
-    build_chat_payload,
-    build_image_messages,
+from provider_ollama.core.adapter.client import OllamaClient
+from provider_ollama.core.adapter.discovery import (
     build_registry,
     collect_servers,
     detect_capabilities,
     load_cache,
     needs_refresh,
-    parse_ollama_line,
     save_cache,
 )
-from provider_ollama.core.constants import (
+from provider_ollama.core.adapter.payload import (
+    build_chat_payload,
+    build_image_messages,
+    parse_ollama_line,
+)
+from provider_ollama.core.consts import (
+    BASE_URL,
     CAPS,
+    CHAT_PATH,
     FETCH_MODELS_ENABLED,
+    MAX_WORKERS,
     MODEL_FETCH_INTERVAL,
     MODELS,
+    PAGE_SIZE,
+    REFRESH_INTERVAL,
+    TIMEOUT,
 )
 
 

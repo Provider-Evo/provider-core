@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .adaptercore import Adapter
+from .acore import Adapter
 from .client import Client
 
 __all__ = ["Adapter", "Client"]

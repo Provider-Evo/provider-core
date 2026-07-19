@@ -40,7 +40,7 @@ from .headers import (
     build_headers,
 )
 
-from .payloads import (
+from .payload import (
     build_payload,
 )
 
@@ -90,7 +90,7 @@ __all__ = [
 # 重导出 — 同包协同模块（保持外部 ``from .. import`` 路径稳定）
 # =======================================================================
 
-from .adaptercore import (
+from .adapt_core import (
     CodebuddyAdapter,
 )
 
@@ -102,7 +102,7 @@ from .headers import (
     build_headers,
 )
 
-from .payloads import (
+from .payload import (
     build_payload,
 )
 __all__ = [

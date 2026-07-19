@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .core.constants import (
+from .core.consts import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -23,7 +23,7 @@ from .core.constants import (
     MODEL_FETCH_INTERVAL,
 )
 from .core.headers import build_headers
-from .core.payloads import build_payload
+from .core.payload import build_payload
 from .core.sse import parse_sse_line
 
 __all__ = [
@@ -55,12 +55,12 @@ def __getattr__(name: str) -> Any:
         AttributeError: 当属性名未注册时抛出。
     """
     if name == "CodebuddyAdapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.adapt_core import (  # noqa: PLC0415
             CodebuddyAdapter as _CodebuddyAdapter,
         )
         return _CodebuddyAdapter
     if name == "Adapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.adapt_core import (  # noqa: PLC0415
             CodebuddyAdapter as _Adapter,
         )
         return _Adapter

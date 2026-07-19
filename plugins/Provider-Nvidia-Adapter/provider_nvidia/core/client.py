@@ -3,7 +3,6 @@ from __future__ import annotations
 """Nvidia HTTP 客户端。"""
 
 import asyncio
-import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
@@ -11,84 +10,22 @@ import aiohttp
 from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
-from .headers import build_headers
-from .payloads import build_payload, MAX_TOKENS
-from .sse import parse_sse_line
+from .helpers.client_helpers import (
+    KeyState as _KeyState,
+    build_chat_request,
+    dispatch_response,
+)
 
 logger = get_logger(__name__)
 
-BASE_URL: str = "https://integrate.api.nvidia.com/v1"
-CHAT_PATH: str = "/chat/completions"
-RECOVERY_INTERVAL: int = 60
 MAX_RETRIES: int = 3
-
-
-class _KeyState:
-    """单个API Key的运行时状态。"""
-
-    __slots__ = (
-        "key", "valid", "busy", "consecutive_failures", "last_error_time",
-    )
-
-    def __init__(self, key: str) -> None:
-        """初始化Key状态。
-
-        Args:
-            key: API Key字符串。
-        """
-        self.key: str = key
-        self.valid: bool = True
-        self.busy: bool = False
-        self.consecutive_failures: int = 0
-        self.last_error_time: float = 0.0
-
-    @property
-    def available(self) -> bool:
-        """判断是否可用。
-
-        Returns:
-            如果Key有效、未繁忙且未超限则返回True。
-        """
-        if not self.valid:
-            if time.time() - self.last_error_time >= RECOVERY_INTERVAL:
-                self.valid = True
-                self.consecutive_failures = 0
-            else:
-                return False
-        if self.busy:
-            return False
-        if self.consecutive_failures >= 3:
-            if time.time() - self.last_error_time < RECOVERY_INTERVAL:
-                return False
-            self.consecutive_failures = 0
-        return True
-
-    def mark_success(self) -> None:
-        """标记请求成功。"""
-        self.busy = False
-        self.consecutive_failures = 0
-
-    def mark_failure(self, status: int = 0) -> None:
-        """根据HTTP状态码处理失败。
-
-        Args:
-            status: HTTP响应状态码。
-        """
-        self.busy = False
-        self.last_error_time = time.time()
-        if status in (401, 402, 403):
-            self.valid = False
-            logger.warning(
-                "nvidia Key无效 (HTTP%d): %s...", status, self.key[:16]
-            )
-        else:
-            self.consecutive_failures += 1
 
 
 class NvidiaClient:
     """Nvidia HTTP 客户端。
 
     职责限定为协调：账号/候选项/会话生命周期/顶层错误处理与重试。
+    具体的Key状态、请求构造与响应解析拆分至 ``client_helpers.py``。
     """
 
     def __init__(self) -> None:
@@ -130,7 +67,7 @@ class NvidiaClient:
 
     def _rebuild_candidates(self) -> None:
         """根据当前凭证重建候选项列表。"""
-        from .constants import CAPS
+        from .consts import CAPS
 
         self._candidates = [
             Candidate(
@@ -167,7 +104,7 @@ class NvidiaClient:
         Returns:
             可用候选项列表。
         """
-        from .constants import CAPS
+        from .consts import CAPS
 
         return [
             Candidate(
@@ -239,6 +176,29 @@ class NvidiaClient:
         if last_exc:
             raise last_exc
 
+    async def _send_and_dispatch(
+        self,
+        url: str,
+        headers: Dict[str, str],
+        payload: Dict[str, Any],
+        stream: bool,
+        ks: Any,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """发送单次 HTTP 请求并分发响应，从 ``_do_request`` 抽出。"""
+        async with self._session.post(
+            url,
+            headers=headers,
+            json=payload,
+            ssl=False,
+            timeout=aiohttp.ClientTimeout(
+                connect=10,
+                total=600 if stream else 120,
+            ),
+        ) as resp:
+            async for chunk in dispatch_response(resp, stream, ks):
+                yield chunk
+            ks.mark_success()
+
     async def _do_request(
         self,
         candidate: Candidate,
@@ -249,16 +209,6 @@ class NvidiaClient:
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """执行单次HTTP请求。
 
-        Args:
-            candidate: 选中的候选项。
-            messages: 对话消息列表。
-            model: 模型名。
-            stream: 是否流式输出。
-            **kw: 额外参数。
-
-        Yields:
-            文本片段(str)或结构化数据(dict)。
-
         Raises:
             PlatformError: 请求失败时抛出。
         """
@@ -266,54 +216,14 @@ class NvidiaClient:
         if not ks:
             raise PlatformError("nvidia: 未找到对应APIKey")
 
-        headers = build_headers(ks.key)
-        payload = build_payload(messages, model, stream=stream, **kw)
-        url = "{}{}".format(BASE_URL, CHAT_PATH)
+        url, headers, payload = build_chat_request(
+            ks, messages, model, stream, **kw
+        )
 
         ks.busy = True
         try:
-            async with self._session.post(
-                url,
-                headers=headers,
-                json=payload,
-                ssl=False,
-                timeout=aiohttp.ClientTimeout(
-                    connect=10,
-                    total=600 if stream else 120,
-                ),
-            ) as resp:
-                if resp.status != 200:
-                    body = await resp.text()
-                    ks.mark_failure(resp.status)
-                    raise PlatformError(
-                        "nvidia HTTP{}: {}".format(resp.status, body[:300])
-                    )
-
-                if not stream:
-                    data = await resp.json()
-                    ks.mark_success()
-                    choice = (data.get("choices") or [{}])[0]
-                    content = choice.get("message", {}).get("content", "")
-                    if content:
-                        yield content
-                    usage = data.get("usage")
-                    if usage:
-                        yield {"usage": {
-                            "prompt_tokens": usage.get("prompt_tokens", 0),
-                            "completion_tokens": usage.get("completion_tokens", 0),
-                        }}
-                else:
-                    async for line in resp.content:
-                        text = line.decode("utf-8", errors="replace").strip()
-                        if not text or not text.startswith("data:"):
-                            continue
-                        data_str = text[5:].strip()
-                        if data_str == "[DONE]":
-                            break
-                        parsed = parse_sse_line(data_str)
-                        if parsed is not None:
-                            yield parsed
-                    ks.mark_success()
+            async for chunk in self._send_and_dispatch(url, headers, payload, stream, ks):
+                yield chunk
         except PlatformError:
             raise
         except Exception as e:

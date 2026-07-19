@@ -39,7 +39,7 @@ class FncallUtilPlugin(ProviderPlugin, FncallPluginMixin):
         from provider_fncall_util.protocols.extra.custom import CustomProtocol
         from provider_fncall_util.protocols.dsml import DsmlProtocol
         from provider_fncall_util.protocols.nous import NousProtocol
-        from provider_fncall_util.protocols.extra.original import OriginalProtocol
+        from provider_fncall_util.protocols.extra.origin import OriginalProtocol
         from provider_fncall_util.protocols.xml import XmlProtocol
 
         for proto in (

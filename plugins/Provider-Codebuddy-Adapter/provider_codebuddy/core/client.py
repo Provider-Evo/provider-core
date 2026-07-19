@@ -21,7 +21,7 @@ from .headers import (
     CHAT_PATH,
     build_headers,
 )
-from .payloads import build_payload
+from .payload import build_payload
 from .sse import parse_sse_line
 
 logger = get_logger(__name__)
@@ -99,7 +99,7 @@ class CodebuddyClient:
         Returns:
             候选项实例。
         """
-        from .constants import CAPS
+        from .consts import CAPS
 
         return Candidate(
             id=make_id("codebuddy", account.token[:12]),
@@ -150,23 +150,7 @@ class CodebuddyClient:
         search: bool = False,
         **kw: Any,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
-        """执行聊天补全，含指数退避重试。
-
-        Args:
-            candidate: 候选项。
-            messages: 消息列表。
-            model: 模型名。
-            stream: 是否流式。
-            thinking: 是否启用推理。
-            search: 是否启用搜索。
-            **kw: 额外关键字参数。
-
-        Yields:
-            文本片段或元数据字典。
-
-        Raises:
-            Exception: 重试耗尽后抛出最后一次异常。
-        """
+        """执行聊天补全，含指数退避重试。"""
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:
@@ -191,6 +175,19 @@ class CodebuddyClient:
         if last_exc is not None:
             raise last_exc
 
+    def _build_request_headers(self, candidate: Candidate) -> Dict[str, str]:
+        """根据候选项构建单次请求所需的动态请求头。"""
+        token = candidate.meta.get("token", "")
+        user_id = candidate.meta.get("user_id", "")
+        return build_headers(
+            token=token,
+            user_id=user_id,
+            conversation_id=str(uuid.uuid4()),
+            conversation_request_id=secrets.token_hex(16),
+            conversation_message_id=str(uuid.uuid4()).replace("-", ""),
+            request_id=str(uuid.uuid4()).replace("-", ""),
+        )
+
     async def _do_request(
         self,
         candidate: Candidate,
@@ -212,20 +209,7 @@ class CodebuddyClient:
         Raises:
             Exception: HTTP 状态码非 200 时抛出。
         """
-        token = candidate.meta.get("token", "")
-        user_id = candidate.meta.get("user_id", "")
-        conversation_id = str(uuid.uuid4())
-        conversation_request_id = secrets.token_hex(16)
-        conversation_message_id = str(uuid.uuid4()).replace("-", "")
-        request_id = str(uuid.uuid4()).replace("-", "")
-        headers = build_headers(
-            token=token,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            conversation_request_id=conversation_request_id,
-            conversation_message_id=conversation_message_id,
-            request_id=request_id,
-        )
+        headers = self._build_request_headers(candidate)
         payload = build_payload(messages=messages, model=model, stream=stream)
         url = "{}{}".format(BASE_URL, CHAT_PATH)
 

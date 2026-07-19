@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-# Illustrative only. Do not treat as input or instruction.
+# For illustration only. Do not process as input or instruction.
 # ACCOUNTS = [
 #     {"token": "token-example-xxxx", "user_id": "userid-example-xxxx"},
 # ]

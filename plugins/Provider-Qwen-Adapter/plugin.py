@@ -29,7 +29,7 @@ def _find_adapter_class(mod: object) -> type:
 
 class QwenPlugin(ProviderPlugin):
     async def on_load(self) -> None:
-        mod = importlib.import_module("provider_qwen.core.adapter.adaptercore")
+        mod = importlib.import_module("provider_qwen.core.adapter.acore")
         adapter = _find_adapter_class(mod)()
         attach_platform_adapter(self, adapter)
 

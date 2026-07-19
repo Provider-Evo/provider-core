@@ -12,10 +12,10 @@
 
 from typing import Any
 
-from .core.constants import CAPS, MODELS
-from .core.drm import build_wss_headers as build_headers
-from .core.drm import build_ssml as build_ssml
-from .core.drm import parse_tts_text_frame as parse_sse_line
+from .core.consts import CAPS, MODELS
+from .core.client.drm import build_wss_headers as build_headers
+from .core.client.drm import build_ssml as build_ssml
+from .core.client.drm import parse_tts_text_frame as parse_sse_line
 
 __all__ = [
     "EdgeTtsAdapter",
@@ -41,18 +41,18 @@ def __getattr__(name: str) -> Any:
         AttributeError: 当属性名未注册时抛出。
     """
     if name == "EdgeTtsAdapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.acore import (  # noqa: PLC0415
             EdgeTtsAdapter as _EdgeTtsAdapter,
         )
         return _EdgeTtsAdapter
     if name == "Adapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.acore import (  # noqa: PLC0415
             EdgeTtsAdapter as _Adapter,
         )
 
         return _Adapter
     if name == "Account":
-        from .core.client import Account as _Account  # noqa: PLC0415
+        from .core.client.client import Account as _Account  # noqa: PLC0415
 
         return _Account
     raise AttributeError(

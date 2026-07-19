@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .core.constants import (
+from .core.consts import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -27,7 +27,7 @@ from .core.constants import (
     TTS_PATH,
 )
 from .core.headers import build_headers
-from .core.payloads import build_payload
+from .core.payload import build_payload
 from .core.stream.sse import parse_sse_line
 from .core.stream.tts import build_tts_params
 
@@ -65,12 +65,12 @@ def __getattr__(name: str) -> Any:
         AttributeError: 当属性名未注册时抛出。
     """
     if name == "GttsAdapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.acore import (  # noqa: PLC0415
             GttsAdapter as _GttsAdapter,
         )
         return _GttsAdapter
     if name == "Adapter":
-        from .core.adaptercore import (  # noqa: PLC0415
+        from .core.acore import (  # noqa: PLC0415
             GttsAdapter as _Adapter,
         )
         return _Adapter

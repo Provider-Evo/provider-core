@@ -18,7 +18,7 @@
 
 from typing import Any
 
-from provider_deepl.core.constants import (
+from provider_deepl.core.consts import (
     CAPS,
     DEFAULT_SOURCE_LANG,
     DEFAULT_TARGET_LANG,
@@ -36,7 +36,7 @@ from provider_deepl.core.constants import (
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("DeepLAdapter", "Adapter"):
-        from provider_deepl.core.adaptercore import (  # noqa: PLC0415
+        from provider_deepl.core.acore import (  # noqa: PLC0415
             DeepLAdapter as _DeepLAdapter,
         )
 

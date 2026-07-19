@@ -18,7 +18,7 @@
 
 from typing import Any
 
-from provider_zen.core.support.constants import (
+from provider_zen.core.support.consts import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -38,7 +38,7 @@ from provider_zen.core.support.utils import parse_sse_line
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("ZenAdapter", "Adapter"):
-        from provider_zen.core.adaptercore import (  # noqa: PLC0415
+        from provider_zen.core.acore import (  # noqa: PLC0415
             ZenAdapter as _ZenAdapter,
         )
 

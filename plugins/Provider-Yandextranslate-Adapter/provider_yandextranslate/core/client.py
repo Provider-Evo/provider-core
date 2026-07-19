@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, AsyncGenerator, Dict, List, Optional, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 
@@ -17,7 +17,7 @@ from echotools.translate import extract_text_from_messages, split_text_chunks
 from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
-from .constants import (
+from .consts import (
     BASE_URL,
     CAPS,
     DEFAULT_SOURCE_LANG,
@@ -30,6 +30,11 @@ from .constants import (
 
 logger = get_logger(__name__)
 MAX_RETRIES: int = 3
+
+
+def _is_fatal_error(msg: str) -> bool:
+    """判断错误信息是否属于不可重试的鉴权类错误。"""
+    return "auth" in msg.lower()
 
 
 class _KeyState:
@@ -196,18 +201,9 @@ class YandexTranslateClient:
                 ):
                     yield chunk
                 return
-            except PlatformError as e:
-                msg = str(e).lower()
-                if "auth" in msg:
-                    raise
-                last_exc = e
-                logger.warning(
-                    "yandextranslate 重试 %d/%d: %s",
-                    attempt + 1,
-                    MAX_RETRIES,
-                    e,
-                )
             except Exception as e:
+                if isinstance(e, PlatformError) and _is_fatal_error(str(e)):
+                    raise
                 last_exc = e
                 logger.warning(
                     "yandextranslate 重试 %d/%d: %s",
@@ -217,6 +213,59 @@ class YandexTranslateClient:
                 )
         if last_exc:
             raise last_exc
+
+    @staticmethod
+    async def _parse_response(
+        resp: aiohttp.ClientResponse,
+        ks: "_KeyState",
+        stream: bool,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """校验响应状态并解析翻译结果，从 _do_request 抽出。"""
+        if resp.status != 200:
+            body_text = await resp.text()
+            ks.mark_failure(resp.status, body_text)
+            raise PlatformError(
+                "yandextranslate HTTP{}: {}".format(
+                    resp.status, body_text[:200]
+                )
+            )
+
+        data = await resp.json()
+        ks.mark_success()
+
+        # Response: {"translations": [{"text": "..."}]}
+        translations = data.get("translations", [])
+        translated_text = ""
+        if translations and isinstance(translations, list):
+            translated_text = translations[0].get("text", "")
+
+        if stream:
+            for chunk_text in split_text_chunks(translated_text):
+                yield chunk_text
+        else:
+            yield translated_text
+
+    @staticmethod
+    def _build_request(
+        ks: "_KeyState",
+        text: str,
+        source_lang: str,
+        target_lang: str,
+    ) -> Tuple[str, Dict[str, str], Dict[str, Any]]:
+        """构造请求 URL、headers 与 body，从 _do_request 抽出。"""
+        url = "{}{}".format(BASE_URL, TRANSLATE_PATH)
+        headers = {
+            "Authorization": "Bearer {}".format(ks.key),
+            "Content-Type": "application/json",
+        }
+        # Yandex Cloud Translate v2 body
+        body: Dict[str, Any] = {
+            "texts": [text],
+            "targetLanguageCode": target_lang,
+        }
+        if source_lang:
+            body["sourceLanguageCode"] = source_lang
+        return url, headers, body
 
     async def _do_request(
         self,
@@ -239,19 +288,7 @@ class YandexTranslateClient:
         if not ks:
             raise PlatformError("yandextranslate: 未找到对应 APIKey")
 
-        url = "{}{}".format(BASE_URL, TRANSLATE_PATH)
-        headers = {
-            "Authorization": "Bearer {}".format(ks.key),
-            "Content-Type": "application/json",
-        }
-
-        # Yandex Cloud Translate v2 body
-        body: Dict[str, Any] = {
-            "texts": [text],
-            "targetLanguageCode": target_lang,
-        }
-        if source_lang:
-            body["sourceLanguageCode"] = source_lang
+        url, headers, body = self._build_request(ks, text, source_lang, target_lang)
 
         ks.busy = True
         try:
@@ -262,29 +299,8 @@ class YandexTranslateClient:
                 ssl=False,
                 timeout=aiohttp.ClientTimeout(connect=10, total=60),
             ) as resp:
-                if resp.status != 200:
-                    body_text = await resp.text()
-                    ks.mark_failure(resp.status, body_text)
-                    raise PlatformError(
-                        "yandextranslate HTTP{}: {}".format(
-                            resp.status, body_text[:200]
-                        )
-                    )
-
-                data = await resp.json()
-                ks.mark_success()
-
-                # Response: {"translations": [{"text": "..."}]}
-                translations = data.get("translations", [])
-                translated_text = ""
-                if translations and isinstance(translations, list):
-                    translated_text = translations[0].get("text", "")
-
-                if stream:
-                    for chunk_text in split_text_chunks(translated_text):
-                        yield chunk_text
-                else:
-                    yield translated_text
+                async for chunk in self._parse_response(resp, ks, stream):
+                    yield chunk
 
         except PlatformError:
             raise

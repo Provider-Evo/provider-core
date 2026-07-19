@@ -13,7 +13,7 @@ from typing import Dict, List
 
 import aiohttp
 
-from .constants import (
+from .consts import (
     DEFAULT_STYLE,
     DEFAULT_VOICE,
     STYLES,

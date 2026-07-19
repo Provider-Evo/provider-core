@@ -29,7 +29,7 @@ def _find_adapter_class(mod: object) -> type:
 
 class OpenaifmPlugin(ProviderPlugin):
     async def on_load(self) -> None:
-        mod = importlib.import_module("provider_openaifm.core.adaptercore")
+        mod = importlib.import_module("provider_openaifm.core.acore")
         adapter = _find_adapter_class(mod)()
         attach_platform_adapter(self, adapter)
 

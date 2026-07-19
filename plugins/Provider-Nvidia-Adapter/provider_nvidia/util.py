@@ -18,7 +18,7 @@
 
 from typing import Any, Dict, List, Optional, Union
 
-from provider_nvidia.core.constants import (
+from provider_nvidia.core.consts import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
@@ -29,14 +29,14 @@ from provider_nvidia.core.constants import (
     RECOVERY_INTERVAL,
 )
 from provider_nvidia.core.headers import build_headers
-from provider_nvidia.core.payloads import build_payload
-from provider_nvidia.core.sse import parse_sse_line
+from provider_nvidia.core.payload import build_payload
+from provider_nvidia.core.helpers.sse import parse_sse_line
 
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("NvidiaAdapter", "Adapter"):
-        from provider_nvidia.core.adaptercore import (  # noqa: PLC0415
+        from provider_nvidia.core.acore import (  # noqa: PLC0415
             Adapter as _Adapter,
         )
 

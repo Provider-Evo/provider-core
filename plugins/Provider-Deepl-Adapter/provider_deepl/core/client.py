@@ -17,7 +17,7 @@ from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
 from ..accounts import API_KEYS
-from .constants import (
+from .consts import (
     CAPS,
     DEFAULT_SOURCE_LANG,
     DEFAULT_TARGET_LANG,
@@ -30,6 +30,12 @@ from .constants import (
 
 logger = get_logger(__name__)
 MAX_RETRIES: int = 3
+
+
+def _is_fatal_error(msg: str) -> bool:
+    """判断错误信息是否属于不应重试的致命错误。"""
+    lower = msg.lower()
+    return "auth" in lower or "quota" in lower
 
 
 class _KeyState:
@@ -144,7 +150,7 @@ class DeepLClient:
 
     async def candidates(self) -> List[Candidate]:
         """每个可用 Key 生成一个候选项。"""
-        from .constants import MODELS
+        from .consts import MODELS
         models = list(MODELS)
         return [
             Candidate(
@@ -164,6 +170,18 @@ class DeepLClient:
         """返回可用 Key 数量。"""
         return sum(1 for ks in self._keys if ks.available)
 
+    @staticmethod
+    def _resolve_translate_text(
+        messages: List[Dict[str, Any]],
+        kw: Dict[str, Any],
+    ) -> tuple:
+        """从消息与关键字参数中解析待翻译文本与语言配置。"""
+        target_lang = kw.get("target_lang", DEFAULT_TARGET_LANG)
+        source_lang_override = kw.get("source_lang", "")
+        text, msg_source, _target = extract_text_from_messages(messages)
+        source_lang = source_lang_override or msg_source or DEFAULT_SOURCE_LANG
+        return text, source_lang, target_lang
+
     async def complete(
         self,
         candidate: Candidate,
@@ -181,11 +199,7 @@ class DeepLClient:
             stream: 是否流式返回。
             **kw: 额外参数，支持 target_lang / source_lang 覆盖。
         """
-        target_lang = kw.get("target_lang", DEFAULT_TARGET_LANG)
-        source_lang_override = kw.get("source_lang", "")
-
-        text, msg_source, _target = extract_text_from_messages(messages)
-        source_lang = source_lang_override or msg_source or DEFAULT_SOURCE_LANG
+        text, source_lang, target_lang = self._resolve_translate_text(messages, kw)
 
         if not text or not text.strip():
             yield ""
@@ -201,18 +215,9 @@ class DeepLClient:
                 ):
                     yield chunk
                 return
-            except PlatformError as e:
-                msg = str(e).lower()
-                if "auth" in msg or "quota" in msg:
-                    raise
-                last_exc = e
-                logger.warning(
-                    "deepl 重试 %d/%d: %s",
-                    attempt + 1,
-                    MAX_RETRIES,
-                    e,
-                )
             except Exception as e:
+                if isinstance(e, PlatformError) and _is_fatal_error(str(e)):
+                    raise
                 last_exc = e
                 logger.warning(
                     "deepl 重试 %d/%d: %s",
@@ -222,6 +227,60 @@ class DeepLClient:
                 )
         if last_exc:
             raise last_exc
+
+    @staticmethod
+    async def _parse_response(
+        resp: aiohttp.ClientResponse,
+        ks: "_KeyState",
+        stream: bool,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """校验响应状态并解析翻译结果，从 _do_request 抽出。"""
+        if resp.status != 200:
+            body = await resp.text()
+            ks.mark_failure(resp.status, body)
+            raise PlatformError(
+                "deepl HTTP{}: {}".format(resp.status, body[:200])
+            )
+
+        data = await resp.json()
+        ks.mark_success()
+
+        translations = data.get("translations", [])
+        if not translations:
+            yield ""
+            return
+
+        translated_text = translations[0].get("text", "")
+
+        if stream:
+            # 按句子分割，模拟流式输出
+            for chunk_text in split_text_chunks(translated_text):
+                yield chunk_text
+        else:
+            yield translated_text
+
+    @staticmethod
+    def _build_request(
+        ks: "_KeyState",
+        text: str,
+        source_lang: str,
+        target_lang: str,
+    ) -> Tuple[str, Dict[str, str], Dict[str, str]]:
+        """构造请求 URL、headers 与 form_data，从 _do_request 抽出。"""
+        url = "{}{}".format(ks.base_url, TRANSLATE_PATH)
+        headers = {
+            "DeepL-Auth-Key": ks.key,
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+
+        # URL-encoded form data
+        form_data = {
+            "text": text,
+            "target_lang": target_lang.upper(),
+        }
+        if source_lang:
+            form_data["source_lang"] = source_lang.upper()
+        return url, headers, form_data
 
     async def _do_request(
         self,
@@ -244,19 +303,7 @@ class DeepLClient:
         if not ks:
             raise PlatformError("deepl: 未找到对应 APIKey")
 
-        url = "{}{}".format(ks.base_url, TRANSLATE_PATH)
-        headers = {
-            "DeepL-Auth-Key": ks.key,
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-
-        # URL-encoded form data
-        form_data = {
-            "text": text,
-            "target_lang": target_lang.upper(),
-        }
-        if source_lang:
-            form_data["source_lang"] = source_lang.upper()
+        url, headers, form_data = self._build_request(ks, text, source_lang, target_lang)
 
         ks.busy = True
         try:
@@ -267,29 +314,8 @@ class DeepLClient:
                 ssl=False,
                 timeout=aiohttp.ClientTimeout(connect=10, total=60),
             ) as resp:
-                if resp.status != 200:
-                    body = await resp.text()
-                    ks.mark_failure(resp.status, body)
-                    raise PlatformError(
-                        "deepl HTTP{}: {}".format(resp.status, body[:200])
-                    )
-
-                data = await resp.json()
-                ks.mark_success()
-
-                translations = data.get("translations", [])
-                if not translations:
-                    yield ""
-                    return
-
-                translated_text = translations[0].get("text", "")
-
-                if stream:
-                    # 按句子分割，模拟流式输出
-                    for chunk_text in split_text_chunks(translated_text):
-                        yield chunk_text
-                else:
-                    yield translated_text
+                async for chunk in self._parse_response(resp, ks, stream):
+                    yield chunk
 
         except PlatformError:
             raise

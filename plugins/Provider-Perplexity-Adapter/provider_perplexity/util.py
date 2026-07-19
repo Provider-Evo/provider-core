@@ -11,7 +11,7 @@
 
 from typing import Any
 
-from provider_perplexity.core.constants import (
+from provider_perplexity.core.consts import (
     AUTH_ENDPOINT,
     BASE_URL,
     CAPS,
@@ -19,14 +19,14 @@ from provider_perplexity.core.constants import (
 )
 from provider_perplexity.core.headers import build_headers
 from provider_perplexity.core.catalog.models import MODEL_ALIASES, MODELS
-from provider_perplexity.core.payloads import build_payload
+from provider_perplexity.core.payload import build_payload
 from provider_perplexity.core.stream.sse import parse_sse_line
 
 
 def __getattr__(name: str) -> Any:
     """模块级懒属性，按需导入实现类。"""
     if name in ("PerplexityAdapter", "Adapter"):
-        from provider_perplexity.core.adapter.adaptercore import (  # noqa: PLC0415
+        from provider_perplexity.core.adapter.acore import (  # noqa: PLC0415
             PerplexityAdapter as _PerplexityAdapter,
         )
 

@@ -16,7 +16,7 @@ from echotools.translate import extract_text_from_messages, split_text_chunks
 from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import PlatformError
 from src.foundation.logger import get_logger
-from .constants import (
+from .consts import (
     API_KEY,
     BASE_URL,
     CAPS,
@@ -110,6 +110,17 @@ class GoogleTranslateClient:
             yield ""
             return
 
+        async for chunk in self._retry_translate(text, source_lang, target_lang, stream):
+            yield chunk
+
+    async def _retry_translate(
+        self,
+        text: str,
+        source_lang: str,
+        target_lang: str,
+        stream: bool,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """带指数退避重试地执行翻译请求，从 complete() 抽出以控制函数长度。"""
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:
@@ -120,14 +131,6 @@ class GoogleTranslateClient:
                 ):
                     yield chunk
                 return
-            except PlatformError as e:
-                last_exc = e
-                logger.warning(
-                    "googletranslate 重试 %d/%d: %s",
-                    attempt + 1,
-                    MAX_RETRIES,
-                    e,
-                )
             except Exception as e:
                 last_exc = e
                 logger.warning(
@@ -138,6 +141,36 @@ class GoogleTranslateClient:
                 )
         if last_exc:
             raise last_exc
+
+    async def _raise_for_status(self, resp: aiohttp.ClientResponse) -> None:
+        """非 200 状态码时记录限速信息并抛出 PlatformError。"""
+        if resp.status == 200:
+            return
+        body_text = await resp.text()
+        self._last_error_time = time.time()
+        if resp.status == 429:
+            self._rate_limit_until = time.time() + RATE_LIMIT_COOLDOWN
+        raise PlatformError(
+            "googletranslate HTTP{}: {}".format(resp.status, body_text[:200])
+        )
+
+    @staticmethod
+    def _parse_translated_text(data: Any) -> str:
+        """从 Google Translate 响应体中提取翻译文本，结果在 [0][0]。"""
+        if isinstance(data, list) and len(data) > 0:
+            first = data[0]
+            if isinstance(first, list) and len(first) > 0:
+                return str(first[0]) if first[0] else ""
+        return ""
+
+    @staticmethod
+    def _build_request(text: str, source_lang: str, target_lang: str) -> Any:
+        """构造 Google Translate API 请求体，从 _do_request 抽出。"""
+        # Google Translate API body: [[["text"], "srclang", "tgtlang"], "wt_lib"]
+        return [
+            [[text], source_lang if source_lang != "auto" else "auto", target_lang],
+            "wt_lib",
+        ]
 
     async def _do_request(
         self,
@@ -159,12 +192,7 @@ class GoogleTranslateClient:
             "X-Goog-Api-Key": API_KEY,
             "Content-Type": "application/json",
         }
-
-        # Google Translate API body: [[["text"], "srclang", "tgtlang"], "wt_lib"]
-        body = [
-            [[text], source_lang if source_lang != "auto" else "auto", target_lang],
-            "wt_lib",
-        ]
+        body = self._build_request(text, source_lang, target_lang)
 
         try:
             async with self._session.post(
@@ -174,24 +202,9 @@ class GoogleTranslateClient:
                 ssl=False,
                 timeout=aiohttp.ClientTimeout(connect=10, total=60),
             ) as resp:
-                if resp.status != 200:
-                    body_text = await resp.text()
-                    self._last_error_time = time.time()
-                    if resp.status == 429:
-                        self._rate_limit_until = time.time() + RATE_LIMIT_COOLDOWN
-                    raise PlatformError(
-                        "googletranslate HTTP{}: {}".format(
-                            resp.status, body_text[:200]
-                        )
-                    )
-
+                await self._raise_for_status(resp)
                 data = await resp.json()
-                # Response: JSON array, result at [0][0]
-                translated_text = ""
-                if isinstance(data, list) and len(data) > 0:
-                    first = data[0]
-                    if isinstance(first, list) and len(first) > 0:
-                        translated_text = str(first[0]) if first[0] else ""
+                translated_text = self._parse_translated_text(data)
 
                 if stream:
                     for chunk_text in split_text_chunks(translated_text):

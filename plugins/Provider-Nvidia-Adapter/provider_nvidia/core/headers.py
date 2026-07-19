@@ -38,11 +38,11 @@ def build_headers(api_key: str) -> Dict[str, str]:
 # 重导出 — 同包内协同模块的公共符号（保持外部 ``from .. import`` 路径稳定）
 # =======================================================================
 
-from .payloads import (
+from .payload import (
     build_payload,
 )
 
-from .sse import (
+from .helpers.sse import (
     parse_sse_line,
 )
 
@@ -92,7 +92,7 @@ __all__ = [
 # 重导出 — 同包协同模块（保持外部 ``from .. import`` 路径稳定）
 # =======================================================================
 
-from .adaptercore import (
+from .acore import (
     Adapter,
 )
 
@@ -100,11 +100,11 @@ from .client import (
     NvidiaClient,
 )
 
-from .payloads import (
+from .payload import (
     build_payload,
 )
 
-from .sse import (
+from .helpers.sse import (
     parse_sse_line,
 )
 __all__ = [

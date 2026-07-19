@@ -4,7 +4,7 @@
  *
  * Part of the files.js split. Depends on state.js and editor.js
  * (_editorWin, _ensureEditorWindow, _editorFindTabByPath, _editorActivateTab,
- * _editorRenderTabbar, _editorRenderBody, _editorTabSeq) and preview.js
+ * _editorAddTabToBar, _editorRenderBody, _editorTabSeq) and preview.js
  * (_isHtmlPreviewFile, _isMarkdownPreviewFile).
  */
 
@@ -151,7 +151,7 @@ async function _previewFile(entry, editMode) {
   };
   win.tabs.push(tab);
   win.activeId = tab.id;
-  _editorRenderTabbar();
+  _editorAddTabToBar(tab);
   win.bodyEl.innerHTML = '<div class="files-loading">' + t('files.loading') + '</div>';
 
   await _editorLoadTabContent(tab);
@@ -159,5 +159,5 @@ async function _previewFile(entry, editMode) {
   if (win.activeId === tab.id) {
     _editorRenderBody();
   }
-  _editorRenderTabbar();
+  _editorSyncTabTitle(tab);
 }
