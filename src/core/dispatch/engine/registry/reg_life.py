@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence
 
-from src.foundation.logger import get_logger
+from src.core.server.plugins.plugin_catalog import (
+    find_plugin_dir_by_id,
+    is_plugin_enabled,
+)
 from src.foundation.config import get_config
-from src.core.server.plugins.plugin_catalog import find_plugin_dir_by_id, is_plugin_enabled
+from src.foundation.logger import get_logger
 
 __all__ = ["RegistryLifecycleMixin"]
 logger = get_logger(__name__)
@@ -18,8 +21,16 @@ class RegistryLifecycleMixin:
     def _platform_filters(self) -> "tuple[Optional[List[str]], Optional[List[str]]]":
         cfg = get_config()
         plat_cfg = cfg.platforms_cfg
-        wl = plat_cfg.platform_list if plat_cfg.platform_list_type == "whitelist" else None
-        bl = plat_cfg.platform_list if plat_cfg.platform_list_type == "blacklist" else None
+        wl = (
+            plat_cfg.platform_list
+            if plat_cfg.platform_list_type == "whitelist"
+            else None
+        )
+        bl = (
+            plat_cfg.platform_list
+            if plat_cfg.platform_list_type == "blacklist"
+            else None
+        )
         return wl, bl
 
     async def _maybe_reload_app(self) -> None:
@@ -70,7 +81,9 @@ class RegistryLifecycleMixin:
         self._external_loader = runtime
         return runtime
 
-    def _register_filtered_adapters(self, runtime: Any, wl: Optional[List[str]], bl: Optional[List[str]]) -> int:
+    def _register_filtered_adapters(
+        self, runtime: Any, wl: Optional[List[str]], bl: Optional[List[str]]
+    ) -> int:
         adapter_count = 0
         for adapter in runtime.platform_adapters():
             name = adapter.name if hasattr(adapter, "name") else ""
@@ -128,7 +141,9 @@ class RegistryLifecycleMixin:
                 logger.warning("插件运行时关闭失败: %s", exc)
         return runtime
 
-    async def reload_plugins(self, session: Any, *, reload_app: bool = True) -> Dict[str, int]:
+    async def reload_plugins(
+        self, session: Any, *, reload_app: bool = True
+    ) -> Dict[str, int]:
         """磁盘插件变更后全量热重载运行时与平台注册表。"""
         wl, bl = self._platform_filters()
 
@@ -160,7 +175,11 @@ class RegistryLifecycleMixin:
     ) -> bool:
         record_before = runtime.loaded.get(plugin_id)
         if record_before is not None and record_before.adapter is not None:
-            platform_name = record_before.adapter.name if hasattr(record_before.adapter, "name") else ""
+            platform_name = (
+                record_before.adapter.name
+                if hasattr(record_before.adapter, "name")
+                else ""
+            )
             old = self._registry.get(platform_name)
             if old is not None:
                 try:
@@ -186,7 +205,11 @@ class RegistryLifecycleMixin:
                 return True
             self._registry.register(adapter)
             logger.info("平台插件已重新注册: %s", name)
-            models = list(adapter.supported_models) if hasattr(adapter, "supported_models") else []
+            models = (
+                list(adapter.supported_models)
+                if hasattr(adapter, "supported_models")
+                else []
+            )
             for model in models:
                 try:
                     await self.ensure_candidates(model, 1)
@@ -252,7 +275,11 @@ class RegistryLifecycleMixin:
         record_before = runtime.loaded.get(plugin_id)
         platform_name = ""
         if record_before is not None and record_before.adapter is not None:
-            platform_name = record_before.adapter.name if hasattr(record_before.adapter, "name") else ""
+            platform_name = (
+                record_before.adapter.name
+                if hasattr(record_before.adapter, "name")
+                else ""
+            )
 
         action = await runtime.sync_plugin_manifest(plugin_id, session)
         logger.info("插件 manifest 同步 [%s]: %s", plugin_id, action)
@@ -268,16 +295,24 @@ class RegistryLifecycleMixin:
             self._invalidate_candidates_cache()
         return action
 
-    async def _apply_manifest_reload(self, plugin_id: str, runtime: Any, platform_name: str) -> None:
+    async def _apply_manifest_reload(
+        self, plugin_id: str, runtime: Any, platform_name: str
+    ) -> None:
         record_after = runtime.loaded.get(plugin_id)
         if record_after is None or record_after.adapter is None:
             return
-        new_name = record_after.adapter.name if hasattr(record_after.adapter, "name") else ""
+        new_name = (
+            record_after.adapter.name if hasattr(record_after.adapter, "name") else ""
+        )
         if platform_name and platform_name != new_name:
             await self._unregister_platform_adapter(platform_name)
         self._register_platform_adapter(record_after.adapter)
         adapter = record_after.adapter
-        for model in list(adapter.supported_models) if hasattr(adapter, "supported_models") else []:
+        for model in (
+            list(adapter.supported_models)
+            if hasattr(adapter, "supported_models")
+            else []
+        ):
             try:
                 await self.ensure_candidates(model, 1)
             except Exception as exc:
@@ -306,7 +341,9 @@ class RegistryLifecycleMixin:
         logger.info("平台 [%s] 已热重载", platform_name)
         return True
 
-    async def reload_platforms(self, platform_names: Sequence[str], session: Any) -> None:
+    async def reload_platforms(
+        self, platform_names: Sequence[str], session: Any
+    ) -> None:
         """批量热重载平台适配器。"""
         for name in platform_names:
             ok = await self.reload_platform(name, session)
@@ -314,7 +351,11 @@ class RegistryLifecycleMixin:
                 logger.warning("平台 [%s] 配置热重载失败", name)
                 continue
             adapter = self.adapters.get(name)
-            models = list(adapter.supported_models) if adapter and hasattr(adapter, "supported_models") else []
+            models = (
+                list(adapter.supported_models)
+                if adapter and hasattr(adapter, "supported_models")
+                else []
+            )
             for model in models:
                 try:
                     await self.ensure_candidates(model, 1)

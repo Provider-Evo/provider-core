@@ -35,7 +35,6 @@ scriptgen 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import mimetypes
 from pathlib import Path
 from typing import Iterable, Iterator, List, Optional, Sequence, Set
@@ -112,7 +111,9 @@ def iter_files(
     for current in root.rglob("*"):
         if current.is_dir():
             continue
-        if not include_hidden and any(part.startswith(".") for part in current.relative_to(root).parts):
+        if not include_hidden and any(
+            part.startswith(".") for part in current.relative_to(root).parts
+        ):
             continue
         if current.name in excluded_names:
             continue
@@ -174,6 +175,7 @@ def write_log_text(path: Path, content: str) -> Path:
     """写入脚本文本产物。"""
     atomic_write_text(path, content)
     return path
+
 
 # =======================================================================
 # 相关模块

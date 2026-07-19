@@ -45,13 +45,15 @@ async def _send_existing_sessions(
 ) -> None:
     existing: List[Dict[str, Any]] = []
     for sid, sess in registry.items():
-        existing.append({
-            "session_id": sid,
-            "kind": sess.kind,
-            "alive": sess.alive,
-            "name": sess.name,
-            "readonly": sess.readonly,
-        })
+        existing.append(
+            {
+                "session_id": sid,
+                "kind": sess.kind,
+                "alive": sess.alive,
+                "name": sess.name,
+                "readonly": sess.readonly,
+            }
+        )
     if not existing:
         return
     try:
@@ -81,15 +83,17 @@ async def _send_attached(
 ) -> None:
     await ws.send_json({"type": "ready", "session_id": session_id})
     await ws.send_json({"type": "mode", "mode": _terminal_mode(session, session.kind)})
-    await ws.send_json({
-        "type": "attached",
-        "session_id": session_id,
-        "protocol_version": attach_info.get("protocol_version", PROTOCOL_VERSION),
-        "mode": attach_info.get("mode", "readonly"),
-        "replay_from_seq": attach_info.get("replay_from_seq", 0),
-        "head_seq": attach_info.get("head_seq", 0),
-        "writable": attach_info.get("writable", False),
-    })
+    await ws.send_json(
+        {
+            "type": "attached",
+            "session_id": session_id,
+            "protocol_version": attach_info.get("protocol_version", PROTOCOL_VERSION),
+            "mode": attach_info.get("mode", "readonly"),
+            "replay_from_seq": attach_info.get("replay_from_seq", 0),
+            "head_seq": attach_info.get("head_seq", 0),
+            "writable": attach_info.get("writable", False),
+        }
+    )
 
 
 async def _attach_readonly_session(
@@ -206,7 +210,11 @@ async def handle_init_message(
     since_seq = int(payload.get("since_seq", 0))
     existing_session = registry.get(session_id)
 
-    if existing_session and existing_session.alive and not existing_session.reattachable:
+    if (
+        existing_session
+        and existing_session.alive
+        and not existing_session.reattachable
+    ):
         await _attach_readonly_session(ws, existing_session, session_id, since_seq)
         return existing_session, True
 

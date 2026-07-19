@@ -35,7 +35,6 @@ platform 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 from typing import Optional
 
 from src.core.utils.errors.base import ProviderError
@@ -123,9 +122,7 @@ class ModelNotFoundError(PlatformError):
     """模型不存在——请求的模型平台不支持。"""
 
     def __init__(self, model: str) -> None:
-        super().__init__(
-            "模型不存在: {}".format(model), status_code=404
-        )
+        super().__init__("模型不存在: {}".format(model), status_code=404)
         self.model = model
 
 
@@ -146,6 +143,7 @@ class StreamError(PlatformError):
 
 class ServerError(PlatformError):
     """类 ServerError。"""
+
     """Platform server error — upstream 5xx error."""
 
     def __init__(
@@ -191,6 +189,7 @@ class QuotaExceededError(PlatformError):
 
     def __init__(self, message: str = "配额已耗尽") -> None:
         super().__init__(message, status_code=402)
+
 
 # =======================================================================
 # 相关模块

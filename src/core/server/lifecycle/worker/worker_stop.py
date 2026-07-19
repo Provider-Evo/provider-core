@@ -89,9 +89,7 @@ async def _drain_remaining_tasks() -> None:
     """取消并收割事件循环中残留任务，减轻 asyncio.run 退出阶段挂起。"""
     current = asyncio.current_task()
     pending = [
-        task
-        for task in asyncio.all_tasks()
-        if task is not current and not task.done()
+        task for task in asyncio.all_tasks() if task is not current and not task.done()
     ]
     if not pending:
         return
@@ -200,7 +198,9 @@ async def shutdown_worker(
     config_manager: Optional[object] = None,
 ) -> None:
     """优雅关闭所有后台任务和资源。"""
-    await _cancel_background_tasks(tasks, hot_reload_service, reload_callback, config_manager)
+    await _cancel_background_tasks(
+        tasks, hot_reload_service, reload_callback, config_manager
+    )
     await _close_worker_resources(registry, session, app_host)
 
     from src.core.server.lifecycle.worker.worker_tasks import release_default_executor

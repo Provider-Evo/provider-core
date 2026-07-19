@@ -35,7 +35,6 @@ pre_restart 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import asyncio
 import json
 from pathlib import Path
@@ -66,7 +65,9 @@ def _save_pre_restart_stats() -> None:
 async def _broadcast_restart_notice() -> None:
     obs = get_observability_services()
     try:
-        await obs.broadcast_log({"type": "system_restarting", "message": "服务正在重启"})
+        await obs.broadcast_log(
+            {"type": "system_restarting", "message": "服务正在重启"}
+        )
     except Exception as exc:
         logger.debug("重启前广播 WS 失败: %s", exc)
 
@@ -85,16 +86,18 @@ async def _save_plugin_states(registry: Optional[Any]) -> None:
         return
     try:
         from src.core.server.plugins.runtime import get_plugin_runtime
+
         runtime = get_plugin_runtime()
 
         # 保存插件状态
         plugin_states = {}
         for plugin_id, record in runtime._records.items():
-            if hasattr(record.plugin, 'get_state'):
+            if hasattr(record.plugin, "get_state"):
                 plugin_states[plugin_id] = await record.plugin.get_state()
 
         # 保存到文件
         from src.foundation.paths import persist_dir
+
         state_path = persist_dir() / "plugin_states.json"
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(json.dumps(plugin_states), encoding="utf-8")
@@ -107,6 +110,7 @@ async def _save_connection_pool_state() -> None:
     """保存连接池状态。"""
     try:
         from src.core.server.lifecycle.net.conn import make_connector
+
         connector = make_connector()
 
         # 保存连接池配置
@@ -117,6 +121,7 @@ async def _save_connection_pool_state() -> None:
         }
 
         from src.foundation.paths import persist_dir
+
         state_path = persist_dir() / "connection_pool_state.json"
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(json.dumps(pool_state), encoding="utf-8")
@@ -129,12 +134,14 @@ async def _save_cache_state() -> None:
     """保存缓存状态。"""
     try:
         from src.core.dispatch.cache.response_cache import get_response_cache
+
         cache = get_response_cache()
 
         # 获取缓存统计信息
         cache_stats = cache.stats()
 
         from src.foundation.paths import persist_dir
+
         state_path = persist_dir() / "cache_state.json"
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(json.dumps(cache_stats), encoding="utf-8")
@@ -180,9 +187,12 @@ async def stop_runtime_before_restart(
     try:
         await asyncio.wait_for(runtime.close(), timeout=_RUNTIME_STOP_TIMEOUT_S)
     except asyncio.TimeoutError:
-        logger.warning("插件运行时关闭超时 (%ss)，继续快速重启", _RUNTIME_STOP_TIMEOUT_S)
+        logger.warning(
+            "插件运行时关闭超时 (%ss)，继续快速重启", _RUNTIME_STOP_TIMEOUT_S
+        )
     except Exception as exc:
         logger.warning("插件运行时关闭失败: %s", exc)
+
 
 # =======================================================================
 # 相关模块

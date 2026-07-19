@@ -7,14 +7,14 @@ from typing import Any, Optional
 
 from loguru import logger as _loguru_logger
 
-from .state import LOG_DIR, color_override, console_handler_id, initialized
 from .setup import (
+    CompatLogger,
+    _format_log,
     _resolve_log_level,
     _resolve_log_name,
-    _format_log,
     _suppress_paramiko_disconnect_noise,
-    CompatLogger,
 )
+from .state import LOG_DIR, color_override, console_handler_id, initialized
 
 
 def _supports_color() -> bool:
@@ -48,7 +48,10 @@ def _get_windows_color_sink() -> Any:
         return sys.stderr
     try:
         from colorama import AnsiToWin32
-        return AnsiToWin32(sys.stderr, convert=None, strip=False, autoreset=False).stream
+
+        return AnsiToWin32(
+            sys.stderr, convert=None, strip=False, autoreset=False
+        ).stream
     except ImportError:
         return sys.stderr
 
@@ -173,6 +176,7 @@ def shutdown_logging() -> None:
 
 
 import atexit as _atexit
+
 _atexit.register(_cleanup_loguru)
 
 

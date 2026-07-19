@@ -35,7 +35,6 @@ server 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import asyncio
 import threading
 from typing import Any, Optional, Sequence
@@ -87,7 +86,9 @@ class WebUIServer:
         """启动服务器。"""
         port_result = ensure_port_available(self.port, False)
         if port_result.occupied:
-            raise RuntimeError("WebUI 端口 {} 已被占用: {}".format(self.port, port_result.pids))
+            raise RuntimeError(
+                "WebUI 端口 {} 已被占用: {}".format(self.port, port_result.pids)
+            )
         self._runner = aiohttp.web.AppRunner(self._app)
         await self._runner.setup()
         self._site = aiohttp.web.TCPSite(self._runner, self.host, self.port)
@@ -134,7 +135,9 @@ class ThreadedWebUIServer:
             return
         self._startup_error = None
         self._startup_event.clear()
-        self._thread = threading.Thread(target=self._run, name="provider-webui", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, name="provider-webui", daemon=True
+        )
         self._thread.start()
         self._startup_event.wait(5.0)
         if self._startup_error is not None:
@@ -146,7 +149,9 @@ class ThreadedWebUIServer:
         self._loop = loop
         asyncio.set_event_loop(loop)
         try:
-            self._server = WebUIServer(host=self.host, port=self.port, registry=self._registry)
+            self._server = WebUIServer(
+                host=self.host, port=self.port, registry=self._registry
+            )
             loop.run_until_complete(self._server.start())
             self._startup_event.set()
             loop.run_forever()
@@ -155,11 +160,15 @@ class ThreadedWebUIServer:
             self._startup_event.set()
             logger.error("WebUI 独立线程运行失败: %s", exc, exc_info=True)
         finally:
-            pending_tasks = [task for task in asyncio.all_tasks(loop) if not task.done()]
+            pending_tasks = [
+                task for task in asyncio.all_tasks(loop) if not task.done()
+            ]
             for task in pending_tasks:
                 task.cancel()
             if pending_tasks:
-                loop.run_until_complete(asyncio.gather(*pending_tasks, return_exceptions=True))
+                loop.run_until_complete(
+                    asyncio.gather(*pending_tasks, return_exceptions=True)
+                )
             loop.run_until_complete(loop.shutdown_asyncgens())
             loop.close()
             self._loop = None
@@ -167,7 +176,11 @@ class ThreadedWebUIServer:
 
     async def reload_app(self, changed_scopes: Sequence[str] | None = None) -> None:
         """在线程事件循环中重建应用。"""
-        if changed_scopes and "webui" not in changed_scopes and "bot" not in changed_scopes:
+        if (
+            changed_scopes
+            and "webui" not in changed_scopes
+            and "bot" not in changed_scopes
+        ):
             return
         if self._loop is None or self._server is None or not self._loop.is_running():
             return
@@ -182,8 +195,11 @@ class ThreadedWebUIServer:
         await asyncio.wait_for(asyncio.wrap_future(future), timeout=timeout)
         self._loop.call_soon_threadsafe(self._loop.stop)
         if self._thread is not None:
-            await asyncio.get_running_loop().run_in_executor(None, self._thread.join, timeout)
+            await asyncio.get_running_loop().run_in_executor(
+                None, self._thread.join, timeout
+            )
         logger.info("WebUI 线程已关闭")
+
 
 # =======================================================================
 # 相关模块

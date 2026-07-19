@@ -6,7 +6,9 @@ import time
 from typing import Any, Dict, Optional
 
 
-def race_chunk_winner_if_ready(info: Dict[str, Any], min_tok: int) -> Optional[Dict[str, Any]]:
+def race_chunk_winner_if_ready(
+    info: Dict[str, Any], min_tok: int
+) -> Optional[Dict[str, Any]]:
     if info["tok"] >= min_tok:
         return info
     return None

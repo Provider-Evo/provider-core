@@ -35,18 +35,24 @@ responses_api 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import time
 import uuid
 from typing import Any, Dict, List, Optional
 
 import aiohttp.web
 
-from src.core.utils.errors import NoCandidateError, ProviderError
-from src.core.server import REGISTRY_KEY, clean_fncall as _clean_fncall, get_json as _get_json
+from src.core.server import REGISTRY_KEY
+from src.core.server import clean_fncall as _clean_fncall
+from src.core.server import get_json as _get_json
 from src.core.utils.compat.tools import normalize_content
+from src.core.utils.errors import NoCandidateError, ProviderError
 from src.foundation.logger import get_logger
-from src.routes.openai.chat.helpers import _err, _json, _normalize_messages, _not_supported
+from src.routes.openai.chat.helpers import (
+    _err,
+    _json,
+    _normalize_messages,
+    _not_supported,
+)
 
 __all__ = [
     "create_response",
@@ -167,7 +173,9 @@ async def create_response(request: aiohttp.web.Request) -> aiohttp.web.Response:
         tools = [t for t in tools_raw if t.get("type") == "function"]
 
     try:
-        content, usage_d = await _dispatch_response_content(registry, messages, mdl, tools)
+        content, usage_d = await _dispatch_response_content(
+            registry, messages, mdl, tools
+        )
     except NoCandidateError as exc:
         return _err(503, str(exc), "no_candidate")
     except ProviderError as exc:
@@ -210,7 +218,15 @@ async def list_input_items(request: aiohttp.web.Request) -> aiohttp.web.Response
     stored = _get_stored(request.match_info["response_id"])
     if stored is None:
         return _err(404, "Response not found", "not_found")
-    return _json({"object": "list", "data": [], "first_id": None, "last_id": None, "has_more": False})
+    return _json(
+        {
+            "object": "list",
+            "data": [],
+            "first_id": None,
+            "last_id": None,
+            "has_more": False,
+        }
+    )
 
 
 async def compact_responses(request: aiohttp.web.Request) -> aiohttp.web.Response:

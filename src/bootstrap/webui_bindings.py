@@ -15,10 +15,15 @@ from typing import Any, List
 import aiohttp.web
 
 from src.core.server.http.auth.session import register_session_verifier
-from src.core.utils.compat.observability import ObservabilityServices, set_observability_services
+from src.core.utils.compat.observability import (
+    ObservabilityServices,
+    set_observability_services,
+)
 
 
-def _build_socket_closers(log_broker: Any, list_sessions: Any, request_broker: Any) -> Any:
+def _build_socket_closers(
+    log_broker: Any, list_sessions: Any, request_broker: Any
+) -> Any:
     """组装用于关闭各类 WebSocket 连接的回调闭包，返回三元组。"""
 
     async def _close_log_sockets() -> List[aiohttp.web.WebSocketResponse]:
@@ -47,17 +52,20 @@ def _build_socket_closers(log_broker: Any, list_sessions: Any, request_broker: A
 def _build_observability_services() -> ObservabilityServices:
     """组装 ObservabilityServices 所需的各类观测回调闭包。"""
     from src.core.server.terminal.sess import get_terminal_store
-    from src.webui.internal.core.logs_ws import log_broker, setup_loguru_sink
-    from src.webui.routers.session.terminal.session_all.term import list_sessions, recover_sessions
     from src.webui.data.services.logs.request_log import (
         request_broker,
         save_requests,
         start_request_persist,
     )
     from src.webui.data.services.stats import save_stats, start_persist
+    from src.webui.internal.core.logs_ws import log_broker, setup_loguru_sink
+    from src.webui.routers.session.terminal.session_all.term import (
+        list_sessions,
+        recover_sessions,
+    )
 
-    _close_log_sockets, _close_terminal_sockets, _close_request_monitor_sockets = _build_socket_closers(
-        log_broker, list_sessions, request_broker
+    _close_log_sockets, _close_terminal_sockets, _close_request_monitor_sockets = (
+        _build_socket_closers(log_broker, list_sessions, request_broker)
     )
 
     async def _recover_terminal_sessions(_registry: Any) -> None:

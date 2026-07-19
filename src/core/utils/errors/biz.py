@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 from typing import Optional
 
 from src.core.utils.errors.base import ProviderError
@@ -68,9 +66,7 @@ class NotSupportedError(ProviderError):
     """功能不支持——当前平台或配置不支持请求的功能。"""
 
     def __init__(self, feature: str) -> None:
-        super().__init__(
-            "{} 功能当前不支持".format(feature), status_code=501
-        )
+        super().__init__("{} 功能当前不支持".format(feature), status_code=501)
         self.feature = feature
 
 

@@ -44,7 +44,9 @@ def _sse_chunk(
     if usage is not None:
         payload["choices"] = []
         payload["usage"] = usage
-    return "data: {}\n\n".format(json.dumps(payload, ensure_ascii=False)).encode("utf-8")
+    return "data: {}\n\n".format(json.dumps(payload, ensure_ascii=False)).encode(
+        "utf-8"
+    )
 
 
 def _build_error_payload(err: Exception) -> bytes:

@@ -35,7 +35,6 @@ terminal 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import json
 import uuid
 from typing import Optional
@@ -44,16 +43,18 @@ import aiohttp.web
 from echotools.terminal import LocalTerminal, SSHTerminal
 
 from src.core.server.terminal.common_cmds import get_commands_store
-from src.core.server.terminal.session_audit import get_audit_store
 from src.core.server.terminal.sess import get_terminal_store
+from src.core.server.terminal.session_audit import get_audit_store
 from src.core.server.terminal.ssh_vault import get_ssh_vault
 from src.foundation.config import get_config, write_config
 from src.foundation.logger import get_logger
-from src.webui.routers.admin.panels.config_panel import _load_main_config_dict
 from src.foundation.paths import config_dir
+from src.webui.routers.admin.panels.config_panel import _load_main_config_dict
+from src.webui.routers.session.terminal.term_sess import TerminalSession
 from src.webui.routers.session.terminal.term_sess import (
-    TerminalSession,
     TerminalSession as _TerminalSession,
+)
+from src.webui.routers.session.terminal.term_sess import (
     list_sessions,
     recover_sessions,
     sessions_registry,
@@ -136,26 +137,30 @@ async def terminal_sessions_api(request: aiohttp.web.Request) -> aiohttp.web.Res
     store = get_terminal_store()
     result = []
     for sid, sess in _sessions.items():
-        result.append({
-            "session_id": sid,
-            "kind": sess.kind,
-            "alive": sess.alive,
-            "readonly": sess.readonly,
-            "clients": len(sess._clients),
-            "name": sess.name,
-        })
+        result.append(
+            {
+                "session_id": sid,
+                "kind": sess.kind,
+                "alive": sess.alive,
+                "readonly": sess.readonly,
+                "clients": len(sess._clients),
+                "name": sess.name,
+            }
+        )
     active_ids = set(_sessions.keys())
     for meta in store.list_all():
         sid = meta.get("session_id")
         if sid and sid not in active_ids:
-            result.append({
-                "session_id": sid,
-                "kind": meta.get("kind", "local"),
-                "alive": meta.get("status") == "alive",
-                "readonly": True,
-                "clients": 0,
-                "name": meta.get("name"),
-            })
+            result.append(
+                {
+                    "session_id": sid,
+                    "kind": meta.get("kind", "local"),
+                    "alive": meta.get("status") == "alive",
+                    "readonly": True,
+                    "clients": 0,
+                    "name": meta.get("name"),
+                }
+            )
     return aiohttp.web.json_response(result)
 
 
@@ -204,7 +209,9 @@ async def terminal_audit_api(request: aiohttp.web.Request) -> aiohttp.web.Respon
     return aiohttp.web.json_response(store.list_page(page, page_size))
 
 
-async def terminal_audit_detail_api(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def terminal_audit_detail_api(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     """GET/DELETE ``/v1/webui/terminal/audit/{session_id}`` — 审计详情/删除。"""
     session_id = request.match_info.get("session_id", "")
     store = get_audit_store()
@@ -223,7 +230,9 @@ async def terminal_audit_detail_api(request: aiohttp.web.Request) -> aiohttp.web
     return aiohttp.web.json_response({"error": "method not allowed"}, status=405)
 
 
-async def terminal_audit_config_api(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def terminal_audit_config_api(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     """GET/POST ``/v1/webui/terminal/audit/config`` — 审计开关。"""
     if request.method == "GET":
         return aiohttp.web.json_response(
@@ -297,9 +306,12 @@ async def terminal_commands_import_api(
         return aiohttp.web.json_response({"error": "invalid json"}, status=400)
     commands = body.get("commands")
     if not isinstance(commands, list):
-        return aiohttp.web.json_response({"error": "commands must be a list"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "commands must be a list"}, status=400
+        )
     count = get_commands_store().import_many(commands)
     return aiohttp.web.json_response({"imported": count})
+
 
 # =======================================================================
 # 相关模块

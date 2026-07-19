@@ -6,10 +6,10 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
-from src.foundation.logger import get_logger
-from src.foundation.paths import project_root
 from src.core.server.plugins.hook_reg import get_hook_registry
 from src.core.server.plugins.plugin_lifecycle import PluginLifecycle
+from src.foundation.logger import get_logger
+from src.foundation.paths import project_root
 
 __all__ = ["PluginRuntime", "get_plugin_runtime"]
 

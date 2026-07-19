@@ -7,17 +7,18 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 from typing import Any
 
 import aiohttp.web
 
 from src.bootstrap.life import on_cleanup, on_startup
-from src.bootstrap.webui_bindings import log_webui_token_if_enabled, register_webui_bindings
-from src.core.utils.compat.observability import OBSERVABILITY_KEY, ObservabilityServices
-from src.core.server.lifecycle.net.keys import REGISTRY_KEY, SESSION_KEY
+from src.bootstrap.webui_bindings import (
+    log_webui_token_if_enabled,
+    register_webui_bindings,
+)
 from src.core.server.http.mw import _auth_middleware, _cors, _error
+from src.core.server.lifecycle.net.keys import REGISTRY_KEY, SESSION_KEY
+from src.core.utils.compat.observability import OBSERVABILITY_KEY, ObservabilityServices
 
 __all__ = ["create_application"]
 
@@ -40,7 +41,13 @@ async def create_application(
     log_webui_token_if_enabled()
 
     app = aiohttp.web.Application(
-        middlewares=[_cors, _auth_middleware, stats_middleware, static_nocache_middleware, _error],
+        middlewares=[
+            _cors,
+            _auth_middleware,
+            stats_middleware,
+            static_nocache_middleware,
+            _error,
+        ],
         client_max_size=100 * 1024 * 1024,
     )
     app[REGISTRY_KEY] = registry

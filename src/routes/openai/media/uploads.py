@@ -92,6 +92,7 @@ async def create_embeddings(
 # Moderations
 # =======================================================================
 
+
 async def create_moderation(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
@@ -127,6 +128,7 @@ async def create_moderation(
 # =======================================================================
 # Rerank
 # =======================================================================
+
 
 async def create_rerank(
     request: aiohttp.web.Request,

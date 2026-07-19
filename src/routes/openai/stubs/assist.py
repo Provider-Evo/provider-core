@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import time
 
 import aiohttp.web
@@ -26,6 +24,7 @@ logger = get_logger(__name__)
 # =======================================================================
 # Assistants
 # =======================================================================
+
 
 async def create_assistant(
     request: aiohttp.web.Request,

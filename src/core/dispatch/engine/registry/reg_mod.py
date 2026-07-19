@@ -5,14 +5,16 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, List, Optional
 
-from src.foundation.logger import get_logger
 from src.core.dispatch.cand import ALL_CAPABILITIES, Candidate
+from src.foundation.logger import get_logger
 
 __all__ = ["RegistryModelsMixin"]
 logger = get_logger(__name__)
 
 
-def _merge_candidate_caps(cand: Candidate, model_caps: Dict[str, Dict[str, bool]], model_ctx: Dict[str, int]) -> None:
+def _merge_candidate_caps(
+    cand: Candidate, model_caps: Dict[str, Dict[str, bool]], model_ctx: Dict[str, int]
+) -> None:
     cand_caps = {cap: True for cap in ALL_CAPABILITIES if getattr(cand, cap, False)}
     meta = cand.meta
     per_model_ctx = meta.get("model_context") if isinstance(meta, dict) else None
@@ -24,7 +26,9 @@ def _merge_candidate_caps(cand: Candidate, model_caps: Dict[str, Dict[str, bool]
         if isinstance(per_model_caps, dict):
             caps_for_model = per_model_caps.get(model_name)
             if isinstance(caps_for_model, dict):
-                merged.update({key: True for key, value in caps_for_model.items() if value})
+                merged.update(
+                    {key: True for key, value in caps_for_model.items() if value}
+                )
 
         ctx_val: Optional[int] = None
         if isinstance(per_model_ctx, dict) and model_name in per_model_ctx:
@@ -67,7 +71,9 @@ def _build_model_entry(
 class RegistryModelsMixin:
     """/v1/models 格式的模型聚合。"""
 
-    async def _collect_platform_model_meta(self, adapter: Any, platform: str) -> "tuple[Dict[str, Dict[str, bool]], Dict[str, int]]":
+    async def _collect_platform_model_meta(
+        self, adapter: Any, platform: str
+    ) -> "tuple[Dict[str, Dict[str, bool]], Dict[str, int]]":
         model_caps: Dict[str, Dict[str, bool]] = {}
         model_ctx: Dict[str, int] = {}
         try:
@@ -88,7 +94,11 @@ class RegistryModelsMixin:
         seen: set = set()
         for a in self.adapters.values():
             platform = a.name if hasattr(a, "name") else ""
-            default_caps = dict(a.default_capabilities) if hasattr(a, "default_capabilities") else {}
+            default_caps = (
+                dict(a.default_capabilities)
+                if hasattr(a, "default_capabilities")
+                else {}
+            )
             ctx_len = a.context_length if hasattr(a, "context_length") else None
 
             model_caps, model_ctx = await self._collect_platform_model_meta(a, platform)
@@ -103,7 +113,11 @@ class RegistryModelsMixin:
                 if m in seen:
                     continue
                 seen.add(m)
-                out.append(_build_model_entry(m, platform, default_caps, model_caps, model_ctx, ctx_len))
+                out.append(
+                    _build_model_entry(
+                        m, platform, default_caps, model_caps, model_ctx, ctx_len
+                    )
+                )
         return out
 
     async def list_models(self) -> List[Dict[str, Any]]:

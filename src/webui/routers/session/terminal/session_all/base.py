@@ -34,7 +34,9 @@ class TerminalSession(_LifecycleMixin, _ClientsMixin, _BroadcastMixin):
             BridgedLocalTerminal | BridgedSSHTerminal | BridgedTmuxTerminal
         ] = None
         self._clients: Set[aiohttp.web.WebSocketResponse] = set()
-        self._client_callbacks: Dict[aiohttp.web.WebSocketResponse, TerminalCallback] = {}
+        self._client_callbacks: Dict[
+            aiohttp.web.WebSocketResponse, TerminalCallback
+        ] = {}
         self._client_writable: Dict[aiohttp.web.WebSocketResponse, bool] = {}
         self._primary_client: Optional[aiohttp.web.WebSocketResponse] = None
         self._store: Optional[TerminalSessionStore] = None

@@ -43,7 +43,9 @@ def _apply_race_event(
     return None
 
 
-async def _forward_worker_events(info: Dict[str, Any], merged_queue: "asyncio.Queue") -> None:
+async def _forward_worker_events(
+    info: Dict[str, Any], merged_queue: "asyncio.Queue"
+) -> None:
     """将单个 worker 队列事件转发到聚合队列。"""
     try:
         while not info["done"] and not info["err"]:
@@ -122,7 +124,9 @@ async def _select_race_winner(
         _cancel_forward_tasks(forward_tasks)
 
 
-def _cancel_race_workers(infos: List[Dict[str, Any]], *, skip: Optional[Dict] = None) -> None:
+def _cancel_race_workers(
+    infos: List[Dict[str, Any]], *, skip: Optional[Dict] = None
+) -> None:
     for info in infos:
         if info is skip:
             continue
@@ -133,13 +137,20 @@ def _cancel_race_workers(infos: List[Dict[str, Any]], *, skip: Optional[Dict] = 
 
 
 async def _stream_worker_chunks(
-    a: Any, c: Candidate, worker_msgs: List[Dict], model: str, stream: bool,
-    thinking: bool, search: bool, race_kw: Dict[str, Any],
-    idx: int, q: asyncio.Queue, ev: asyncio.Event,
+    a: Any,
+    c: Candidate,
+    worker_msgs: List[Dict],
+    model: str,
+    stream: bool,
+    thinking: bool,
+    search: bool,
+    race_kw: Dict[str, Any],
+    idx: int,
+    q: asyncio.Queue,
+    ev: asyncio.Event,
 ) -> None:
     async for ch in a.complete(
-        c, worker_msgs, model, stream,
-        thinking=thinking, search=search, **race_kw
+        c, worker_msgs, model, stream, thinking=thinking, search=search, **race_kw
     ):
         if ev.is_set():
             break
@@ -181,7 +192,17 @@ async def _run_race_worker(
     race_kw = native_complete_kw(kw, tools, c.native_tools)
     try:
         await _stream_worker_chunks(
-            a, c, worker_msgs, model, stream, thinking, search, race_kw, idx, q, ev,
+            a,
+            c,
+            worker_msgs,
+            model,
+            stream,
+            thinking,
+            search,
+            race_kw,
+            idx,
+            q,
+            ev,
         )
     except asyncio.CancelledError:
         try:
@@ -214,8 +235,20 @@ def _spawn_race_workers(
         ev = asyncio.Event()
         t = asyncio.ensure_future(
             _run_race_worker(
-                i, c, q, ev, reg, msgs, model, stream, thinking, search,
-                tools, fncall_lang, protocol_id, kw,
+                i,
+                c,
+                q,
+                ev,
+                reg,
+                msgs,
+                model,
+                stream,
+                thinking,
+                search,
+                tools,
+                fncall_lang,
+                protocol_id,
+                kw,
             )
         )
         infos.append(
@@ -257,7 +290,8 @@ async def _resolve_winner(
         c = i["cand"]
         em = i.get("err_msg", "")
         err_details.append(
-            "[{}][{}] {}".format(i["idx"], c.resource_id, em) if em
+            "[{}][{}] {}".format(i["idx"], c.resource_id, em)
+            if em
             else "[{}] {}".format(i["idx"], c.resource_id)
         )
     _cancel_race_workers(infos)
@@ -266,7 +300,9 @@ async def _resolve_winner(
     raise NoCandidateError("所有并发请求失败: {}".format("; ".join(err_details)))
 
 
-def _apply_winner_chunk(winner: Dict[str, Any], data: Any, fp: Optional[FncallStreamParser]) -> bool:
+def _apply_winner_chunk(
+    winner: Dict[str, Any], data: Any, fp: Optional[FncallStreamParser]
+) -> bool:
     """处理 winner 队列中的单条 chunk 数据，返回是否应跳过 yield。"""
     if isinstance(data, str):
         winner["tok"] += 1
@@ -280,14 +316,14 @@ def _apply_winner_chunk(winner: Dict[str, Any], data: Any, fp: Optional[FncallSt
     return False
 
 
-async def _drain_winner_queue(winner: Dict[str, Any], fp: Optional[FncallStreamParser]) -> AsyncGenerator[Union[str, Dict], None]:
+async def _drain_winner_queue(
+    winner: Dict[str, Any], fp: Optional[FncallStreamParser]
+) -> AsyncGenerator[Union[str, Dict], None]:
     if winner["done"]:
         return
     while True:
         try:
-            tp, _, data = await asyncio.wait_for(
-                winner["q"].get(), _RACE_CHUNK_TIMEOUT
-            )
+            tp, _, data = await asyncio.wait_for(winner["q"].get(), _RACE_CHUNK_TIMEOUT)
         except asyncio.TimeoutError:
             logger.warning("竞速队列消费超时，提前结束")
             break
@@ -356,9 +392,21 @@ async def race_execute(
     """多候选项竞速执行。"""
     from src.core.dispatch.engine.execs import record_candidate
 
-    dump_race_prompt(msgs, tools, cands, fncall_lang=fncall_lang, protocol_id=protocol_id)
+    dump_race_prompt(
+        msgs, tools, cands, fncall_lang=fncall_lang, protocol_id=protocol_id
+    )
     infos = _spawn_race_workers(
-        reg, cands, msgs, model, stream, thinking, search, tools, fncall_lang, protocol_id, kw,
+        reg,
+        cands,
+        msgs,
+        model,
+        stream,
+        thinking,
+        search,
+        tools,
+        fncall_lang,
+        protocol_id,
+        kw,
     )
 
     winner: Optional[Dict] = None

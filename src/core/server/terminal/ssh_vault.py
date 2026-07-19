@@ -35,7 +35,6 @@ ssh_vault 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import base64
 import json
 import os
@@ -106,15 +105,17 @@ class SshCredentialVault:
         """List connections without secrets (for UI)."""
         out: List[Dict[str, Any]] = []
         for item in self._load().get("connections", []):
-            out.append({
-                "connection_id": item.get("connection_id"),
-                "name": item.get("name"),
-                "host": item.get("host"),
-                "port": item.get("port", 22),
-                "username": item.get("username"),
-                "has_key": bool(item.get("key_enc")),
-                "updated_at": item.get("updated_at"),
-            })
+            out.append(
+                {
+                    "connection_id": item.get("connection_id"),
+                    "name": item.get("name"),
+                    "host": item.get("host"),
+                    "port": item.get("port", 22),
+                    "username": item.get("username"),
+                    "has_key": bool(item.get("key_enc")),
+                    "updated_at": item.get("updated_at"),
+                }
+            )
         return out
 
     def upsert(
@@ -187,6 +188,7 @@ def get_ssh_vault(root: Optional[Path] = None) -> SshCredentialVault:
         root = default_persist_dir("terminal") / "vault"
     _vault = SshCredentialVault(root)
     return _vault
+
 
 # =======================================================================
 # 相关模块

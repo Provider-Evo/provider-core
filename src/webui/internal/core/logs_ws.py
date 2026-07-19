@@ -35,7 +35,6 @@ logs_ws 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import asyncio
 import json
 import time
@@ -179,7 +178,12 @@ def setup_loguru_sink() -> None:
     """将 log_broker._loguru_sink 注册为 loguru 的 sink，并保存主事件循环。"""
     try:
         from loguru import logger
-        logger.add(log_broker._loguru_sink, level="DEBUG", format="{time:HH:mm:ss} | {level} | {extra[module_name]} | {message}")
+
+        logger.add(
+            log_broker._loguru_sink,
+            level="DEBUG",
+            format="{time:HH:mm:ss} | {level} | {extra[module_name]} | {message}",
+        )
         # 保存当前事件循环
         try:
             loop = asyncio.get_running_loop()
@@ -193,6 +197,7 @@ def setup_loguru_sink() -> None:
                 pass
     except Exception:
         pass
+
 
 # =======================================================================
 # 相关模块

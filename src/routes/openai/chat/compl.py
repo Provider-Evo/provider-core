@@ -7,23 +7,23 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import time
 from typing import Any, Dict, List, Optional
 
 import aiohttp.web
 
-from src.foundation.config.resolve import resolve_model
+from src.core.server import REGISTRY_KEY
+from src.core.server import clean_fncall as _clean_fncall
+from src.core.server import get_json as _get_json
 from src.core.utils.errors import NoCandidateError, ProviderError
-from src.core.server import REGISTRY_KEY, clean_fncall as _clean_fncall, get_json as _get_json
+from src.foundation.config.resolve import resolve_model
 from src.foundation.logger import get_logger
+from src.routes.openai.chat.helpers import _err, _id, _json, _not_supported, _sl
 from src.routes.openai.chat.non_stream import (
     build_chat_completion_payload,
     collect_nonstream_chat,
     fallback_parse_tool_calls,
 )
-from src.routes.openai.chat.helpers import _err, _json, _id, _not_supported, _sl
 
 __all__ = ["completions"]
 
@@ -59,7 +59,9 @@ def _body_to_chat(body: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return chat_body
 
 
-def _to_completion_payload(mdl: str, text: str, usage_d: Optional[Dict]) -> Dict[str, Any]:
+def _to_completion_payload(
+    mdl: str, text: str, usage_d: Optional[Dict]
+) -> Dict[str, Any]:
     """组装 legacy completion 响应。"""
     usage = usage_d or {
         "prompt_tokens": max(1, len(text) // 4),

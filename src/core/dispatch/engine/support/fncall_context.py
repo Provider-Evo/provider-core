@@ -7,11 +7,10 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.core.fncall.reg import get_protocol
 from src.core.fncall.prompt.inject import inject_fncall
+from src.core.fncall.reg import get_protocol
 
 
 def fold_system_into_user(

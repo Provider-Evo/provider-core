@@ -35,7 +35,6 @@ runtime_view 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import time
 from typing import Any, Dict, List
 
@@ -65,7 +64,11 @@ async def collect_platform_status(registry: Any) -> Dict[str, Dict[str, Any]]:
             result[name] = {
                 "candidates": len(candidates),
                 "available": len(
-                    [candidate for candidate in candidates if candidate.available and not candidate.busy]
+                    [
+                        candidate
+                        for candidate in candidates
+                        if candidate.available and not candidate.busy
+                    ]
                 ),
                 "models": len(adapter.supported_models),
                 "context_length": getattr(adapter, "context_length", None),
@@ -125,38 +128,40 @@ def build_config_summary() -> Dict[str, Any]:
     config = get_config()
     summary = {"server": _config_server_section(config)}
     summary.update(_config_auth_gateway_proxy(config))
-    summary.update({
-        "adapter_proxy": {
-            "enable_adapters": list(config.adapter_proxy.enable_adapters),
-            "group_list_type": config.adapter_proxy.group_list_type,
-        },
-        # 向后兼容
-        "platforms_proxy": {
-            "enabled_platforms": list(config.platforms_proxy.enabled_platforms),
-            "group_list_type": config.platforms_proxy.group_list_type,
-        },
-        "platforms": {
-            "list_type": config.platforms_cfg.platform_list_type,
-            "count": len(config.platforms_cfg.platform_list),
-        },
-        "debug": {
-            "level": config.debug.level,
-            "color": config.debug.color,
-            "access_log": config.debug.access_log,
-        },
-        "fncall": {
-            "protocol": config.fncall.protocol,
-            "record_prompt": config.fncall.record_prompt,
-            "print_prompt": config.fncall.print_prompt,
-        },
-        "autoupdate": {
-            "enabled": config.autoupdate.enabled,
-            "branch": config.autoupdate.branch,
-            "interval": config.autoupdate.interval,
-            "diff_update": config.autoupdate.diff_update,
-            "mirrors": list(config.autoupdate.mirrors),
-        },
-    })
+    summary.update(
+        {
+            "adapter_proxy": {
+                "enable_adapters": list(config.adapter_proxy.enable_adapters),
+                "group_list_type": config.adapter_proxy.group_list_type,
+            },
+            # 向后兼容
+            "platforms_proxy": {
+                "enabled_platforms": list(config.platforms_proxy.enabled_platforms),
+                "group_list_type": config.platforms_proxy.group_list_type,
+            },
+            "platforms": {
+                "list_type": config.platforms_cfg.platform_list_type,
+                "count": len(config.platforms_cfg.platform_list),
+            },
+            "debug": {
+                "level": config.debug.level,
+                "color": config.debug.color,
+                "access_log": config.debug.access_log,
+            },
+            "fncall": {
+                "protocol": config.fncall.protocol,
+                "record_prompt": config.fncall.record_prompt,
+                "print_prompt": config.fncall.print_prompt,
+            },
+            "autoupdate": {
+                "enabled": config.autoupdate.enabled,
+                "branch": config.autoupdate.branch,
+                "interval": config.autoupdate.interval,
+                "diff_update": config.autoupdate.diff_update,
+                "mirrors": list(config.autoupdate.mirrors),
+            },
+        }
+    )
     return summary
 
 
@@ -185,10 +190,15 @@ async def build_runtime_summary(registry: Any) -> Dict[str, Any]:
             "platforms": len(platforms),
             "models": len(models),
             "available_platforms": len(
-                [name for name, info in platforms.items() if info.get("available", 0) > 0]
+                [
+                    name
+                    for name, info in platforms.items()
+                    if info.get("available", 0) > 0
+                ]
             ),
         },
     }
+
 
 # =======================================================================
 # 相关模块

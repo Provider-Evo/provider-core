@@ -7,14 +7,12 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 from typing import Any, Optional
 
 import aiohttp.web
 
-from src.foundation.config import get_config
 from src.core.server import REGISTRY_KEY
+from src.foundation.config import get_config
 from src.webui.bootstrap.config_schema import PortableWebUISettings, WebUIServerConfig
 
 __all__ = [

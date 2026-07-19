@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import time
 from typing import Any, Dict
 
@@ -27,7 +25,9 @@ __all__ = [
 _STORED: Dict[str, Dict[str, Any]] = {}
 
 
-async def retrieve_stored_completion(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def retrieve_stored_completion(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     """GET /v1/chat/completions/{completion_id}。"""
     item = _STORED.get(request.match_info["completion_id"])
     if item is None:
@@ -35,12 +35,16 @@ async def retrieve_stored_completion(request: aiohttp.web.Request) -> aiohttp.we
     return _json(item)
 
 
-async def update_stored_completion(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def update_stored_completion(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     """POST /v1/chat/completions/{completion_id}。"""
     return _not_supported("Stored chat completion update")
 
 
-async def delete_stored_completion(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def delete_stored_completion(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     """DELETE /v1/chat/completions/{completion_id}。"""
     cid = request.match_info["completion_id"]
     if cid not in _STORED:
@@ -49,12 +53,16 @@ async def delete_stored_completion(request: aiohttp.web.Request) -> aiohttp.web.
     return _json({"id": cid, "object": "chat.completion.deleted", "deleted": True})
 
 
-async def list_stored_completion_messages(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def list_stored_completion_messages(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     """GET /v1/chat/completions/{completion_id}/messages。"""
     item = _STORED.get(request.match_info["completion_id"])
     if item is None:
         return _err(404, "Completion not found", "not_found")
-    return _json({"object": "list", "data": item.get("messages", []), "has_more": False})
+    return _json(
+        {"object": "list", "data": item.get("messages", []), "has_more": False}
+    )
 
 
 def remember_completion(payload: Dict[str, Any]) -> None:

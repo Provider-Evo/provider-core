@@ -35,25 +35,25 @@ threads 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import time
 import uuid
 
 import aiohttp.web
 
 from src.core.server import get_json as _get_json
+from src.core.utils.compat.tools import normalize_content
 from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import (
     _json,
     _tid,
 )
-from src.core.utils.compat.tools import normalize_content
 
 logger = get_logger(__name__)
 
 # =======================================================================
 # Threads
 # =======================================================================
+
 
 async def create_thread(
     request: aiohttp.web.Request,
@@ -181,6 +181,7 @@ async def list_thread_messages(
         响应对象。
     """
     return _json({"object": "list", "data": []})
+
 
 # =======================================================================
 # 相关模块

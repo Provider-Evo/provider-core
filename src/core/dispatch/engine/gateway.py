@@ -4,7 +4,6 @@ import asyncio
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from src.foundation.config import get_config
 from src.core.dispatch.cand import (
     Candidate,
     filter_candidates_by_capability,
@@ -19,7 +18,13 @@ from src.core.dispatch.engine.support.fncall_context import (
     fold_system_into_user,
 )
 from src.core.dispatch.fback import resolve_fallback_chain
-from src.core.utils.errors import ContextLengthError, ModerationError, NoCandidateError, ProviderError
+from src.core.utils.errors import (
+    ContextLengthError,
+    ModerationError,
+    NoCandidateError,
+    ProviderError,
+)
+from src.foundation.config import get_config
 from src.foundation.observability.metrics import get_metrics_registry
 
 __all__ = ["dispatch"]
@@ -56,7 +61,11 @@ def _estimate_message_content_tokens(content: Any) -> int:
 
 
 async def _wait_for_candidates(
-    registry: Any, model: str, timeout: float = 15.0, platform: str = "", cfg: Any = None
+    registry: Any,
+    model: str,
+    timeout: float = 15.0,
+    platform: str = "",
+    cfg: Any = None,
 ) -> List[Candidate]:
     deadline = time.monotonic() + timeout
     if cfg is None:
@@ -69,9 +78,7 @@ async def _wait_for_candidates(
         cands = [c for c in cands if breaker.allow_platform(c.platform)]
         if cands:
             return cands
-        await registry.ensure_candidates(
-            model, max(cfg.gateway.concurrent_count, 3)
-        )
+        await registry.ensure_candidates(model, max(cfg.gateway.concurrent_count, 3))
         await asyncio.sleep(0.5)
     return []
 
@@ -136,7 +143,9 @@ async def _resolve_dispatch_selection(
     cfg: Any,
 ) -> List[Candidate]:
     """等待候选项就绪、按上下文/能力过滤，并执行 TAS 选择。"""
-    cands = await _wait_for_candidates(registry, model, timeout=15.0, platform=platform, cfg=cfg)
+    cands = await _wait_for_candidates(
+        registry, model, timeout=15.0, platform=platform, cfg=cfg
+    )
     if not cands:
         raise NoCandidateError("无候选项: {}".format(model))
 
@@ -167,7 +176,13 @@ async def _dispatch_model(
     cfg = get_config()
 
     sel = await _resolve_dispatch_selection(
-        registry, messages, model, stream, max_tokens, platform, cfg,
+        registry,
+        messages,
+        model,
+        stream,
+        max_tokens,
+        platform,
+        cfg,
     )
 
     extra_kw = build_dispatch_extra_kw(
@@ -204,9 +219,9 @@ async def _run_gateway_before_hook(
     tools: Optional[List[Dict]],
 ) -> tuple[List[Dict], str, str]:
     """执行 gateway.request.before hook，返回可能被 hook 改写后的 messages/model/platform。"""
-    from src.core.utils.errors import GatewayAbortedError
     from src.core.server.http.request_context import get_api_token
     from src.core.server.plugins.hook_reg import get_hook_registry
+    from src.core.utils.errors import GatewayAbortedError
 
     hook_ctx = {
         "registry": registry,
@@ -219,7 +234,9 @@ async def _run_gateway_before_hook(
     }
     before = await get_hook_registry().invoke("gateway.request.before", hook_ctx)
     if before.aborted:
-        raise GatewayAbortedError(before.abort_reason or "gateway.request.before aborted")
+        raise GatewayAbortedError(
+            before.abort_reason or "gateway.request.before aborted"
+        )
     messages = list(before.context.get("messages", messages))
     model = str(before.context.get("model", model))
     platform = str(before.context.get("platform", platform))
@@ -320,9 +337,23 @@ async def dispatch(
     for attempt_model in resolve_fallback_chain(model):
         try:
             async for chunk in _try_dispatch_attempt(
-                registry, messages, attempt_model, stream, metrics, start,
-                platform, sel_count, tools, thinking, search, temperature,
-                top_p, max_tokens, stop, upload_files, kw,
+                registry,
+                messages,
+                attempt_model,
+                stream,
+                metrics,
+                start,
+                platform,
+                sel_count,
+                tools,
+                thinking,
+                search,
+                temperature,
+                top_p,
+                max_tokens,
+                stop,
+                upload_files,
+                kw,
             ):
                 yield chunk
             return

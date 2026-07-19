@@ -35,14 +35,14 @@ videos 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import time
 import uuid
 from typing import Any, Dict
 
 import aiohttp.web
 
-from src.core.server import REGISTRY_KEY, get_json as _get_json
+from src.core.server import REGISTRY_KEY
+from src.core.server import get_json as _get_json
 from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import _err, _json, _not_supported
 
@@ -89,7 +89,11 @@ async def create_video(request: aiohttp.web.Request) -> aiohttp.web.Response:
     except Exception as exc:
         return _err(502, str(exc), "provider_error")
 
-    vid = result.get("id") if isinstance(result, dict) else "video_{}".format(uuid.uuid4().hex[:16])
+    vid = (
+        result.get("id")
+        if isinstance(result, dict)
+        else "video_{}".format(uuid.uuid4().hex[:16])
+    )
     stored = {
         "id": vid,
         "object": "video",
@@ -143,7 +147,9 @@ async def create_video_character(request: aiohttp.web.Request) -> aiohttp.web.Re
     return _not_supported("Video characters")
 
 
-async def retrieve_video_character(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def retrieve_video_character(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     """GET /v1/videos/characters/{character_id}。"""
     return _err(404, "Character not found", "not_found")
 
@@ -158,9 +164,12 @@ async def create_video_extension(request: aiohttp.web.Request) -> aiohttp.web.Re
     return _not_supported("Video extensions")
 
 
-async def legacy_video_generations(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def legacy_video_generations(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     """POST /v1/videos/generations — 兼容旧路径。"""
     return await create_video(request)
+
 
 # =======================================================================
 # 相关模块

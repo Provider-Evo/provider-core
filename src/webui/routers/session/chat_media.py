@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import base64
 import json
 import re
@@ -69,7 +67,10 @@ async def chat_media_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         )
 
     name = str(body.get("name") or "attachment").strip() or "attachment"
-    mime = str(body.get("mime") or "application/octet-stream").strip() or "application/octet-stream"
+    mime = (
+        str(body.get("mime") or "application/octet-stream").strip()
+        or "application/octet-stream"
+    )
 
     blob_path = _blob_path(media_id)
     meta_path = _meta_path(media_id)

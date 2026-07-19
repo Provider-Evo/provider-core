@@ -9,6 +9,7 @@ from typing import Any, Dict, List
 import aiohttp.web
 
 from src.foundation.logger import get_logger
+from src.webui.routers.admin.plugins.plugin_prog import reset_progress, update_progress
 from src.webui.routers.admin.plugins.plugin_support import (
     find_plugin_path_by_id,
     iter_plugin_dirs,
@@ -18,7 +19,6 @@ from src.webui.routers.admin.plugins.plugin_support import (
     reload_plugins_from_request,
     validate_plugin_id,
 )
-from src.webui.routers.admin.plugins.plugin_prog import reset_progress, update_progress
 from src.webui.routers.admin.plugins.plugins_config import (
     plugins_config_bundle,
     plugins_config_get,

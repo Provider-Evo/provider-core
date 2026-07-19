@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import asyncio
 import time
 
@@ -32,7 +30,11 @@ async def logs_ws(request: aiohttp.web.Request) -> aiohttp.web.WebSocketResponse
             await socket.send_json({"type": "history", "count": count})
         while True:
             message = await socket.receive()
-            if message.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+            if message.type in (
+                aiohttp.WSMsgType.CLOSE,
+                aiohttp.WSMsgType.CLOSED,
+                aiohttp.WSMsgType.ERROR,
+            ):
                 break
             if message.type == aiohttp.WSMsgType.TEXT and message.data == "ping":
                 await socket.send_json({"type": "pong", "timestamp": int(time.time())})

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """终端会话注册表 — 全局 session_id -> TerminalSession 映射。"""
 
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 if TYPE_CHECKING:
     from src.webui.routers.session.terminal.session_all.base import TerminalSession

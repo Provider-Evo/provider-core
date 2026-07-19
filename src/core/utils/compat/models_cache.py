@@ -7,11 +7,10 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 from typing import List, Optional
 
 from echotools.cache.list_cache import ListCache
+
 from src.foundation.logger import get_logger
 from src.foundation.paths import persist_dir as _persist_dir
 

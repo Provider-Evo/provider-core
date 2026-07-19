@@ -7,11 +7,11 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-import aiohttp.web
 import shutil
 from pathlib import Path
 from typing import Any, Dict
+
+import aiohttp.web
 
 from ..common import (
     DRIVES_SENTINEL,
@@ -33,6 +33,7 @@ from ..common import (
 # POST /v1/webui/files/copy
 # ---------------------------------------------------------------------------
 
+
 def _resolve_copy_dest(src: Path, dst: Path) -> Path:
     if dst.is_dir():
         dst = dst / src.name
@@ -49,16 +50,22 @@ async def files_copy(request: aiohttp.web.Request) -> aiohttp.web.Response:
     source_rel = body.get("source", "")
     dest_rel = body.get("dest", "")
     if not source_rel or not dest_rel:
-        return aiohttp.web.json_response({"error": "source and dest are required"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "source and dest are required"}, status=400
+        )
 
     src = safe_resolve(source_rel)
     dst = safe_resolve(dest_rel)
     if src is None or dst is None or src is DRIVES_SENTINEL or dst is DRIVES_SENTINEL:
-        return aiohttp.web.json_response({"error": "invalid or unsafe path"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "invalid or unsafe path"}, status=400
+        )
     if not src.exists():
         return aiohttp.web.json_response({"error": "source path not found"}, status=404)
     if is_write_forbidden(dst):
-        return aiohttp.web.json_response({"error": "copying to this path is not allowed"}, status=403)
+        return aiohttp.web.json_response(
+            {"error": "copying to this path is not allowed"}, status=403
+        )
 
     try:
         dst = _resolve_copy_dest(src, dst)
@@ -76,12 +83,13 @@ async def files_copy(request: aiohttp.web.Request) -> aiohttp.web.Response:
 # POST /v1/webui/files/move
 # ---------------------------------------------------------------------------
 
+
 async def files_move(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：files_move。
 
-Move a file or directory.
+    Move a file or directory.
 
-Body: {"source": "/path/to/source", "dest": "/path/to/destination"}"""
+    Body: {"source": "/path/to/source", "dest": "/path/to/destination"}"""
     try:
         body = await request.json()
     except Exception:
@@ -91,25 +99,29 @@ Body: {"source": "/path/to/source", "dest": "/path/to/destination"}"""
     dest_rel = body.get("dest", "")
     if not source_rel or not dest_rel:
         return aiohttp.web.json_response(
-            {"error": "source and dest are required"}, status=400,
+            {"error": "source and dest are required"},
+            status=400,
         )
 
     src = safe_resolve(source_rel)
     dst = safe_resolve(dest_rel)
     if src is None or dst is None or src is DRIVES_SENTINEL or dst is DRIVES_SENTINEL:
         return aiohttp.web.json_response(
-            {"error": "invalid or unsafe path"}, status=400,
+            {"error": "invalid or unsafe path"},
+            status=400,
         )
 
     if not src.exists():
         return aiohttp.web.json_response(
-            {"error": "source path not found"}, status=404,
+            {"error": "source path not found"},
+            status=404,
         )
 
     # Block writes to sensitive paths
     if is_write_forbidden(dst):
         return aiohttp.web.json_response(
-            {"error": "moving to this path is not allowed"}, status=403,
+            {"error": "moving to this path is not allowed"},
+            status=403,
         )
 
     try:

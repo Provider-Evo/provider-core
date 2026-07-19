@@ -30,7 +30,9 @@ class FileWatcherHealthMixin:
             "memory_usage_mb": self._memory_usage[-1] if self._memory_usage else 0,
             "cpu_usage_percent": self._cpu_usage[-1] if self._cpu_usage else 0,
             "avg_memory_usage_mb": (
-                sum(self._memory_usage) / len(self._memory_usage) if self._memory_usage else 0
+                sum(self._memory_usage) / len(self._memory_usage)
+                if self._memory_usage
+                else 0
             ),
             "avg_cpu_usage_percent": (
                 sum(self._cpu_usage) / len(self._cpu_usage) if self._cpu_usage else 0
@@ -71,6 +73,8 @@ class FileWatcherHealthMixin:
             logger.warning("文件监视器内存使用过高: %.1f MB", memory_mb)
         elif self._stats.callbacks_failed > 10:
             self._health_status = "degraded"
-            logger.warning("文件监视器回调失败次数过多: %d", self._stats.callbacks_failed)
+            logger.warning(
+                "文件监视器回调失败次数过多: %d", self._stats.callbacks_failed
+            )
         else:
             self._health_status = "healthy"

@@ -35,10 +35,11 @@ mutate 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-import aiohttp.web
 import shutil
 from pathlib import Path
 from typing import Any, Dict, List
+
+import aiohttp.web
 
 from ..common import (
     DRIVES_SENTINEL,
@@ -60,10 +61,11 @@ from ..common import (
 # POST /v1/webui/files/mkdir
 # ---------------------------------------------------------------------------
 
+
 async def files_mkdir(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：files_mkdir。
 
-Create a new directory."""
+    Create a new directory."""
     try:
         body = await request.json()
     except Exception:
@@ -72,13 +74,15 @@ Create a new directory."""
     rel_path = body.get("path", "")
     if not rel_path:
         return aiohttp.web.json_response(
-            {"error": "path is required"}, status=400,
+            {"error": "path is required"},
+            status=400,
         )
 
     target = safe_resolve(rel_path)
     if target is None or target is DRIVES_SENTINEL:
         return aiohttp.web.json_response(
-            {"error": "invalid or unsafe path"}, status=400,
+            {"error": "invalid or unsafe path"},
+            status=400,
         )
 
     try:
@@ -92,10 +96,11 @@ Create a new directory."""
 # POST /v1/webui/files/delete
 # ---------------------------------------------------------------------------
 
+
 async def files_delete(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：files_delete。
 
-Delete one or more files/directories."""
+    Delete one or more files/directories."""
     try:
         body = await request.json()
     except Exception:
@@ -104,7 +109,8 @@ Delete one or more files/directories."""
     paths = body.get("paths", [])
     if not paths or not isinstance(paths, list):
         return aiohttp.web.json_response(
-            {"error": "paths array is required"}, status=400,
+            {"error": "paths array is required"},
+            status=400,
         )
 
     results: List[Dict[str, Any]] = []
@@ -133,10 +139,11 @@ Delete one or more files/directories."""
 # POST /v1/webui/files/rename
 # ---------------------------------------------------------------------------
 
+
 async def files_rename(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：files_rename。
 
-Rename or move a file/directory."""
+    Rename or move a file/directory."""
     try:
         body = await request.json()
     except Exception:
@@ -146,19 +153,22 @@ Rename or move a file/directory."""
     new_path = body.get("new_path", "")
     if not old_path or not new_path:
         return aiohttp.web.json_response(
-            {"error": "old_path and new_path are required"}, status=400,
+            {"error": "old_path and new_path are required"},
+            status=400,
         )
 
     src = safe_resolve(old_path)
     dst = safe_resolve(new_path)
     if src is None or dst is None or src is DRIVES_SENTINEL or dst is DRIVES_SENTINEL:
         return aiohttp.web.json_response(
-            {"error": "invalid or unsafe path"}, status=400,
+            {"error": "invalid or unsafe path"},
+            status=400,
         )
 
     if not src.exists():
         return aiohttp.web.json_response(
-            {"error": "source path not found"}, status=404,
+            {"error": "source path not found"},
+            status=404,
         )
 
     try:
@@ -174,6 +184,7 @@ Rename or move a file/directory."""
 # POST /v1/webui/files/write
 # ---------------------------------------------------------------------------
 
+
 async def files_write(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：files_write。Save file content to disk."""
     try:
@@ -188,13 +199,19 @@ async def files_write(request: aiohttp.web.Request) -> aiohttp.web.Response:
     if content is None:
         return aiohttp.web.json_response({"error": "content is required"}, status=400)
     if not isinstance(content, str):
-        return aiohttp.web.json_response({"error": "content must be a string"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "content must be a string"}, status=400
+        )
 
     target = safe_resolve(rel_path)
     if target is None or target is DRIVES_SENTINEL:
-        return aiohttp.web.json_response({"error": "invalid or unsafe path"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "invalid or unsafe path"}, status=400
+        )
     if is_write_forbidden(target):
-        return aiohttp.web.json_response({"error": "writing to this path is not allowed"}, status=403)
+        return aiohttp.web.json_response(
+            {"error": "writing to this path is not allowed"}, status=403
+        )
 
     try:
         target.parent.mkdir(parents=True, exist_ok=True)

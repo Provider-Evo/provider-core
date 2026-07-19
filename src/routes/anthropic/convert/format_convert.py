@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Union
 from src.core.utils.compat.tools import normalize_content
 from src.foundation.config.resolve import resolve_model
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # ID 生成工具
 # ═══════════════════════════════════════════════════════════════════════════
@@ -112,9 +111,7 @@ def _content_block_to_text(block: Dict[str, Any]) -> str:
         name = block.get("name", "")
         inp = block.get("input", {})
         inp_str = (
-            json.dumps(inp, ensure_ascii=False)
-            if isinstance(inp, dict)
-            else str(inp)
+            json.dumps(inp, ensure_ascii=False) if isinstance(inp, dict) else str(inp)
         )
         return "Tool call ({}): {}({})".format(tool_id, name, inp_str)
     if btype == "thinking":
@@ -136,9 +133,7 @@ def _image_block_to_openai(block: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         data = source.get("data", "")
         return {
             "type": "image_url",
-            "image_url": {
-                "url": "data:{};base64,{}".format(media_type, data)
-            },
+            "image_url": {"url": "data:{};base64,{}".format(media_type, data)},
         }
     return None
 
@@ -181,9 +176,7 @@ def _anth_content_to_openai(
     if not isinstance(content, list):
         return str(content)
 
-    has_image = any(
-        isinstance(b, dict) and b.get("type") == "image" for b in content
-    )
+    has_image = any(isinstance(b, dict) and b.get("type") == "image" for b in content)
 
     if not has_image:
         parts: List[str] = []
@@ -248,10 +241,7 @@ def _is_thinking(body: Dict[str, Any]) -> bool:
     if isinstance(t, bool):
         return t
     if isinstance(t, dict):
-        return (
-            t.get("type") == "enabled"
-            or bool(t.get("enabled", False))
-        )
+        return t.get("type") == "enabled" or bool(t.get("enabled", False))
     return bool(t)
 
 

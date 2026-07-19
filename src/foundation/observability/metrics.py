@@ -35,7 +35,6 @@ metrics 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 from __future__ import annotations
 
 import time
@@ -208,14 +207,23 @@ class MetricsRegistry:
         lines.append("# TYPE provider_throughput gauge")
         lines.append("provider_throughput {}".format(self.get_throughput()))
         lines.append("# TYPE provider_request_latency_p50 gauge")
-        lines.append("provider_request_latency_p50 {}".format(
-            self.get_percentile("request_latency_ms", 50)))
+        lines.append(
+            "provider_request_latency_p50 {}".format(
+                self.get_percentile("request_latency_ms", 50)
+            )
+        )
         lines.append("# TYPE provider_request_latency_p95 gauge")
-        lines.append("provider_request_latency_p95 {}".format(
-            self.get_percentile("request_latency_ms", 95)))
+        lines.append(
+            "provider_request_latency_p95 {}".format(
+                self.get_percentile("request_latency_ms", 95)
+            )
+        )
         lines.append("# TYPE provider_request_latency_p99 gauge")
-        lines.append("provider_request_latency_p99 {}".format(
-            self.get_percentile("request_latency_ms", 99)))
+        lines.append(
+            "provider_request_latency_p99 {}".format(
+                self.get_percentile("request_latency_ms", 99)
+            )
+        )
         lines.append("# TYPE provider_metrics_scrape_timestamp gauge")
         lines.append("provider_metrics_scrape_timestamp {}".format(int(time.time())))
         return "\n".join(lines) + "\n"
@@ -230,6 +238,7 @@ def get_metrics_registry() -> MetricsRegistry:
     if _registry is None:
         _registry = MetricsRegistry()
     return _registry
+
 
 # =======================================================================
 # 相关模块

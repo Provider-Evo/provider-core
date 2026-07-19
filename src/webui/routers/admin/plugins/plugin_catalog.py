@@ -13,12 +13,12 @@ import aiohttp.web
 
 from src.foundation.config import get_config
 from src.foundation.paths import project_root
-from src.webui.routers.admin.plugins.runtime.mirrors import resolve_fetch_urls
 from src.webui.routers.admin.plugins.plugin_support import (
     DEFAULT_PLUGIN_REPO,
     find_plugin_path_by_id,
     read_manifest,
 )
+from src.webui.routers.admin.plugins.runtime.mirrors import resolve_fetch_urls
 
 __all__ = [
     "plugins_fetch_raw",

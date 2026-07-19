@@ -28,6 +28,7 @@ def host_key_fingerprint(key: object) -> str:
     """Return SHA256 fingerprint string for display (``SHA256:...``)."""
     try:
         import paramiko
+
         if isinstance(key, paramiko.PKey):
             digest = hashlib.sha256(key.asbytes()).digest()
             encoded = base64.b64encode(digest).decode("ascii").rstrip("=")

@@ -38,7 +38,9 @@ class _ClientsMixin:
         else:
             self._client_writable[ws] = False
 
-    def _attach_offline_replay(self, ws: aiohttp.web.WebSocketResponse, since_seq: int) -> Any:
+    def _attach_offline_replay(
+        self, ws: aiohttp.web.WebSocketResponse, since_seq: int
+    ) -> Any:
         replay_data = ""
         head_seq = 0
         if self._store:
@@ -47,7 +49,9 @@ class _ClientsMixin:
         self._client_writable[ws] = False
         return since_seq, replay_data, head_seq
 
-    def _attach_live_replay(self, ws: aiohttp.web.WebSocketResponse, since_seq: int) -> Any:
+    def _attach_live_replay(
+        self, ws: aiohttp.web.WebSocketResponse, since_seq: int
+    ) -> Any:
         replay_from = since_seq
         replay_data = ""
         callback = TerminalCallback(
@@ -87,7 +91,9 @@ class _ClientsMixin:
         self._init_attach(ws, writable)
 
         if not self.reattachable:
-            replay_from, replay_data, head_seq = self._attach_offline_replay(ws, since_seq)
+            replay_from, replay_data, head_seq = self._attach_offline_replay(
+                ws, since_seq
+            )
         elif self._terminal is not None:
             replay_from, replay_data, head_seq = self._attach_live_replay(ws, since_seq)
         else:
@@ -100,15 +106,14 @@ class _ClientsMixin:
         if replay_data:
             encoded = replay_data.encode("utf-8", errors="replace")
             seq_for_replay = max(replay_from, 1)
-            asyncio.create_task(
-                self._output_queue.put((seq_for_replay, encoded))
-            )
+            asyncio.create_task(self._output_queue.put((seq_for_replay, encoded)))
 
         mode = "live" if self.can_client_write(ws) else "readonly"
         return {
             "mode": mode,
             "replay_from_seq": replay_from,
-            "head_seq": head_seq or (self._terminal.output_seq if self._terminal else 0),
+            "head_seq": head_seq
+            or (self._terminal.output_seq if self._terminal else 0),
             "writable": self.can_client_write(ws),
             "protocol_version": PROTOCOL_VERSION,
         }

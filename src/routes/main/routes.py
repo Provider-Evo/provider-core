@@ -7,14 +7,13 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
 # src/routes/main/routes.py
 """主路由——健康检查、模型列表、状态、能力矩阵、函数调用。"""
 
 import aiohttp.web
 
-from src.routes.main.static import setup_routes as setup_static  # noqa: F401
 from src.routes.main.func_call import setup_routes as setup_function_call  # noqa: F401
+from src.routes.main.static import setup_routes as setup_static  # noqa: F401
 
 __all__ = ["setup_routes"]
 

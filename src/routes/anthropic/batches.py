@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import json
 import time
 import uuid
@@ -73,7 +71,14 @@ async def create_message_batch(request: aiohttp.web.Request) -> aiohttp.web.Resp
 async def list_message_batches(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """GET /v1/messages/batches。"""
     data = [entry["meta"] for entry in _BATCHES.values()]
-    return _json({"data": data, "first_id": data[0]["id"] if data else None, "last_id": data[-1]["id"] if data else None, "has_more": False})
+    return _json(
+        {
+            "data": data,
+            "first_id": data[0]["id"] if data else None,
+            "last_id": data[-1]["id"] if data else None,
+            "has_more": False,
+        }
+    )
 
 
 async def retrieve_message_batch(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -97,7 +102,9 @@ async def cancel_message_batch(request: aiohttp.web.Request) -> aiohttp.web.Resp
     return _json(meta)
 
 
-async def retrieve_message_batch_results(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def retrieve_message_batch_results(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     """GET /v1/messages/batches/{message_batch_id}/results — JSONL 占位。"""
     entry = _BATCHES.get(request.match_info["message_batch_id"])
     if entry is None:

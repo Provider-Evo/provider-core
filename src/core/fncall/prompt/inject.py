@@ -7,7 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -21,6 +20,7 @@ __all__ = ["inject_fncall"]
 def _get_dump_dir() -> Optional[str]:
     try:
         from src.foundation.config import get_config
+
         cfg = get_config()
         if cfg.fncall.print_prompt or cfg.fncall.record_prompt:
             return "logs/prompts"

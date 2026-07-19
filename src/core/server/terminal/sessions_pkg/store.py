@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from src.foundation.logger import get_logger
 from src.core.server.terminal.sessions_pkg.cleanup import SessionCleanupMixin
 from src.core.server.terminal.sessions_pkg.meta import SessionMetadataMixin
 from src.core.server.terminal.sessions_pkg.output import SessionOutputMixin
+from src.foundation.logger import get_logger
 
 __all__ = ["TerminalSessionStore", "get_terminal_store"]
 
@@ -20,7 +20,9 @@ _DEFAULT_DESTROYED_RETENTION: int = 300
 _store: Optional["TerminalSessionStore"] = None
 
 
-class TerminalSessionStore(SessionMetadataMixin, SessionOutputMixin, SessionCleanupMixin):
+class TerminalSessionStore(
+    SessionMetadataMixin, SessionOutputMixin, SessionCleanupMixin
+):
     """持久化终端会话元数据及离线输出。
 
     所有文件 I/O 操作均捕获异常并记录日志，不向调用方抛出存储层错误，
@@ -50,6 +52,7 @@ def get_terminal_store(persist_dir: Optional[Path] = None) -> TerminalSessionSto
 
     if persist_dir is None:
         from src.foundation.paths import persist_dir as _default_persist_dir
+
         persist_dir = _default_persist_dir("terminal")
 
     _store = TerminalSessionStore(persist_dir)

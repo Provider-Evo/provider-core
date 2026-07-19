@@ -7,10 +7,10 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-import aiohttp.web
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+import aiohttp.web
 
 from ..common import (
     DRIVES_SENTINEL,
@@ -36,7 +36,9 @@ async def _parse_upload_multipart(
             break
         if part.name == "dir":
             if not dir_value:
-                dir_value = (await part.read()).decode("utf-8", errors="replace").strip()
+                dir_value = (
+                    (await part.read()).decode("utf-8", errors="replace").strip()
+                )
             else:
                 await part.read()
             continue
@@ -60,7 +62,9 @@ async def _parse_upload_multipart(
             total += len(chunk)
             if total > MAX_UPLOAD_SIZE:
                 err = aiohttp.web.json_response(
-                    {"error": f"file '{filename}' exceeds {MAX_UPLOAD_SIZE // (1024 * 1024)} MB limit"},
+                    {
+                        "error": f"file '{filename}' exceeds {MAX_UPLOAD_SIZE // (1024 * 1024)} MB limit"
+                    },
                     status=413,
                 )
                 return "", [], err
@@ -69,22 +73,35 @@ async def _parse_upload_multipart(
     return dir_value, pending_files, None
 
 
-def _validate_upload_target(dir_value: str) -> Tuple[Path | None, aiohttp.web.Response | None]:
+def _validate_upload_target(
+    dir_value: str,
+) -> Tuple[Path | None, aiohttp.web.Response | None]:
     if not dir_value:
-        return None, aiohttp.web.json_response({"error": "dir path is required"}, status=400)
+        return None, aiohttp.web.json_response(
+            {"error": "dir path is required"}, status=400
+        )
     target_dir = safe_resolve(dir_value)
     if target_dir is DRIVES_SENTINEL:
         return None, aiohttp.web.json_response(
-            {"error": "cannot upload to drives root; open a directory first"}, status=400
+            {"error": "cannot upload to drives root; open a directory first"},
+            status=400,
         )
     if target_dir is None:
-        return None, aiohttp.web.json_response({"error": "invalid or unsafe path"}, status=400)
+        return None, aiohttp.web.json_response(
+            {"error": "invalid or unsafe path"}, status=400
+        )
     if not target_dir.exists():
-        return None, aiohttp.web.json_response({"error": "target directory does not exist"}, status=404)
+        return None, aiohttp.web.json_response(
+            {"error": "target directory does not exist"}, status=404
+        )
     if not target_dir.is_dir():
-        return None, aiohttp.web.json_response({"error": "target path is not a directory"}, status=400)
+        return None, aiohttp.web.json_response(
+            {"error": "target path is not a directory"}, status=400
+        )
     if is_write_forbidden(target_dir):
-        return None, aiohttp.web.json_response({"error": "uploading to this directory is not allowed"}, status=403)
+        return None, aiohttp.web.json_response(
+            {"error": "uploading to this directory is not allowed"}, status=403
+        )
     return target_dir, None
 
 
@@ -92,7 +109,9 @@ async def files_upload(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：files_upload。Upload one or more files to a target directory."""
     content_type = request.content_type or ""
     if "multipart" not in content_type:
-        return aiohttp.web.json_response({"error": "multipart/form-data expected"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "multipart/form-data expected"}, status=400
+        )
 
     dir_value, pending_files, parse_err = await _parse_upload_multipart(request)
     if parse_err is not None:
@@ -109,7 +128,9 @@ async def files_upload(request: aiohttp.web.Request) -> aiohttp.web.Response:
     for filename, data in pending_files:
         dest = target_dir / filename  # type: ignore[operator]
         if is_write_forbidden(dest):
-            skipped.append({"file": filename, "error": "writing to this path is not allowed"})
+            skipped.append(
+                {"file": filename, "error": "writing to this path is not allowed"}
+            )
             continue
         try:
             with open(dest, "wb") as f:

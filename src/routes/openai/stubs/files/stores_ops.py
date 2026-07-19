@@ -35,7 +35,6 @@ stores_ops 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import time
 
 import aiohttp.web
@@ -54,6 +53,7 @@ logger = get_logger(__name__)
 # =======================================================================
 # Vector Stores
 # =======================================================================
+
 
 async def create_vector_store(
     request: aiohttp.web.Request,
@@ -126,7 +126,9 @@ async def delete_vector_store(
     Returns:
         响应对象。
     """
-    store_id = request.match_info.get("vector_store_id") or request.match_info.get("store_id", "")
+    store_id = request.match_info.get("vector_store_id") or request.match_info.get(
+        "store_id", ""
+    )
     return _json({"id": store_id, "object": "vector_store.deleted", "deleted": True})
 
 
@@ -141,7 +143,9 @@ async def create_vector_store_file(
     Returns:
         响应对象。
     """
-    store_id = request.match_info.get("vector_store_id") or request.match_info.get("store_id", "")
+    store_id = request.match_info.get("vector_store_id") or request.match_info.get(
+        "store_id", ""
+    )
     return _json(
         {
             "id": _fid(),
@@ -165,6 +169,7 @@ async def list_vector_store_files(
         响应对象。
     """
     return _json({"object": "list", "data": []})
+
 
 # =======================================================================
 # 相关模块

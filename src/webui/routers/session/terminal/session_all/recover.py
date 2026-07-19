@@ -14,9 +14,9 @@ from src.webui.routers.session.terminal.out_bridge import (
     BridgedLocalTerminal,
     BridgedTmuxTerminal,
 )
+from src.webui.routers.session.terminal.sess_help import apply_recovered_metadata
 from src.webui.routers.session.terminal.session_all.base import TerminalSession
 from src.webui.routers.session.terminal.session_all.reg import sessions_registry
-from src.webui.routers.session.terminal.sess_help import apply_recovered_metadata
 
 try:
     from echotools.terminal.tmux import tmux_available
@@ -44,10 +44,17 @@ def _callback_factory(session_id: str) -> TerminalCallback:
     return TerminalCallback()
 
 
-async def _maybe_switch_to_tmux(session: TerminalSession, session_id: str, meta, cfg, terminal):
+async def _maybe_switch_to_tmux(
+    session: TerminalSession, session_id: str, meta, cfg, terminal
+):
     """若配置为 tmux 且当前恢复的进程已死，尝试改用 tmux 后端重建终端。"""
     backend = (meta or {}).get("backend", cfg.backend)
-    if backend != "tmux" or sys.platform == "win32" or not tmux_available() or terminal.alive:
+    if (
+        backend != "tmux"
+        or sys.platform == "win32"
+        or not tmux_available()
+        or terminal.alive
+    ):
         return terminal
     tmux_term = BridgedTmuxTerminal(session_id)
     if await tmux_term.start(
@@ -71,7 +78,9 @@ async def recover_sessions(store: TerminalSessionStore) -> None:
         alive_max_age_seconds=cfg.orphan_alive_hours * 3600,
     )
 
-    recovered = await BridgedLocalTerminal.recover_sessions(persist_dir, _callback_factory)
+    recovered = await BridgedLocalTerminal.recover_sessions(
+        persist_dir, _callback_factory
+    )
     registry = sessions_registry()
 
     for session_id, terminal in recovered.items():

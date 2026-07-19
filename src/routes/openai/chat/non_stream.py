@@ -7,17 +7,20 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import time
 from typing import Any, Dict, List, Optional
 
 import aiohttp.web
 
-from src.core.server import clean_fncall as _clean_fncall
 from src.core.server import REGISTRY_KEY
+from src.core.server import clean_fncall as _clean_fncall
 from src.foundation.logger import get_logger
-from src.routes.openai.chat.helpers import _cid, _extract_upload_files, _normalize_messages, _sl
+from src.routes.openai.chat.helpers import (
+    _cid,
+    _extract_upload_files,
+    _normalize_messages,
+    _sl,
+)
 
 __all__ = [
     "build_chat_completion_payload",
@@ -86,7 +89,11 @@ async def collect_nonstream_chat(
             continue
         if isinstance(ch, dict):
             tcs, usage_d, platform_id = _collect_nonstream_dict_chunk(
-                ch, tp, tcs, usage_d, platform_id,
+                ch,
+                tp,
+                tcs,
+                usage_d,
+                platform_id,
             )
     return cp, tp, tcs, usage_d, platform_id
 
@@ -132,7 +139,14 @@ def build_chat_completion_payload(
     if tp:
         reasoning_text = "".join(tp)
         msg["reasoning"] = reasoning_text
-        msg["reasoning_details"] = [{"type": "reasoning.text", "text": reasoning_text, "format": "unknown", "index": 0}]
+        msg["reasoning_details"] = [
+            {
+                "type": "reasoning.text",
+                "text": reasoning_text,
+                "format": "unknown",
+                "index": 0,
+            }
+        ]
     if tcs:
         msg["tool_calls"] = tcs
     return {
@@ -140,10 +154,12 @@ def build_chat_completion_payload(
         "object": "chat.completion",
         "created": int(time.time()),
         "model": mdl,
-        "choices": [{
-            "index": 0,
-            "message": msg,
-            "finish_reason": "tool_calls" if tcs else "stop",
-        }],
+        "choices": [
+            {
+                "index": 0,
+                "message": msg,
+                "finish_reason": "tool_calls" if tcs else "stop",
+            }
+        ],
         "usage": u,
     }

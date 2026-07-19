@@ -6,16 +6,15 @@
 
 from __future__ import annotations
 
+from .core import (
+    get_logger,
+    shutdown_logging,
+)
 from .setup import (
+    CompatLogger,
+    clean_old_logs,
     get_level_abbr,
     set_color,
-    clean_old_logs,
-    CompatLogger,
-)
-
-from .core import (
-    shutdown_logging,
-    get_logger,
 )
 
 __all__ = [

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """Re-export all error classes + classify_http_error + shortcuts for backward compatibility."""
 
 from typing import Optional
@@ -36,17 +37,17 @@ from src.core.utils.errors.plat import (
     VideoError,
 )
 from src.core.utils.errors.shcuts import (
-    raise_rate_limit,
     raise_auth_failed,
+    raise_config_error,
     raise_login_failed,
-    raise_token_expired,
     raise_model_not_found,
-    raise_server_error,
     raise_network_error,
     raise_no_candidate,
-    raise_config_error,
-    raise_validation_error,
     raise_platform_error,
+    raise_rate_limit,
+    raise_server_error,
+    raise_token_expired,
+    raise_validation_error,
 )
 
 __all__ = [
@@ -93,26 +94,28 @@ __all__ = [
 ]
 
 
-_CONTEXT_LENGTH_KEYWORDS = frozenset({
-    # English
-    "context_length",
-    "context window",
-    "maximum context",
-    "token limit",
-    "max_tokens",
-    "prompt is too long",
-    "input token",
-    "context length",
-    "exceed_context",
-    "exceeds the available context",
-    "available context size",
-    "n_prompt_tokens",
-    # Chinese
-    "上下文",
-    "超长",
-    "超出",
-    "token 超过",
-})
+_CONTEXT_LENGTH_KEYWORDS = frozenset(
+    {
+        # English
+        "context_length",
+        "context window",
+        "maximum context",
+        "token limit",
+        "max_tokens",
+        "prompt is too long",
+        "input token",
+        "context length",
+        "exceed_context",
+        "exceeds the available context",
+        "available context size",
+        "n_prompt_tokens",
+        # Chinese
+        "上下文",
+        "超长",
+        "超出",
+        "token 超过",
+    }
+)
 
 
 def classify_http_error(
@@ -122,15 +125,15 @@ def classify_http_error(
 ) -> ProviderError:
     """中文说明：classify_http_error。
 
-Classify an HTTP status code into a typed ProviderError.
+    Classify an HTTP status code into a typed ProviderError.
 
-Args:
-    status_code: HTTP status code.
-    message: Error message.
-    original: Original exception.
+    Args:
+        status_code: HTTP status code.
+        message: Error message.
+        original: Original exception.
 
-Returns:
-    Typed error instance."""
+    Returns:
+        Typed error instance."""
     if status_code == 400:
         msg_lower = message.lower()
         if any(kw in msg_lower for kw in _CONTEXT_LENGTH_KEYWORDS):

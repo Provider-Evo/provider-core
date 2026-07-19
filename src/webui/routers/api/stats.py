@@ -7,16 +7,14 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import asyncio
 import os
 import time
 
 import aiohttp.web
 
-from src.webui.data.services.stats import get_stats
 from src.webui.data.services.logs.request_log import clamp_query_limit, request_broker
+from src.webui.data.services.stats import get_stats
 
 __all__ = ["stats_api", "stats_reset", "requests_ws", "requests_list", "stats_ws"]
 
@@ -87,6 +85,7 @@ def _system_info() -> dict:
     }
     try:
         import resource as _res
+
         usage = _res.getrusage(_res.RUSAGE_SELF)
         info["memory_mb"] = round(usage.ru_maxrss / 1024, 1)
     except (ImportError, AttributeError):

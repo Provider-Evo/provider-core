@@ -12,10 +12,9 @@ import asyncio
 from pathlib import Path
 from typing import Any, List, Optional, Set
 
-from src.foundation.logger import get_logger
-
 from src.core.server.reload.clsfy import ClassifyResult, classify_paths
 from src.core.server.reload.restart import request_process_restart
+from src.foundation.logger import get_logger
 
 __all__ = ["ReloadCoordinator"]
 

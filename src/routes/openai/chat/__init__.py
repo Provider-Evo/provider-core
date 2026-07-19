@@ -7,18 +7,18 @@ from typing import Any, Dict
 
 import aiohttp.web
 
-from src.foundation.config.resolve import resolve_model
-from src.core.utils.errors import ModerationError, NoCandidateError, ProviderError
 from src.core.server import clean_fncall as _clean_fncall
 from src.core.server import get_json as _get_json
+from src.core.utils.errors import ModerationError, NoCandidateError, ProviderError
+from src.foundation.config.resolve import resolve_model
 from src.foundation.logger import get_logger
+from src.routes.openai.chat.helpers import _err, _json, _normalize_messages
 from src.routes.openai.chat.non_stream import (
     build_chat_completion_payload,
     collect_nonstream_chat,
     fallback_parse_tool_calls,
 )
 from src.routes.openai.chat.stream_helpers.stream import stream_chat
-from src.routes.openai.chat.helpers import _err, _json, _normalize_messages
 
 __all__ = [
     "_stream_chat",
@@ -66,7 +66,9 @@ def _check_model_permission(
     allowed = set(vk["models"])
     if mdl in allowed or body.get("model", "") in allowed:
         return None
-    return _err(403, "Model not allowed for this key", "model_not_allowed", "permission_error")
+    return _err(
+        403, "Model not allowed for this key", "model_not_allowed", "permission_error"
+    )
 
 
 async def _collect_and_build_payload(
@@ -100,7 +102,9 @@ async def _collect_and_build_payload(
     content, tcs = fallback_parse_tool_calls(
         content, tcs, platform_id, proto_override, body.get("tools")
     )
-    content = _clean_fncall(content, platform_id=platform_id, protocol_id=proto_override)
+    content = _clean_fncall(
+        content, platform_id=platform_id, protocol_id=proto_override
+    )
     payload = build_chat_completion_payload(mdl, content, tp, tcs, usage_d)
     return payload, None
 

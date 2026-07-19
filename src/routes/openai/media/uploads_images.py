@@ -46,7 +46,9 @@ async def create_image(
                 cand = c
                 break
         if cand is None:
-            return _not_supported("Model {} does not support image generation".format(model))
+            return _not_supported(
+                "Model {} does not support image generation".format(model)
+            )
     else:
         # 无 model 时找第一个支持 image_gen 的平台
         cand = await registry.get_capable_candidate("image_gen")

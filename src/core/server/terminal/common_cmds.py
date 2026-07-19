@@ -47,7 +47,9 @@ class CommonCommandsStore:
         try:
             return json.loads(self._store_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
-            logger.debug("常用命令读取失败，回退为空: %s", self._store_path, exc_info=True)
+            logger.debug(
+                "常用命令读取失败，回退为空: %s", self._store_path, exc_info=True
+            )
             return {"commands": []}
 
     def _save(self, data: Dict[str, Any]) -> None:
@@ -88,14 +90,16 @@ class CommonCommandsStore:
                 replaced = True
                 break
         if not replaced:
-            commands.append({
-                "id": cid,
-                "name": name,
-                "command": command,
-                "auto_enter": auto_enter,
-                "created_at": now,
-                "updated_at": now,
-            })
+            commands.append(
+                {
+                    "id": cid,
+                    "name": name,
+                    "command": command,
+                    "auto_enter": auto_enter,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            )
         data["commands"] = commands
         self._save(data)
         return cid
@@ -123,7 +127,9 @@ class CommonCommandsStore:
             command = str(item.get("command", ""))
             cid = item.get("id")
             auto_enter = bool(item.get("auto_enter", False))
-            self.upsert(name=name, command=command, auto_enter=auto_enter, command_id=cid)
+            self.upsert(
+                name=name, command=command, auto_enter=auto_enter, command_id=cid
+            )
             count += 1
         return count
 

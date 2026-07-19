@@ -35,7 +35,6 @@ catalog 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import json
 from pathlib import Path
 from typing import Callable, Dict, FrozenSet, Set, Tuple
@@ -43,7 +42,11 @@ from typing import Callable, Dict, FrozenSet, Set, Tuple
 import aiohttp.web
 
 from src.foundation.logger import get_logger
-from src.routes.shared.handler import make_empty_list, make_not_found, make_not_supported
+from src.routes.shared.handler import (
+    make_empty_list,
+    make_not_found,
+    make_not_supported,
+)
 
 __all__ = ["register_catalog_routes"]
 

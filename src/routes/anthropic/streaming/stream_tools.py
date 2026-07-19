@@ -6,6 +6,7 @@ import json
 from typing import Any, Dict, List
 
 import aiohttp.web
+
 from src.routes.anthropic.convert import _openai_tc_to_anth
 from src.routes.anthropic.streaming.stream_events import write_event
 
@@ -40,7 +41,7 @@ async def _emit_single_tool_use_block(
         },
     )
     for j_off in range(0, max(1, len(args_str)), _JSON_CHUNK):
-        j_chunk = args_str[j_off: j_off + _JSON_CHUNK]
+        j_chunk = args_str[j_off : j_off + _JSON_CHUNK]
         await write_event(
             resp,
             "content_block_delta",

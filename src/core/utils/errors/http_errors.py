@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import re
 from typing import Optional
 
@@ -37,6 +35,7 @@ def maybe_classify_exception(exc: Exception) -> Exception:
         return classify_http_error(exc.status, str(exc.message), original=exc)
     if isinstance(exc, aiohttp.ClientConnectorError):
         from src.core.utils.errors.biz import NetworkError
+
         return NetworkError(f"连接失败: {exc}", original=exc)
     status = getattr(exc, "status", None)
     if isinstance(status, int):

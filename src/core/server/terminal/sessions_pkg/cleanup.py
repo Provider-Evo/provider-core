@@ -34,7 +34,9 @@ class SessionCleanupMixin:
                 and status == "alive"
                 and now - updated > alive_max_age_seconds
             ):
-                self.save(session_id=sid, status="stale", kind=meta.get("kind", "local"))
+                self.save(
+                    session_id=sid, status="stale", kind=meta.get("kind", "local")
+                )
                 count += 1
                 logger.info("已标记 stale 会话: %s", sid)
         return count

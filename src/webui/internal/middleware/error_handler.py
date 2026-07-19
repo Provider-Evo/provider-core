@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 from typing import Awaitable, Callable
 
 import aiohttp.web
@@ -31,7 +29,13 @@ async def error_middleware(
     except aiohttp.web.HTTPException:
         raise
     except Exception as exc:
-        logger.error("WebUI 请求异常: %s %s -> %s", request.method, request.path, exc, exc_info=True)
+        logger.error(
+            "WebUI 请求异常: %s %s -> %s",
+            request.method,
+            request.path,
+            exc,
+            exc_info=True,
+        )
         return aiohttp.web.json_response(
             {"error": {"message": str(exc), "type": "webui_error"}},
             status=500,

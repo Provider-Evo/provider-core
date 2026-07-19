@@ -79,7 +79,9 @@ class _StreamState:
     def resolve_proto(self) -> Any:
         from src.core.fncall.reg import get_protocol
 
-        self.proto = get_protocol(protocol_id=self.proto_override, platform_id=self.platform_id)
+        self.proto = get_protocol(
+            protocol_id=self.proto_override, platform_id=self.platform_id
+        )
         return self.proto
 
     async def emit_content(self, safe_part: str) -> None:
@@ -95,7 +97,9 @@ class _StreamState:
             except Exception:
                 pass
         await self.send_init()
-        await self.resp.write(_sse_chunk(self.cid, self.ct, self.mdl, {"content": safe_part}))
+        await self.resp.write(
+            _sse_chunk(self.cid, self.ct, self.mdl, {"content": safe_part})
+        )
 
     async def _send_tc_fragment(self, idx: int, arg_fragment: str) -> None:
         await self.resp.write(
@@ -103,7 +107,11 @@ class _StreamState:
                 self.cid,
                 self.ct,
                 self.mdl,
-                {"tool_calls": [{"index": idx, "function": {"arguments": arg_fragment}}]},
+                {
+                    "tool_calls": [
+                        {"index": idx, "function": {"arguments": arg_fragment}}
+                    ]
+                },
             )
         )
 
@@ -138,7 +146,7 @@ class _StreamState:
             await self._send_tc_header(idx, tc, name)
 
             for start in range(0, max(len(args), 1), chunk_size):
-                frag = args[start: start + chunk_size]
+                frag = args[start : start + chunk_size]
                 if not frag and start > 0:
                     break
                 await self._send_tc_fragment(idx, frag)
@@ -147,7 +155,9 @@ class _StreamState:
         """在 buffer 中定位函数调用触发标签的位置，未命中返回 -1。"""
         trigger_tags = self.proto.get_trigger_tags()
         tag_idx = -1
-        detect_start = self.proto.detect_start if hasattr(self.proto, "detect_start") else None
+        detect_start = (
+            self.proto.detect_start if hasattr(self.proto, "detect_start") else None
+        )
         if callable(detect_start):
             try:
                 found, pos = detect_start(self.buffer)
@@ -202,13 +212,23 @@ class _StreamState:
     async def _process_thinking_chunk(self, thinking_text: str) -> None:
         await self.send_init()
         await self.resp.write(
-            _sse_chunk(self.cid, self.ct, self.mdl, {
-                "content": "",
-                "reasoning": thinking_text,
-                "reasoning_details": [
-                    {"type": "reasoning.text", "text": thinking_text, "format": "unknown", "index": 0}
-                ],
-            })
+            _sse_chunk(
+                self.cid,
+                self.ct,
+                self.mdl,
+                {
+                    "content": "",
+                    "reasoning": thinking_text,
+                    "reasoning_details": [
+                        {
+                            "type": "reasoning.text",
+                            "text": thinking_text,
+                            "format": "unknown",
+                            "index": 0,
+                        }
+                    ],
+                },
+            )
         )
 
     async def process_dict_chunk(self, ch: Dict[str, Any]) -> None:
@@ -235,7 +255,9 @@ class _StreamState:
         if self.in_fncall and self.fncall_buffer and not self.tool_calls_data:
             if self.proto is None:
                 self.resolve_proto()
-            _, self.tool_calls_data = self.proto.parse(self.fncall_buffer, self.tools_raw)
+            _, self.tool_calls_data = self.proto.parse(
+                self.fncall_buffer, self.tools_raw
+            )
             if self.tool_calls_data:
                 self.has_tc = True
 
@@ -253,7 +275,9 @@ class _StreamState:
         }
 
         try:
-            await self.resp.write(_sse_chunk(self.cid, self.ct, self.mdl, {}, finish_reason=fr))
+            await self.resp.write(
+                _sse_chunk(self.cid, self.ct, self.mdl, {}, finish_reason=fr)
+            )
             await self.resp.write(_sse_chunk(self.cid, self.ct, self.mdl, {}, usage=u))
             await self.resp.write(b"data: [DONE]\n\n")
         except Exception as exc:

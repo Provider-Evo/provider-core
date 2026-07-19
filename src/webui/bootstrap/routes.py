@@ -35,37 +35,100 @@ routes 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 from pathlib import Path
 
 import aiohttp.web
 
 from src.foundation.paths import resolve_project_root
-
 from src.webui.routers import (
-    autoupdate_apply, autoupdate_check, autoupdate_diff, autoupdate_get, autoupdate_put,
-    bg_image_get, bg_image_upload,
-    config_get, config_put, config_reload, config_schema_get,
-    config_raw_get, config_raw_put,
-    webui_config_get, webui_config_put, webui_config_reload, webui_config_schema_get,
-    webui_config_raw_get, webui_config_raw_put,
+    autoupdate_apply,
+    autoupdate_check,
+    autoupdate_diff,
+    autoupdate_get,
+    autoupdate_put,
+    bg_image_get,
+    bg_image_upload,
+    chat_media_get,
+    chat_media_put,
+    config_get,
+    config_put,
+    config_raw_get,
+    config_raw_put,
+    config_reload,
+    config_schema_get,
     export_summary,
-    files_copy, files_delete, files_download, files_drives, files_list, files_mkdir, files_move,
-    files_project_root, files_read, files_rename, files_search, files_upload, files_write,
-    login_page, logout_page,
-    chat_media_get, chat_media_put,
-    logs_ws, persist_get, persist_put, reload_service, requests_list, requests_ws,
-    stats_api, stats_reset, stats_ws, summary_api, system_status, terminal_sessions_api,
-    terminal_ssh_connections_api, terminal_ws, webui_page,
-    terminal_audit_api, terminal_audit_config_api, terminal_audit_detail_api,
-    terminal_commands_api, terminal_commands_export_api, terminal_commands_import_api,
-    plugins_config_get, plugins_config_put, plugins_config_bundle, plugins_config_reset, plugins_fetch_raw, plugins_git_status,
-    plugins_host_version, plugins_icon, plugins_install, plugins_installed, plugins_list,
-    plugins_local_changelog, plugins_local_readme, plugins_market_config, plugins_reload,
-    plugins_progress, plugins_status, plugins_toggle, plugins_uninstall, plugins_update,
-    plugins_mirror_create, plugins_mirror_delete, plugins_mirror_list, plugins_mirror_update,
-    plugins_runtime_components, plugins_runtime_home_cards, plugins_runtime_hook_specs, plugins_runtime_hooks,
-    plugins_stats_proxy_summary, plugins_stats_proxy_toggle_like,
+    files_copy,
+    files_delete,
+    files_download,
+    files_drives,
+    files_list,
+    files_mkdir,
+    files_move,
+    files_project_root,
+    files_read,
+    files_rename,
+    files_search,
+    files_upload,
+    files_write,
+    login_page,
+    logout_page,
+    logs_ws,
+    persist_get,
+    persist_put,
+    plugins_config_bundle,
+    plugins_config_get,
+    plugins_config_put,
+    plugins_config_reset,
+    plugins_fetch_raw,
+    plugins_git_status,
+    plugins_host_version,
+    plugins_icon,
+    plugins_install,
+    plugins_installed,
+    plugins_list,
+    plugins_local_changelog,
+    plugins_local_readme,
+    plugins_market_config,
+    plugins_mirror_create,
+    plugins_mirror_delete,
+    plugins_mirror_list,
+    plugins_mirror_update,
+    plugins_progress,
+    plugins_reload,
+    plugins_runtime_components,
+    plugins_runtime_home_cards,
+    plugins_runtime_hook_specs,
+    plugins_runtime_hooks,
+    plugins_stats_proxy_summary,
+    plugins_stats_proxy_toggle_like,
+    plugins_status,
+    plugins_toggle,
+    plugins_uninstall,
+    plugins_update,
+    reload_service,
+    requests_list,
+    requests_ws,
+    stats_api,
+    stats_reset,
+    stats_ws,
+    summary_api,
+    system_status,
+    terminal_audit_api,
+    terminal_audit_config_api,
+    terminal_audit_detail_api,
+    terminal_commands_api,
+    terminal_commands_export_api,
+    terminal_commands_import_api,
+    terminal_sessions_api,
+    terminal_ssh_connections_api,
+    terminal_ws,
+    webui_config_get,
+    webui_config_put,
+    webui_config_raw_get,
+    webui_config_raw_put,
+    webui_config_reload,
+    webui_config_schema_get,
+    webui_page,
 )
 from src.webui.routers.admin import auth_regenerate, auth_update, auth_verify
 from src.webui.routers.admin.keys import (
@@ -80,13 +143,19 @@ __all__ = ["setup_routes"]
 def _register_static_routes(app: aiohttp.web.Application) -> None:
     static_dir = Path(__file__).resolve().parent.parent / "frontend_media"
     app.router.add_static(
-        "/static/", path=str(static_dir), name="webui_static",
-        show_index=False, append_version=True,
+        "/static/",
+        path=str(static_dir),
+        name="webui_static",
+        show_index=False,
+        append_version=True,
     )
     prompts_dir = resolve_project_root() / "prompts"
     if prompts_dir.is_dir():
         app.router.add_static(
-            "/prompts/", path=str(prompts_dir), name="webui_prompts", show_index=False,
+            "/prompts/",
+            path=str(prompts_dir),
+            name="webui_prompts",
+            show_index=False,
         )
 
 
@@ -139,22 +208,42 @@ def _register_admin_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/admin/plugins/toggle", plugins_toggle)
     app.router.add_post("/v1/admin/plugins/toggle/{plugin_id}", plugins_toggle)
     app.router.add_get("/v1/admin/plugins/config/{plugin_id}", plugins_config_get)
-    app.router.add_get("/v1/admin/plugins/config/{plugin_id}/bundle", plugins_config_bundle)
+    app.router.add_get(
+        "/v1/admin/plugins/config/{plugin_id}/bundle", plugins_config_bundle
+    )
     app.router.add_put("/v1/admin/plugins/config/{plugin_id}", plugins_config_put)
-    app.router.add_post("/v1/admin/plugins/config/{plugin_id}/reset", plugins_config_reset)
-    app.router.add_get("/v1/admin/plugins/local-readme/{plugin_id}", plugins_local_readme)
-    app.router.add_get("/v1/admin/plugins/local-changelog/{plugin_id}", plugins_local_changelog)
+    app.router.add_post(
+        "/v1/admin/plugins/config/{plugin_id}/reset", plugins_config_reset
+    )
+    app.router.add_get(
+        "/v1/admin/plugins/local-readme/{plugin_id}", plugins_local_readme
+    )
+    app.router.add_get(
+        "/v1/admin/plugins/local-changelog/{plugin_id}", plugins_local_changelog
+    )
     app.router.add_get("/v1/admin/plugins/icon/{plugin_id}", plugins_icon)
     app.router.add_get("/v1/admin/plugins/mirrors", plugins_mirror_list)
     app.router.add_post("/v1/admin/plugins/mirrors", plugins_mirror_create)
     app.router.add_put("/v1/admin/plugins/mirrors/{mirror_id}", plugins_mirror_update)
-    app.router.add_delete("/v1/admin/plugins/mirrors/{mirror_id}", plugins_mirror_delete)
-    app.router.add_get("/v1/admin/plugins/runtime/components", plugins_runtime_home_cards)
-    app.router.add_get("/v1/admin/plugins/runtime/components/{plugin_id}", plugins_runtime_components)
+    app.router.add_delete(
+        "/v1/admin/plugins/mirrors/{mirror_id}", plugins_mirror_delete
+    )
+    app.router.add_get(
+        "/v1/admin/plugins/runtime/components", plugins_runtime_home_cards
+    )
+    app.router.add_get(
+        "/v1/admin/plugins/runtime/components/{plugin_id}", plugins_runtime_components
+    )
     app.router.add_get("/v1/admin/plugins/runtime/hooks", plugins_runtime_hooks)
-    app.router.add_get("/v1/admin/plugins/runtime/hook-specs", plugins_runtime_hook_specs)
-    app.router.add_get("/v1/admin/plugins/stats/{plugin_id}", plugins_stats_proxy_summary)
-    app.router.add_post("/v1/admin/plugins/stats/{plugin_id}/like", plugins_stats_proxy_toggle_like)
+    app.router.add_get(
+        "/v1/admin/plugins/runtime/hook-specs", plugins_runtime_hook_specs
+    )
+    app.router.add_get(
+        "/v1/admin/plugins/stats/{plugin_id}", plugins_stats_proxy_summary
+    )
+    app.router.add_post(
+        "/v1/admin/plugins/stats/{plugin_id}/like", plugins_stats_proxy_toggle_like
+    )
     app.router.add_get("/v1/admin/keys", virtual_keys_list)
     app.router.add_post("/v1/admin/keys", virtual_keys_create)
     app.router.add_delete("/v1/admin/keys/{key_id}", virtual_keys_delete)
@@ -216,8 +305,12 @@ def _register_terminal_routes(app: aiohttp.web.Application) -> None:
         terminal_commands_api,
         name="terminal_command_delete",
     )
-    app.router.add_get("/v1/webui/terminal/commands/export", terminal_commands_export_api)
-    app.router.add_post("/v1/webui/terminal/commands/import", terminal_commands_import_api)
+    app.router.add_get(
+        "/v1/webui/terminal/commands/export", terminal_commands_export_api
+    )
+    app.router.add_post(
+        "/v1/webui/terminal/commands/import", terminal_commands_import_api
+    )
 
 
 def _register_stats_persist_routes(app: aiohttp.web.Application) -> None:

@@ -21,12 +21,14 @@ __all__ = ["auth_middleware"]
 _Handler = Callable[[aiohttp.web.Request], Awaitable[aiohttp.web.StreamResponse]]
 
 # Paths that do NOT require authentication
-_PUBLIC_PATHS: frozenset[str] = frozenset({
-    "/login",
-    "/logout",
-    "/v1/health",
-    "/v1/webui/auth/verify",
-})
+_PUBLIC_PATHS: frozenset[str] = frozenset(
+    {
+        "/login",
+        "/logout",
+        "/v1/health",
+        "/v1/webui/auth/verify",
+    }
+)
 
 # Path prefixes that do NOT require authentication
 _PUBLIC_PREFIXES: tuple[str, ...] = (
@@ -52,10 +54,10 @@ async def auth_middleware(
 ) -> aiohttp.web.StreamResponse:
     """中文说明：auth_middleware。
 
-Reject unauthenticated requests to protected WebUI routes.
+    Reject unauthenticated requests to protected WebUI routes.
 
-Authentication is disabled when ``[auth] enabled = false`` in
-``config.toml`` (the default)."""
+    Authentication is disabled when ``[auth] enabled = false`` in
+    ``config.toml`` (the default)."""
     cfg = get_config()
     if not cfg.auth.enabled:
         return await handler(request)
@@ -70,6 +72,7 @@ Authentication is disabled when ``[auth] enabled = false`` in
     cookie_val = request.cookies.get(COOKIE_NAME, "")
     if cookie_val:
         from src.webui.internal.core.secure import token_manager
+
         if token_manager.verify(cookie_val):
             return await handler(request)
 

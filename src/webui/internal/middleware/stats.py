@@ -35,7 +35,6 @@ stats 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import json
 import time
 import uuid
@@ -140,20 +139,22 @@ def _record_and_emit_end(
     )
     chunks = request.get("_req_log_chunks", [])
     response_text = "".join(str(chunk) for chunk in chunks)
-    broker.push_event({
-        "type": "request_end",
-        "id": req_id,
-        "ts": start_wall,
-        "status": status,
-        "latency_ms": round(latency_ms, 1),
-        "platform": platform,
-        "model": model,
-        "messages_count": body_info.get("messages_count", 0),
-        "messages": body_info.get("messages", []),
-        "has_tools": body_info.get("has_tools", False),
-        "stream": body_info.get("stream", False),
-        "response": response_text,
-    })
+    broker.push_event(
+        {
+            "type": "request_end",
+            "id": req_id,
+            "ts": start_wall,
+            "status": status,
+            "latency_ms": round(latency_ms, 1),
+            "platform": platform,
+            "model": model,
+            "messages_count": body_info.get("messages_count", 0),
+            "messages": body_info.get("messages", []),
+            "has_tools": body_info.get("has_tools", False),
+            "stream": body_info.get("stream", False),
+            "response": response_text,
+        }
+    )
 
 
 async def _run_handler_and_track(
@@ -204,12 +205,14 @@ async def stats_middleware(
     body_info = await _parse_request_body(request, track_live)
     model = body_info.get("model", "")
 
-    broker.push_event({
-        "type": "request_start",
-        "id": req_id,
-        "ts": start_wall,
-        **body_info,
-    })
+    broker.push_event(
+        {
+            "type": "request_start",
+            "id": req_id,
+            "ts": start_wall,
+            **body_info,
+        }
+    )
 
     request["_req_log_id"] = req_id
     request["_req_log_chunks"] = []
@@ -227,6 +230,7 @@ async def stats_middleware(
             model,
             body_info,
         )
+
 
 # =======================================================================
 # 相关模块

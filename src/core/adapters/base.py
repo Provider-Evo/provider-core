@@ -55,6 +55,7 @@ __all__ = ["BaseAccountAdapter", "AccountBase", "TokenInfo"]
 @dataclass
 class TokenInfo:
     """统一 Token 信息。"""
+
     access_token: str = ""
     refresh_token: str = ""
     expires_at: float = 0.0
@@ -77,6 +78,7 @@ class AccountBase:
     简单适配器（API Key 模式）只需设置 ``api_key`` 字段。
     复杂适配器（cookie/token 模式）可覆盖 ``auth_url`` / ``authenticate``。
     """
+
     username: str = ""
     password: str = ""
     api_key: str = ""
@@ -149,7 +151,9 @@ class BaseAccountAdapter(ABC):
                     self._accounts.append(self.account_class(**item))
             logger.info(
                 "%s: 从 %s 加载 %d 个 accounts",
-                self.name, module_path, len(self._accounts),
+                self.name,
+                module_path,
+                len(self._accounts),
             )
             return
 
@@ -158,12 +162,12 @@ class BaseAccountAdapter(ABC):
         if api_keys and isinstance(api_keys, list):
             for key in api_keys:
                 if isinstance(key, str) and key.strip():
-                    self._accounts.append(
-                        self.account_class(api_key=key.strip())
-                    )
+                    self._accounts.append(self.account_class(api_key=key.strip()))
             logger.info(
                 "%s: 从 %s 加载 %d 个 API keys",
-                self.name, module_path, len(self._accounts),
+                self.name,
+                module_path,
+                len(self._accounts),
             )
             return
 
@@ -175,9 +179,7 @@ class BaseAccountAdapter(ABC):
         if isinstance(api_keys, list):
             for key in api_keys:
                 if isinstance(key, str) and key.strip():
-                    self._accounts.append(
-                        self.account_class(api_key=key.strip())
-                    )
+                    self._accounts.append(self.account_class(api_key=key.strip()))
 
     # ── Token 管理 ──
 
@@ -205,9 +207,7 @@ class BaseAccountAdapter(ABC):
     # ── 候选生成（子类实现） ──
 
     @abstractmethod
-    async def candidates_from_accounts(
-        self, accounts: List[AccountBase]
-    ) -> List[Any]:
+    async def candidates_from_accounts(self, accounts: List[AccountBase]) -> List[Any]:
         """从 accounts 列表生成候选（调用方的 Candidate 对象）。"""
 
     async def candidates(self) -> List[Any]:

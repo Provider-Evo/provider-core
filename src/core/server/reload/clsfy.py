@@ -29,13 +29,15 @@ _MANIFEST_DISABLED_NAME = "_manifest.json.disabled"
 _ROUTE_PLUGIN_TYPES = frozenset({"fncall", "webui", "coplan", "general"})
 
 # 插件运行时配置文件 — 变更后按需读取，不触发重载
-_PLUGIN_RUNTIME_CONFIG_NAMES = frozenset({
-    "config.toml",
-    "config.toml.example",
-    "accounts.py",
-    "accounts.py.example",
-    "config_schema.json",
-})
+_PLUGIN_RUNTIME_CONFIG_NAMES = frozenset(
+    {
+        "config.toml",
+        "config.toml.example",
+        "accounts.py",
+        "accounts.py.example",
+        "config_schema.json",
+    }
+)
 
 # 变更后走 L3 的 core 子目录（其余 core 默认 L4）
 _CORE_L3_PARTS = frozenset(
@@ -242,7 +244,7 @@ def classify_paths(changed: Set[str]) -> ClassifyResult:
                 process = True
             continue
         process, application, static, platforms, plugins = _classify_src_path(
-            p.parts[src_idx + 1:],
+            p.parts[src_idx + 1 :],
             process,
             application,
             static,
@@ -261,7 +263,6 @@ def classify_paths(changed: Set[str]) -> ClassifyResult:
         plugin_app_reload=plugin_app_reload,
         plugin_manifest_sync=frozenset(plugin_manifest_sync),
     )
-
 
 
 def classify_paths_incremental(changed: Set[str]) -> ClassifyResult:

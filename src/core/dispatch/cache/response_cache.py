@@ -35,7 +35,6 @@ response_cache 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import hashlib
 import json
 import time
@@ -43,8 +42,8 @@ from collections import OrderedDict
 from threading import Lock
 from typing import Any, Dict, Optional, Tuple
 
-from src.foundation.config.secs import CacheCfg
 from src.foundation.config import get_config
+from src.foundation.config.secs import CacheCfg
 
 __all__ = ["ResponseCache", "get_response_cache"]
 
@@ -171,6 +170,7 @@ def get_response_cache() -> ResponseCache:
     if _cache is None:
         _cache = ResponseCache()
     return _cache
+
 
 # =======================================================================
 # 相关模块

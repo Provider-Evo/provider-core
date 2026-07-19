@@ -1,4 +1,5 @@
 """WebUI 导出。"""
+
 from __future__ import annotations
 
 from .bootstrap.app import WEBUI_CONFIG_KEY, create_app

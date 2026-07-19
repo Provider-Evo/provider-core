@@ -35,7 +35,6 @@ _common 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import os
 import stat
 import string
@@ -49,21 +48,73 @@ DRIVES_SENTINEL = object()
 MAX_PREVIEW_SIZE = 2 * 1024 * 1024
 MAX_UPLOAD_SIZE = 100 * 1024 * 1024
 
-BINARY_EXTENSIONS = frozenset({
-    ".pyc", ".pyo", ".so", ".dll", ".exe", ".bin", ".obj", ".o", ".a", ".lib",
-    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar", ".whl", ".egg",
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
-    ".mp3", ".mp4", ".avi", ".mkv", ".wav", ".flac", ".ogg", ".webm",
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-    ".woff", ".woff2", ".ttf", ".eot", ".otf",
-    ".sqlite", ".db", ".lock",
-})
+BINARY_EXTENSIONS = frozenset(
+    {
+        ".pyc",
+        ".pyo",
+        ".so",
+        ".dll",
+        ".exe",
+        ".bin",
+        ".obj",
+        ".o",
+        ".a",
+        ".lib",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".xz",
+        ".7z",
+        ".rar",
+        ".whl",
+        ".egg",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".ico",
+        ".webp",
+        ".svg",
+        ".mp3",
+        ".mp4",
+        ".avi",
+        ".mkv",
+        ".wav",
+        ".flac",
+        ".ogg",
+        ".webm",
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
+        ".otf",
+        ".sqlite",
+        ".db",
+        ".lock",
+    }
+)
 
 # Path components that are forbidden for write operations
-SENSITIVE_PATH_PARTS = frozenset({
-    ".git", ".env", ".htaccess", ".gitignore",
-    "config.toml", "main_config.toml", "RECORD.md",
-})
+SENSITIVE_PATH_PARTS = frozenset(
+    {
+        ".git",
+        ".env",
+        ".htaccess",
+        ".gitignore",
+        "config.toml",
+        "main_config.toml",
+        "RECORD.md",
+    }
+)
 
 
 def safe_resolve(requested_path: str) -> Optional[Path]:
@@ -121,7 +172,11 @@ def is_write_forbidden(path: Path) -> bool:
 def get_drives() -> List[str]:
     """中文说明：get_drives。Return available root paths (drive letters on Windows)."""
     if IS_WINDOWS:
-        return [f"{letter}:\\" for letter in string.ascii_uppercase if os.path.exists(f"{letter}:\\")]
+        return [
+            f"{letter}:\\"
+            for letter in string.ascii_uppercase
+            if os.path.exists(f"{letter}:\\")
+        ]
     return ["/"]
 
 
@@ -141,10 +196,20 @@ def entry_info_from_scandir(entry: os.DirEntry) -> Dict[str, Any]:
     }
 
 
-SEARCH_SKIP_DIRS = frozenset({
-    ".git", "node_modules", "__pycache__", ".backup", ".tmp",
-    "logs", "persist", "uploads", ".qoder", ".agents",
-})
+SEARCH_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".backup",
+        ".tmp",
+        "logs",
+        "persist",
+        "uploads",
+        ".qoder",
+        ".agents",
+    }
+)
 
 
 def unique_dest(dest: Path) -> Path:
@@ -160,6 +225,7 @@ def unique_dest(dest: Path) -> Path:
         if not candidate.exists():
             return candidate
         counter += 1
+
 
 # =======================================================================
 # 相关模块

@@ -7,7 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
 from __future__ import annotations
 
 import asyncio
@@ -19,8 +18,12 @@ from aiohttp.web_app import AppKey
 
 from src.foundation.logger import get_logger
 from src.webui.bootstrap.deps import get_server_config
-from src.webui.internal.middleware import auth_middleware, error_middleware, static_nocache_middleware
 from src.webui.bootstrap.routes import setup_routes
+from src.webui.internal.middleware import (
+    auth_middleware,
+    error_middleware,
+    static_nocache_middleware,
+)
 
 __all__ = ["WEBUI_CONFIG_KEY", "create_app"]
 
@@ -30,9 +33,13 @@ _STATIC_DIR = Path(__file__).resolve().parent.parent / "frontend_media"
 logger = get_logger(__name__)
 
 
-def create_app(registry: Optional[Any] = None, server: Optional[Any] = None) -> aiohttp.web.Application:
+def create_app(
+    registry: Optional[Any] = None, server: Optional[Any] = None
+) -> aiohttp.web.Application:
     """创建独立 WebUI 应用。"""
-    app = aiohttp.web.Application(middlewares=[auth_middleware, static_nocache_middleware, error_middleware])
+    app = aiohttp.web.Application(
+        middlewares=[auth_middleware, static_nocache_middleware, error_middleware]
+    )
     if registry is not None:
         app["registry"] = registry
     if server is not None:
@@ -46,24 +53,28 @@ def create_app(registry: Optional[Any] = None, server: Optional[Any] = None) -> 
         # Show webui_token in log for first-time setup
         from src.foundation.config import get_config
         from src.webui.internal.core.secure import token_manager
+
         cfg = get_config()
         if cfg.auth.enabled:
             logger.info("WebUI Token: %s", token_manager.token)
 
         try:
             from src.webui.data.services.stats import start_persist
+
             start_persist()
         except Exception:
             pass
 
         try:
             from src.webui.data.services.logs.request_log import start_request_persist
+
             await start_request_persist()
         except Exception:
             pass
 
         try:
             from src.webui.internal.core.logs_ws import log_broker, setup_loguru_sink
+
             loop = asyncio.get_running_loop()
             log_broker.set_loop(loop)
             setup_loguru_sink()

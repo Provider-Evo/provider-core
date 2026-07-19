@@ -7,12 +7,12 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-import aiohttp.web
 import os
 import stat
 from pathlib import Path
 from typing import Any, Dict, List
+
+import aiohttp.web
 
 from ..common import (
     DRIVES_SENTINEL,
@@ -44,13 +44,15 @@ def _match_search_entry(
     except OSError:
         return
     is_dir = stat.S_ISDIR(st.st_mode)
-    bucket.append({
-        "name": entry_path.name,
-        "path": str(entry_path),
-        "is_dir": is_dir,
-        "size": st.st_size if not is_dir else None,
-        "modified": st.st_mtime,
-    })
+    bucket.append(
+        {
+            "name": entry_path.name,
+            "path": str(entry_path),
+            "is_dir": is_dir,
+            "size": st.st_size if not is_dir else None,
+            "modified": st.st_mtime,
+        }
+    )
 
 
 def _walk_search(
@@ -100,11 +102,15 @@ async def files_search(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
     target = safe_resolve(dir_rel)
     if target is None or target is DRIVES_SENTINEL:
-        return aiohttp.web.json_response({"error": "invalid or unsafe path"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "invalid or unsafe path"}, status=400
+        )
     if not target.exists():
         return aiohttp.web.json_response({"error": "directory not found"}, status=404)
     if not target.is_dir():
-        return aiohttp.web.json_response({"error": "path is not a directory"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "path is not a directory"}, status=400
+        )
 
     recursive = request.query.get("recursive", "true").lower() != "false"
     try:
@@ -119,7 +125,9 @@ async def files_search(request: aiohttp.web.Request) -> aiohttp.web.Response:
     query_lower = query.lower()
 
     try:
-        _walk_search(target, query_lower, recursive, exact, prefix, substring, max_results)
+        _walk_search(
+            target, query_lower, recursive, exact, prefix, substring, max_results
+        )
     except PermissionError:
         return aiohttp.web.json_response({"error": "permission denied"}, status=403)
 
@@ -127,4 +135,6 @@ async def files_search(request: aiohttp.web.Request) -> aiohttp.web.Response:
     exact.sort(key=sort_key)
     prefix.sort(key=sort_key)
     substring.sort(key=sort_key)
-    return aiohttp.web.json_response({"results": (exact + prefix + substring)[:max_results]})
+    return aiohttp.web.json_response(
+        {"results": (exact + prefix + substring)[:max_results]}
+    )

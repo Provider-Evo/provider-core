@@ -1,4 +1,5 @@
 """Selector with SQLite persistence and stale candidate pruning."""
+
 from __future__ import annotations
 
 import asyncio
@@ -189,10 +190,26 @@ class Selector(_BaseSelector):
                     n_latency_samples, speed_sum, speed_sum_sq, n_speed_samples,
                     last_success, last_used, error_time, n_calls, updated_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                [(k, r.group, r.n_success, r.n_fails, r.latency_sum, r.latency_sum_sq,
-                  r.n_latency_samples, r.speed_sum, r.speed_sum_sq, r.n_speed_samples,
-                  r.last_success, r.last_used, r.error_time, r.n_calls, time.time())
-                 for k, r in items.items()],
+                [
+                    (
+                        k,
+                        r.group,
+                        r.n_success,
+                        r.n_fails,
+                        r.latency_sum,
+                        r.latency_sum_sq,
+                        r.n_latency_samples,
+                        r.speed_sum,
+                        r.speed_sum_sq,
+                        r.n_speed_samples,
+                        r.last_success,
+                        r.last_used,
+                        r.error_time,
+                        r.n_calls,
+                        time.time(),
+                    )
+                    for k, r in items.items()
+                ],
             )
             conn.commit()
         except Exception as e:
@@ -210,9 +227,23 @@ class Selector(_BaseSelector):
                     n_latency_samples, speed_sum, speed_sum_sq, n_speed_samples,
                     last_success, last_used, error_time, n_calls, updated_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (key, r.group, r.n_success, r.n_fails, r.latency_sum, r.latency_sum_sq,
-                 r.n_latency_samples, r.speed_sum, r.speed_sum_sq, r.n_speed_samples,
-                 r.last_success, r.last_used, r.error_time, r.n_calls, time.time()),
+                (
+                    key,
+                    r.group,
+                    r.n_success,
+                    r.n_fails,
+                    r.latency_sum,
+                    r.latency_sum_sq,
+                    r.n_latency_samples,
+                    r.speed_sum,
+                    r.speed_sum_sq,
+                    r.n_speed_samples,
+                    r.last_success,
+                    r.last_used,
+                    r.error_time,
+                    r.n_calls,
+                    time.time(),
+                ),
             )
             conn.commit()
         except Exception as e:
@@ -222,6 +253,7 @@ class Selector(_BaseSelector):
 
     def _start_flush_thread(self) -> None:
         """Start a daemon thread that periodically flushes dirty records."""
+
         def loop() -> None:
             while not self._closed:
                 time.sleep(self._flush_interval)

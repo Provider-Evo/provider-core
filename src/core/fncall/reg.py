@@ -7,7 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
 from __future__ import annotations
 
 from typing import Dict, Optional
@@ -17,12 +16,13 @@ from echotools.fncall.registry import (
     _get_custom_protocol,
     _mapping_logged,
 )
-from src.foundation.logger import get_logger
 from echotools.protocol.base import (
-    ToolProtocol,
     _PROTOCOL_REGISTRY,
+    ToolProtocol,
     get_protocol_by_id,
 )
+
+from src.foundation.logger import get_logger
 
 __all__ = ["get_protocol", "list_protocols"]
 
@@ -42,6 +42,7 @@ def get_protocol(
     # 从项目配置自动补充缺省值
     try:
         from src.foundation.config import get_config
+
         _fc = get_config().fncall
         if not default_protocol:
             default_protocol = _fc.protocol

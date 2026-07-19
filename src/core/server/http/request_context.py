@@ -7,7 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
 from __future__ import annotations
 
 from contextvars import ContextVar

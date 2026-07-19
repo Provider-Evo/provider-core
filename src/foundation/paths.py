@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 from __future__ import annotations
 
 import sys
@@ -41,26 +39,26 @@ project_root: Path = resolve_project_root()
 def config_dir() -> Path:
     """中文说明：config_dir。
 
-Return the config/ directory under project root."""
+    Return the config/ directory under project root."""
     return project_root / "config"
 
 
 def persist_dir(*parts: str) -> Path:
     """中文说明：persist_dir。
 
-Return persist/<parts> under project root."""
+    Return persist/<parts> under project root."""
     return project_root / "persist" / Path(*parts)
 
 
 def persist_db_dir() -> Path:
     """中文说明：persist_db_dir。
 
-Return persist/webui/db/ under project root."""
+    Return persist/webui/db/ under project root."""
     return persist_dir("webui", "db")
 
 
 def persist_json_dir() -> Path:
     """中文说明：persist_json_dir。
 
-Return persist/webui/json/ under project root."""
+    Return persist/webui/json/ under project root."""
     return persist_dir("webui", "json")

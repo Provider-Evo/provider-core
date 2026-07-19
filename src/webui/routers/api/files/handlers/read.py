@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import aiohttp.web
 import base64
 import mimetypes
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+import aiohttp.web
 
 from ..common import (
     DRIVES_SENTINEL,
@@ -16,7 +17,6 @@ from ..common import (
     is_binary_file,
     safe_resolve,
 )
-
 
 """WebUI 文件管理 API — 列表、读取与下载。"""
 
@@ -42,17 +42,21 @@ def _drive_entries() -> List[Dict[str, Any]]:
             modified = st.st_mtime
         except OSError:
             modified = 0
-        entries.append({
-            "name": drive.rstrip("\\").rstrip("/"),
-            "type": "dir",
-            "size": None,
-            "modified": modified,
-            "path": drive,
-        })
+        entries.append(
+            {
+                "name": drive.rstrip("\\").rstrip("/"),
+                "type": "dir",
+                "size": None,
+                "modified": modified,
+                "path": drive,
+            }
+        )
     return entries
 
 
-def _list_dir_entries(target: Path, offset: int, limit: int) -> Tuple[List[Dict[str, Any]], int, bool]:
+def _list_dir_entries(
+    target: Path, offset: int, limit: int
+) -> Tuple[List[Dict[str, Any]], int, bool]:
     """列出目录项；单次 scandir 后仅对当前页排序。"""
     raw: List[os.DirEntry] = []
     for entry in os.scandir(str(target)):
@@ -77,64 +81,78 @@ async def files_list(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
     if target is DRIVES_SENTINEL:
         entries = _drive_entries()
-        return aiohttp.web.json_response({
-            "entries": entries[offset:offset + limit],
-            "total": len(entries),
-            "offset": offset,
-            "limit": limit,
-            "path": "/",
-            "root": str(PROJECT_ROOT),
-            "isDrives": True,
-        })
+        return aiohttp.web.json_response(
+            {
+                "entries": entries[offset : offset + limit],
+                "total": len(entries),
+                "offset": offset,
+                "limit": limit,
+                "path": "/",
+                "root": str(PROJECT_ROOT),
+                "isDrives": True,
+            }
+        )
 
     if target is None:
-        return aiohttp.web.json_response({"error": "invalid or unsafe path"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "invalid or unsafe path"}, status=400
+        )
     if not target.exists():
         return aiohttp.web.json_response({"error": "path not found"}, status=404)
     if not target.is_dir():
-        return aiohttp.web.json_response({"error": "path is not a directory"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "path is not a directory"}, status=400
+        )
 
     try:
         entries, total, has_more = _list_dir_entries(target, offset, limit)
     except PermissionError:
         return aiohttp.web.json_response({"error": "permission denied"}, status=403)
 
-    return aiohttp.web.json_response({
-        "entries": entries,
-        "total": total,
-        "has_more": has_more,
-        "offset": offset,
-        "limit": limit,
-        "path": str(target),
-        "root": str(PROJECT_ROOT),
-    })
+    return aiohttp.web.json_response(
+        {
+            "entries": entries,
+            "total": total,
+            "has_more": has_more,
+            "offset": offset,
+            "limit": limit,
+            "path": str(target),
+            "root": str(PROJECT_ROOT),
+        }
+    )
 
 
 def _read_image_preview(target: Path, total_size: int) -> aiohttp.web.Response:
     ext = target.suffix.lower()
     if ext not in (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".ico", ".svg"):
-        return aiohttp.web.json_response({
-            "content": None,
-            "encoding": "binary",
-            "total_size": total_size,
-            "truncated": False,
-        })
+        return aiohttp.web.json_response(
+            {
+                "content": None,
+                "encoding": "binary",
+                "total_size": total_size,
+                "truncated": False,
+            }
+        )
     try:
         with open(target, "rb") as f:
             data = f.read(MAX_PREVIEW_SIZE)
         mime = mimetypes.guess_type(str(target))[0] or "image/png"
         b64 = base64.b64encode(data).decode("ascii")
-        return aiohttp.web.json_response({
-            "content": f"data:{mime};base64,{b64}",
-            "encoding": "base64",
-            "total_size": total_size,
-            "truncated": total_size > MAX_PREVIEW_SIZE,
-        })
+        return aiohttp.web.json_response(
+            {
+                "content": f"data:{mime};base64,{b64}",
+                "encoding": "base64",
+                "total_size": total_size,
+                "truncated": total_size > MAX_PREVIEW_SIZE,
+            }
+        )
     except OSError as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)
 
 
-def _read_text_preview(target: Path, total_size: int, offset: int, limit: int) -> aiohttp.web.Response:
+def _read_text_preview(
+    target: Path, total_size: int, offset: int, limit: int
+) -> aiohttp.web.Response:
     try:
         lines: List[str] = []
         has_more = False
@@ -146,15 +164,17 @@ def _read_text_preview(target: Path, total_size: int, offset: int, limit: int) -
                     has_more = True
                     break
                 lines.append(line)
-        return aiohttp.web.json_response({
-            "content": "".join(lines),
-            "encoding": "utf-8",
-            "total_size": total_size,
-            "offset": offset,
-            "limit": limit,
-            "has_more": has_more,
-            "truncated": total_size > MAX_PREVIEW_SIZE,
-        })
+        return aiohttp.web.json_response(
+            {
+                "content": "".join(lines),
+                "encoding": "utf-8",
+                "total_size": total_size,
+                "offset": offset,
+                "limit": limit,
+                "has_more": has_more,
+                "truncated": total_size > MAX_PREVIEW_SIZE,
+            }
+        )
     except OSError as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)
 
@@ -167,7 +187,9 @@ async def files_read(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
     target = safe_resolve(rel_path)
     if target is None or target is DRIVES_SENTINEL:
-        return aiohttp.web.json_response({"error": "invalid or unsafe path"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "invalid or unsafe path"}, status=400
+        )
     if not target.is_file():
         return aiohttp.web.json_response({"error": "path is not a file"}, status=400)
 
@@ -188,7 +210,9 @@ async def files_download(request: aiohttp.web.Request) -> aiohttp.web.StreamResp
 
     target = safe_resolve(rel_path)
     if target is None or target is DRIVES_SENTINEL:
-        return aiohttp.web.json_response({"error": "invalid or unsafe path"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "invalid or unsafe path"}, status=400
+        )
     if not target.is_file():
         return aiohttp.web.json_response({"error": "path is not a file"}, status=400)
 

@@ -35,7 +35,6 @@ async_tasks 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import asyncio
 from abc import abstractmethod
 from asyncio import Event, Lock, Task
@@ -120,7 +119,9 @@ class AsyncTaskManager:
                 except asyncio.CancelledError:
                     logger.info("任务 '%s' 已成功取消", task.task_name)
                 except Exception as exc:
-                    logger.error("等待任务 '%s' 完成时发生异常: %s", task.task_name, exc)
+                    logger.error(
+                        "等待任务 '%s' 完成时发生异常: %s", task.task_name, exc
+                    )
             task_inst = asyncio.create_task(task.start_task(self.abort_flag))
             task_inst.set_name(task.task_name)
             task_inst.add_done_callback(self._remove_task_call_back)
@@ -156,7 +157,9 @@ class AsyncTaskManager:
                     except asyncio.CancelledError:
                         logger.info("任务 '%s' 已取消", task_name)
                     except Exception as exc:
-                        logger.error("任务 '%s' 执行异常: %s", task_name, exc, exc_info=True)
+                        logger.error(
+                            "任务 '%s' 执行异常: %s", task_name, exc, exc_info=True
+                        )
             self.tasks.clear()
             self.abort_flag.clear()
             logger.info("所有异步任务已停止")

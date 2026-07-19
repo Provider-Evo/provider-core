@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import json
 from pathlib import Path
 from typing import Callable, FrozenSet, Set, Tuple
@@ -16,7 +14,11 @@ from typing import Callable, FrozenSet, Set, Tuple
 import aiohttp.web
 
 from src.foundation.logger import get_logger
-from src.routes.shared.handler import make_empty_list, make_not_found, make_not_supported
+from src.routes.shared.handler import (
+    make_empty_list,
+    make_not_found,
+    make_not_supported,
+)
 
 __all__ = ["register_anthropic_catalog_routes"]
 
@@ -53,7 +55,11 @@ def _normalize_path(path: str) -> str:
 def _pick_handler(method: str, path: str) -> Callable:
     if path.startswith("/v1/organizations") or path.startswith("/v1/organization"):
         return make_not_supported("Anthropic Admin API")
-    if path.startswith("/v1/agents") or path.startswith("/v1/sessions") or path.startswith("/v1/environments"):
+    if (
+        path.startswith("/v1/agents")
+        or path.startswith("/v1/sessions")
+        or path.startswith("/v1/environments")
+    ):
         return make_not_supported("Anthropic Managed Agents")
     if path.startswith("/v1/files") or path.startswith("/v1/skills"):
         return make_not_supported("Anthropic Beta API")

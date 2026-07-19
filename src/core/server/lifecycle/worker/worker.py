@@ -13,26 +13,26 @@ from typing import List, Optional
 import aiohttp
 import aiohttp.web
 
-from src.foundation.config import get_config, get_config_manager
 from src.core.dispatch.engine.registry import Registry
 from src.core.server import ensure_port_available
 from src.core.server.lifecycle.app.app_host import AppHost
+from src.core.server.lifecycle.asyncio.looppol import configure_event_loop_policy
+from src.core.server.lifecycle.asyncio.win_asyncio import apply_windows_asyncio_patches
 from src.core.server.lifecycle.net.conn import make_connector
+from src.core.server.lifecycle.stop import request_shutdown
+from src.core.server.lifecycle.worker.worker_stop import shutdown_worker
+from src.core.server.lifecycle.worker.worker_tasks import (
+    abort_default_executor,
+    create_background_tasks,
+)
 from src.core.server.reload import (
     HotReloadService,
     bind_worker_shutdown,
     consume_restart_flag,
 )
-from src.core.server.lifecycle.stop import request_shutdown
-from src.core.server.lifecycle.asyncio.looppol import configure_event_loop_policy
-from src.core.server.lifecycle.asyncio.win_asyncio import apply_windows_asyncio_patches
-from src.core.server.lifecycle.worker.worker_tasks import (
-    abort_default_executor,
-    create_background_tasks,
-)
-from src.core.server.lifecycle.worker.worker_stop import shutdown_worker
-from src.foundation.paths import resolve_project_root
+from src.foundation.config import get_config, get_config_manager
 from src.foundation.logger import get_logger, shutdown_logging
+from src.foundation.paths import resolve_project_root
 
 __all__ = [
     "RESTART_EXIT_CODE",
@@ -109,10 +109,16 @@ def _setup_signal_handlers(stop_event: asyncio.Event) -> None:
             loop.add_signal_handler(sig, stop_event.set)
 
 
-async def _init_registry_and_app_host(cfg: object) -> "tuple[aiohttp.ClientSession, Registry, AppHost, object]":
+async def _init_registry_and_app_host(
+    cfg: object,
+) -> "tuple[aiohttp.ClientSession, Registry, AppHost, object]":
     """创建 HTTP Session、注册表与 AppHost，并绑定配置热重载回调。"""
     connector = make_connector()
-    connect_timeout = cfg.http_pool.connect_timeout if hasattr(cfg.http_pool, "connect_timeout") else 30
+    connect_timeout = (
+        cfg.http_pool.connect_timeout
+        if hasattr(cfg.http_pool, "connect_timeout")
+        else 30
+    )
     session = aiohttp.ClientSession(
         connector=connector,
         timeout=aiohttp.ClientTimeout(total=None, connect=connect_timeout),
@@ -180,7 +186,12 @@ async def _handle_port_occupied(
         )
         await asyncio.sleep(delay)
         return False
-    logger.error("端口 %d 被占用 (PIDs: %s)，重试 %d 次后仍无法释放，退出", port, port_result.pids, max_retries)
+    logger.error(
+        "端口 %d 被占用 (PIDs: %s)，重试 %d 次后仍无法释放，退出",
+        port,
+        port_result.pids,
+        max_retries,
+    )
     await session.close()
     await registry.close()
     raise SystemExit(1)
@@ -204,11 +215,17 @@ async def _try_start_app_host(
         if attempt < max_retries - 1:
             logger.warning(
                 "端口 %d 绑定失败 (%s)，等待 %.1f 秒后重试 (%d/%d)...",
-                port, exc, delay, attempt + 1, max_retries,
+                port,
+                exc,
+                delay,
+                attempt + 1,
+                max_retries,
             )
             await asyncio.sleep(delay)
             return False
-        logger.error("端口 %d 绑定失败，重试 %d 次后仍无法绑定，退出: %s", port, max_retries, exc)
+        logger.error(
+            "端口 %d 绑定失败，重试 %d 次后仍无法绑定，退出: %s", port, max_retries, exc
+        )
         await session.close()
         await registry.close()
         raise SystemExit(1)
@@ -228,14 +245,26 @@ async def _bind_port_with_retry(
 
     for port_attempt in range(max_port_retries):
         port_free = await _handle_port_occupied(
-            port, force_kill, port_attempt, max_port_retries, port_retry_delay, session, registry,
+            port,
+            force_kill,
+            port_attempt,
+            max_port_retries,
+            port_retry_delay,
+            session,
+            registry,
         )
         if not port_free:
             port_retry_delay = min(port_retry_delay * 1.5, 8.0)
             continue
 
         started = await _try_start_app_host(
-            app_host, port, port_attempt, max_port_retries, port_retry_delay, session, registry,
+            app_host,
+            port,
+            port_attempt,
+            max_port_retries,
+            port_retry_delay,
+            session,
+            registry,
         )
         if started:
             return
@@ -271,7 +300,9 @@ async def _wait_and_shutdown(
     reload_app_after_config: object,
 ) -> None:
     """等待退出信号并驱动优雅关停。"""
-    stop_event = bind_worker_shutdown.__self__ if False else None  # 占位，避免误用；实际 stop_event 由调用方持有
+    stop_event = (
+        bind_worker_shutdown.__self__ if False else None
+    )  # 占位，避免误用；实际 stop_event 由调用方持有
 
     try:
         while not _active_stop_event.is_set():
@@ -307,7 +338,9 @@ async def _run() -> int:
     register_webui_bindings()
 
     cfg = get_config()
-    session, registry, app_host, reload_app_after_config = await _init_registry_and_app_host(cfg)
+    session, registry, app_host, reload_app_after_config = (
+        await _init_registry_and_app_host(cfg)
+    )
     await _bind_port_with_retry(cfg, app_host, session, registry)
 
     logger.info("Worker 已启动: http://%s:%d", cfg.server.host, cfg.server.port)
@@ -328,7 +361,9 @@ async def _run() -> int:
         get_config_manager(),
     )
 
-    await _wait_and_shutdown(tasks, registry, session, app_host, hot_reload_service, reload_app_after_config)
+    await _wait_and_shutdown(
+        tasks, registry, session, app_host, hot_reload_service, reload_app_after_config
+    )
 
     return RESTART_EXIT_CODE if consume_restart_flag() else 0
 

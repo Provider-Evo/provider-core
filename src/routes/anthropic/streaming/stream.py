@@ -6,12 +6,12 @@ import asyncio
 from typing import Any, Dict, List, Optional
 
 import aiohttp.web
-from src.foundation.config.resolve import resolve_model
-from src.core.utils.errors import NoCandidateError, ProviderError
+
 from src.core.server import REGISTRY_KEY
 from src.core.utils.compat.tools import parse_fncall_xml
+from src.core.utils.errors import NoCandidateError, ProviderError
+from src.foundation.config.resolve import resolve_model
 from src.foundation.logger import get_logger
-
 from src.routes.anthropic.convert import _build_dispatch_kwargs, _mid
 from src.routes.anthropic.streaming.stream_events import TextDeltaState, write_event
 from src.routes.anthropic.streaming.stream_tools import emit_tool_use_blocks
@@ -78,7 +78,7 @@ async def _emit_thinking_delta(
 ) -> None:
     """按固定步长分块输出 thinking_delta。"""
     for t_off in range(0, max(1, len(thinking_text)), _THINKING_CHUNK):
-        t_chunk = thinking_text[t_off: t_off + _THINKING_CHUNK]
+        t_chunk = thinking_text[t_off : t_off + _THINKING_CHUNK]
         await write_event(
             resp,
             "content_block_delta",
@@ -147,7 +147,12 @@ async def _consume_gateway(
             continue
         if isinstance(ch, dict):
             tool_calls_data, usage_d = await _handle_gateway_dict_chunk(
-                resp, ch, text_state, effective_thinking, tool_calls_data, usage_d,
+                resp,
+                ch,
+                text_state,
+                effective_thinking,
+                tool_calls_data,
+                usage_d,
             )
 
     return {
@@ -269,9 +274,7 @@ async def _init_stream_blocks(
 
     text_block_idx = block_idx
     if not effective_thinking:
-        await _emit_block_start(
-            resp, text_block_idx, {"type": "text", "text": ""}
-        )
+        await _emit_block_start(resp, text_block_idx, {"type": "text", "text": ""})
 
     text_state = TextDeltaState(resp, request, text_block_idx)
     return resp, text_state, text_block_idx, effective_thinking
@@ -290,8 +293,14 @@ async def _run_stream_gateway(
     """运行 gateway 消费循环并捕获流式错误，返回 None 表示已提前结束响应。"""
     try:
         return await _consume_gateway(
-            request, resp, body, msgs, tools, text_state,
-            effective_thinking, buffered_text_chunks,
+            request,
+            resp,
+            body,
+            msgs,
+            tools,
+            text_state,
+            effective_thinking,
+            buffered_text_chunks,
         )
     except asyncio.CancelledError:
         return None
@@ -367,15 +376,26 @@ async def _stream_messages(
     buffered_text_chunks: List[str] = []
 
     result = await _run_stream_gateway(
-        request, resp, body, msgs, tools, text_state,
-        effective_thinking, buffered_text_chunks,
+        request,
+        resp,
+        body,
+        msgs,
+        tools,
+        text_state,
+        effective_thinking,
+        buffered_text_chunks,
     )
     if result is None:
         return resp
 
     await _finalize_stream_result(
-        resp, text_state, text_block_idx, tools,
-        effective_thinking, buffered_text_chunks, result,
+        resp,
+        text_state,
+        text_block_idx,
+        tools,
+        effective_thinking,
+        buffered_text_chunks,
+        result,
     )
 
     return resp

@@ -40,10 +40,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-from src.foundation.logger import get_logger
-
 from src.core.server.reload.coord import ReloadCoordinator
 from src.core.server.reload.file_watcher import FileChange, FileWatcher
+from src.foundation.logger import get_logger
 
 __all__ = ["HotReloadService"]
 
@@ -121,7 +120,11 @@ class HotReloadService:
         webui_config_path: Path,
     ) -> None:
         """基于已创建的 ``self._watcher`` 订阅源码/主配置/WebUI 配置变更。"""
-        source_paths = [p for p in watch_paths if p.name not in {"main_config.toml", "webui_config.toml"}]
+        source_paths = [
+            p
+            for p in watch_paths
+            if p.name not in {"main_config.toml", "webui_config.toml"}
+        ]
         self._source_sub_id = self._watcher.subscribe(
             self._on_source_changes,
             paths=source_paths,
@@ -161,7 +164,11 @@ class HotReloadService:
         if self._watcher is None:
             return
         stats = self._watcher.stats
-        for sub_id in (self._source_sub_id, self._main_config_sub_id, self._webui_config_sub_id):
+        for sub_id in (
+            self._source_sub_id,
+            self._main_config_sub_id,
+            self._webui_config_sub_id,
+        ):
             if sub_id is not None:
                 self._watcher.unsubscribe(sub_id)
         self._source_sub_id = None
@@ -182,9 +189,7 @@ class HotReloadService:
 
     async def _on_source_changes(self, changes: Sequence[FileChange]) -> None:
         paths = {
-            str(change.path)
-            for change in changes
-            if self._accept_source_change(change)
+            str(change.path) for change in changes if self._accept_source_change(change)
         }
         if paths:
             await self._coordinator.handle_changes(paths)
@@ -201,19 +206,22 @@ class HotReloadService:
             return False
         # 插件运行时配置文件 — 按需读取，不触发热重载
         if "plugins" in path.parts and path.name in {
-            "config.toml", "config.toml.example",
-            "accounts.py", "accounts.py.example",
+            "config.toml",
+            "config.toml.example",
+            "accounts.py",
+            "accounts.py.example",
             "config_schema.json",
         }:
             return False
         if path.suffix == ".json":
-            return (
-                "plugins" in path.parts
-                and path.name in {"_manifest.json", "_manifest.json.disabled"}
-            )
+            return "plugins" in path.parts and path.name in {
+                "_manifest.json",
+                "_manifest.json.disabled",
+            }
         if path.suffix and path.suffix not in _SOURCE_EXTENSIONS:
             return False
         return True
+
 
 # =======================================================================
 # 相关模块

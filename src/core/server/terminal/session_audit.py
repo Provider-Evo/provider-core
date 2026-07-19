@@ -46,7 +46,9 @@ class SessionAuditStore:
         try:
             return json.loads(self._store_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
-            logger.debug("审计日志读取失败，回退为空: %s", self._store_path, exc_info=True)
+            logger.debug(
+                "审计日志读取失败，回退为空: %s", self._store_path, exc_info=True
+            )
             return {"entries": []}
 
     def _save(self, data: Dict[str, Any]) -> None:
@@ -63,14 +65,16 @@ class SessionAuditStore:
         data = self._load()
         entries: List[Dict[str, Any]] = list(data.get("entries", []))
         now = time.time()
-        entries.append({
-            "session_id": session_id,
-            "host": host,
-            "kind": kind,
-            "login_time": now,
-            "status": "alive",
-            "updated_at": now,
-        })
+        entries.append(
+            {
+                "session_id": session_id,
+                "host": host,
+                "kind": kind,
+                "login_time": now,
+                "status": "alive",
+                "updated_at": now,
+            }
+        )
         data["entries"] = entries
         self._save(data)
 
@@ -94,7 +98,7 @@ class SessionAuditStore:
         page = max(1, page)
         page_size = max(1, page_size)
         start = (page - 1) * page_size
-        items = entries[start:start + page_size]
+        items = entries[start : start + page_size]
         return {
             "items": items,
             "total": total,

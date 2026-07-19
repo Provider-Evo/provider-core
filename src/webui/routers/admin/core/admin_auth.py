@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import aiohttp.web
 
 from src.webui.internal.core.auth import set_session_cookie, verify_session_cookie
@@ -20,7 +18,7 @@ __all__ = ["auth_verify", "auth_update", "auth_regenerate"]
 async def auth_verify(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：auth_verify。
 
-POST /v1/webui/auth/verify — verify token and set session cookie."""
+    POST /v1/webui/auth/verify — verify token and set session cookie."""
     try:
         body = await request.json()
     except Exception:
@@ -35,13 +33,15 @@ POST /v1/webui/auth/verify — verify token and set session cookie."""
         set_session_cookie(resp, token)
         return resp
 
-    return aiohttp.web.json_response({"valid": False, "error": "invalid token"}, status=401)
+    return aiohttp.web.json_response(
+        {"valid": False, "error": "invalid token"}, status=401
+    )
 
 
 async def auth_update(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：auth_update。
 
-POST /v1/webui/auth/update — update token (requires current session)."""
+    POST /v1/webui/auth/update — update token (requires current session)."""
     if not verify_session_cookie(request):
         return aiohttp.web.json_response({"error": "unauthorized"}, status=401)
 
@@ -67,7 +67,7 @@ POST /v1/webui/auth/update — update token (requires current session)."""
 async def auth_regenerate(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：auth_regenerate。
 
-POST /v1/webui/auth/regenerate — generate a new random token."""
+    POST /v1/webui/auth/regenerate — generate a new random token."""
     if not verify_session_cookie(request):
         return aiohttp.web.json_response({"error": "unauthorized"}, status=401)
 

@@ -39,6 +39,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from src.core.utils.errors.biz import (
+    ConfigError,
+    NetworkError,
+    NoCandidateError,
+    ValidationError,
+)
 from src.core.utils.errors.plat import (
     AuthError,
     LoginError,
@@ -47,12 +53,6 @@ from src.core.utils.errors.plat import (
     RateLimitError,
     ServerError,
     TokenExpiredError,
-)
-from src.core.utils.errors.biz import (
-    ConfigError,
-    NetworkError,
-    NoCandidateError,
-    ValidationError,
 )
 
 __all__ = [
@@ -133,7 +133,10 @@ def raise_server_error(
 ) -> None:
     """抛出服务端错误（5xx）。"""
     raise ServerError(
-        message, http_status=http_status, original=original, platform=platform,
+        message,
+        http_status=http_status,
+        original=original,
+        platform=platform,
     )
 
 
@@ -182,8 +185,12 @@ def raise_platform_error(
 ) -> None:
     """抛出平台通用错误。"""
     raise PlatformError(
-        message, original=original, status_code=status_code, platform=platform,
+        message,
+        original=original,
+        status_code=status_code,
+        platform=platform,
     )
+
 
 # =======================================================================
 # 相关模块

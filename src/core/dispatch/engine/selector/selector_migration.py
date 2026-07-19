@@ -1,4 +1,5 @@
 """Selector migration helpers — standalone functions used by Selector.__init__."""
+
 from __future__ import annotations
 
 import json
@@ -112,12 +113,23 @@ def _migrate_one_json_file(conn: sqlite3.Connection, f: Path) -> bool:
                 speed_sum_sq, n_speed_samples, last_success,
                 last_used, error_time, n_calls, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (key, record.group, record.n_success, record.n_fails,
-             record.latency_sum, record.latency_sum_sq,
-             record.n_latency_samples, record.speed_sum,
-             record.speed_sum_sq, record.n_speed_samples,
-             record.last_success, record.last_used,
-             record.error_time, record.n_calls, time.time()),
+            (
+                key,
+                record.group,
+                record.n_success,
+                record.n_fails,
+                record.latency_sum,
+                record.latency_sum_sq,
+                record.n_latency_samples,
+                record.speed_sum,
+                record.speed_sum_sq,
+                record.n_speed_samples,
+                record.last_success,
+                record.last_used,
+                record.error_time,
+                record.n_calls,
+                time.time(),
+            ),
         )
         return True
     except Exception as e:

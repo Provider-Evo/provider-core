@@ -5,27 +5,23 @@ from __future__ import annotations
 from typing import Any
 
 import aiohttp.web
-
 from echotools.web.utils import cors_middleware, error_middleware, json_response
 
-from src.foundation.config import get_config
-from src.core.utils.errors import AuthError, RateLimitError
 from src.core.server.http.request_context import clear_api_token, set_api_token
 from src.core.server.plugins.hook_reg import get_hook_registry
+from src.core.utils.errors import AuthError, RateLimitError
+from src.foundation.config import get_config
 
 __all__ = ["_cors", "_auth_middleware", "_error"]
 
 _cors = cors_middleware(
     allow_headers=(
-        "Content-Type, Authorization, X-API-Key, "
-        "Anthropic-Version, x-api-key"
+        "Content-Type, Authorization, X-API-Key, " "Anthropic-Version, x-api-key"
     ),
 )
 
 
-_API_AUTH_EXEMPT_PREFIXES: tuple[str, ...] = (
-    "/v1/coplan/",
-)
+_API_AUTH_EXEMPT_PREFIXES: tuple[str, ...] = ("/v1/coplan/",)
 
 
 def _is_provider_api_auth_exempt(path: str) -> bool:
@@ -213,7 +209,9 @@ async def _run_auth_flow(
     handler: Any,
 ) -> aiohttp.web.StreamResponse:
     """执行认证流程：白名单校验、凭据校验、路由分发。"""
-    creds_required = (cfg.auth.enabled and bool(cfg.auth.keys)) or cfg.virtual_keys.enabled
+    creds_required = (
+        cfg.auth.enabled and bool(cfg.auth.keys)
+    ) or cfg.virtual_keys.enabled
 
     # Auth disabled: allow all requests
     if not cfg.auth.enabled:

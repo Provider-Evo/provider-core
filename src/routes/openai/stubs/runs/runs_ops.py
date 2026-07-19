@@ -35,7 +35,6 @@ runs_ops 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import time
 
 import aiohttp.web
@@ -52,6 +51,7 @@ logger = get_logger(__name__)
 # =======================================================================
 # Runs
 # =======================================================================
+
 
 async def create_run(
     request: aiohttp.web.Request,
@@ -165,6 +165,7 @@ async def submit_tool_outputs(
             "thread_id": thread_id,
         }
     )
+
 
 # =======================================================================
 # 相关模块

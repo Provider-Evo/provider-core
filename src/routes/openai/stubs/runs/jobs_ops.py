@@ -35,8 +35,6 @@ jobs_ops 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
-
 import aiohttp.web
 
 from src.foundation.logger import get_logger
@@ -51,6 +49,7 @@ logger = get_logger(__name__)
 # =======================================================================
 # Fine-tuning
 # =======================================================================
+
 
 async def create_fine_tuning_job(
     request: aiohttp.web.Request,
@@ -126,6 +125,7 @@ async def list_fine_tuning_events(
 # Batch
 # =======================================================================
 
+
 async def create_batch(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.Response:
@@ -180,6 +180,7 @@ async def cancel_batch(
         响应对象。
     """
     return _err(404, "Batch not found", "batch_not_found")
+
 
 # =======================================================================
 # 相关模块

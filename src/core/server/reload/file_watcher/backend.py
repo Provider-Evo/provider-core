@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Optional, Tuple
-
 import asyncio
 import os
 import sys
+from pathlib import Path
+from typing import Any, Optional, Tuple
 
-from src.core.server.reload.file_watcher.types import Change, FileChange, _map_watchfiles_change
+from src.core.server.reload.file_watcher.types import (
+    Change,
+    FileChange,
+    _map_watchfiles_change,
+)
 from src.foundation.logger import get_logger
 
 __all__ = ["FileWatcherBackendMixin"]

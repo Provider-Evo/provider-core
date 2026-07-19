@@ -117,7 +117,9 @@ class AsyncVirtualKeyStore:
     async def delete(self, key_id: str) -> bool:
         """按 id 删除 Key，存在则返回 True。"""
         async with self._conn() as conn:
-            cursor = await conn.execute("DELETE FROM virtual_keys WHERE id = ?", (key_id,))
+            cursor = await conn.execute(
+                "DELETE FROM virtual_keys WHERE id = ?", (key_id,)
+            )
             await conn.commit()
             return cursor.rowcount > 0
 
@@ -178,6 +180,7 @@ class AsyncVirtualKeyStore:
 # 同步包装器（向后兼容）
 # ------------------------------------------------------------------
 
+
 class VirtualKeyStore:
     """同步包装器，内部委托给 AsyncVirtualKeyStore。
 
@@ -217,6 +220,7 @@ class VirtualKeyStore:
         """同步创建新 Key。"""
         self._ensure_sync()
         import asyncio
+
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -224,6 +228,7 @@ class VirtualKeyStore:
         if loop and loop.is_running():
             # 在异步上下文中，使用线程池执行
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 return pool.submit(
                     asyncio.run,
@@ -232,7 +237,7 @@ class VirtualKeyStore:
                         quota_total=quota_total,
                         expires_at=expires_at,
                         models=models,
-                    )
+                    ),
                 ).result()
         else:
             return asyncio.run(
@@ -248,12 +253,14 @@ class VirtualKeyStore:
         """同步列出所有 Key。"""
         self._ensure_sync()
         import asyncio
+
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = None
         if loop and loop.is_running():
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 return pool.submit(asyncio.run, self._async_store.list_keys()).result()
         else:
@@ -263,14 +270,18 @@ class VirtualKeyStore:
         """同步删除 Key。"""
         self._ensure_sync()
         import asyncio
+
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = None
         if loop and loop.is_running():
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, self._async_store.delete(key_id)).result()
+                return pool.submit(
+                    asyncio.run, self._async_store.delete(key_id)
+                ).result()
         else:
             return asyncio.run(self._async_store.delete(key_id))
 
@@ -278,14 +289,18 @@ class VirtualKeyStore:
         """同步校验 Key。"""
         self._ensure_sync()
         import asyncio
+
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = None
         if loop and loop.is_running():
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, self._async_store.authenticate(raw_key)).result()
+                return pool.submit(
+                    asyncio.run, self._async_store.authenticate(raw_key)
+                ).result()
         else:
             return asyncio.run(self._async_store.authenticate(raw_key))
 
@@ -293,14 +308,18 @@ class VirtualKeyStore:
         """同步消费额度。"""
         self._ensure_sync()
         import asyncio
+
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = None
         if loop and loop.is_running():
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                pool.submit(asyncio.run, self._async_store.consume(key_id, units)).result()
+                pool.submit(
+                    asyncio.run, self._async_store.consume(key_id, units)
+                ).result()
         else:
             asyncio.run(self._async_store.consume(key_id, units))
 

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from src.core.server.reload.clsfy import ClassifyResult, classify_paths
 from src.core.server.reload.coord import ReloadCoordinator
-from src.core.server.reload.file_watcher import FileChange, FileWatcher, FileWatcherStats
+from src.core.server.reload.file_watcher import (
+    FileChange,
+    FileWatcher,
+    FileWatcherStats,
+)
 from src.core.server.reload.restart import (
     bind_worker_shutdown,
     consume_restart_flag,

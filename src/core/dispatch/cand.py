@@ -74,7 +74,9 @@ def filter_candidates_by_capability(
     return kept if kept else list(candidates)
 
 
-def messages_require_capability(messages: List[Dict[str, Any]], capability: str) -> bool:
+def messages_require_capability(
+    messages: List[Dict[str, Any]], capability: str
+) -> bool:
     """根据消息内容判断是否需要某能力（当前支持 vision / image_url）。"""
     if capability != "vision":
         return False
@@ -147,9 +149,9 @@ def make_id(platform: str, resource_id: str = "") -> str:
         ID 字符串，格式 {platform}_{hash12}。
     """
     if resource_id:
-        h = hashlib.sha256(
-            "{}:{}".format(platform, resource_id).encode()
-        ).hexdigest()[:12]
+        h = hashlib.sha256("{}:{}".format(platform, resource_id).encode()).hexdigest()[
+            :12
+        ]
         return "{}_{}".format(platform, h)
     return "{}_{}".format(platform, uuid.uuid4().hex[:12])
 

@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, List, Optional
 
@@ -56,13 +54,19 @@ class ObservabilityServices:
     recover_terminal_sessions: RecoverSessionsFn = field(default=_async_noop)
     list_terminal_sessions: ListSessionsFn = field(default=list)
     save_terminal_states: Callable[[], None] = field(default=lambda: None)
-    close_log_sockets: Callable[[], Awaitable[List[aiohttp.web.WebSocketResponse]]] = field(
+    close_log_sockets: Callable[[], Awaitable[List[aiohttp.web.WebSocketResponse]]] = (
+        field(
+            default=_async_empty_list,
+        )
+    )
+    close_terminal_sockets: Callable[
+        [], Awaitable[List[aiohttp.web.WebSocketResponse]]
+    ] = field(
         default=_async_empty_list,
     )
-    close_terminal_sockets: Callable[[], Awaitable[List[aiohttp.web.WebSocketResponse]]] = field(
-        default=_async_empty_list,
-    )
-    close_request_monitor_sockets: Callable[[], Awaitable[List[aiohttp.web.WebSocketResponse]]] = field(
+    close_request_monitor_sockets: Callable[
+        [], Awaitable[List[aiohttp.web.WebSocketResponse]]
+    ] = field(
         default=_async_empty_list,
     )
     request_broker_sockets: Optional[List[Any]] = None

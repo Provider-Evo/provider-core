@@ -136,7 +136,9 @@ def _resolve_max_error_restarts() -> int:
         return _DEFAULT_MAX_ERROR_RESTARTS
 
 
-def _check_rapid_restart(rapid_restart_count: int, elapsed: float) -> "tuple[int, bool]":
+def _check_rapid_restart(
+    rapid_restart_count: int, elapsed: float
+) -> "tuple[int, bool]":
     """更新快速重启计数，返回 (新计数, 是否应放弃重启)。从 run_runner 抽出。"""
     if elapsed >= _RAPID_RESTART_THRESHOLD:
         return 0, False
@@ -158,7 +160,9 @@ def _check_rapid_restart(rapid_restart_count: int, elapsed: float) -> "tuple[int
     return rapid_restart_count, False
 
 
-def _spawn_worker(args: list, worker_env: dict) -> "tuple[Optional[subprocess.Popen], Optional[threading.Thread]]":
+def _spawn_worker(
+    args: list, worker_env: dict
+) -> "tuple[Optional[subprocess.Popen], Optional[threading.Thread]]":
     """启动 Worker 子进程与其输出读取线程。从 run_runner 抽出。"""
     logger.debug("启动 Worker 子进程...")
     try:
@@ -252,7 +256,9 @@ def _handle_worker_exit(
 
 
 def _run_worker_loop(
-    args: list, worker_env: dict, max_error_restarts: int,
+    args: list,
+    worker_env: dict,
+    max_error_restarts: int,
 ) -> tuple:
     """执行 Worker 守护主循环，返回最终的进程与读取线程句柄。"""
     rapid_restart_count = 0
@@ -264,7 +270,9 @@ def _run_worker_loop(
 
     while True:
         elapsed = time.time() - last_start_time
-        rapid_restart_count, give_up = _check_rapid_restart(rapid_restart_count, elapsed)
+        rapid_restart_count, give_up = _check_rapid_restart(
+            rapid_restart_count, elapsed
+        )
         if give_up:
             break
 
@@ -291,7 +299,9 @@ def _run_worker_loop(
             )
 
         error_restart_count, give_up = _handle_worker_exit(
-            exit_code, error_restart_count, max_error_restarts,
+            exit_code,
+            error_restart_count,
+            max_error_restarts,
         )
         if give_up:
             break
@@ -318,7 +328,9 @@ def run_runner() -> None:
 
     max_error_restarts = _resolve_max_error_restarts()
 
-    proc, reader_thread, should_return = _run_worker_loop(args, worker_env, max_error_restarts)
+    proc, reader_thread, should_return = _run_worker_loop(
+        args, worker_env, max_error_restarts
+    )
     if should_return:
         return
 

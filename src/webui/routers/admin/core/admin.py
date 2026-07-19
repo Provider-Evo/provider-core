@@ -35,14 +35,19 @@ admin 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 from pathlib import Path
 
 import aiohttp.web
 
 from src.foundation.paths import config_dir, persist_dir
 
-__all__ = ["reload_service", "persist_get", "persist_put", "bg_image_upload", "bg_image_get"]
+__all__ = [
+    "reload_service",
+    "persist_get",
+    "persist_put",
+    "bg_image_upload",
+    "bg_image_get",
+]
 
 
 async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -75,7 +80,8 @@ async def reload_service(request: aiohttp.web.Request) -> aiohttp.web.Response:
 async def persist_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：persist_get。
 
-GET /v1/webui/persist/{filename} — read a JSON/TOML file from config/ or persist/webui/json/."""
+    GET /v1/webui/persist/{filename} — read a JSON/TOML file from config/ or persist/webui/json/.
+    """
     import json
 
     filename = request.match_info["filename"]
@@ -106,6 +112,7 @@ GET /v1/webui/persist/{filename} — read a JSON/TOML file from config/ or persi
 
 def _persist_filepath(filename: str) -> Path:
     from pathlib import Path
+
     if filename == "config.toml":
         cfg_dir = config_dir()
         cfg_dir.mkdir(parents=True, exist_ok=True)
@@ -133,9 +140,11 @@ def _write_toml_fallback(filepath: Path, body: dict) -> None:
 
 def _write_persist_body(filepath: Path, filename: str, body: dict) -> None:
     import json
+
     if filename.endswith(".toml"):
         try:
             import tomlkit
+
             with open(filepath, "w", encoding="utf-8") as f:
                 tomlkit.dump(body, f)
         except ImportError:
@@ -162,7 +171,8 @@ async def persist_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
 async def bg_image_upload(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：bg_image_upload。
 
-POST /v1/webui/bg-image — upload a terminal background image to persist/webui/img/."""
+    POST /v1/webui/bg-image — upload a terminal background image to persist/webui/img/.
+    """
     import hashlib
 
     reader = await request.multipart()
@@ -175,10 +185,17 @@ POST /v1/webui/bg-image — upload a terminal background image to persist/webui/
 
     data = await field.read()
     if len(data) > 5 * 1024 * 1024:
-        return aiohttp.web.json_response({"error": "file too large (max 5MB)"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "file too large (max 5MB)"}, status=400
+        )
 
     content_type = field.headers.get("Content-Type", "image/png")
-    ext_map = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
+    ext_map = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/gif": ".gif",
+        "image/webp": ".webp",
+    }
     ext = ext_map.get(content_type, ".png")
     file_hash = hashlib.md5(data).hexdigest()[:12]
     filename = f"terminal-bg-{file_hash}{ext}"
@@ -192,7 +209,7 @@ POST /v1/webui/bg-image — upload a terminal background image to persist/webui/
 async def bg_image_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """中文说明：bg_image_get。
 
-GET /v1/webui/bg-image/{filename} — serve a terminal background image."""
+    GET /v1/webui/bg-image/{filename} — serve a terminal background image."""
     filename = request.match_info["filename"]
     if ".." in filename or "/" in filename or "\\" in filename:
         return aiohttp.web.json_response({"error": "invalid filename"}, status=400)

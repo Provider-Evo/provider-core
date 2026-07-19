@@ -10,8 +10,9 @@ from typing import Any, Dict
 
 import aiohttp.web
 from aiohttp.web_app import AppKey
-from src.foundation.config import get_config
+
 from src.core.server import json_response
+from src.foundation.config import get_config
 
 __all__ = ["setup_routes"]
 
@@ -44,8 +45,15 @@ async def health(request: aiohttp.web.Request) -> aiohttp.web.Response:
         响应对象。
     """
     from src.foundation.config import get_config  # noqa: PLC0415
+
     cfg = get_config()
-    return _json({"status": "healthy", "version": cfg.server.version, "timestamp": int(time.time())})
+    return _json(
+        {
+            "status": "healthy",
+            "version": cfg.server.version,
+            "timestamp": int(time.time()),
+        }
+    )
 
 
 async def list_models(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -108,9 +116,7 @@ async def status(request: aiohttp.web.Request) -> aiohttp.web.Response:
             cs = await a.candidates()
             return n, {
                 "candidates": len(cs),
-                "available": len(
-                    [c for c in cs if c.available and not c.busy]
-                ),
+                "available": len([c for c in cs if c.available and not c.busy]),
                 "models": len(a.supported_models),
             }
         except Exception:

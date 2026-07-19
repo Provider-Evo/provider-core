@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -44,7 +42,9 @@ class RateLimiter:
         while bucket.hits and bucket.hits[0] < cutoff:
             bucket.hits.popleft()
 
-    def allow(self, scope: str, limit: int, window_sec: float = 60.0) -> Tuple[bool, int]:
+    def allow(
+        self, scope: str, limit: int, window_sec: float = 60.0
+    ) -> Tuple[bool, int]:
         """返回 (allowed, retry_after_seconds)。"""
         if limit <= 0:
             return True, 0

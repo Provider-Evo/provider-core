@@ -5,8 +5,13 @@ from __future__ import annotations
 import asyncio
 from typing import Sequence
 
+from src.core.server.reload.file_watcher.types import (
+    Change,
+    ChangeCallback,
+    FileChange,
+    FileWatchSubscription,
+)
 from src.foundation.logger import get_logger
-from src.core.server.reload.file_watcher.types import Change, ChangeCallback, FileChange, FileWatchSubscription
 
 __all__ = ["FileWatcherDispatchMixin"]
 
@@ -68,7 +73,9 @@ class FileWatcherDispatchMixin:
                 if attempt < max_retries - 1:
                     logger.warning(
                         "文件变更回调超时，重试 %d/%d (subscription_id=%s)",
-                        attempt + 1, max_retries, subscription.subscription_id,
+                        attempt + 1,
+                        max_retries,
+                        subscription.subscription_id,
                     )
                     continue
                 self._stats.callbacks_timed_out += 1
@@ -76,7 +83,8 @@ class FileWatcherDispatchMixin:
                 self._mark_callback_failure(subscription.subscription_id)
                 logger.warning(
                     "文件变更回调超时 (subscription_id=%s, timeout=%ss)",
-                    subscription.subscription_id, self._callback_timeout_s,
+                    subscription.subscription_id,
+                    self._callback_timeout_s,
                 )
                 return
             except Exception as exc:
@@ -84,7 +92,8 @@ class FileWatcherDispatchMixin:
                 self._mark_callback_failure(subscription.subscription_id)
                 logger.warning(
                     "文件变更回调失败 (subscription_id=%s): %s",
-                    subscription.subscription_id, exc,
+                    subscription.subscription_id,
+                    exc,
                 )
                 return
 
@@ -107,7 +116,8 @@ class FileWatcherDispatchMixin:
             state.consecutive_failures = 0
             logger.warning(
                 "文件变更回调进入冷却 (subscription_id=%s, cooldown=%ss)",
-                subscription_id, self._callback_cooldown_s,
+                subscription_id,
+                self._callback_cooldown_s,
             )
 
     def _match_changes(
@@ -115,7 +125,10 @@ class FileWatcherDispatchMixin:
     ) -> list:
         matched: list = []
         for change in changes:
-            if subscription.change_types is not None and change.change_type not in subscription.change_types:
+            if (
+                subscription.change_types is not None
+                and change.change_type not in subscription.change_types
+            ):
                 continue
             if subscription.paths and not any(
                 self._path_matches(change.path, path) for path in subscription.paths

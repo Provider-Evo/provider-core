@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import aiohttp.web
 
 from src.core.auth.virtual_keys import get_virtual_key_store

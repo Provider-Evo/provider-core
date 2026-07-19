@@ -6,6 +6,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 import aiohttp.web
+
 from src.core.server import safe_flush as _safe_flush
 from src.foundation.logger import get_logger
 
@@ -24,9 +25,7 @@ async def write_event(
         event: 事件名称。
         data: 事件数据字典。
     """
-    line = "event: {}\ndata: {}\n\n".format(
-        event, json.dumps(data, ensure_ascii=False)
-    )
+    line = "event: {}\ndata: {}\n\n".format(event, json.dumps(data, ensure_ascii=False))
     try:
         await resp.write(line.encode("utf-8"))
     except (ConnectionError, OSError) as exc:

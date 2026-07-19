@@ -1,17 +1,18 @@
 """平台注册表 — 复用 echotools PluginRegistry，绑定 PlatformAdapter。"""
+
 from __future__ import annotations
 
 import asyncio
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.foundation.logger import get_logger
 from echotools.plugin.registry import PluginRegistry
 
 from src.core.dispatch.cand import Candidate
 from src.core.dispatch.engine.registry.reg_life import RegistryLifecycleMixin
 from src.core.dispatch.engine.registry.reg_mod import RegistryModelsMixin
 from src.core.dispatch.engine.selector import Selector
+from src.foundation.logger import get_logger
 from src.foundation.paths import persist_dir
 
 __all__ = ["Registry"]
@@ -25,7 +26,9 @@ class Registry(RegistryLifecycleMixin, RegistryModelsMixin):
 
     def __init__(self) -> None:
         self._registry = PluginRegistry()
-        self.selector = Selector(persist_dir=str(persist_dir("gateway")), group_attr="platform")
+        self.selector = Selector(
+            persist_dir=str(persist_dir("gateway")), group_attr="platform"
+        )
         self._external_loader: Any = None
         self._app_host: Any = None
         self._candidates_cache: Dict[str, Tuple[float, List[Candidate]]] = {}
@@ -42,7 +45,9 @@ class Registry(RegistryLifecycleMixin, RegistryModelsMixin):
         """公开方法 adapters。"""
         return self._registry.plugins
 
-    async def get_candidates(self, model: Optional[str] = None, capability: Optional[str] = None) -> List[Candidate]:
+    async def get_candidates(
+        self, model: Optional[str] = None, capability: Optional[str] = None
+    ) -> List[Candidate]:
         """公开方法 get_candidates。"""
         if model is not None and capability is None:
             cached = self._candidates_cache.get(model)
@@ -62,6 +67,7 @@ class Registry(RegistryLifecycleMixin, RegistryModelsMixin):
             if capability is not None and not c.has_capability(capability):
                 return False
             return True
+
         result = await self._registry.collect_from_all("candidates", filter_fn=_filter)
         if model is not None and capability is None:
             self._candidates_cache[model] = (time.monotonic(), result)

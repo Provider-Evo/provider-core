@@ -7,16 +7,14 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from threading import Lock
 from typing import Deque, Dict, Optional
 
-from src.foundation.config.secs import CircuitCfg
 from src.foundation.config import get_config
+from src.foundation.config.secs import CircuitCfg
 
 __all__ = ["PlatformCircuitBreaker", "get_platform_circuit_breaker"]
 

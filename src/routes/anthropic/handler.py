@@ -7,16 +7,16 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp.web
-from src.foundation.config.resolve import resolve_model
-from src.core.utils.errors import NoCandidateError, ProviderError
+
 from src.core.server import (
     REGISTRY_KEY,
-    clean_fncall as _clean_fncall,
-    get_json as _get_json,
 )
+from src.core.server import clean_fncall as _clean_fncall
+from src.core.server import get_json as _get_json
 from src.core.utils.compat.tools import parse_fncall_xml
+from src.core.utils.errors import NoCandidateError, ProviderError
+from src.foundation.config.resolve import resolve_model
 from src.foundation.logger import get_logger
-
 from src.routes.anthropic.convert import (
     _anth_messages_to_openai,
     _anth_tools_to_openai,
@@ -78,7 +78,11 @@ async def _consume_dispatch_chunks(
             continue
         if isinstance(ch, dict):
             tool_calls, usage_d, platform_id = _collect_dispatch_dict_chunk(
-                ch, thinking_parts, tool_calls, usage_d, platform_id,
+                ch,
+                thinking_parts,
+                tool_calls,
+                usage_d,
+                platform_id,
             )
 
     return content_parts, thinking_parts, tool_calls, usage_d, platform_id
@@ -96,6 +100,7 @@ def _resolve_fncall_tool_calls(
         return "", tool_calls
 
     from src.core.fncall.reg import get_protocol
+
     proto = get_protocol(platform_id=platform_id)
     trigger_tags = proto.get_trigger_tags()
     has_trigger = any(tag in raw_content for tag in trigger_tags)
@@ -145,7 +150,11 @@ async def _collect_messages(
     cleaned = _clean_fncall(raw_content, platform_id=platform_id)
 
     cleaned, tool_calls = _resolve_fncall_tool_calls(
-        raw_content, cleaned, tool_calls, tools, platform_id,
+        raw_content,
+        cleaned,
+        tool_calls,
+        tools,
+        platform_id,
     )
 
     return cleaned, thinking_parts, tool_calls, usage_d, platform_id
@@ -174,7 +183,9 @@ def _build_anthropic_content_blocks(
     return blocks
 
 
-def _anthropic_usage(msgs: List[Dict], content: str, usage_d: Optional[Dict]) -> tuple[int, int]:
+def _anthropic_usage(
+    msgs: List[Dict], content: str, usage_d: Optional[Dict]
+) -> tuple[int, int]:
     """计算 Anthropic usage 的 input/output tokens。"""
     pt = sum(len(str(m.get("content", ""))) // 3 for m in msgs)
     if usage_d:
@@ -188,7 +199,9 @@ def _anthropic_usage(msgs: List[Dict], content: str, usage_d: Optional[Dict]) ->
     return pt, ou
 
 
-def _parse_messages_request(body: Dict[str, Any]) -> tuple[str | None, aiohttp.web.StreamResponse | None]:
+def _parse_messages_request(
+    body: Dict[str, Any]
+) -> tuple[str | None, aiohttp.web.StreamResponse | None]:
     """校验 messages 请求体；失败返回 (None, error_response)。"""
     messages_raw = body.get("messages", [])
     if not messages_raw:
@@ -215,8 +228,8 @@ async def messages_handler(
     if bool(body.get("stream", False)):
         return await _stream_messages(request, body, msgs, tools, _is_thinking(body))
     try:
-        content, thinking_parts, tool_calls, usage_d, platform_id = await _collect_messages(
-            body, msgs, tools, request.app[REGISTRY_KEY]
+        content, thinking_parts, tool_calls, usage_d, platform_id = (
+            await _collect_messages(body, msgs, tools, request.app[REGISTRY_KEY])
         )
     except NoCandidateError as exc:
         return _err(503, str(exc), "overloaded_error")
@@ -224,6 +237,7 @@ async def messages_handler(
         return _err(502, str(exc), "api_error")
     except Exception as exc:
         from src.core.utils.errors.biz import NetworkError
+
         if isinstance(exc, aiohttp.ClientConnectorError):
             err = NetworkError(f"连接失败: {exc}", original=exc)
             logger.error("Anthropic 连接错误: %s", exc, exc_info=True)
@@ -233,11 +247,18 @@ async def messages_handler(
         return _err(500, str(err), "server_error")
     rc = _build_anthropic_content_blocks(content, thinking_parts, tool_calls)
     pt, ou = _anthropic_usage(msgs, content, usage_d)
-    resp = _json({
-        "id": _mid(), "type": "message", "role": "assistant", "content": rc, "model": mdl,
-        "stop_reason": "tool_use" if tool_calls else "end_turn", "stop_sequence": None,
-        "usage": {"input_tokens": pt, "output_tokens": ou},
-    })
+    resp = _json(
+        {
+            "id": _mid(),
+            "type": "message",
+            "role": "assistant",
+            "content": rc,
+            "model": mdl,
+            "stop_reason": "tool_use" if tool_calls else "end_turn",
+            "stop_sequence": None,
+            "usage": {"input_tokens": pt, "output_tokens": ou},
+        }
+    )
     if platform_id:
         resp._platform = platform_id
     return resp
@@ -326,12 +347,8 @@ async def count_tokens(
         return _err(400, "Invalid JSON", "invalid_request_error")
 
     system_str = _normalize_anth_content(body.get("system"))
-    msgs = _anth_messages_to_openai(
-        body.get("messages", []), system_str
-    )
-    estimated = sum(
-        len(str(m.get("content", ""))) // 3 for m in msgs
-    )
+    msgs = _anth_messages_to_openai(body.get("messages", []), system_str)
+    estimated = sum(len(str(m.get("content", ""))) // 3 for m in msgs)
     # 工具定义也计入 token
     tools = body.get("tools", [])
     for t in tools:

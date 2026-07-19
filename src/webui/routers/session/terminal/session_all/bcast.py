@@ -7,8 +7,8 @@ from typing import Any, Dict, List
 
 import aiohttp.web
 
-from src.foundation.config import get_config
 from src.core.server.terminal.session_audit import get_audit_store
+from src.foundation.config import get_config
 from src.webui.routers.session.terminal.term_proto import encode_output_frame
 
 
@@ -53,10 +53,14 @@ class _BroadcastMixin:
         if self._store:
             _loop = asyncio.get_running_loop()
             asyncio.create_task(
-                _loop.run_in_executor(None, self._store.append_output, self.session_id, data)
+                _loop.run_in_executor(
+                    None, self._store.append_output, self.session_id, data
+                )
             )
             asyncio.create_task(
-                _loop.run_in_executor(None, self._store.save_output_seq, self.session_id, seq)
+                _loop.run_in_executor(
+                    None, self._store.save_output_seq, self.session_id, seq
+                )
             )
 
     async def _broadcast_error(self, message: str) -> None:

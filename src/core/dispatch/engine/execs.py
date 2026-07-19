@@ -3,16 +3,19 @@ from __future__ import annotations
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from echotools.fncall.parsers.stream import FncallStreamParser
 from echotools.dispatch.usage import fallback_usage as _fallback_usage
 from echotools.dispatch.usage import normalize_usage as _normalize_usage
+from echotools.fncall.parsers.stream import FncallStreamParser
 
-from src.foundation.config import get_config
 from src.core.dispatch.cand import Candidate
-from src.core.dispatch.engine.support.fncall_context import native_complete_kw, prepare_worker_messages
 from src.core.dispatch.engine.race_worker import race_execute
+from src.core.dispatch.engine.support.fncall_context import (
+    native_complete_kw,
+    prepare_worker_messages,
+)
 from src.core.utils.errors import ProviderError
 from src.core.utils.errors.http_errors import maybe_classify_exception
+from src.foundation.config import get_config
 from src.foundation.logger import get_logger
 
 __all__ = ["single_execute", "race_execute", "record_candidate", "run_selected"]
@@ -43,7 +46,9 @@ def _usage_for_response(
     return _fallback_usage(prompt_len, proxy)
 
 
-def _cancel_race_workers(infos: List[Dict[str, Any]], *, skip: Optional[Dict] = None) -> None:
+def _cancel_race_workers(
+    infos: List[Dict[str, Any]], *, skip: Optional[Dict] = None
+) -> None:
     for info in infos:
         if info is skip:
             continue
@@ -80,7 +85,13 @@ async def _stream_single_chunks(
     state: _SingleExecState,
 ) -> AsyncGenerator[Union[str, Dict], None]:
     async for chunk in adapter.complete(
-        cand, worker_msgs, model, stream, thinking=thinking, search=search, **complete_kw
+        cand,
+        worker_msgs,
+        model,
+        stream,
+        thinking=thinking,
+        search=search,
+        **complete_kw,
     ):
         if isinstance(chunk, str):
             state.tc += 1
@@ -103,12 +114,15 @@ async def _record_single_result(
     dur = time.monotonic() - state.start
     lat = (state.ft - state.start) if state.ft else dur
     gen_dur = (time.monotonic() - state.ft) if state.ft else dur
-    comp_tok = (
-        int(state.p_usage.get("completion_tokens", 0)) if state.p_usage else 0
-    )
+    comp_tok = int(state.p_usage.get("completion_tokens", 0)) if state.p_usage else 0
     await reg.selector.record(
-        cand.id, state.ok, latency=lat, tokens=state.tc, duration=dur,
-        generation_dur=gen_dur, completion_tokens=comp_tok,
+        cand.id,
+        state.ok,
+        latency=lat,
+        tokens=state.tc,
+        duration=dur,
+        generation_dur=gen_dur,
+        completion_tokens=comp_tok,
         platform=cand.platform,
     )
     from src.core.dispatch.circuit import get_platform_circuit_breaker
@@ -152,8 +166,16 @@ async def single_execute(
 
     try:
         async for chunk in _stream_single_chunks(
-            adapter, cand, worker_msgs, model, stream, thinking, search,
-            complete_kw, fp, state,
+            adapter,
+            cand,
+            worker_msgs,
+            model,
+            stream,
+            thinking,
+            search,
+            complete_kw,
+            fp,
+            state,
         ):
             yield chunk
         if fp and fp.has_calls:
@@ -168,9 +190,7 @@ async def single_execute(
         await _record_single_result(reg, cand, state)
 
 
-async def record_candidate(
-    reg: Any, info: Dict, ok: bool, prompt_len: int
-) -> None:
+async def record_candidate(reg: Any, info: Dict, ok: bool, prompt_len: int) -> None:
     """记录候选项指标。"""
     try:
         dur = time.monotonic() - info["start"]

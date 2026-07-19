@@ -35,7 +35,6 @@ configpanel 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 from __future__ import annotations
 
 import io
@@ -133,7 +132,9 @@ async def webui_config_put(request: aiohttp.web.Request) -> aiohttp.web.Response
     except Exception:
         return aiohttp.web.json_response({"error": "invalid JSON body"}, status=400)
     if not isinstance(payload, dict):
-        return aiohttp.web.json_response({"error": "config body must be an object"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "config body must be an object"}, status=400
+        )
     try:
         _write_webui_config_dict(payload)
     except Exception as exc:
@@ -181,14 +182,20 @@ async def webui_config_raw_put(request: aiohttp.web.Request) -> aiohttp.web.Resp
     except Exception:
         return aiohttp.web.json_response({"error": "invalid JSON body"}, status=400)
     if not isinstance(payload, dict):
-        return aiohttp.web.json_response({"error": "body must be an object"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "body must be an object"}, status=400
+        )
     raw_content = payload.get("raw_content")
     if not isinstance(raw_content, str):
-        return aiohttp.web.json_response({"error": "raw_content must be a string"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": "raw_content must be a string"}, status=400
+        )
     try:
         _parse_toml_text(raw_content)
     except Exception as exc:
-        return aiohttp.web.json_response({"error": f"TOML format error: {exc}"}, status=400)
+        return aiohttp.web.json_response(
+            {"error": f"TOML format error: {exc}"}, status=400
+        )
     path = _webui_config_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)

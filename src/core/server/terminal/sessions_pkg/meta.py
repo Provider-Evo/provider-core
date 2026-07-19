@@ -24,7 +24,9 @@ class SessionMetadataMixin:
             logger.debug("读取已有会话元数据失败，将覆盖: %s", meta_path, exc_info=True)
             return {}
         except Exception:
-            logger.warning("读取会话元数据时发生意外错误，将覆盖: %s", meta_path, exc_info=True)
+            logger.warning(
+                "读取会话元数据时发生意外错误，将覆盖: %s", meta_path, exc_info=True
+            )
             return {}
 
     def _write_meta_file(
@@ -43,7 +45,9 @@ class SessionMetadataMixin:
         except OSError:
             logger.debug("保存会话元数据失败: %s", session_id, exc_info=True)
         except Exception:
-            logger.warning("保存会话元数据时发生意外错误: %s", session_id, exc_info=True)
+            logger.warning(
+                "保存会话元数据时发生意外错误: %s", session_id, exc_info=True
+            )
 
     def save(
         self,
@@ -64,19 +68,21 @@ class SessionMetadataMixin:
         meta_path = self._meta_path(session_id)
         data = self._load_existing_meta(meta_path)
         now = time.time()
-        data.update({
-            "session_id": session_id,
-            "pid": pid,
-            "cwd": cwd,
-            "shell": shell,
-            "cols": cols,
-            "rows": rows,
-            "kind": kind,
-            "ssh_config": ssh_config,
-            "name": name,
-            "status": status,
-            "updated_at": now,
-        })
+        data.update(
+            {
+                "session_id": session_id,
+                "pid": pid,
+                "cwd": cwd,
+                "shell": shell,
+                "cols": cols,
+                "rows": rows,
+                "kind": kind,
+                "ssh_config": ssh_config,
+                "name": name,
+                "status": status,
+                "updated_at": now,
+            }
+        )
         if "created_at" not in data:
             data["created_at"] = now
         if env:
@@ -96,7 +102,9 @@ class SessionMetadataMixin:
             logger.debug("加载会话元数据失败: %s", session_id, exc_info=True)
             return None
         except Exception:
-            logger.warning("加载会话元数据时发生意外错误: %s", session_id, exc_info=True)
+            logger.warning(
+                "加载会话元数据时发生意外错误: %s", session_id, exc_info=True
+            )
             return None
 
     def delete(self, session_id: str) -> None:

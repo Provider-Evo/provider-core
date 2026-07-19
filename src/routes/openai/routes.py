@@ -19,7 +19,10 @@ from __future__ import annotations
 
 import aiohttp.web
 
+from src.foundation.logger import get_logger
 from src.routes.openai.catalog.catalog import register_catalog_routes
+from src.routes.openai.chat import _stream_chat, chat_completions  # noqa: F401
+from src.routes.openai.chat.compl import completions
 from src.routes.openai.chat.helpers import (  # noqa: F401
     _FNCALL_CLOSE_TAG,
     _FNCALL_END,
@@ -41,18 +44,6 @@ from src.routes.openai.chat.helpers import (  # noqa: F401
     _tid,
     _uid,
     _vid,
-)
-
-from src.routes.openai.chat import chat_completions, _stream_chat  # noqa: F401
-from src.routes.openai.chat.compl import completions
-from src.routes.openai.resp_api import (
-    cancel_response,
-    compact_responses,
-    count_input_tokens,
-    create_response,
-    delete_response,
-    list_input_items,
-    retrieve_response,
 )
 from src.routes.openai.chat.stored import (
     delete_stored_completion,
@@ -83,6 +74,15 @@ from src.routes.openai.media.videos import (
     retrieve_video,
     retrieve_video_character,
     retrieve_video_content,
+)
+from src.routes.openai.resp_api import (
+    cancel_response,
+    compact_responses,
+    count_input_tokens,
+    create_response,
+    delete_response,
+    list_input_items,
+    retrieve_response,
 )
 from src.routes.openai.stubs import (
     add_upload_part,
@@ -127,8 +127,6 @@ from src.routes.openai.stubs import (
     upload_file,
 )
 
-from src.foundation.logger import get_logger
-
 logger = get_logger(__name__)
 
 __all__ = ["setup_routes"]
@@ -164,9 +162,15 @@ def _register_openai_core_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/videos/generations", legacy_video_generations)
     app.router.add_post("/v1/moderations", create_moderation)
     app.router.add_post("/v1/rerank", create_rerank)
-    app.router.add_get("/v1/chat/completions/{completion_id}", retrieve_stored_completion)
-    app.router.add_post("/v1/chat/completions/{completion_id}", update_stored_completion)
-    app.router.add_delete("/v1/chat/completions/{completion_id}", delete_stored_completion)
+    app.router.add_get(
+        "/v1/chat/completions/{completion_id}", retrieve_stored_completion
+    )
+    app.router.add_post(
+        "/v1/chat/completions/{completion_id}", update_stored_completion
+    )
+    app.router.add_delete(
+        "/v1/chat/completions/{completion_id}", delete_stored_completion
+    )
     app.router.add_get(
         "/v1/chat/completions/{completion_id}/messages",
         list_stored_completion_messages,
@@ -184,7 +188,9 @@ def _register_openai_files_routes(app: aiohttp.web.Application) -> None:
 def _register_openai_beta_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post("/v1/fine_tuning/jobs", create_fine_tuning_job)
     app.router.add_get("/v1/fine_tuning/jobs", list_fine_tuning_jobs)
-    app.router.add_get("/v1/fine_tuning/jobs/{fine_tuning_job_id}", retrieve_fine_tuning_job)
+    app.router.add_get(
+        "/v1/fine_tuning/jobs/{fine_tuning_job_id}", retrieve_fine_tuning_job
+    )
     app.router.add_post(
         "/v1/fine_tuning/jobs/{fine_tuning_job_id}/cancel", cancel_fine_tuning_job
     )
@@ -217,8 +223,12 @@ def _register_openai_beta_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/vector_stores", list_vector_stores)
     app.router.add_get("/v1/vector_stores/{vector_store_id}", retrieve_vector_store)
     app.router.add_delete("/v1/vector_stores/{vector_store_id}", delete_vector_store)
-    app.router.add_post("/v1/vector_stores/{vector_store_id}/files", create_vector_store_file)
-    app.router.add_get("/v1/vector_stores/{vector_store_id}/files", list_vector_store_files)
+    app.router.add_post(
+        "/v1/vector_stores/{vector_store_id}/files", create_vector_store_file
+    )
+    app.router.add_get(
+        "/v1/vector_stores/{vector_store_id}/files", list_vector_store_files
+    )
     app.router.add_post("/v1/uploads", create_upload)
     app.router.add_post("/v1/uploads/{upload_id}/parts", add_upload_part)
     app.router.add_post("/v1/uploads/{upload_id}/complete", complete_upload)

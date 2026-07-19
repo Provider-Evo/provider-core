@@ -8,18 +8,18 @@ import uuid
 from pathlib import Path
 from typing import Iterable, Optional
 
-from src.foundation.logger import get_logger
+from src.core.server.reload.file_watcher.backend import FileWatcherBackendMixin
+from src.core.server.reload.file_watcher.disp import FileWatcherDispatchMixin
+from src.core.server.reload.file_watcher.health import FileWatcherHealthMixin
 from src.core.server.reload.file_watcher.types import (
     Change,
     ChangeCallback,
     FileChange,
-    FileWatchSubscription,
     FileWatcherStats,
+    FileWatchSubscription,
     _SubscriptionState,
 )
-from src.core.server.reload.file_watcher.health import FileWatcherHealthMixin
-from src.core.server.reload.file_watcher.disp import FileWatcherDispatchMixin
-from src.core.server.reload.file_watcher.backend import FileWatcherBackendMixin
+from src.foundation.logger import get_logger
 
 __all__ = [
     "Change",
@@ -31,7 +31,9 @@ __all__ = [
 logger = get_logger(__name__)
 
 
-class FileWatcher(FileWatcherHealthMixin, FileWatcherDispatchMixin, FileWatcherBackendMixin):
+class FileWatcher(
+    FileWatcherHealthMixin, FileWatcherDispatchMixin, FileWatcherBackendMixin
+):
     """订阅式文件监视器：debounce、回调超时与失败冷却。
 
     增强点：
@@ -100,8 +102,12 @@ class FileWatcher(FileWatcherHealthMixin, FileWatcherDispatchMixin, FileWatcherB
         """注册文件变更回调。"""
         if not callable(callback):
             raise TypeError("callback 必须是可调用对象")
-        normalized_paths = tuple(path.resolve() for path in paths) if paths is not None else ()
-        normalized_change_types = frozenset(change_types) if change_types is not None else None
+        normalized_paths = (
+            tuple(path.resolve() for path in paths) if paths is not None else ()
+        )
+        normalized_change_types = (
+            frozenset(change_types) if change_types is not None else None
+        )
         subscription_id = str(uuid.uuid4())
         self._subscriptions[subscription_id] = FileWatchSubscription(
             subscription_id=subscription_id,

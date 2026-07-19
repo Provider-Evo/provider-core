@@ -65,7 +65,9 @@ def resolve_ssh_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def apply_recovered_metadata(session: Any, meta: Optional[Dict[str, Any]], terminal: Any, cfg: Any) -> None:
+def apply_recovered_metadata(
+    session: Any, meta: Optional[Dict[str, Any]], terminal: Any, cfg: Any
+) -> None:
     """将持久化元数据应用到恢复的会话，并判断是否因超龄而视为死亡。"""
     if not meta:
         return
@@ -80,9 +82,21 @@ def apply_recovered_metadata(session: Any, meta: Optional[Dict[str, Any]], termi
         )
 
 
-def maybe_recover_tmux(session_id: str, meta: Optional[Dict[str, Any]], terminal: Any, cfg: Any, tmux_cls: type, tmux_available_fn: Any) -> Any:
+def maybe_recover_tmux(
+    session_id: str,
+    meta: Optional[Dict[str, Any]],
+    terminal: Any,
+    cfg: Any,
+    tmux_cls: type,
+    tmux_available_fn: Any,
+) -> Any:
     """若配置为 tmux 且当前恢复的进程已死，尝试改用 tmux 后端重建终端。"""
     backend = (meta or {}).get("backend", cfg.backend)
-    if backend != "tmux" or sys.platform == "win32" or not tmux_available_fn() or terminal.alive:
+    if (
+        backend != "tmux"
+        or sys.platform == "win32"
+        or not tmux_available_fn()
+        or terminal.alive
+    ):
         return terminal
     return terminal

@@ -35,16 +35,14 @@ app_host 模块。
     - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
 """
 
-
 import asyncio
 from typing import Any, Optional
 
 import aiohttp.web
 
-from src.foundation.logger import get_logger
-
 from src.core.server.lifecycle.app.app import create_app
 from src.core.server.reload.internal.connection_drain import close_live_connections
+from src.foundation.logger import get_logger
 
 __all__ = ["AppHost"]
 
@@ -118,7 +116,9 @@ class AppHost:
             self._site = None
 
             await close_live_connections()
-            restart_reason = await self._reload_teardown_and_rebuild(old_site, old_runner)
+            restart_reason = await self._reload_teardown_and_rebuild(
+                old_site, old_runner
+            )
 
         if restart_reason is not None:
             await self._fallback_process_restart(restart_reason)

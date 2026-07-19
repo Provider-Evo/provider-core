@@ -1,4 +1,5 @@
 """Locale-aware prompt template loader (Provider-V2-style prompts/ layout)."""
+
 from __future__ import annotations
 
 import json
@@ -73,7 +74,11 @@ def normalize_prompt_name(name: str) -> str:
         if candidate.endswith(suffix):
             candidate = candidate[: -len(suffix)]
             break
-    if candidate in {".", ".."} or not candidate or not SAFE_SEGMENT_PATTERN.fullmatch(candidate):
+    if (
+        candidate in {".", ".."}
+        or not candidate
+        or not SAFE_SEGMENT_PATTERN.fullmatch(candidate)
+    ):
         raise ValueError(f"invalid prompt name: {name!r}")
     return candidate
 

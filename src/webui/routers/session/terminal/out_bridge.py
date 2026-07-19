@@ -71,7 +71,9 @@ class _LiveOutputSessionMixin:
 
         async def _append_history_bg() -> None:
             async with lock:
-                await asyncio.get_running_loop().run_in_executor(None, self._append_history, data)
+                await asyncio.get_running_loop().run_in_executor(
+                    None, self._append_history, data
+                )
 
         asyncio.create_task(_append_history_bg())
 
@@ -179,16 +181,18 @@ class BridgedSSHTerminal(_LiveOutputSessionMixin, SSHTerminal):
                 pass
 
         now = time.time()
-        data.update({
-            "session_id": self.session_id,
-            "pid": None,
-            "cols": self.cols,
-            "rows": self.rows,
-            "kind": self.kind,
-            "alive": self.is_alive,
-            "status": "alive" if self.is_alive else data.get("status", "dead"),
-            "updated_at": now,
-        })
+        data.update(
+            {
+                "session_id": self.session_id,
+                "pid": None,
+                "cols": self.cols,
+                "rows": self.rows,
+                "kind": self.kind,
+                "alive": self.is_alive,
+                "status": "alive" if self.is_alive else data.get("status", "dead"),
+                "updated_at": now,
+            }
+        )
         if "created_at" not in data:
             data["created_at"] = now
         if not data.get("ssh_config"):
@@ -231,7 +235,9 @@ class BridgedSSHTerminal(_LiveOutputSessionMixin, SSHTerminal):
                         )
                         return
                     raise paramiko.SSHException(
-                        "Unknown SSH host key ({}). Confirm fingerprint in WebUI.".format(fp)
+                        "Unknown SSH host key ({}). Confirm fingerprint in WebUI.".format(
+                            fp
+                        )
                     )
                 client.get_host_keys().add(hostname, key.get_name(), key)
 
@@ -265,8 +271,8 @@ class BridgedSSHTerminal(_LiveOutputSessionMixin, SSHTerminal):
 
     async def _open_ssh_channel(self, paramiko: Any, cols: int, rows: int) -> bool:
         """建立 SSH 连接并打开交互式 channel，从 start() 抽出。"""
-        from src.foundation.config import get_config
         from src.core.server.terminal.khosts import get_known_hosts_store
+        from src.foundation.config import get_config
 
         self._ssh_client = paramiko.SSHClient()
         cfg = get_config().terminal
@@ -294,9 +300,7 @@ class BridgedSSHTerminal(_LiveOutputSessionMixin, SSHTerminal):
             return False
 
         self._ssh_channel = transport.open_session()
-        self._ssh_channel.get_pty(
-            term="xterm-256color", width=cols, height=rows
-        )
+        self._ssh_channel.get_pty(term="xterm-256color", width=cols, height=rows)
         self._ssh_channel.invoke_shell()
         self.alive = True
 

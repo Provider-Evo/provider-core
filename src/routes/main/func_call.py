@@ -7,8 +7,6 @@
 修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
 """
 
-
-
 from __future__ import annotations
 
 import json
@@ -26,19 +24,31 @@ _FUNCTION_REGISTRY: Dict[str, Dict[str, Any]] = {}
 
 def register_function(name: str, description: str, parameters: Dict[str, Any]) -> None:
     """公开方法 register_function。"""
-    _FUNCTION_REGISTRY[name] = {"name": name, "description": description, "parameters": parameters}
+    _FUNCTION_REGISTRY[name] = {
+        "name": name,
+        "description": description,
+        "parameters": parameters,
+    }
 
 
 async def _handle_function_call(request: aiohttp.web.Request) -> aiohttp.web.Response:
     try:
         body = await request.json()
     except json.JSONDecodeError:
-        return aiohttp.web.json_response({"error": {"message": "Invalid JSON"}}, status=400)
+        return aiohttp.web.json_response(
+            {"error": {"message": "Invalid JSON"}}, status=400
+        )
     function_name = body.get("name", "")
     arguments = body.get("arguments", {})
     if function_name not in _FUNCTION_REGISTRY:
-        return aiohttp.web.json_response({"error": {"message": f"Unknown function: {function_name}"}}, status=404)
-    result = {"name": function_name, "arguments": arguments, "output": f"Executed {function_name}"}
+        return aiohttp.web.json_response(
+            {"error": {"message": f"Unknown function: {function_name}"}}, status=404
+        )
+    result = {
+        "name": function_name,
+        "arguments": arguments,
+        "output": f"Executed {function_name}",
+    }
     return aiohttp.web.json_response(result)
 
 

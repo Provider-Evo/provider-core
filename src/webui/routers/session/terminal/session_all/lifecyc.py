@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Optional
 
 from echotools.terminal import TerminalCallback
 
-from src.foundation.config import get_config
 from src.core.server.terminal.session_audit import get_audit_store
+from src.foundation.config import get_config
 from src.webui.routers.session.terminal.out_bridge import (
     BridgedLocalTerminal,
     BridgedSSHTerminal,
@@ -136,7 +136,13 @@ class _LifecycleMixin:
         return ok
 
     def _persist_ssh_start(
-        self, host: str, port: int, username: str, cols: int, rows: int, connection_id: Optional[str]
+        self,
+        host: str,
+        port: int,
+        username: str,
+        cols: int,
+        rows: int,
+        connection_id: Optional[str],
     ) -> None:
         if self._store:
             self._store.save(
@@ -181,7 +187,9 @@ class _LifecycleMixin:
     async def restart(self, cols: int = 80, rows: int = 24) -> bool:
         if self.kind == "ssh":
             if not self._ssh_config:
-                self.last_start_error = "SSH session settings are unavailable for restart"
+                self.last_start_error = (
+                    "SSH session settings are unavailable for restart"
+                )
                 return False
             await self._shutdown_terminal()
             cfg = self._ssh_config
@@ -223,7 +231,10 @@ class _LifecycleMixin:
             snapshot = wrap_atomic_replay(self._terminal.history)
             asyncio.create_task(
                 self._output_queue.put(
-                    (self._terminal.output_seq, snapshot.encode("utf-8", errors="replace"))
+                    (
+                        self._terminal.output_seq,
+                        snapshot.encode("utf-8", errors="replace"),
+                    )
                 )
             )
 
@@ -259,12 +270,16 @@ class _LifecycleMixin:
         for ws in list(self._clients):
             try:
                 if not ws.closed:
-                    await ws.send_json({
-                        "type": "session_closed",
-                        "session_id": self.session_id,
-                    })
+                    await ws.send_json(
+                        {
+                            "type": "session_closed",
+                            "session_id": self.session_id,
+                        }
+                    )
             except (ConnectionError, RuntimeError):
-                self._logger.debug("Failed to notify client of session close", exc_info=True)
+                self._logger.debug(
+                    "Failed to notify client of session close", exc_info=True
+                )
         self._clients.clear()
         from src.webui.routers.session.terminal.session_all.reg import sessions_registry
 
