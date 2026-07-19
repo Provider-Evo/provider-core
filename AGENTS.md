@@ -91,6 +91,13 @@ Radix 组件不随便移出上下文，像 TabsTrigger 必须留在 TabsList 里
 WebUI 开发服务固定起到 7999 端口。
 
 
+## Git 分支与推送
+
+- 日常开发与交付在 **`dev`** 分支；`git push` 目标为 **`origin dev`**。
+- **禁止** `git push origin dev:main` 或未经用户当次明确要求推送到 `main`。
+- 扩展说明见工作区 `docs-src/provider-guide-references/agents-project-conventions.md` 中「Git 分支与推送规范」。
+
+
 ## Changelog 编写
 
 建议分为两部分，一部分是用户感知功能侧，一部分是开发侧（包含修复和插件 SDK、API 改动）。最好一个功能一行，按模块分。
