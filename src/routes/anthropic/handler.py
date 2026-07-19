@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Anthropic 路由处理器与非流式消息收集。"""
+
+from __future__ import annotations
 
 import json
 import time
