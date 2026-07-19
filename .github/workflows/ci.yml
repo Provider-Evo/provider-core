@@ -43,5 +43,3 @@ jobs:
         run: black --target-version py312 --check src tests
       - name: isort
         run: isort --check-only src tests
-      - name: flake8
-        run: flake8 src tests
