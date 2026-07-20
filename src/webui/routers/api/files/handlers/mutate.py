@@ -1,39 +1,3 @@
-"""
-mutate 模块。
-
-本文件为 Provider-Evo 项目标准模块，使用以下约定：
-
-- 模块路径：provider-core.src.webui.routers.api.files.handlers.mutate
-- 文件名：mutate.py
-- 父包：provider-core/src/webui/routers/api/files/handlers
-
-职责：
-
-    作为 provider / 核心子系统的标准模块入口；
-    通常被 ``plugin.py`` 或上层 ``client.py`` 通过显式 import 使用。
-
-对外接口：
-
-    本模块的 ``__all__`` 列出对外可导入的符号集合；其他内部符号
-    可能在重构中调整，调用方应只依赖 ``__all__`` 暴露的稳定 API。
-
-集成：
-
-    - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
-    - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
-
-依赖：
-
-    - 仅依赖 ``provider-sdk`` 与 Python 3.8+ 标准库；不引入第三方 HTTP 库。
-    - 不直接读环境变量；所有配置走 ``config/main_config.toml``。
-
-修改指引：
-
-    - 调整本模块时同步更新 ``docs-src/plugins/<name>.md`` 与对应 ``tests/``。
-    - 保持单文件 200-400 行；超长请拆为子包并通过 ``__init__.py`` 重新导出。
-    - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
-"""
 
 import shutil
 from pathlib import Path
@@ -63,9 +27,7 @@ from ..common import (
 
 
 async def files_mkdir(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_mkdir。
-
-    Create a new directory."""
+    """Create a new directory."""
     try:
         body = await request.json()
     except Exception:
@@ -98,9 +60,7 @@ async def files_mkdir(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def files_delete(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_delete。
-
-    Delete one or more files/directories."""
+    """Delete one or more files/directories."""
     try:
         body = await request.json()
     except Exception:
@@ -141,9 +101,7 @@ async def files_delete(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def files_rename(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_rename。
-
-    Rename or move a file/directory."""
+    """Rename or move a file/directory."""
     try:
         body = await request.json()
     except Exception:
@@ -186,7 +144,7 @@ async def files_rename(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def files_write(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_write。Save file content to disk."""
+    """Save file content to disk."""
     try:
         body = await request.json()
     except Exception:

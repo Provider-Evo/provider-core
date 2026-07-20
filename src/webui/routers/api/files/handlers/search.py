@@ -1,11 +1,3 @@
-"""search 模块 — WebUI 层。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 search 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 import os
 import stat
@@ -92,7 +84,7 @@ def _walk_search(
 
 
 async def files_search(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_search。Search files by name within a directory tree."""
+    """Search files by name within a directory tree."""
     dir_rel = request.query.get("dir", "")
     query = request.query.get("query", "")
     if not dir_rel:

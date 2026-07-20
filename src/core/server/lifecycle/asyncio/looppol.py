@@ -1,8 +1,3 @@
-"""looppolicy 模块 — 项目标准模块。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供事件循环策略配置能力。
-"""
 
 from __future__ import annotations
 

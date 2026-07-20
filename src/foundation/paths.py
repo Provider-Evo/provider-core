@@ -1,11 +1,3 @@
-"""paths 模块 — 项目标准模块。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 paths 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 from __future__ import annotations
 
@@ -37,28 +29,20 @@ project_root: Path = resolve_project_root()
 
 
 def config_dir() -> Path:
-    """中文说明：config_dir。
-
-    Return the config/ directory under project root."""
+    """Return the config/ directory under project root."""
     return project_root / "config"
 
 
 def persist_dir(*parts: str) -> Path:
-    """中文说明：persist_dir。
-
-    Return persist/<parts> under project root."""
+    """Return persist/<parts> under project root."""
     return project_root / "persist" / Path(*parts)
 
 
 def persist_db_dir() -> Path:
-    """中文说明：persist_db_dir。
-
-    Return persist/webui/db/ under project root."""
+    """Return persist/webui/db/ under project root."""
     return persist_dir("webui", "db")
 
 
 def persist_json_dir() -> Path:
-    """中文说明：persist_json_dir。
-
-    Return persist/webui/json/ under project root."""
+    """Return persist/webui/json/ under project root."""
     return persist_dir("webui", "json")

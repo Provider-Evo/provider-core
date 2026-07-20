@@ -192,5 +192,5 @@ def get_logger(module_name: str) -> CompatLogger:
     return CompatLogger(_loguru_logger.bind(module_name=module_name))
 
 
-# 默认 logger 实例（向后兼容）
+# 模块级默认 logger；旧代码 `from src.foundation.logger import logger` 仍依赖此绑定
 logger = _loguru_logger.bind(module_name=_resolve_log_name())

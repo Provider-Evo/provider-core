@@ -1,45 +1,10 @@
-"""
-routes 模块。
-
-本文件为 Provider-Evo 项目标准模块，使用以下约定：
-
-- 模块路径：provider-core.src.webui.bootstrap.routes
-- 文件名：routes.py
-- 父包：provider-core/src/webui/bootstrap
-
-职责：
-
-    作为 provider / 核心子系统的标准模块入口；
-    通常被 ``plugin.py`` 或上层 ``client.py`` 通过显式 import 使用。
-
-对外接口：
-
-    本模块的 ``__all__`` 列出对外可导入的符号集合；其他内部符号
-    可能在重构中调整，调用方应只依赖 ``__all__`` 暴露的稳定 API。
-
-集成：
-
-    - SDK 入口：``plugin.py`` 中 ``create_plugin()`` 引用本模块以构造 platform adapter。
-    - 入口路由：``provider-core/src/routes/openai`` 通过 ``from src.core...`` 间接使用。
-    - 测试：本目录下的 ``tests/`` 子目录覆盖本模块的核心逻辑。
-
-依赖：
-
-    - 仅依赖 ``provider-sdk`` 与 Python 3.8+ 标准库；不引入第三方 HTTP 库。
-    - 不直接读环境变量；所有配置走 ``config/main_config.toml``。
-
-修改指引：
-
-    - 调整本模块时同步更新 ``docs-src/plugins/<name>.md`` 与对应 ``tests/``。
-    - 保持单文件 200-400 行；超长请拆为子包并通过 ``__init__.py`` 重新导出。
-    - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
-"""
 
 from pathlib import Path
 
 import aiohttp.web
 
 from src.foundation.paths import resolve_project_root
+from src.webui.bootstrap.routes_admin import register_admin_routes
 from src.webui.routers import (
     autoupdate_apply,
     autoupdate_check,
@@ -131,11 +96,6 @@ from src.webui.routers import (
     webui_page,
 )
 from src.webui.routers.admin import auth_regenerate, auth_update, auth_verify
-from src.webui.routers.admin.keys import (
-    virtual_keys_create,
-    virtual_keys_delete,
-    virtual_keys_list,
-)
 
 __all__ = ["setup_routes"]
 
@@ -169,84 +129,8 @@ def _register_page_routes(app: aiohttp.web.Application) -> None:
     app.router.add_get("/v1/webui/system/status", system_status)
 
 
-def _register_admin_config_routes(app: aiohttp.web.Application) -> None:
-    app.router.add_post("/v1/admin/reload", reload_service)
-    app.router.add_get("/v1/config", config_get)
-    app.router.add_put("/v1/config", config_put)
-    app.router.add_post("/v1/config/reload", config_reload)
-    app.router.add_get("/v1/config/raw", config_raw_get)
-    app.router.add_post("/v1/config/raw", config_raw_put)
-    app.router.add_get("/v1/admin/config/schema", config_schema_get)
-    app.router.add_get("/v1/webui/config", webui_config_get)
-    app.router.add_put("/v1/webui/config", webui_config_put)
-    app.router.add_post("/v1/webui/config/reload", webui_config_reload)
-    app.router.add_get("/v1/webui/config/raw", webui_config_raw_get)
-    app.router.add_post("/v1/webui/config/raw", webui_config_raw_put)
-    app.router.add_get("/v1/admin/webui/config/schema", webui_config_schema_get)
-    app.router.add_get("/v1/admin/autoupdate", autoupdate_get)
-    app.router.add_put("/v1/admin/autoupdate", autoupdate_put)
-    app.router.add_post("/v1/admin/autoupdate/check", autoupdate_check)
-    app.router.add_post("/v1/admin/autoupdate/diff", autoupdate_diff)
-    app.router.add_post("/v1/admin/autoupdate/apply", autoupdate_apply)
-
-
 def _register_admin_routes(app: aiohttp.web.Application) -> None:
-    _register_admin_config_routes(app)
-    # 插件管理路由
-    app.router.add_get("/v1/admin/plugins", plugins_list)
-    app.router.add_get("/v1/admin/plugins/installed", plugins_installed)
-    app.router.add_get("/v1/admin/plugins/status", plugins_status)
-    app.router.add_get("/v1/admin/plugins/version", plugins_host_version)
-    app.router.add_get("/v1/admin/plugins/git-status", plugins_git_status)
-    app.router.add_get("/v1/admin/plugins/market-config", plugins_market_config)
-    app.router.add_get("/v1/admin/plugins/progress", plugins_progress)
-    app.router.add_post("/v1/admin/plugins/fetch-raw", plugins_fetch_raw)
-    app.router.add_post("/v1/admin/plugins/reload", plugins_reload)
-    app.router.add_post("/v1/admin/plugins/install", plugins_install)
-    app.router.add_post("/v1/admin/plugins/uninstall", plugins_uninstall)
-    app.router.add_post("/v1/admin/plugins/update", plugins_update)
-    app.router.add_post("/v1/admin/plugins/toggle", plugins_toggle)
-    app.router.add_post("/v1/admin/plugins/toggle/{plugin_id}", plugins_toggle)
-    app.router.add_get("/v1/admin/plugins/config/{plugin_id}", plugins_config_get)
-    app.router.add_get(
-        "/v1/admin/plugins/config/{plugin_id}/bundle", plugins_config_bundle
-    )
-    app.router.add_put("/v1/admin/plugins/config/{plugin_id}", plugins_config_put)
-    app.router.add_post(
-        "/v1/admin/plugins/config/{plugin_id}/reset", plugins_config_reset
-    )
-    app.router.add_get(
-        "/v1/admin/plugins/local-readme/{plugin_id}", plugins_local_readme
-    )
-    app.router.add_get(
-        "/v1/admin/plugins/local-changelog/{plugin_id}", plugins_local_changelog
-    )
-    app.router.add_get("/v1/admin/plugins/icon/{plugin_id}", plugins_icon)
-    app.router.add_get("/v1/admin/plugins/mirrors", plugins_mirror_list)
-    app.router.add_post("/v1/admin/plugins/mirrors", plugins_mirror_create)
-    app.router.add_put("/v1/admin/plugins/mirrors/{mirror_id}", plugins_mirror_update)
-    app.router.add_delete(
-        "/v1/admin/plugins/mirrors/{mirror_id}", plugins_mirror_delete
-    )
-    app.router.add_get(
-        "/v1/admin/plugins/runtime/components", plugins_runtime_home_cards
-    )
-    app.router.add_get(
-        "/v1/admin/plugins/runtime/components/{plugin_id}", plugins_runtime_components
-    )
-    app.router.add_get("/v1/admin/plugins/runtime/hooks", plugins_runtime_hooks)
-    app.router.add_get(
-        "/v1/admin/plugins/runtime/hook-specs", plugins_runtime_hook_specs
-    )
-    app.router.add_get(
-        "/v1/admin/plugins/stats/{plugin_id}", plugins_stats_proxy_summary
-    )
-    app.router.add_post(
-        "/v1/admin/plugins/stats/{plugin_id}/like", plugins_stats_proxy_toggle_like
-    )
-    app.router.add_get("/v1/admin/keys", virtual_keys_list)
-    app.router.add_post("/v1/admin/keys", virtual_keys_create)
-    app.router.add_delete("/v1/admin/keys/{key_id}", virtual_keys_delete)
+    register_admin_routes(app)
 
 
 def _register_file_routes(app: aiohttp.web.Application) -> None:

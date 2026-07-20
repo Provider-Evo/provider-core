@@ -71,8 +71,7 @@ class ChutesClient:
             cand.models = list(models)
 
     def _rebuild_candidates(self) -> None:
-        """根据当前 Key 状态重建候选项列表。
-        """
+        """根据当前 Key 状态重建候选项列表。"""
         self._candidates = [
             Candidate(
                 id=make_id("chutes", ks.key[:16]),
@@ -229,6 +228,5 @@ class ChutesClient:
             raise exc
 
     async def close(self) -> None:
-        """清理资源，session 由外部管理，此处不关闭。
-        """
+        """清理资源，session 由外部管理，此处不关闭。"""
         return

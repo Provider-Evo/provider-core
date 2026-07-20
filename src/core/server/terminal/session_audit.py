@@ -1,21 +1,3 @@
-"""
-session_audit 模块。
-
-职责：
-    终端会话审计日志索引——记录会话开始时间、host、kind 与状态变更，
-    供 WebUI 录像审计功能查询、分页列出、删除。不触碰离线输出文件。
-
-对外接口：
-    ``__all__`` 列出对外可导入的符号集合。
-
-依赖：
-    仅依赖 Python 3.8+ 标准库；不引入第三方 HTTP 库。
-    不直接读环境变量；所有配置走 ``config/main_config.toml``。
-
-修改指引：
-    - 保持单文件 200-400 行；超长请拆为子包并通过 ``__init__.py`` 重新导出。
-    - 严禁放置 placeholder / 兜底 / 伪装通过的代码（见 ``AGENTS.md`` Hard Constraints）。
-"""
 
 import json
 import time

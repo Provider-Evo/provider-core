@@ -168,3 +168,4 @@ function _promptNewFolder(tab) {
     });
   });
 }
+

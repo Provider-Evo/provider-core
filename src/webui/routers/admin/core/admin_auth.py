@@ -1,11 +1,3 @@
-"""admin_auth 模块 — WebUI 层。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 admin_auth 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 import aiohttp.web
 
@@ -16,9 +8,7 @@ __all__ = ["auth_verify", "auth_update", "auth_regenerate"]
 
 
 async def auth_verify(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：auth_verify。
-
-    POST /v1/webui/auth/verify — verify token and set session cookie."""
+    """POST /v1/webui/auth/verify — verify token and set session cookie."""
     try:
         body = await request.json()
     except Exception:
@@ -39,9 +29,7 @@ async def auth_verify(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def auth_update(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：auth_update。
-
-    POST /v1/webui/auth/update — update token (requires current session)."""
+    """POST /v1/webui/auth/update — update token (requires current session)."""
     if not verify_session_cookie(request):
         return aiohttp.web.json_response({"error": "unauthorized"}, status=401)
 
@@ -65,9 +53,7 @@ async def auth_update(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def auth_regenerate(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：auth_regenerate。
-
-    POST /v1/webui/auth/regenerate — generate a new random token."""
+    """POST /v1/webui/auth/regenerate — generate a new random token."""
     if not verify_session_cookie(request):
         return aiohttp.web.json_response({"error": "unauthorized"}, status=401)
 

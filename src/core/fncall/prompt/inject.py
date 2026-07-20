@@ -1,11 +1,3 @@
-"""inject 模块 — 项目标准模块。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 inject 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 from __future__ import annotations
 
@@ -38,7 +30,6 @@ def inject_fncall(
     loop_detection_threshold: int = 3,
     dump_prompt: bool = True,
 ) -> List[Dict[str, Any]]:
-    """公开方法 inject_fncall。"""
     dump_dir = _get_dump_dir() if dump_prompt else None
     return _echotools_inject(
         messages=messages,

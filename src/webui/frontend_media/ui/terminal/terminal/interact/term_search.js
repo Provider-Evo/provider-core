@@ -201,3 +201,5 @@ function _tsBindSearchEvents(tab, dialog) {
 function _attachSearchMethods(ctx) {
   ctx.showSearchDialog = function (tabId) { _tsShowSearchDialog(ctx, tabId); };
 }
+
+

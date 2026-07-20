@@ -74,7 +74,7 @@ def _list_dir_entries(
 
 
 async def files_list(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_list。List directory contents with pagination."""
+    """List directory contents with pagination."""
     rel_path = request.query.get("path", "/")
     offset, limit = _parse_list_pagination(request)
     target = safe_resolve(rel_path)
@@ -180,7 +180,7 @@ def _read_text_preview(
 
 
 async def files_read(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_read。Read file content for preview."""
+    """Read file content for preview."""
     rel_path = request.query.get("path", "")
     if not rel_path:
         return aiohttp.web.json_response({"error": "path is required"}, status=400)
@@ -203,7 +203,7 @@ async def files_read(request: aiohttp.web.Request) -> aiohttp.web.Response:
 
 
 async def files_download(request: aiohttp.web.Request) -> aiohttp.web.StreamResponse:
-    """中文说明：files_download。Download a file as attachment."""
+    """Download a file as attachment."""
     rel_path = request.query.get("path", "")
     if not rel_path:
         return aiohttp.web.json_response({"error": "path is required"}, status=400)

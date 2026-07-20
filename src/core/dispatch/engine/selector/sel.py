@@ -76,6 +76,8 @@ class Selector(_BaseSelector):
         self._db_path = Path(persist_dir) / "gateway.db"
         self._sqlite_dirty: Dict[str, TASRecord] = {}
         self._flush_interval = _FLUSH_INTERVAL
+        # 后台 flush 线程与 async 路由协程并发写 _sqlite_dirty，须用 threading.Lock；
+        # asyncio.Lock 无法保护跨线程的同步写路径。
         self._lock = threading.Lock()
         self._closed = False
 

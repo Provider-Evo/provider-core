@@ -112,8 +112,7 @@ class CodebuddyClient:
         )
 
     def _rebuild_candidates(self) -> None:
-        """根据当前账号列表重建候选项列表。
-        """
+        """根据当前账号列表重建候选项列表。"""
         self._candidates = [
             self._build_candidate(acc)
             for acc in self._accounts
@@ -316,6 +315,5 @@ class CodebuddyClient:
             yield {"usage": usage}
 
     async def close(self) -> None:
-        """清理资源，session 由外部管理，此处不关闭。
-        """
+        """清理资源，session 由外部管理，此处不关闭。"""
         return

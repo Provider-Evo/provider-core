@@ -99,7 +99,7 @@ class RegistryLifecycleMixin:
         return adapter_count
 
     async def init(self, session: Any) -> None:
-        """公开方法 init — 仅通过 plugins/ 加载平台适配器。
+        """仅通过 plugins/ 加载平台适配器。
 
         容错：插件加载失败不向上抛出，网关仍可启动。
         """
@@ -173,49 +173,11 @@ class RegistryLifecycleMixin:
         wl: Optional[List[str]],
         bl: Optional[List[str]],
     ) -> bool:
-        record_before = runtime.loaded.get(plugin_id)
-        if record_before is not None and record_before.adapter is not None:
-            platform_name = (
-                record_before.adapter.name
-                if hasattr(record_before.adapter, "name")
-                else ""
-            )
-            old = self._registry.get(platform_name)
-            if old is not None:
-                try:
-                    await old.close()
-                except Exception as exc:
-                    logger.warning("关闭旧平台 [%s] 失败: %s", platform_name, exc)
-                self._registry._plugins.pop(platform_name, None)
+        from src.core.dispatch.engine.registry.reg_reload import reload_single_plugin_id
 
-        ok = await runtime.reload_plugin(plugin_id, session)
-        if not ok:
-            logger.warning("插件热重载失败 [%s]", plugin_id)
-            return False
-
-        record_after = runtime.loaded.get(plugin_id)
-        if record_after is not None and record_after.adapter is not None:
-            adapter = record_after.adapter
-            name = adapter.name if hasattr(adapter, "name") else ""
-            if not name:
-                return True
-            if wl is not None and name not in wl:
-                return True
-            if name in (bl or []):
-                return True
-            self._registry.register(adapter)
-            logger.info("平台插件已重新注册: %s", name)
-            models = (
-                list(adapter.supported_models)
-                if hasattr(adapter, "supported_models")
-                else []
-            )
-            for model in models:
-                try:
-                    await self.ensure_candidates(model, 1)
-                except Exception as exc:
-                    logger.warning("候选项刷新失败 [%s]: %s", name, exc)
-        return True
+        return await reload_single_plugin_id(
+            self._registry, plugin_id, session, runtime, wl, bl
+        )
 
     async def reload_plugins_by_ids(
         self, plugin_ids: Sequence[str], session: Any, *, reload_app: bool = True
@@ -319,7 +281,6 @@ class RegistryLifecycleMixin:
                 logger.warning("候选项刷新失败 [%s]: %s", plugin_id, exc)
 
     async def reload_platform(self, platform_name: str, session: Any) -> bool:
-        """公开方法 reload_platform — 从 plugins/ 热重载平台适配器。"""
         if self._external_loader is None:
             return False
 

@@ -76,12 +76,10 @@ class FileWatcher(
 
     @property
     def running(self) -> bool:
-        """公开方法 running。"""
         return self._running
 
     @property
     def stats(self) -> FileWatcherStats:
-        """公开方法 stats。"""
         return FileWatcherStats(
             batches_seen=self._stats.batches_seen,
             changes_seen=self._stats.changes_seen,
@@ -144,6 +142,7 @@ class FileWatcher(
         if self._task is None:
             return
         self._task.cancel()
+        # watchfiles 后台任务须 await 清理，否则 stop 后仍占用 inotify/句柄
         try:
             await self._task
         except asyncio.CancelledError:

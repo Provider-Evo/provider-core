@@ -1,11 +1,3 @@
-"""upload 模块 — WebUI 层。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 upload 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -106,7 +98,7 @@ def _validate_upload_target(
 
 
 async def files_upload(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_upload。Upload one or more files to a target directory."""
+    """Upload one or more files to a target directory."""
     content_type = request.content_type or ""
     if "multipart" not in content_type:
         return aiohttp.web.json_response(
