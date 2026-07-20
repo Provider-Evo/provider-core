@@ -15,8 +15,8 @@ class WebuiUtilPlugin(ProviderPlugin):
     async def enhance_info(self) -> Dict[str, Any]:
         return {
             "theme": "entropy-refined",
-            "css": "/static/plugins/provider-webui-util/css/enhance.css",
-            "js": "/static/plugins/provider-webui-util/js/enhance.js",
+            "css": "/static/plugins/provider-webui-util/enhance.css",
+            "js": "/static/plugins/provider-webui-util/enhance.js",
             "enabled": True,
         }
 

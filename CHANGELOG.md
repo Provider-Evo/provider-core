@@ -2,11 +2,20 @@
 
 本文件记录 **provider-core** 仓库的版本变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-**范围**：仅收录本仓库会 `git commit` 的变更。编排工作区其他目录、以及 `config/` 本地运行时配置（gitignore，不提交）**不得**写入本文。
+**范围**：仅收录本仓库会 `git commit` 的变更。未入库内容（编排仓、`config/` 本地配置等）**改记入 `RECORD.md`**，见 `docs-src/provider-guide-references/agents-project-conventions.md`「RECORD.md 编写」。
 
 **版本号（可提交）真源**：`pyproject.toml`、`template/template_config.toml` 的 `version` / `server.version` 字段。运行时从本地 `config/main_config.toml` 读取 `server.version`；该目录不提交，发版时在本地同步 bump，但不记入 CHANGELOG。
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
+
+## [2.2.299] - 2026-07-20
+
+### 修复
+
+- `AppConfig` 补充 `adapter_proxy` / `platforms_proxy` 配置段，修复 `/v1/webui/summary` 500
+- WebUI 懒加载补全 `ops.js`、`search.js`、`term_search.js`；`motion_kit.js` 加载顺序修正
+- Provider-Webui-Util enhance 静态资源路径与 `static/` 目录对齐
+- 依赖 `echotools>=2.3.6`
 
 ## [2.2.298] - 2026-07-20
 
