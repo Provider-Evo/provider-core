@@ -89,6 +89,7 @@ async def stream_chat(
 
     early = await _run_stream_dispatch(state, dispatch_kwargs, processor, resp)
     processor.stop()
+    # SSE 心跳注释任务与主流式互斥；须 cancel 并 await，否则 run_initial_comments 在后台空转
     comment_task.cancel()
     try:
         await comment_task

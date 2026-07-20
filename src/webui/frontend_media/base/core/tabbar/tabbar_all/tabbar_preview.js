@@ -118,3 +118,47 @@ function _attachPreviewSubLifecycleMethods(instance) {
     this._previewEl = null;
   };
 }
+
+function _attachTabElementEventMethods(instance) {
+  instance._bindTabElementEvents = function (el, tab) {
+    var self = this;
+
+    if (tab.closable !== false) {
+      var closeEl = document.createElement('span');
+      closeEl.className = 'unified-tab-close';
+      closeEl.innerHTML = '&times;';
+      closeEl.addEventListener('click', function (e) {
+        e.stopPropagation();
+        self._hidePreview();
+        if (self._opts.onClose) self._opts.onClose(tab.id);
+      });
+      el.appendChild(closeEl);
+    }
+
+    el.addEventListener('click', function (e) {
+      if (e.button !== 0) return;
+      if (e.target.closest('.unified-tab-status-slot')) return;
+      if (self._opts.onSwitch) self._opts.onSwitch(tab.id);
+    });
+
+    el.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      if (self._opts.onContextMenu) self._opts.onContextMenu(tab.id, e);
+    });
+
+    el.addEventListener('mouseenter', function (e) {
+      if (self._collapsed && tab.id !== self._activeId) {
+        if (self._opts.onPreviewRequest) self._opts.onPreviewRequest(tab.id);
+        self._showPreview(tab, e.clientX, e.clientY);
+      }
+    });
+    el.addEventListener('mousemove', function (e) {
+      if (self._collapsed && tab.id !== self._activeId) {
+        self._movePreview(e.clientX, e.clientY);
+      }
+    });
+    el.addEventListener('mouseleave', function () {
+      self._hidePreview();
+    });
+  };
+}

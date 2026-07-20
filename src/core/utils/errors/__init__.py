@@ -123,17 +123,15 @@ def classify_http_error(
     message: str,
     original: Optional[Exception] = None,
 ) -> ProviderError:
-    """中文说明：classify_http_error。
+    """Classify an HTTP status code into a typed ProviderError.
 
-    Classify an HTTP status code into a typed ProviderError.
+Args:
+    status_code: HTTP status code.
+    message: Error message.
+    original: Original exception.
 
-    Args:
-        status_code: HTTP status code.
-        message: Error message.
-        original: Original exception.
-
-    Returns:
-        Typed error instance."""
+Returns:
+    Typed error instance."""
     if status_code == 400:
         msg_lower = message.lower()
         if any(kw in msg_lower for kw in _CONTEXT_LENGTH_KEYWORDS):

@@ -1,11 +1,3 @@
-"""proxy 模块 — 项目标准模块。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 proxy 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 import os
 import warnings
@@ -43,45 +35,35 @@ def _load_from_config() -> None:
 
 
 def activate() -> None:
-    """中文说明：activate。
-
-    Activate proxy (load from config and enable)."""
+    """Activate proxy (load from config and enable)."""
     _load_from_config()
     _mgr.activate()
 
 
 def deactivate() -> None:
-    """中文说明：deactivate。
-
-    Deactivate proxy."""
+    """Deactivate proxy."""
     _mgr.deactivate()
 
 
 def is_active() -> bool:
-    """中文说明：is_active。
-
-    Whether proxy is active."""
+    """Whether proxy is active."""
     return _mgr.is_active()
 
 
 def get_proxy_server() -> str:
-    """中文说明：get_proxy_server。
+    """Get current proxy server URL.
 
-    Get current proxy server URL.
-
-    Returns:
-        Proxy server URL, or empty string if not configured."""
+Returns:
+    Proxy server URL, or empty string if not configured."""
     proxies = _mgr.get_proxy_dict()
     return proxies.get("http") or proxies.get("https") or ""
 
 
 def get_proxy_dict() -> Dict[str, str]:
-    """中文说明：get_proxy_dict。
+    """Get proxy dictionary.
 
-    Get proxy dictionary.
-
-    Returns:
-        ``{"http": "...", "https": "..."}`` proxy configuration."""
+Returns:
+    ``{"http": "...", "https": "..."}`` proxy configuration."""
     return _mgr.get_proxy_dict()
 
 

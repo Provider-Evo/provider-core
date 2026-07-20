@@ -11,11 +11,10 @@ from echotools.fncall.parsers.stream import FncallStreamParser
 from src.core.dispatch.cand import Candidate
 from src.core.dispatch.engine.support.fncall_context import (
     dump_race_prompt,
-    native_complete_kw,
-    prepare_worker_messages,
     resolve_protocol,
 )
 from src.core.dispatch.engine.support.race_chunk import apply_race_chunk_event
+from src.core.dispatch.engine.support.race_spawn import spawn_race_workers
 from src.core.utils.errors import NoCandidateError
 from src.foundation.logger import get_logger
 
@@ -75,6 +74,7 @@ def _start_forward_tasks(
 
 
 def _cancel_forward_tasks(forward_tasks: List["asyncio.Task"]) -> None:
+    # winner 已定或竞速结束：取消转发协程，避免队列消费者空转占用调度
     for task in forward_tasks:
         if not task.done():
             task.cancel()
@@ -127,6 +127,7 @@ async def _select_race_winner(
 def _cancel_race_workers(
     infos: List[Dict[str, Any]], *, skip: Optional[Dict] = None
 ) -> None:
+    # 败者 worker 继续跑会占用上游连接与 token 配额；set(ev) 让生成器尽快退出
     for info in infos:
         if info is skip:
             continue
@@ -134,142 +135,6 @@ def _cancel_race_workers(
         task = info["task"]
         if not task.done():
             task.cancel()
-
-
-async def _stream_worker_chunks(
-    a: Any,
-    c: Candidate,
-    worker_msgs: List[Dict],
-    model: str,
-    stream: bool,
-    thinking: bool,
-    search: bool,
-    race_kw: Dict[str, Any],
-    idx: int,
-    q: asyncio.Queue,
-    ev: asyncio.Event,
-) -> None:
-    async for ch in a.complete(
-        c, worker_msgs, model, stream, thinking=thinking, search=search, **race_kw
-    ):
-        if ev.is_set():
-            break
-        await q.put(("chunk", idx, ch))
-    await q.put(("done", idx, None))
-
-
-async def _run_race_worker(
-    idx: int,
-    c: Candidate,
-    q: asyncio.Queue,
-    ev: asyncio.Event,
-    reg: Any,
-    msgs: List[Dict],
-    model: str,
-    stream: bool,
-    thinking: bool,
-    search: bool,
-    tools: Optional[List[Dict]],
-    fncall_lang: str,
-    protocol_id: str,
-    kw: Dict[str, Any],
-) -> None:
-    a = reg.adapter_for(c)
-    if not a:
-        try:
-            await q.put(("err", idx, "无适配器: {}".format(c.platform)))
-        except Exception as e:
-            logger.debug("竞速 worker[%d] 发送错误消息失败: %s", idx, e)
-        return
-    worker_msgs, _ = prepare_worker_messages(
-        msgs,
-        tools,
-        c,
-        fncall_lang=fncall_lang,
-        protocol_id=protocol_id,
-        dump_prompt=False,
-    )
-    race_kw = native_complete_kw(kw, tools, c.native_tools)
-    try:
-        await _stream_worker_chunks(
-            a,
-            c,
-            worker_msgs,
-            model,
-            stream,
-            thinking,
-            search,
-            race_kw,
-            idx,
-            q,
-            ev,
-        )
-    except asyncio.CancelledError:
-        try:
-            await q.put(("cancel", idx, None))
-        except Exception as e:
-            logger.debug("竞速 worker[%d] 发送取消消息失败: %s", idx, e)
-    except Exception as e:
-        try:
-            await q.put(("err", idx, str(e)))
-        except Exception as e2:
-            logger.debug("竞速 worker[%d] 发送错误消息失败: %s", idx, e2)
-
-
-def _spawn_race_workers(
-    reg: Any,
-    cands: List[Candidate],
-    msgs: List[Dict],
-    model: str,
-    stream: bool,
-    thinking: bool,
-    search: bool,
-    tools: Optional[List[Dict]],
-    fncall_lang: str,
-    protocol_id: str,
-    kw: Dict[str, Any],
-) -> List[Dict[str, Any]]:
-    infos: List[Dict[str, Any]] = []
-    for i, c in enumerate(cands):
-        q: asyncio.Queue = asyncio.Queue()
-        ev = asyncio.Event()
-        t = asyncio.ensure_future(
-            _run_race_worker(
-                i,
-                c,
-                q,
-                ev,
-                reg,
-                msgs,
-                model,
-                stream,
-                thinking,
-                search,
-                tools,
-                fncall_lang,
-                protocol_id,
-                kw,
-            )
-        )
-        infos.append(
-            {
-                "idx": i,
-                "cand": c,
-                "q": q,
-                "ev": ev,
-                "task": t,
-                "tok": 0,
-                "buf": [],
-                "start": time.monotonic(),
-                "ft": None,
-                "done": False,
-                "err": False,
-                "err_msg": "",
-                "acc_len": 0,
-                "usage": None,
-            }
-        )
-    return infos
 
 
 async def _resolve_winner(
@@ -374,6 +239,25 @@ async def _stream_winner(
     yield {"usage": _usage_for_response(prompt_len, winner["acc_len"], winner["usage"])}
 
 
+async def _run_race_winner_flow(
+    reg: Any,
+    infos: List[Dict[str, Any]],
+    min_tok: int,
+    tools: Optional[List[Dict]],
+    prompt_len: int,
+) -> AsyncGenerator[Union[str, Dict], None]:
+    from src.core.dispatch.engine.execs import record_candidate
+
+    winner = await _resolve_winner(infos, min_tok, reg, prompt_len)
+    _cancel_race_workers(infos, skip=winner)
+    for i in infos:
+        if i is not winner:
+            await record_candidate(reg, i, i["tok"] > 0, prompt_len)
+    async for chunk in _stream_winner(winner, tools, prompt_len):
+        yield chunk
+    await record_candidate(reg, winner, True, prompt_len)
+
+
 async def race_execute(
     reg: Any,
     cands: List[Candidate],
@@ -390,39 +274,18 @@ async def race_execute(
     **kw: Any,
 ) -> AsyncGenerator[Union[str, Dict], None]:
     """多候选项竞速执行。"""
-    from src.core.dispatch.engine.execs import record_candidate
-
     dump_race_prompt(
         msgs, tools, cands, fncall_lang=fncall_lang, protocol_id=protocol_id
     )
-    infos = _spawn_race_workers(
-        reg,
-        cands,
-        msgs,
-        model,
-        stream,
-        thinking,
-        search,
-        tools,
-        fncall_lang,
-        protocol_id,
-        kw,
+    infos = spawn_race_workers(
+        reg, cands, msgs, model, stream, thinking, search,
+        tools, fncall_lang, protocol_id, kw,
     )
-
-    winner: Optional[Dict] = None
     try:
-        winner = await _resolve_winner(infos, min_tok, reg, prompt_len)
-
-        _cancel_race_workers(infos, skip=winner)
-        for i in infos:
-            if i is not winner:
-                await record_candidate(reg, i, i["tok"] > 0, prompt_len)
-
-        async for chunk in _stream_winner(winner, tools, prompt_len):
+        async for chunk in _run_race_winner_flow(
+            reg, infos, min_tok, tools, prompt_len
+        ):
             yield chunk
-
-        await record_candidate(reg, winner, True, prompt_len)
-
     except NoCandidateError:
         raise
     except Exception:

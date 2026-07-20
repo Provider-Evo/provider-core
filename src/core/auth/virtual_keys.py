@@ -177,7 +177,7 @@ class AsyncVirtualKeyStore:
 
 
 # ------------------------------------------------------------------
-# 同步包装器（向后兼容）
+# 同步包装器：中间件等同步调用点无法 await AsyncVirtualKeyStore
 # ------------------------------------------------------------------
 
 
@@ -335,7 +335,7 @@ def get_virtual_key_store() -> AsyncVirtualKeyStore:
     return _store
 
 
-# 向后兼容别名
+# 旧脚本/测试仍 import get_sync_virtual_key_store；勿删，否则同步路径会各自打开第二份 DB
 def get_sync_virtual_key_store() -> VirtualKeyStore:
     """返回同步版本的 VirtualKeyStore（用于向后兼容）。"""
     return VirtualKeyStore(_store._db_path if _store else None)

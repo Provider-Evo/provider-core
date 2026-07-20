@@ -42,13 +42,11 @@ class Registry(RegistryLifecycleMixin, RegistryModelsMixin):
 
     @property
     def adapters(self) -> Dict[str, Any]:
-        """公开方法 adapters。"""
         return self._registry.plugins
 
     async def get_candidates(
         self, model: Optional[str] = None, capability: Optional[str] = None
     ) -> List[Candidate]:
-        """公开方法 get_candidates。"""
         if model is not None and capability is None:
             cached = self._candidates_cache.get(model)
             if cached is not None:
@@ -74,7 +72,6 @@ class Registry(RegistryLifecycleMixin, RegistryModelsMixin):
         return result
 
     async def ensure_candidates(self, model: str, count: int) -> None:
-        """公开方法 ensure_candidates。"""
         for a in self._registry.plugins.values():
             if model in a.supported_models:
                 try:
@@ -83,15 +80,12 @@ class Registry(RegistryLifecycleMixin, RegistryModelsMixin):
                     logger.warning("[%s] ensure_candidates 失败: %s", a.name, exc)
 
     def adapter_for(self, c: Candidate) -> Optional[Any]:
-        """公开方法 adapter_for。"""
         return self._registry.get(c.platform)
 
     async def get_capable_adapter(self, capability: str) -> Optional[Any]:
-        """公开方法 get_capable_adapter。"""
         return self._registry.get_by_capability(capability)
 
     async def get_capable_candidate(self, capability: str) -> Optional[Candidate]:
-        """公开方法 get_capable_candidate。"""
         cands = await self.get_candidates(capability=capability)
         if cands:
             selected = await self.selector.select(cands, 1)
@@ -100,7 +94,6 @@ class Registry(RegistryLifecycleMixin, RegistryModelsMixin):
         return None
 
     async def close(self) -> None:
-        """公开方法 close。"""
         if self._external_loader is not None:
             try:
                 await self._external_loader.close()

@@ -46,6 +46,7 @@ class ReloadCoordinator:
         self._session = session
         self._app_host = app_host
         self._dry_run = dry_run
+        # file watcher 可能并发投递多批变更；串行 execute 避免重叠 L2/L3 重载
         self._execute_lock = asyncio.Lock()
         # 请求排队机制
         self._request_queue: asyncio.Queue = asyncio.Queue(maxsize=_QUEUE_MAX_SIZE)

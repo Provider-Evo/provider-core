@@ -1,11 +1,3 @@
-"""auth 模块 — WebUI 层。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 auth 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 from __future__ import annotations
 
@@ -52,12 +44,10 @@ async def auth_middleware(
     request: aiohttp.web.Request,
     handler: _Handler,
 ) -> aiohttp.web.StreamResponse:
-    """中文说明：auth_middleware。
+    """Reject unauthenticated requests to protected WebUI routes.
 
-    Reject unauthenticated requests to protected WebUI routes.
-
-    Authentication is disabled when ``[auth] enabled = false`` in
-    ``config.toml`` (the default)."""
+Authentication is disabled when ``[auth] enabled = false`` in
+``config.toml`` (the default)."""
     cfg = get_config()
     if not cfg.auth.enabled:
         return await handler(request)

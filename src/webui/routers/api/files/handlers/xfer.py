@@ -1,11 +1,3 @@
-"""transfer 模块 — WebUI 层。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 transfer 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 import shutil
 from pathlib import Path
@@ -41,7 +33,7 @@ def _resolve_copy_dest(src: Path, dst: Path) -> Path:
 
 
 async def files_copy(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_copy。Copy a file or directory."""
+    """Copy a file or directory."""
     try:
         body = await request.json()
     except Exception:
@@ -84,56 +76,45 @@ async def files_copy(request: aiohttp.web.Request) -> aiohttp.web.Response:
 # ---------------------------------------------------------------------------
 
 
-async def files_move(request: aiohttp.web.Request) -> aiohttp.web.Response:
-    """中文说明：files_move。
+def _move_json_error(message: str, status: int) -> aiohttp.web.Response:
+    return aiohttp.web.json_response({"error": message}, status=status)
 
-    Move a file or directory.
 
-    Body: {"source": "/path/to/source", "dest": "/path/to/destination"}"""
+async def _resolve_move_paths(
+    request: aiohttp.web.Request,
+) -> tuple:
     try:
         body = await request.json()
     except Exception:
-        return aiohttp.web.json_response({"error": "invalid JSON"}, status=400)
+        return _move_json_error("invalid JSON", 400), None, None
 
     source_rel = body.get("source", "")
     dest_rel = body.get("dest", "")
     if not source_rel or not dest_rel:
-        return aiohttp.web.json_response(
-            {"error": "source and dest are required"},
-            status=400,
-        )
+        return _move_json_error("source and dest are required", 400), None, None
 
     src = safe_resolve(source_rel)
     dst = safe_resolve(dest_rel)
     if src is None or dst is None or src is DRIVES_SENTINEL or dst is DRIVES_SENTINEL:
-        return aiohttp.web.json_response(
-            {"error": "invalid or unsafe path"},
-            status=400,
-        )
-
+        return _move_json_error("invalid or unsafe path", 400), None, None
     if not src.exists():
-        return aiohttp.web.json_response(
-            {"error": "source path not found"},
-            status=404,
-        )
-
-    # Block writes to sensitive paths
+        return _move_json_error("source path not found", 404), None, None
     if is_write_forbidden(dst):
-        return aiohttp.web.json_response(
-            {"error": "moving to this path is not allowed"},
-            status=403,
-        )
+        return _move_json_error("moving to this path is not allowed", 403), None, None
+    if dst.is_dir():
+        dst = dst / src.name
+    return None, src, unique_dest(dst)
+
+
+async def files_move(request: aiohttp.web.Request) -> aiohttp.web.Response:
+    """Move a file or directory."""
+    err_resp, src, dst = await _resolve_move_paths(request)
+    if err_resp is not None:
+        return err_resp
 
     try:
-        # If dest is an existing directory, move into it using source name
-        if dst.is_dir():
-            dst = dst / src.name
-
-        dst = unique_dest(dst)
         dst.parent.mkdir(parents=True, exist_ok=True)
-
         shutil.move(str(src), str(dst))
-
         return aiohttp.web.json_response({"status": "ok", "dest": str(dst)})
     except OSError as e:
         return aiohttp.web.json_response({"error": str(e)}, status=500)

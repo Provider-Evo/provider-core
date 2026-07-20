@@ -1,11 +1,3 @@
-"""base 模块 — 项目标准模块。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 base 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 from typing import Any, Dict, Optional
 
@@ -44,21 +36,17 @@ class ProviderError(Exception):
 
     @property
     def error_type(self) -> str:
-        """中文说明：error_type。
-
-        Return the snake_case error type name."""
+        """Return the snake_case error type name."""
         cls = type(self)
         if cls not in _ERROR_TYPE_MAP:
             _ERROR_TYPE_MAP[cls] = _error_type_name(cls)
         return _ERROR_TYPE_MAP[cls]
 
     def to_dict(self) -> Dict[str, Any]:
-        """中文说明：to_dict。
+        """Serialize error to a JSON-compatible dictionary.
 
-        Serialize error to a JSON-compatible dictionary.
-
-        Returns:
-            ``{"error": {"type": ..., "message": ..., "status_code": ...}}``"""
+Returns:
+    ``{"error": {"type": ..., "message": ..., "status_code": ...}}``"""
         return {
             "error": {
                 "type": self.error_type,

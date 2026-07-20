@@ -1,11 +1,3 @@
-"""security 模块 — WebUI 层。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 security 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
 
 from __future__ import annotations
 
@@ -46,24 +38,18 @@ class TokenManager:
 
     @property
     def token(self) -> str:
-        """中文说明：token。
-
-        Return the current webui_token (always non-empty after init)."""
+        """Return the current webui_token (always non-empty after init)."""
         assert self._token is not None
         return self._token
 
     def verify(self, candidate: str) -> bool:
-        """中文说明：verify。
-
-        Constant-time compare *candidate* against the stored token."""
+        """Constant-time compare *candidate* against the stored token."""
         if not candidate or not self._token:
             return False
         return secrets.compare_digest(candidate, self._token)
 
     def update(self, new_token: str) -> str:
-        """中文说明：update。
-
-        Replace the token with *new_token* (min 10 chars). Returns the new token."""
+        """Replace the token with *new_token* (min 10 chars). Returns the new token."""
         if len(new_token) < 10:
             raise ValueError("Token must be at least 10 characters")
         self._token = new_token
@@ -71,9 +57,7 @@ class TokenManager:
         return self._token
 
     def regenerate(self) -> str:
-        """中文说明：regenerate。
-
-        Generate a fresh random token and persist it."""
+        """Generate a fresh random token and persist it."""
         self._token = secrets.token_hex(32)
         self._save()
         return self._token

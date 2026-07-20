@@ -135,62 +135,6 @@ function _attachTabElementMethods(instance) {
 }
 
 /**
- * Attach the click/context-menu/hover-preview event binding helper.
- * Split out of _attachTabElementMethods to keep it under the line cap.
- */
-function _attachTabElementEventMethods(instance) {
-  /**
-   * Attach click/context-menu/hover-preview listeners for a tab element.
-   * Split out of _createTabElement to keep that function under the line cap.
-   */
-  instance._bindTabElementEvents = function (el, tab) {
-    var self = this;
-
-    // Close button (only if tab is closable)
-    if (tab.closable !== false) {
-      var closeEl = document.createElement('span');
-      closeEl.className = 'unified-tab-close';
-      closeEl.innerHTML = '&times;';
-      closeEl.addEventListener('click', function (e) {
-        e.stopPropagation();
-        self._hidePreview();
-        if (self._opts.onClose) self._opts.onClose(tab.id);
-      });
-      el.appendChild(closeEl);
-    }
-
-    // Tab click -> switch (left-click only); status slots handle their own clicks.
-    el.addEventListener('click', function (e) {
-      if (e.button !== 0) return;
-      if (e.target.closest('.unified-tab-status-slot')) return;
-      if (self._opts.onSwitch) self._opts.onSwitch(tab.id);
-    });
-
-    // Right-click -> context menu
-    el.addEventListener('contextmenu', function (e) {
-      e.preventDefault();
-      if (self._opts.onContextMenu) self._opts.onContextMenu(tab.id, e);
-    });
-
-    // Preview tooltip on hover (compressed mode, non-active tabs)
-    el.addEventListener('mouseenter', function (e) {
-      if (self._collapsed && tab.id !== self._activeId) {
-        if (self._opts.onPreviewRequest) self._opts.onPreviewRequest(tab.id);
-        self._showPreview(tab, e.clientX, e.clientY);
-      }
-    });
-    el.addEventListener('mousemove', function (e) {
-      if (self._collapsed && tab.id !== self._activeId) {
-        self._movePreview(e.clientX, e.clientY);
-      }
-    });
-    el.addEventListener('mouseleave', function () {
-      self._hidePreview();
-    });
-  };
-}
-
-/**
  * Attach the tab element creation and icon-sync DOM helpers.
  * Split out of _attachTabElementMethods to keep it under the line cap.
  */

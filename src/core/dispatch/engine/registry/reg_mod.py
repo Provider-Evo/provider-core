@@ -121,5 +121,4 @@ class RegistryModelsMixin:
         return out
 
     async def list_models(self) -> List[Dict[str, Any]]:
-        """公开方法 list_models。"""
         return await self.all_models()
