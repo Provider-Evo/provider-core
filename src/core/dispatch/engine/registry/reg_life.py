@@ -176,7 +176,7 @@ class RegistryLifecycleMixin:
         from src.core.dispatch.engine.registry.reg_reload import reload_single_plugin_id
 
         return await reload_single_plugin_id(
-            self._registry, plugin_id, session, runtime, wl, bl
+            self, plugin_id, session, runtime, wl, bl
         )
 
     async def reload_plugins_by_ids(

@@ -8,6 +8,16 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.301] - 2026-07-21
+
+### 修复
+
+- 文件选项卡布局自适应浏览器高度（对齐终端选项卡）
+- 文件搜索忽略目录改为大小写不敏感精确匹配，不再误跳 `Log`/`config` 等项目目录
+- 鉴权：`auth.enabled` 时所有端点需 API Key / Virtual Key / WebUI Token（会话 Cookie 或 Bearer），移除无密钥直通
+- 终端自定义背景刷新丢失：`terminals.json` 合并写入，避免连接列表覆盖背景设置
+- 插件热重载 `ensure_candidates` 调用 Registry 包装器；client import 顺序修复
+
 ## [2.2.300] - 2026-07-21
 
 ### 修复

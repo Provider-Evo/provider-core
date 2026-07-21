@@ -9,20 +9,27 @@ from src.foundation.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _plugin_registry(registry: Any) -> Any:
+    """Return the echotools PluginRegistry (Registry wrapper exposes ``._registry``)."""
+    inner = getattr(registry, "_registry", None)
+    return inner if inner is not None else registry
+
+
 async def _unregister_old_platform(registry: Any, record_before: Any) -> None:
     if record_before is None or record_before.adapter is None:
         return
     platform_name = (
         record_before.adapter.name if hasattr(record_before.adapter, "name") else ""
     )
-    old = registry.get(platform_name)
+    plugins = _plugin_registry(registry)
+    old = plugins.get(platform_name)
     if old is None:
         return
     try:
         await old.close()
     except Exception as exc:
         logger.warning("关闭旧平台 [%s] 失败: %s", platform_name, exc)
-    registry._plugins.pop(platform_name, None)
+    plugins._plugins.pop(platform_name, None)
 
 
 async def _register_reloaded_adapter(
@@ -35,14 +42,17 @@ async def _register_reloaded_adapter(
     name = adapter.name if hasattr(adapter, "name") else ""
     if not name or (wl is not None and name not in wl) or name in (bl or []):
         return
-    registry.register(adapter)
+    _plugin_registry(registry).register(adapter)
     logger.info("平台插件已重新注册: %s", name)
     models = (
         list(adapter.supported_models) if hasattr(adapter, "supported_models") else []
     )
+    ensure = getattr(registry, "ensure_candidates", None)
+    if ensure is None:
+        return
     for model in models:
         try:
-            await registry.ensure_candidates(model, 1)
+            await ensure(model, 1)
         except Exception as exc:
             logger.warning("候选项刷新失败 [%s]: %s", name, exc)
 

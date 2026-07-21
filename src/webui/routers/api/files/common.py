@@ -67,7 +67,8 @@ BINARY_EXTENSIONS = frozenset(
     }
 )
 
-# Path components that are forbidden for write operations
+# Path components that are forbidden for write operations (exact segment match).
+# File names only — never block directories named e.g. config/ or Log/.
 SENSITIVE_PATH_PARTS = frozenset(
     {
         ".git",
@@ -160,20 +161,36 @@ def entry_info_from_scandir(entry: os.DirEntry) -> Dict[str, Any]:
     }
 
 
+# Directory names skipped during recursive file search only (exact segment match,
+# case-insensitive). Do NOT add generic names like "config" or "log" — project
+# source trees often contain those as legitimate folders.
 SEARCH_SKIP_DIRS = frozenset(
     {
         ".git",
+        ".svn",
+        ".hg",
         "node_modules",
         "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
         ".backup",
         ".tmp",
-        "logs",
+        ".agents",
+        ".cursor",
+        ".idea",
+        ".vscode",
         "persist",
         "uploads",
         ".qoder",
-        ".agents",
     }
 )
+SEARCH_SKIP_DIRS_LOWER = frozenset(d.lower() for d in SEARCH_SKIP_DIRS)
+
+
+def should_skip_search_dir(name: str) -> bool:
+    """True when *name* is a known junk directory (case-insensitive)."""
+    return name.lower() in SEARCH_SKIP_DIRS_LOWER
 
 
 def unique_dest(dest: Path) -> Path:

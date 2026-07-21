@@ -2113,6 +2113,15 @@ section.tab-panel > * {
   overflow: hidden;
 }
 
+#tab-files > .flex {
+  flex-shrink: 0;
+}
+
+#tab-files .files-container {
+  flex: 1;
+  min-height: 0;
+}
+
 /* ========== Restart Overlay ========== */
 .restart-overlay {
   position: fixed;

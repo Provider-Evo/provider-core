@@ -344,7 +344,9 @@ function _attachSshPersistMethods(ctx) {
 
   async function _saveSavedConnections() {
     try {
-      if (typeof persistSave === 'function') {
+      if (typeof mergeTerminalsPersist === 'function') {
+        await mergeTerminalsPersist({ connections: ctx.savedConnections });
+      } else if (typeof persistSave === 'function') {
         var existing = await persistLoad('terminals.json') || {};
         existing.connections = ctx.savedConnections;
         await persistSave('terminals.json', existing);

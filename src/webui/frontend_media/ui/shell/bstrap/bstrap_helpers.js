@@ -17,6 +17,16 @@ async function persistLoad(filename) {
   return null;
 }
 
+/** Merge-patch terminals.json to avoid bg/connection fields clobbering each other. */
+async function mergeTerminalsPersist(patch) {
+  if (typeof persistSave !== 'function' || typeof persistLoad !== 'function') return;
+  var existing = await persistLoad('terminals.json');
+  if (!existing || typeof existing !== 'object') existing = {};
+  var next = Object.assign({}, existing, patch || {});
+  await persistSave('terminals.json', next);
+  return next;
+}
+
 // ========================= Lazy Per-Tab Init Functions =========================
 // Called by state.js _initTab() the first time each tab is shown.
 

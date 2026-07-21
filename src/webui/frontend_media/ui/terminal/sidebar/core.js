@@ -69,7 +69,9 @@ function _attachTerminalSidebarCoreSubCollapse(ctx, state) {
 
   async function _saveCollapsedState() {
     try {
-      if (typeof persistSave === 'function') {
+      if (typeof mergeTerminalsPersist === 'function') {
+        await mergeTerminalsPersist({ serverSidebarCollapsed: state.collapsed });
+      } else if (typeof persistSave === 'function') {
         var existing = await persistLoad('terminals.json') || {};
         existing.serverSidebarCollapsed = state.collapsed;
         await persistSave('terminals.json', existing);
