@@ -1,4 +1,3 @@
-
 from echotools.fncall import (
     FncallStreamParser,
     LoopDetectionResult,
