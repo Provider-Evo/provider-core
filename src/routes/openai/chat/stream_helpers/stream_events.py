@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp.web
 
+from src.core.utils.compat.tools import normalize_tool_calls
 from src.core.server import safe_flush as _safe_flush
 from src.core.utils.compat.observability import get_observability_services
 from src.foundation.logger import get_logger
@@ -242,7 +243,9 @@ class _StreamState:
         elif "thinking" in ch:
             await self._process_thinking_chunk(ch["thinking"])
         elif "tool_calls" in ch:
-            self.tool_calls_data = ch["tool_calls"]
+            self.tool_calls_data = normalize_tool_calls(
+                ch["tool_calls"], self.tools_raw
+            )
             self.has_tc = True
         elif "usage" in ch:
             self.usage_d = ch["usage"]
@@ -257,6 +260,9 @@ class _StreamState:
                 self.resolve_proto()
             _, self.tool_calls_data = self.proto.parse(
                 self.fncall_buffer, self.tools_raw
+            )
+            self.tool_calls_data = normalize_tool_calls(
+                self.tool_calls_data, self.tools_raw
             )
             if self.tool_calls_data:
                 self.has_tc = True

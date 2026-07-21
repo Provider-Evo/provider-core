@@ -12,6 +12,7 @@ from src.core.server import get_json as _get_json
 from src.core.utils.errors import ModerationError, NoCandidateError, ProviderError
 from src.foundation.config.resolve import resolve_model
 from src.foundation.logger import get_logger
+from src.core.utils.compat.tools import normalize_tool_calls
 from src.routes.openai.chat.helpers import _err, _json, _normalize_messages
 from src.routes.openai.chat.non_stream import (
     build_chat_completion_payload,
@@ -102,6 +103,7 @@ async def _collect_and_build_payload(
     content, tcs = fallback_parse_tool_calls(
         content, tcs, platform_id, proto_override, body.get("tools")
     )
+    tcs = normalize_tool_calls(tcs, body.get("tools"))
     content = _clean_fncall(
         content, platform_id=platform_id, protocol_id=proto_override
     )

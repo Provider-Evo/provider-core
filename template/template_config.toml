@@ -3,7 +3,7 @@
 # 字段与 WebUI 配置面板（config_panel_schema）及 src/core/config/sections.py 对齐。
 
 [server]
-version = "2.2.301"               # 与 pyproject.toml / 打包脚本一致
+version = "2.2.302"               # 与 pyproject.toml / 打包脚本一致
 host = "0.0.0.0"
 port = 1337
 debug = false

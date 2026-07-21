@@ -11,6 +11,7 @@ from echotools.fncall.shared.coercion import (
     _build_param_schema_index,
     _coerce_param_value,
 )
+from echotools.fncall.shared.normalization import normalize_tool_calls
 from echotools.protocol.base import ToolProtocol
 
 
@@ -116,7 +117,7 @@ Tool results will be provided in a corresponding result block."""
         if tool_calls:
             clean = self._BLOCK_RE.sub("", text).strip()
 
-        return (clean, tool_calls)
+        return (clean, normalize_tool_calls(tool_calls, tools))
 
     def _parse_args(self, args_raw, func_name, schema_index):
         """Parse and optionally coerce arguments."""

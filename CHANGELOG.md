@@ -8,6 +8,12 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.302] - 2026-07-21
+
+### 增强
+
+- 工具调用参数规范化：依赖 `echotools>=2.3.7` 的 `normalize_tool_calls`，修复模型输出 Python 字面量无法 JSON 解析的问题
+
 ## [2.2.301] - 2026-07-21
 
 ### 修复

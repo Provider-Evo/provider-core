@@ -6,6 +6,8 @@ from echotools.fncall import (
     format_tool_descs,
     inject_fncall,
     normalize_content,
+    normalize_tool_call,
+    normalize_tool_calls,
     parse_fncall,
     parse_fncall_xml,
 )
@@ -21,6 +23,8 @@ __all__ = [
     # 格式化与标准化
     "format_tool_descs",
     "normalize_content",
+    "normalize_tool_call",
+    "normalize_tool_calls",
     # 循环检测
     "detect_tool_loop",
     "LoopDetectionResult",
