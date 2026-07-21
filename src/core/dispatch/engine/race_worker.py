@@ -275,7 +275,14 @@ async def race_execute(
 ) -> AsyncGenerator[Union[str, Dict], None]:
     """多候选项竞速执行。"""
     dump_race_prompt(
-        msgs, tools, cands, fncall_lang=fncall_lang, protocol_id=protocol_id
+        msgs,
+        tools,
+        cands,
+        fncall_lang=fncall_lang,
+        protocol_id=protocol_id,
+        thinking=thinking,
+        thinking_mode=kw.get("thinking_mode"),
+        max_thinking_length=kw.get("max_thinking_length"),
     )
     infos = spawn_race_workers(
         reg, cands, msgs, model, stream, thinking, search,

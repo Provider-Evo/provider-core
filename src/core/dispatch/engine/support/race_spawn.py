@@ -95,6 +95,9 @@ async def _run_race_worker(
         fncall_lang=fncall_lang,
         protocol_id=protocol_id,
         dump_prompt=False,
+        thinking=thinking,
+        thinking_mode=kw.get("thinking_mode"),
+        max_thinking_length=kw.get("max_thinking_length"),
     )
     race_kw = native_complete_kw(kw, tools, c.native_tools)
     await _race_worker_stream(

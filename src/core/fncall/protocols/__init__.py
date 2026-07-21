@@ -1,25 +1,7 @@
 from __future__ import annotations
 
-"""协议注册 → echotools 重导出。"""
+"""协议 — echotools 内置 entml；其余由 Provider-Fncall-Util 插件注册。"""
 
-from echotools.fncall.protocols import *  # noqa: F401,F403
+from echotools.exec.fncall.protocols.entml import EntmlProtocol
 
-from .echotoolslocal import (
-    AntmlProtocol,
-    BracketProtocol,
-    CustomProtocol,
-    DsmlProtocol,
-    NousProtocol,
-    OriginalProtocol,
-    XmlProtocol,
-)
-
-__all__ = [
-    "AntmlProtocol",
-    "BracketProtocol",
-    "CustomProtocol",
-    "DsmlProtocol",
-    "NousProtocol",
-    "OriginalProtocol",
-    "XmlProtocol",
-]
+__all__ = ["EntmlProtocol"]

@@ -126,7 +126,14 @@ async def single_execute(
         raise ProviderError("无适配器: {}".format(cand.platform))
 
     worker_msgs, protocol = prepare_worker_messages(
-        msgs, tools, cand, fncall_lang=fncall_lang, protocol_id=protocol_id
+        msgs,
+        tools,
+        cand,
+        fncall_lang=fncall_lang,
+        protocol_id=protocol_id,
+        thinking=thinking,
+        thinking_mode=kw.get("thinking_mode"),
+        max_thinking_length=kw.get("max_thinking_length"),
     )
     native = cand.native_tools
     fp = (
