@@ -214,6 +214,22 @@ def _parse_messages_request(
     return resolve_model(mdl, "anthropic"), None
 
 
+def _messages_collect_error(exc: Exception) -> aiohttp.web.StreamResponse:
+    if isinstance(exc, NoCandidateError):
+        return _err(503, str(exc), "overloaded_error")
+    if isinstance(exc, ProviderError):
+        return _err(502, str(exc), "api_error")
+    from src.core.utils.errors.biz import NetworkError
+
+    if isinstance(exc, aiohttp.ClientConnectorError):
+        err = NetworkError(f"连接失败: {exc}", original=exc)
+        logger.error("Anthropic 连接错误: %s", exc, exc_info=True)
+    else:
+        err = exc
+        logger.error("Anthropic messages 异常: %s", exc, exc_info=True)
+    return _err(500, str(err), "server_error")
+
+
 async def messages_handler(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.StreamResponse:
@@ -241,20 +257,8 @@ async def messages_handler(
         content, thinking_parts, tool_calls, usage_d, platform_id = (
             await _collect_messages(body, msgs, tools, request.app[REGISTRY_KEY])
         )
-    except NoCandidateError as exc:
-        return _err(503, str(exc), "overloaded_error")
-    except ProviderError as exc:
-        return _err(502, str(exc), "api_error")
     except Exception as exc:
-        from src.core.utils.errors.biz import NetworkError
-
-        if isinstance(exc, aiohttp.ClientConnectorError):
-            err = NetworkError(f"连接失败: {exc}", original=exc)
-            logger.error("Anthropic 连接错误: %s", exc, exc_info=True)
-        else:
-            err = exc
-            logger.error("Anthropic messages 异常: %s", exc, exc_info=True)
-        return _err(500, str(err), "server_error")
+        return _messages_collect_error(exc)
     rc = _build_anthropic_content_blocks(content, thinking_parts, tool_calls)
     pt, ou = _anthropic_usage(msgs, content, usage_d)
     resp = _json(

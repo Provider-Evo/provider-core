@@ -7,7 +7,6 @@ import uuid
 from typing import Any, Dict, List, Optional, Union
 
 from src.core.utils.compat.tools import normalize_content
-from src.foundation.config.resolve import resolve_model
 
 # ═══════════════════════════════════════════════════════════════════════════
 # ID 生成工具
@@ -144,7 +143,11 @@ def _image_block_to_openai(block: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _multimodal_blocks_to_openai(content: List) -> List[Dict[str, Any]]:
+def _multimodal_blocks_to_openai(
+    content: List,
+    *,
+    include_thinking: bool = False,
+) -> List[Dict[str, Any]]:
     """将包含 image block 的 Anthropic content 列表转换为 OpenAI 多模态 blocks。"""
     result_blocks: List[Dict[str, Any]] = []
     for block in content:
@@ -187,6 +190,37 @@ def _anth_tool_use_to_openai(block: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _collect_assistant_block(
+    block: Any,
+    *,
+    include_thinking: bool,
+    thinking_parts: List[str],
+    text_parts: List[str],
+    tool_calls: List[Dict[str, Any]],
+) -> None:
+    if not isinstance(block, dict):
+        if isinstance(block, str) and block:
+            text_parts.append(block)
+        return
+    btype = block.get("type", "")
+    if btype == "thinking" and include_thinking:
+        thinking = block.get("thinking", "")
+        if thinking:
+            thinking_parts.append(str(thinking))
+        return
+    if btype == "text":
+        text = block.get("text", "")
+        if text:
+            text_parts.append(text)
+        return
+    if btype == "tool_use":
+        tool_calls.append(_anth_tool_use_to_openai(block))
+        return
+    text = _content_block_to_text(block, include_thinking=include_thinking)
+    if text:
+        text_parts.append(text)
+
+
 def _anth_assistant_blocks_to_openai(
     content: List[Any],
     *,
@@ -198,25 +232,13 @@ def _anth_assistant_blocks_to_openai(
     tool_calls: List[Dict[str, Any]] = []
 
     for block in content:
-        if not isinstance(block, dict):
-            if isinstance(block, str) and block:
-                text_parts.append(block)
-            continue
-        btype = block.get("type", "")
-        if btype == "thinking" and include_thinking:
-            thinking = block.get("thinking", "")
-            if thinking:
-                thinking_parts.append(str(thinking))
-        elif btype == "text":
-            text = block.get("text", "")
-            if text:
-                text_parts.append(text)
-        elif btype == "tool_use":
-            tool_calls.append(_anth_tool_use_to_openai(block))
-        else:
-            text = _content_block_to_text(block, include_thinking=include_thinking)
-            if text:
-                text_parts.append(text)
+        _collect_assistant_block(
+            block,
+            include_thinking=include_thinking,
+            thinking_parts=thinking_parts,
+            text_parts=text_parts,
+            tool_calls=tool_calls,
+        )
 
     msg: Dict[str, Any] = {
         "role": "assistant",
@@ -258,7 +280,9 @@ def _anth_content_to_openai(
                 parts.append(block)
         return "\n".join(filter(None, parts))
 
-    result_blocks = _multimodal_blocks_to_openai(content)
+    result_blocks = _multimodal_blocks_to_openai(
+        content, include_thinking=include_thinking
+    )
     return result_blocks if result_blocks else ""
 
 
@@ -326,66 +350,3 @@ def _is_thinking(body: Dict[str, Any]) -> bool:
         return t.get("type") == "enabled" or bool(t.get("enabled", False))
     return bool(t)
 
-
-# ═══════════════════════════════════════════════════════════════════════════
-# OpenAI tool_call → Anthropic tool_use / dispatch kwargs 构建
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-def _openai_tc_to_anth(
-    tc: Dict[str, Any],
-) -> Dict[str, Any]:
-    """将 OpenAI tool_call 转换为 Anthropic tool_use content block。
-
-    id 必须以 toolu_ 开头；若上游 id 不符合，生成新的合规 id。
-    """
-    func = tc.get("function", {})
-    args_raw = func.get("arguments", "{}")
-    if isinstance(args_raw, dict):
-        inp = args_raw
-    else:
-        try:
-            inp = json.loads(args_raw)
-        except (json.JSONDecodeError, ValueError):
-            inp = {}
-
-    raw_id: str = tc.get("id") or ""
-    tool_id = raw_id if raw_id.startswith("toolu_") else _tc_id()
-
-    return {
-        "type": "tool_use",
-        "id": tool_id,
-        "name": func.get("name", ""),
-        "input": inp,
-    }
-
-
-def _build_dispatch_kwargs(
-    body: Dict[str, Any],
-    messages: List[Dict[str, Any]],
-    stream: bool,
-    registry: Any,
-    tools: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
-    """构建 gateway.dispatch 调用参数。"""
-    stop = body.get("stop_sequences")
-    if stop is not None and isinstance(stop, list):
-        stop_val: Optional[List[str]] = stop
-    elif stop is not None:
-        stop_val = [str(stop)]
-    else:
-        stop_val = None
-
-    return {
-        "registry": registry,
-        "messages": messages,
-        "model": resolve_model(body.get("model", ""), "anthropic"),
-        "stream": stream,
-        "tools": tools,
-        "thinking": _is_thinking(body),
-        "search": bool(body.get("search", False)),
-        "temperature": body.get("temperature"),
-        "top_p": body.get("top_p"),
-        "max_tokens": body.get("max_tokens", 4096),
-        "stop": stop_val,
-    }
