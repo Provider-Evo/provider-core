@@ -13,6 +13,9 @@
 .opencode
 __pycache__
 data
+!src/webui/data/
+!src/webui/data/**/
+!src/webui/data/**/*.py
 env
 node_modules
 persist
