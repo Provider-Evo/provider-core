@@ -1,11 +1,11 @@
-"""Cerebras HTTP 客户端——同步 SDK 通过 ThreadPoolExecutor 桥接异步"""
-
 from __future__ import annotations
 
 import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
+
+from provider_sdk.model_ids import ModelIdRegistry
 
 from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.logger import get_logger
@@ -37,7 +37,11 @@ class CerebrasClient:
 
     def __init__(self) -> None:
         self._session: Any = None
-        self._models: List[str] = []
+        self._model_registry = ModelIdRegistry("cerebras")
+        self._model_registry.load()
+        from .consts import MODELS
+
+        self._models: List[str] = self._model_registry.merge_fallback(MODELS)
         self._candidates: List[Candidate] = []
         self._executor: Optional[ThreadPoolExecutor] = None
 
@@ -50,7 +54,7 @@ class CerebrasClient:
         self._session = session
         from ..accounts import API_KEYS
 
-        self._api_keys = list(API_KEYS)
+        self._api_keys = load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)
         # 创建线程池（同步 SDK 需要）
         self._executor = ThreadPoolExecutor(
             max_workers=max(len(self._api_keys), 4),
@@ -73,9 +77,9 @@ class CerebrasClient:
         Args:
             models: 新的模型列表。
         """
-        self._models = list(models)
+        self._models = self._model_registry.register_many(models)
         for cand in self._candidates:
-            cand.models = list(models)
+            cand.models = list(self._models)
 
     def _rebuild_candidates(self) -> None:
         """根据当前 API_KEYS 重建候选项列表。"""
@@ -130,7 +134,7 @@ class CerebrasClient:
                 lambda: self._list_models_sync(api_key),
             )
             logger.info("cerebras 远程模型列表: %d 个", len(model_ids))
-            return model_ids
+            return self._model_registry.register_many(model_ids)
         except Exception as e:
             logger.warning("cerebras 拉取模型列表失败: %s", e)
             return []
@@ -191,6 +195,7 @@ class CerebrasClient:
         Raises:
             Exception: 达到最大重试次数后仍失败时抛出最后一次异常。
         """
+        model = self._model_registry.resolve_upstream(model)
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:

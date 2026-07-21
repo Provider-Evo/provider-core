@@ -105,13 +105,18 @@ function _renderChatHistoryFromMemory() {
   _userMsgCount = _countUserMessages(chatConversationHistory);
 }
 
-function _prepareMessagesForApi(messages) {
+function _prepareMessagesForApi(messages, includeThinking) {
   var out = [];
+  var passThinking = includeThinking !== false;
   for (var i = 0; i < messages.length; i++) {
     var m = messages[i];
     var msg = { role: m.role, content: m.content };
     if (m.role === 'assistant' && m.tool_calls && m.tool_calls.length) {
       msg.tool_calls = m.tool_calls;
+    }
+    if (passThinking && m.role === 'assistant' && m.reasoning_content) {
+      msg.reasoning = m.reasoning_content;
+      msg.reasoning_content = m.reasoning_content;
     }
     if (m.role === 'tool') {
       msg.tool_call_id = m.tool_call_id;

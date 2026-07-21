@@ -1,19 +1,22 @@
-"""NoobKeys HTTP 客户端（OpenAI 兼容协议，纯文本对话）。"""
-
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
+from provider_sdk.model_ids import ModelIdRegistry
+
 from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import PlatformError
+from src.foundation.config.reader import load_plugin_api_keys
 from src.foundation.logger import get_logger
 from .protocol.constants import (
     BASE_URL,
     CAPS,
     CHAT_PATH,
+    MODELS,
     MODELS_PATH,
 )
 from .protocol.headers import build_headers
@@ -21,6 +24,8 @@ from .helpers import _extract_error_message, _iter_non_stream_items
 from .keystate import _KeyState
 from .protocol.payloads import build_payload
 from .protocol.sse import parse_sse_line
+
+_PLUGIN_DIR = Path(__file__).resolve().parents[2]
 
 logger = get_logger(__name__)
 MAX_RETRIES: int = 3
@@ -32,7 +37,9 @@ class NoobKeysClient:
     def __init__(self) -> None:
         """初始化客户端。"""
         self._session: Optional[aiohttp.ClientSession] = None
-        self._models: List[str] = []
+        self._model_registry = ModelIdRegistry("noobkeys")
+        self._model_registry.load()
+        self._models: List[str] = self._model_registry.merge_fallback(MODELS)
         self._keys: List[_KeyState] = []
 
     async def init_immediate(self, session: aiohttp.ClientSession) -> None:
@@ -44,7 +51,7 @@ class NoobKeysClient:
         self._session = session
         from ..accounts import API_KEYS
 
-        self._keys = [_KeyState(k) for k in API_KEYS if k and k.strip()]
+        self._keys = [_KeyState(k) for k in load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)]
         logger.debug(
             "noobkeys 客户端初始化完成, %d 个 APIKey",
             len(self._keys),
@@ -91,11 +98,13 @@ class NoobKeysClient:
                 data = await resp.json()
                 model_data = data.get("data", [])
                 if isinstance(model_data, list):
-                    return [
+                    upstream = [
                         m.get("id", "")
                         for m in model_data
                         if isinstance(m, dict) and m.get("id")
                     ]
+                    if upstream:
+                        return self._model_registry.register_many(upstream)
                 return []
         except Exception as e:
             logger.warning("noobkeys 拉取模型列表异常: %s", e)
@@ -107,7 +116,10 @@ class NoobKeysClient:
         Args:
             models: 新的模型列表。
         """
-        self._models = list(models)
+        self._models = self._model_registry.register_many(models)
+
+    def get_models(self) -> List[str]:
+        return list(self._models)
 
     def _find_key(self, candidate: Candidate) -> Optional[_KeyState]:
         """根据候选项找到对应的 KeyState。"""
@@ -156,6 +168,7 @@ class NoobKeysClient:
             **kw: 转发给 ``build_payload`` 的额外参数；
                 ``thinking`` / ``search`` 等不支持字段会被静默丢弃。
         """
+        model = self._model_registry.resolve_upstream(model)
         payload_kw: Dict[str, Any] = {
             k: v
             for k, v in kw.items()

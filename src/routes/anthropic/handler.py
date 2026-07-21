@@ -30,6 +30,8 @@ from src.routes.anthropic.convert import (
 )
 from src.routes.anthropic.streaming.stream import _stream_messages
 
+from src.routes.shared.thinking import resolve_include_thinking_in_history
+
 logger = get_logger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -223,10 +225,18 @@ async def messages_handler(
     if err is not None:
         return err
     system_str = _normalize_anth_content(body.get("system"))
-    msgs = _anth_messages_to_openai(body.get("messages", []), system_str)
+    thinking = _is_thinking(body)
+    include_thinking = resolve_include_thinking_in_history(
+        body, thinking_enabled=thinking
+    )
+    msgs = _anth_messages_to_openai(
+        body.get("messages", []),
+        system_str,
+        include_thinking_in_history=include_thinking,
+    )
     tools = _anth_tools_to_openai(body.get("tools"))
     if bool(body.get("stream", False)):
-        return await _stream_messages(request, body, msgs, tools, _is_thinking(body))
+        return await _stream_messages(request, body, msgs, tools, thinking)
     try:
         content, thinking_parts, tool_calls, usage_d, platform_id = (
             await _collect_messages(body, msgs, tools, request.app[REGISTRY_KEY])
@@ -347,7 +357,15 @@ async def count_tokens(
         return _err(400, "Invalid JSON", "invalid_request_error")
 
     system_str = _normalize_anth_content(body.get("system"))
-    msgs = _anth_messages_to_openai(body.get("messages", []), system_str)
+    thinking = _is_thinking(body)
+    include_thinking = resolve_include_thinking_in_history(
+        body, thinking_enabled=thinking
+    )
+    msgs = _anth_messages_to_openai(
+        body.get("messages", []),
+        system_str,
+        include_thinking_in_history=include_thinking,
+    )
     estimated = sum(len(str(m.get("content", ""))) // 3 for m in msgs)
     # 工具定义也计入 token
     tools = body.get("tools", [])

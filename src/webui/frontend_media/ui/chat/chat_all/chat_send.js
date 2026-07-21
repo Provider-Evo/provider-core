@@ -134,9 +134,19 @@ async function _handleSendResponse(response, streamEnabled, body, abortControlle
 
 async function _executeSendRequest(model, protocol) {
   var tools = getToolsDefinition();
-  var historySlice = _prepareMessagesForApi(chatConversationHistory.slice(-20));
+  var thinkingEnabled = _isChatThinkingEnabled();
+  var historySlice = _prepareMessagesForApi(chatConversationHistory.slice(-20), thinkingEnabled);
   var streamEnabled = _isChatStreamingEnabled();
-  var body = { model: model, messages: historySlice, stream: streamEnabled, protocol: protocol, extra_body: { thinking: _isChatThinkingEnabled() } };
+  var body = {
+    model: model,
+    messages: historySlice,
+    stream: streamEnabled,
+    protocol: protocol,
+    extra_body: {
+      thinking: thinkingEnabled,
+      include_thinking_in_history: thinkingEnabled
+    }
+  };
   if (tools.length > 0) body.tools = tools;
   var abortController = new AbortController();
   _chatAbortController = abortController;

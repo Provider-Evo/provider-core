@@ -14,6 +14,7 @@ from src.foundation.config.resolve import resolve_model
 from src.foundation.logger import get_logger
 from src.core.utils.compat.tools import normalize_tool_calls
 from src.routes.openai.chat.helpers import _err, _json, _normalize_messages
+from src.routes.shared.thinking import resolve_include_thinking_in_history
 from src.routes.openai.chat.non_stream import (
     build_chat_completion_payload,
     collect_nonstream_chat,
@@ -48,8 +49,15 @@ async def _parse_chat_request(
     if body is None:
         return {}, _err(400, "Invalid JSON in request body", "invalid_json")
 
+    extra = body.get("extra_body") or body.get("extra") or {}
+    thinking = bool(extra.get("thinking"))
+    include_thinking = resolve_include_thinking_in_history(
+        body, extra=extra, thinking_enabled=thinking
+    )
     if "messages" in body and isinstance(body["messages"], list):
-        body["messages"] = _normalize_messages(body["messages"])
+        body["messages"] = _normalize_messages(
+            body["messages"], include_thinking_in_history=include_thinking
+        )
 
     if not body.get("messages", []):
         return {}, _err(400, "messages is required", "missing_field", param="messages")

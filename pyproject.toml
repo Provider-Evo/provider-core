@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "provider-guide"
-version = "2.2.302"
+version = "2.2.304"
 description = "Unified AI model gateway aggregating 17+ platforms behind a single OpenAI/Anthropic-compatible API"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -24,7 +24,7 @@ dependencies = [
     "numpy>=1.21.0",
     "paramiko>=3.0.0",
     "echotools>=2.3.7",
-    "provider-sdk>=0.3.2",
+    "provider-sdk>=0.3.4",
     "tomli>=2.0.0; python_version < '3.11'",
 ]
 

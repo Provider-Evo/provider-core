@@ -1,17 +1,21 @@
-"""Chutes 客户端——每个 API Key 一个候选项"""
-
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
+from provider_sdk.model_ids import ModelIdRegistry
+
 from src.core.dispatch.cand import Candidate, make_id
+from src.foundation.config.reader import load_plugin_api_keys
 from src.foundation.logger import get_logger
 
 from .helpers.client_helpers import KeyState as _KeyState, build_chat_request, dispatch_chat_response
-from .consts import CAPS
+from .consts import CAPS, MODELS
+
+_PLUGIN_DIR = Path(__file__).resolve().parents[2]
 
 logger = get_logger(__name__)
 
@@ -29,7 +33,9 @@ class ChutesClient:
     def __init__(self) -> None:
         """初始化客户端实例。"""
         self._session: Optional[aiohttp.ClientSession] = None
-        self._models: List[str] = []
+        self._model_registry = ModelIdRegistry("chutes")
+        self._model_registry.load()
+        self._models: List[str] = self._model_registry.merge_fallback(MODELS)
         self._candidates: List[Candidate] = []
         self._key_states: List[_KeyState] = []
 
@@ -45,7 +51,7 @@ class ChutesClient:
         from ..accounts import API_KEYS
 
         self._key_states = [
-            _KeyState(k) for k in API_KEYS if isinstance(k, str) and k.strip()
+            _KeyState(k) for k in load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)
         ]
         self._rebuild_candidates()
         logger.info(
@@ -66,9 +72,9 @@ class ChutesClient:
         Args:
             models: 新的模型列表。
         """
-        self._models = list(models)
+        self._models = self._model_registry.register_many(models)
         for cand in self._candidates:
-            cand.models = list(models)
+            cand.models = list(self._models)
 
     def _rebuild_candidates(self) -> None:
         """根据当前 Key 状态重建候选项列表。"""
@@ -159,6 +165,7 @@ class ChutesClient:
         Raises:
             Exception: 重试耗尽后抛出最后一次异常。
         """
+        model = self._model_registry.resolve_upstream(model)
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:

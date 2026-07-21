@@ -94,7 +94,11 @@ def _extract_image_source(image_block: Dict[str, Any]) -> str:
     return "[image]"
 
 
-def _content_block_to_text(block: Dict[str, Any]) -> str:
+def _content_block_to_text(
+    block: Dict[str, Any],
+    *,
+    include_thinking: bool = False,
+) -> str:
     """将单个 Anthropic content block 转换为文本描述。"""
     btype = block.get("type", "")
     if btype == "text":
@@ -115,7 +119,9 @@ def _content_block_to_text(block: Dict[str, Any]) -> str:
         )
         return "Tool call ({}): {}({})".format(tool_id, name, inp_str)
     if btype == "thinking":
-        return "[thinking: {}]".format(block.get("thinking", ""))
+        if include_thinking:
+            return "[thinking: {}]".format(block.get("thinking", ""))
+        return ""
     return block.get("text", str(block))
 
 
@@ -157,15 +163,78 @@ def _multimodal_blocks_to_openai(content: List) -> List[Dict[str, Any]]:
             if image_block is not None:
                 result_blocks.append(image_block)
         else:
-            text = _content_block_to_text(block)
+            text = _content_block_to_text(block, include_thinking=include_thinking)
             if text:
                 result_blocks.append({"type": "text", "text": text})
 
     return result_blocks
 
 
+def _anth_tool_use_to_openai(block: Dict[str, Any]) -> Dict[str, Any]:
+    """将 Anthropic tool_use block 转换为 OpenAI tool_call。"""
+    inp = block.get("input", {})
+    if isinstance(inp, dict):
+        args_str = json.dumps(inp, ensure_ascii=False)
+    else:
+        args_str = str(inp)
+    return {
+        "id": block.get("id") or _tc_id(),
+        "type": "function",
+        "function": {
+            "name": block.get("name", ""),
+            "arguments": args_str,
+        },
+    }
+
+
+def _anth_assistant_blocks_to_openai(
+    content: List[Any],
+    *,
+    include_thinking: bool,
+) -> Dict[str, Any]:
+    """将 assistant 消息的 Anthropic content blocks 转为 OpenAI 字段。"""
+    thinking_parts: List[str] = []
+    text_parts: List[str] = []
+    tool_calls: List[Dict[str, Any]] = []
+
+    for block in content:
+        if not isinstance(block, dict):
+            if isinstance(block, str) and block:
+                text_parts.append(block)
+            continue
+        btype = block.get("type", "")
+        if btype == "thinking" and include_thinking:
+            thinking = block.get("thinking", "")
+            if thinking:
+                thinking_parts.append(str(thinking))
+        elif btype == "text":
+            text = block.get("text", "")
+            if text:
+                text_parts.append(text)
+        elif btype == "tool_use":
+            tool_calls.append(_anth_tool_use_to_openai(block))
+        else:
+            text = _content_block_to_text(block, include_thinking=include_thinking)
+            if text:
+                text_parts.append(text)
+
+    msg: Dict[str, Any] = {
+        "role": "assistant",
+        "content": "\n".join(text_parts) if text_parts else "",
+    }
+    if thinking_parts:
+        reasoning = "".join(thinking_parts)
+        msg["reasoning"] = reasoning
+        msg["reasoning_content"] = reasoning
+    if tool_calls:
+        msg["tool_calls"] = tool_calls
+    return msg
+
+
 def _anth_content_to_openai(
     content: Any,
+    *,
+    include_thinking: bool = False,
 ) -> Union[str, List[Dict[str, Any]]]:
     """将 Anthropic content 转换为 OpenAI content 格式。
 
@@ -182,7 +251,9 @@ def _anth_content_to_openai(
         parts: List[str] = []
         for block in content:
             if isinstance(block, dict):
-                parts.append(_content_block_to_text(block))
+                parts.append(
+                    _content_block_to_text(block, include_thinking=include_thinking)
+                )
             elif isinstance(block, str):
                 parts.append(block)
         return "\n".join(filter(None, parts))
@@ -194,6 +265,8 @@ def _anth_content_to_openai(
 def _anth_messages_to_openai(
     messages: List[Dict[str, Any]],
     system: Optional[str] = None,
+    *,
+    include_thinking_in_history: bool = False,
 ) -> List[Dict[str, Any]]:
     """将 Anthropic 格式 messages 转换为 OpenAI 格式。"""
     out: List[Dict[str, Any]] = []
@@ -203,7 +276,16 @@ def _anth_messages_to_openai(
     for m in messages:
         role = m.get("role", "user")
         content = m.get("content", "")
-        converted = _anth_content_to_openai(content)
+        if role == "assistant" and isinstance(content, list):
+            out.append(
+                _anth_assistant_blocks_to_openai(
+                    content, include_thinking=include_thinking_in_history
+                )
+            )
+            continue
+        converted = _anth_content_to_openai(
+            content, include_thinking=include_thinking_in_history
+        )
         out.append({"role": role, "content": converted})
 
     if not out:

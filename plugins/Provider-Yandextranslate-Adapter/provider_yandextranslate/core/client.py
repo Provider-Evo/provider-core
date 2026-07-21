@@ -129,7 +129,7 @@ class YandexTranslateClient:
         """
         self._session = session
         from ..accounts import API_KEYS
-        self._keys = [_KeyState(k) for k in API_KEYS if isinstance(k, str) and k.strip()]
+        self._keys = [_KeyState(k) for k in load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)]
         logger.debug(
             "yandextranslate 客户端初始化完成, %d 个 APIKey",
             len(self._keys),
