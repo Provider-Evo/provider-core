@@ -8,6 +8,15 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.300] - 2026-07-21
+
+### 修复
+
+- WebUI 懒加载补全 `term_ctxitems.js`、`kbd_nav.js`、`preview_host.js`；终端脚本加载顺序调整
+- 插件市场默认显示已安装项；`isCompatible` 与 `2.2.x` 上限语义修正
+- 12+ 插件 `config_schema.json` 同步（含 Coplan-Util）；`load_plugin_api_keys` 支持 WebUI 写入 config.toml
+- achecker 全量合规（目录子项 / 函数长度 / 嵌套深度）
+
 ## [2.2.299] - 2026-07-20
 
 ### 修复

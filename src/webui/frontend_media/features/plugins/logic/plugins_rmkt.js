@@ -10,7 +10,7 @@ function _pluginsFilterMarketItems(P, installedIds) {
   var query = P.el('pluginsMarketSearch') ? String(P.el('pluginsMarketSearch').value || '').trim().toLowerCase() : '';
   var typeFilter = P.el('pluginsMarketType') ? P.el('pluginsMarketType').value : '';
   var sortBy = P.el('pluginsMarketSort') ? P.el('pluginsMarketSort').value : 'name';
-  var showInstalled = P.el('pluginsMarketShowInstalled') ? P.el('pluginsMarketShowInstalled').checked : false;
+  var showInstalled = P.el('pluginsMarketShowInstalled') ? P.el('pluginsMarketShowInstalled').checked : true;
 
   var items = P._market.filter(function (item) {
     var manifest = item.manifest || {};
@@ -52,6 +52,21 @@ function _pluginsMarketCardActions(P, id, installed, repo, compatible) {
   return html;
 }
 
+function _pluginsMarketEmptyMessage(P, installedIds) {
+  var showInstalled = P.el('pluginsMarketShowInstalled') ? P.el('pluginsMarketShowInstalled').checked : true;
+  var hiddenInstalled = 0;
+  if (!showInstalled && P._market.length) {
+    P._market.forEach(function (item) {
+      var id = item.id || (item.manifest && item.manifest.id) || '';
+      if (id && installedIds[id]) hiddenInstalled++;
+    });
+  }
+  if (hiddenInstalled <= 0) return P.t('plugins.empty');
+  return P.t('plugins.marketHiddenInstalled', { count: hiddenInstalled }) || (
+    '已隐藏 ' + hiddenInstalled + ' 个已安装插件，勾选「显示已安装」查看全部'
+  );
+}
+
 function _attachPluginsRenderMarketMethods(P) {
   P.renderMarket = function renderMarket() {
     var grid = P.el('pluginsMarketGrid');
@@ -62,7 +77,7 @@ function _attachPluginsRenderMarketMethods(P) {
     var items = _pluginsFilterMarketItems(P, installedIds);
 
     if (!items.length) {
-      grid.innerHTML = '<div class="plugins-empty col-span-full">' + P.t('plugins.empty') + '</div>';
+      grid.innerHTML = '<div class="plugins-empty col-span-full">' + P.escapeHtml(_pluginsMarketEmptyMessage(P, installedIds)) + '</div>';
       return;
     }
 

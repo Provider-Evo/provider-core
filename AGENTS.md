@@ -174,4 +174,8 @@ WebUI 开发服务固定起到 7999 端口。
 一般不写入 Changelog 的内容：
 
 - 版本号提升或更新项目依赖（无独立行为说明时）
-- 未纳入本仓库提交的变更（`config/` 本地配置、`RECORD.md`、`provider-docs/` 等）
+- 未纳入本仓库提交的变更（`config/` 本地配置、`provider-docs/`、编排根路径等）——**改记入 `RECORD.md`**，见 `agents-project-conventions.md`「RECORD.md 编写」
+
+## RECORD.md 编写
+
+`RECORD.md` 为本地工作日志（gitignore，永不提交）。**不按 git 可提交范围过滤**；编排根、各子仓库、`config/`、插件独立仓、测试统计等本会话实质变更均可写入。与 `CHANGELOG.md`（仅本仓可提交变更）分工。格式细则见 `docs-src/provider-guide-references/agents-project-conventions.md`。
