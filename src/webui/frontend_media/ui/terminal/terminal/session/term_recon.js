@@ -45,35 +45,61 @@ function _resolveLastActiveTabId(sessions) {
   return null;
 }
 
-function _attachReconnectSubDiscovery(ctx) {
-
-  function _recreateTabForSession(sess) {
-    if (ctx.getTabById(sess.session_id)) return;
-    var name = sess.name || (sess.kind === 'ssh' ? 'SSH' : t('terminal.localShell'));
-    var options = {};
-    if (sess.kind === 'ssh') {
-      options.host = sess.host || '';
-      options.port = sess.port || 22;
-      options.username = sess.username || '';
-    }
-    var tab = _buildReconnectTabRecord(sess.session_id, sess.kind, name, options);
-    tab._readOnly = !sess.alive;
-    ctx.tabs.push(tab);
-    ctx.bar.addTab({ id: tab.id, name: tab.name, kind: tab.kind, status: tab.status });
-    ctx.initTerminal(tab);
+function _reconnectRecreateTab(ctx, sess) {
+  if (ctx.getTabById(sess.session_id)) return;
+  var name = sess.name || (sess.kind === 'ssh' ? 'SSH' : t('terminal.localShell'));
+  var options = {};
+  if (sess.kind === 'ssh') {
+    options.host = sess.host || '';
+    options.port = sess.port || 22;
+    options.username = sess.username || '';
   }
+  var tab = _buildReconnectTabRecord(sess.session_id, sess.kind, name, options);
+  tab._readOnly = !sess.alive;
+  ctx.tabs.push(tab);
+  ctx.bar.addTab({ id: tab.id, name: tab.name, kind: tab.kind, status: tab.status });
+  ctx.initTerminal(tab);
+}
+
+function _reconnectFinishFocus(ctx, sessions) {
+  var targetId = _resolveLastActiveTabId(sessions);
+  if (!targetId && ctx.tabs.length > 0) targetId = ctx.tabs[0].id;
+  if (!targetId) return;
+  var tab = ctx.getTabById(targetId);
+  var pane = (tab && tab._activePane) || 'primary';
+  ctx.focusPane(targetId, pane);
+}
+
+function _reconnectWithSplitFilter(ctx, sessions, splitChildIds) {
+  for (var i = 0; i < sessions.length; i++) {
+    if (!sessions[i].alive) continue;
+    if (splitChildIds[sessions[i].session_id]) continue;
+    _reconnectRecreateTab(ctx, sessions[i]);
+  }
+
+  var restore = typeof ctx.restoreSplitLayouts === 'function'
+    ? ctx.restoreSplitLayouts(sessions)
+    : Promise.resolve();
+  Promise.resolve(restore).then(function () {
+    _reconnectFinishFocus(ctx, sessions);
+  });
+}
+
+function _attachReconnectSubDiscovery(ctx) {
 
   function _reconnectExistingSessions(sessions) {
     if (ctx.discoveryProcessed) return;
     ctx.discoveryProcessed = true;
-    for (var i = 0; i < sessions.length; i++) {
-      if (!sessions[i].alive) continue;
-      _recreateTabForSession(sessions[i]);
+
+    if (typeof ctx.loadSplitLayouts === 'function' && typeof ctx.buildSplitChildIndex === 'function') {
+      ctx.loadSplitLayouts().then(function (layouts) {
+        _reconnectWithSplitFilter(ctx, sessions, ctx.buildSplitChildIndex(layouts));
+      }).catch(function () {
+        _reconnectWithSplitFilter(ctx, sessions, {});
+      });
+      return;
     }
-    // 恢复上次激活的 tab；没有记录时默认第一个
-    var targetId = _resolveLastActiveTabId(sessions);
-    if (!targetId && ctx.tabs.length > 0) targetId = ctx.tabs[0].id;
-    if (targetId) ctx.switchToTab(targetId);
+    _reconnectWithSplitFilter(ctx, sessions, {});
   }
 
   ctx.reconnectExistingSessions = _reconnectExistingSessions;

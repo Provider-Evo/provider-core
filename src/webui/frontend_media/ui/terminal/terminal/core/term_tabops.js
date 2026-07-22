@@ -56,6 +56,7 @@ function _tmFocusPane(ctx, tabId, pane) {
   if (pane === 'split' && !tab.split) pane = 'primary';
   tab._activePane = pane;
   if (ctx.bar && ctx.bar.setActivePane) ctx.bar.setActivePane(tabId, pane);
+  if (typeof ctx.persistSplitActivePane === 'function') ctx.persistSplitActivePane(tab);
 
   var target = pane === 'split' ? tab.split : tab;
   if (!target) return;
@@ -119,6 +120,7 @@ function _wireTerminalManagerSubmodules(ctx) {
   _attachSearchMethods(ctx);
   _attachContextMenuMethods(ctx);
   _attachSplitMethods(ctx);
+  _attachSplitPersistMethods(ctx);
   _attachChooserMethods(ctx);
   _attachSshMethods(ctx);
   _attachWebSocketMethods(ctx);

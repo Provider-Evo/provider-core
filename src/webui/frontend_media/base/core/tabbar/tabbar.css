@@ -304,11 +304,11 @@
   display: none;
 }
 
-.unified-tab.has-split-status.active .unified-tab-status-slot:hover .unified-tab-status {
+.unified-tab.has-split-status.active .unified-tab-status-slot.is-pane-active:hover .unified-tab-status {
   visibility: hidden;
 }
 
-.unified-tab.has-split-status.active .unified-tab-status-slot:hover .unified-tab-status-close {
+.unified-tab.has-split-status.active .unified-tab-status-slot.is-pane-active:hover .unified-tab-status-close {
   display: inline-flex;
 }
 
@@ -467,41 +467,37 @@
   position: relative;
 }
 
-/* 压缩拆分：状态点与 × 叠在同一中心，hover 仅透明切换，不改变位置 */
 .unified-tabbar.tabbar-compressed .unified-tab.has-split-status .unified-tab-status-slot .unified-tab-status {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
   transition: opacity 0.12s ease;
 }
 
+/* 压缩拆分：× 仅在当前标签 + 当前窗格状态点上 hover 时显示 */
+.unified-tabbar.tabbar-compressed .unified-tab.has-split-status:not(.active) .unified-tab-status-slot .unified-tab-status-close {
+  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .unified-tabbar.tabbar-compressed .unified-tab.has-split-status .unified-tab-status-slot .unified-tab-status-close {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  inset: auto;
-  width: 16px;
-  height: 16px;
-  display: inline-flex;
+  display: none;
+  inset: 0;
+  margin: auto;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s ease, color 0.1s ease, background 0.1s ease;
 }
 
-.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot:hover .unified-tab-status {
+.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot.is-pane-active:hover .unified-tab-status {
   opacity: 0;
-  visibility: visible;
 }
 
-.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot:hover .unified-tab-status-close {
+.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot.is-pane-active:hover .unified-tab-status-close {
+  display: inline-flex;
   opacity: 0.7;
   pointer-events: auto;
 }
 
-.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot .unified-tab-status-close:hover {
+.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot.is-pane-active .unified-tab-status-close:hover {
   opacity: 1;
 }
 

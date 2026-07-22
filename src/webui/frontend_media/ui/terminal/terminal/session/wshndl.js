@@ -67,6 +67,11 @@ function _handleWsMetadata(ctx, tab, msg) {
 function _handleWsReadyMsg(ctx, tab, msg) {
   tab.sessionId = msg.session_id;
   _handleWsReady(ctx, tab);
+  if (tab._isSplit && typeof ctx.onSplitPaneReady === 'function') {
+    ctx.onSplitPaneReady(tab);
+  } else if (tab.split && tab.split.sessionId && typeof ctx.saveSplitLayout === 'function') {
+    ctx.saveSplitLayout(tab, tab.split, tab._activePane);
+  }
 }
 
 function _handleWsModeMsg(ctx, tab, msg) {

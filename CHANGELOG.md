@@ -8,6 +8,13 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.309] - 2026-07-22
+
+### 修复
+
+- WebUI 拆分标签：× 仅在当前标签且当前窗格状态点 hover 时显示；压缩模式恢复 `display:none` 默认隐藏
+- 终端拆分布局刷新后持久化恢复（`terminals.json` 的 `splitLayouts`）
+
 ## [2.2.308] - 2026-07-22
 
 ### 修复
