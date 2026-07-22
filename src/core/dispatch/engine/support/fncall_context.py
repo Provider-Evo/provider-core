@@ -4,14 +4,28 @@ from typing import Any, Dict, List, Optional, Tuple
 from src.core.fncall.prompt.inject import inject_fncall
 from src.core.fncall.reg import get_protocol
 
+from .thinking_dispatch import (
+    ThinkingDispatchPlan,
+    build_entml_protocol_options_from_plan,
+    resolve_thinking_dispatch,
+)
+
 
 def build_entml_protocol_options(
     *,
     thinking: bool = False,
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
+    plan: Optional[ThinkingDispatchPlan] = None,
 ) -> Optional[Dict[str, Any]]:
     """从 dispatch 参数构建 entml protocol_options；无声明时返回 None。"""
+    if plan is not None:
+        return build_entml_protocol_options_from_plan(
+            plan,
+            thinking_mode=thinking_mode,
+            max_thinking_length=max_thinking_length,
+        )
+
     opts: Dict[str, Any] = {}
     if thinking_mode is not None:
         mode = str(thinking_mode).strip()
@@ -96,22 +110,30 @@ def prepare_worker_messages(
     tools: Optional[List[Dict[str, Any]]],
     cand: Any,
     *,
+    model: str = "",
     fncall_lang: str = "en",
     protocol_id: str = "",
     dump_prompt: bool = False,
     thinking: bool = False,
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
-) -> Tuple[List[Dict[str, Any]], Optional[Any]]:
+) -> Tuple[List[Dict[str, Any]], Optional[Any], ThinkingDispatchPlan]:
     """按平台解析协议并注入工具定义；native_tools 平台直接透传 messages。"""
+    plan = resolve_thinking_dispatch(
+        thinking=thinking,
+        thinking_mode=thinking_mode,
+        candidate=cand,
+        model=model,
+    )
     native = cand.native_tools
     if not tools or native:
-        return msgs, None
+        return msgs, None, plan
     protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
     protocol_options = build_entml_protocol_options(
         thinking=thinking,
         thinking_mode=thinking_mode,
         max_thinking_length=max_thinking_length,
+        plan=plan,
     )
     worker_msgs = inject_fncall(
         msgs,
@@ -121,7 +143,7 @@ def prepare_worker_messages(
         dump_prompt=dump_prompt,
         protocol_options=protocol_options,
     )
-    return worker_msgs, protocol
+    return worker_msgs, protocol, plan
 
 
 def dump_race_prompt(
@@ -129,6 +151,7 @@ def dump_race_prompt(
     tools: Optional[List[Dict[str, Any]]],
     cands: List[Any],
     *,
+    model: str = "",
     fncall_lang: str = "en",
     protocol_id: str = "",
     thinking: bool = False,
@@ -141,10 +164,17 @@ def dump_race_prompt(
     if any(c.native_tools for c in cands):
         return
     protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cands[0].platform)
+    plan = resolve_thinking_dispatch(
+        thinking=thinking,
+        thinking_mode=thinking_mode,
+        candidate=cands[0],
+        model=model,
+    )
     protocol_options = build_entml_protocol_options(
         thinking=thinking,
         thinking_mode=thinking_mode,
         max_thinking_length=max_thinking_length,
+        plan=plan,
     )
     inject_fncall(
         msgs,

@@ -278,6 +278,7 @@ async def race_execute(
         msgs,
         tools,
         cands,
+        model=model,
         fncall_lang=fncall_lang,
         protocol_id=protocol_id,
         thinking=thinking,
