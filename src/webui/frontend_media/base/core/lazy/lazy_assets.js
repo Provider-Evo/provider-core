@@ -134,10 +134,10 @@ var LAZY_TAB_RESOURCES = {
     { type: 'js',  url: '/static/ui/chat/medips/medips.js?v=20260716-1' },
     { type: 'js',  url: '/static/ui/chat/chat_all/chat_render.js?v=20260717-3' },
     { type: 'js',  url: '/static/ui/chat/chat_all/chat_tools.js?v=20260717-3' },
-    { type: 'js',  url: '/static/ui/chat/chat_all/chat_persist.js?v=20260717-3' },
+    { type: 'js',  url: '/static/ui/chat/chat_all/chat_persist.js?v=20260722-1' },
     { type: 'js',  url: '/static/ui/chat/chat_all/chat.js?v=20260717-3' },
     { type: 'js',  url: '/static/ui/chat/chat_all/chat_actions.js?v=20260717-3' },
-    { type: 'js',  url: '/static/ui/chat/chat_all/chat_send.js?v=20260717-3' },
+    { type: 'js',  url: '/static/ui/chat/chat_all/chat_send.js?v=20260722-1' },
     { type: 'js',  url: '/static/ui/chat/chat_all/chat_batch.js?v=20260717-3' },
   ],
   stats: [

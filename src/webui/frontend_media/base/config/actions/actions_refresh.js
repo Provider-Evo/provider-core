@@ -81,6 +81,34 @@ function _isTtsModel(model) {
   return !!(caps.audio_gen && !caps.chat);
 }
 
+function _chatDropdownCurrentValue(chatDropdown) {
+  if (!chatDropdown) return '';
+  if (typeof chatDropdown.getValue === 'function') return chatDropdown.getValue() || '';
+  if (chatDropdown.el && chatDropdown.el.value) return chatDropdown.el.value;
+  if (chatDropdown._selectedValue) return chatDropdown._selectedValue;
+  return '';
+}
+
+function _resolvePreferredChatModel(chatOpts, chatDropdown) {
+  var candidates = [];
+  if (typeof window._savedChatModel === 'string' && window._savedChatModel) {
+    candidates.push(window._savedChatModel);
+  }
+  try {
+    var lsModel = localStorage.getItem('provider.webui.chatModel');
+    if (lsModel) candidates.push(lsModel);
+  } catch (e) { /* ignore */ }
+  var current = _chatDropdownCurrentValue(chatDropdown);
+  if (current) candidates.push(current);
+  for (var c = 0; c < candidates.length; c++) {
+    var wanted = candidates[c];
+    for (var j = 0; j < chatOpts.length; j++) {
+      if (chatOpts[j].value === wanted) return wanted;
+    }
+  }
+  return null;
+}
+
 function _populateChatDropdown(models) {
   var chatOpts = [];
   var autoSelect = null;
@@ -100,19 +128,15 @@ function _populateChatDropdown(models) {
     return;
   }
   chatDropdown.setOptions(chatOpts, false);
-  var saved = (typeof window._savedChatModel === 'string' && window._savedChatModel) ? window._savedChatModel : null;
-  if (saved) {
-    for (var j = 0; j < chatOpts.length; j++) {
-      if (chatOpts[j].value === saved) {
-        chatDropdown.setValue(saved);
-        if (typeof window !== 'undefined') window._savedChatModel = null;
-        saved = null;
-        break;
-      }
-    }
+  var preferred = _resolvePreferredChatModel(chatOpts, chatDropdown);
+  if (preferred) {
+    chatDropdown.setValue(preferred);
+    window._savedChatModel = preferred;
+  } else if (autoSelect) {
+    chatDropdown.setValue(autoSelect);
+  } else if (chatOpts.length > 0) {
+    chatDropdown.setValue(chatOpts[0].value);
   }
-  if (saved === null && autoSelect) chatDropdown.setValue(autoSelect);
-  else if (saved === null && chatOpts.length > 0) chatDropdown.setValue(chatOpts[0].value);
 }
 
 function _populateVoiceDropdowns(models) {

@@ -8,6 +8,12 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.312] - 2026-07-22
+
+### 修复
+
+- 聊天测试模型选择器：刷新后恢复 `chat_model.json` / localStorage 中保存的模型；`refreshAll` 不再重置为默认模型
+
 ## [2.2.311] - 2026-07-22
 
 ### 修复

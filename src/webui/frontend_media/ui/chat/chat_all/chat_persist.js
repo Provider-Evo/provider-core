@@ -248,6 +248,36 @@ function _saveModelProtocol() {
 }
 
 // ========================= loadChatState helpers =========================
+async function _loadChatModelPrefs() {
+  var savedModel = null;
+  var savedProtocol = null;
+  if (typeof persistLoad === 'function') {
+    try {
+      var mp = await persistLoad('chat_model.json');
+      if (mp) {
+        if (mp.model) savedModel = mp.model;
+        if (mp.protocol) savedProtocol = mp.protocol;
+      }
+    } catch (e) { console.debug('loadChatState: failed to load chat_model.json:', e); }
+  }
+  if (!savedModel) {
+    try { savedModel = localStorage.getItem('provider.webui.chatModel'); } catch (e) { /* ignore */ }
+  }
+  if (!savedProtocol) {
+    try { savedProtocol = localStorage.getItem('provider.webui.chatProtocol'); } catch (e) { /* ignore */ }
+  }
+  if (savedModel) {
+    _savedChatModel = savedModel;
+    window._savedChatModel = savedModel;
+  }
+  if (savedProtocol) {
+    var protocolSelect = document.getElementById('chatProtocolSelect');
+    if (protocolSelect) protocolSelect.value = savedProtocol;
+    var protocolDropdown = window._dropdowns && window._dropdowns['chatProtocolSelect'];
+    if (protocolDropdown) protocolDropdown.setValue(savedProtocol);
+  }
+}
+
 async function _loadThinkingPref() {
   if (typeof persistLoad !== 'function') return;
   try {
@@ -294,24 +324,6 @@ async function _loadChatStateFromBackend() {
 }
 
 async function _loadChatStateFromLocalStorage() {
-  var savedModel = localStorage.getItem("provider.webui.chatModel");
-  var savedProtocol = localStorage.getItem("provider.webui.chatProtocol");
-  if (savedModel) {
-    _savedChatModel = savedModel;
-    window._savedChatModel = savedModel;
-    var dd = window._dropdowns && window._dropdowns["chatModelSelect"];
-    if (dd) dd.setValue(savedModel);
-  }
-  if (savedProtocol) {
-    var ps = document.getElementById("chatProtocolSelect");
-    if (ps) ps.value = savedProtocol;
-  }
-  var savedThinking = localStorage.getItem("provider.webui.chatThinking");
-  if (savedThinking === "1" || savedThinking === "0") _applyChatThinkingEnabled(savedThinking === "1");
-  else await _loadThinkingPref();
-  var savedStreaming = localStorage.getItem("provider.webui.chatStreaming");
-  if (savedStreaming === "1" || savedStreaming === "0") _applyChatStreamingEnabled(savedStreaming === "1");
-  else await _loadStreamingPref();
   var hist = localStorage.getItem("provider.webui.chatHistory");
   var dom = localStorage.getItem("provider.webui.chatDom");
   var count = localStorage.getItem("provider.webui.userMsgCount");
@@ -336,6 +348,13 @@ async function _loadChatStateFromLocalStorage() {
 async function loadChatState() {
   _chatStateLoaded = (async function() {
     try {
+      await _loadChatModelPrefs();
+      var savedThinking = localStorage.getItem("provider.webui.chatThinking");
+      if (savedThinking === "1" || savedThinking === "0") _applyChatThinkingEnabled(savedThinking === "1");
+      else await _loadThinkingPref();
+      var savedStreaming = localStorage.getItem("provider.webui.chatStreaming");
+      if (savedStreaming === "1" || savedStreaming === "0") _applyChatStreamingEnabled(savedStreaming === "1");
+      else await _loadStreamingPref();
       var loaded = await _loadChatStateFromBackend();
       if (!loaded) await _loadChatStateFromLocalStorage();
     } catch (e) { console.debug("loadChatState: unexpected error during state restoration:", e); }

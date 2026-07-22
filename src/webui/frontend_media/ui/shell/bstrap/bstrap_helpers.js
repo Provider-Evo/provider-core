@@ -74,9 +74,11 @@ function _initChatTab() {
   if (chatRunTestsBtn && typeof runChatTests === 'function') {
     chatRunTestsBtn.addEventListener('click', runChatTests);
   }
-  if (typeof loadModelsList === 'function') loadModelsList();
+  (async function() {
+    if (typeof loadChatState === 'function') await loadChatState();
+    if (typeof loadModelsList === 'function') await loadModelsList();
+  })();
   if (typeof ChatAttachments !== 'undefined' && ChatAttachments.install) ChatAttachments.install();
-  if (typeof loadChatState === 'function') loadChatState();
   if (typeof _loadTools === 'function') _loadTools();
 }
 
