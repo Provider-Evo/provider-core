@@ -12,7 +12,12 @@ from src.core.server import get_json as _get_json
 from src.core.utils.errors import ModerationError, NoCandidateError, ProviderError
 from src.foundation.config.resolve import resolve_model
 from src.foundation.logger import get_logger
+from src.core.utils.compat.tools import normalize_tool_calls
 from src.routes.openai.chat.helpers import _err, _json, _normalize_messages
+from src.routes.shared.thinking import (
+    resolve_include_thinking_in_history,
+    resolve_thinking_config,
+)
 from src.routes.openai.chat.non_stream import (
     build_chat_completion_payload,
     collect_nonstream_chat,
@@ -37,7 +42,7 @@ async def _parse_chat_request(
     if request.method != "POST":
         return {}, _err(
             405,
-            "Method {} not allowed. Use POST for /v1/chat/completions.".format(
+            "Method {} not allowed. Use POST for /v1/openai/chat/completions.".format(
                 request.method
             ),
             "method_not_allowed",
@@ -47,8 +52,15 @@ async def _parse_chat_request(
     if body is None:
         return {}, _err(400, "Invalid JSON in request body", "invalid_json")
 
+    extra = body.get("extra_body") or body.get("extra") or {}
+    thinking_cfg = resolve_thinking_config(body, extra=extra, flavor="openai")
+    include_thinking = resolve_include_thinking_in_history(
+        body, extra=extra, thinking_enabled=thinking_cfg.enabled
+    )
     if "messages" in body and isinstance(body["messages"], list):
-        body["messages"] = _normalize_messages(body["messages"])
+        body["messages"] = _normalize_messages(
+            body["messages"], include_thinking_in_history=include_thinking
+        )
 
     if not body.get("messages", []):
         return {}, _err(400, "messages is required", "missing_field", param="messages")
@@ -102,6 +114,7 @@ async def _collect_and_build_payload(
     content, tcs = fallback_parse_tool_calls(
         content, tcs, platform_id, proto_override, body.get("tools")
     )
+    tcs = normalize_tool_calls(tcs, body.get("tools"))
     content = _clean_fncall(
         content, platform_id=platform_id, protocol_id=proto_override
     )
@@ -125,7 +138,7 @@ async def chat_completions(
         return permission_error
 
     extra = body.get("extra_body") or body.get("extra") or {}
-    thinking = bool(extra.get("thinking"))
+    thinking_cfg = resolve_thinking_config(body, extra=extra, flavor="openai")
     search = bool(extra.get("search"))
 
     if bool(body.get("stream", False)):
@@ -135,7 +148,7 @@ async def chat_completions(
 
     cache = get_response_cache()
     cache_key = cache._cache_key(
-        mdl, messages, body.get("tools"), False, thinking, search
+        mdl, messages, body.get("tools"), False, thinking_cfg.enabled, search
     )
     cached = cache.get(cache_key)
     if cached is not None:

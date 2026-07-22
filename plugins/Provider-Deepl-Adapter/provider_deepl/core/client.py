@@ -1,9 +1,15 @@
-"""DeepL 翻译 HTTP 客户端。
+"""DeepL HTTP 客户端。
 
 负责 API Key 管理、候选项构造与翻译请求。
 """
 
 from __future__ import annotations
+
+from pathlib import Path
+
+from src.foundation.config.reader import load_plugin_api_keys
+
+_PLUGIN_DIR = Path(__file__).resolve().parents[2]
 
 import asyncio
 import time
@@ -134,7 +140,7 @@ class DeepLClient:
             session: 共享 aiohttp 会话。
         """
         self._session = session
-        self._keys = [_KeyState(k) for k in API_KEYS if k and k.strip()]
+        self._keys = [_KeyState(k) for k in load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)]
         logger.debug(
             "deepl 客户端初始化完成, %d 个 APIKey",
             len(self._keys),

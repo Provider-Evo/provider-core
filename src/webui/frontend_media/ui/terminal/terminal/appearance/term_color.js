@@ -16,16 +16,19 @@ function _attachColorPersistMethods(ctx) {
    */
   async function _saveTabColors() {
     try {
-      if (typeof persistSave !== 'function') return;
-      var existing = await persistLoad('terminals.json') || {};
       var colors = {};
       for (var i = 0; i < ctx.tabs.length; i++) {
         var tab = ctx.tabs[i];
         var key = tab.sessionId || tab.id;
         if (tab.color) colors[key] = tab.color;
       }
-      existing.tabColors = colors;
-      await persistSave('terminals.json', existing);
+      if (typeof mergeTerminalsPersist === 'function') {
+        await mergeTerminalsPersist({ tabColors: colors });
+      } else if (typeof persistSave === 'function') {
+        var existing = await persistLoad('terminals.json') || {};
+        existing.tabColors = colors;
+        await persistSave('terminals.json', existing);
+      }
     } catch (e) { /* ignore */ }
   }
 

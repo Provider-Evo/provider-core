@@ -1,0 +1,46 @@
+openapi: 3.1.0
+info:
+  title: Entropy API
+  version: 1.0.0
+paths:
+  /v1/turns:
+    post:
+      summary: Create a turn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, input]
+              properties:
+                model: { type: string }
+                input: { type: array }
+                thinking:
+                  type: object
+                  properties:
+                    mode: { type: string, enum: [off, on, auto] }
+                    max_tokens: { type: integer }
+                    interleaved_history:
+                      type: boolean
+                      description: >-
+                        When true, pass prior assistant thinking+reply into the
+                        model history. When false, only pass visible replies.
+                interleaved_history:
+                  type: boolean
+                  description: >-
+                    Top-level alias of thinking.interleaved_history.
+                include_thinking_in_history:
+                  type: boolean
+                  description: >-
+                    OpenAI-compat alias of thinking.interleaved_history.
+                stream: { type: boolean }
+      responses:
+        "200":
+          description: Turn response
+  /v1/models:
+    get:
+      summary: List models
+      responses:
+        "200":
+          description: Model list

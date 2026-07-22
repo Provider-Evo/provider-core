@@ -23,6 +23,32 @@ _cors = cors_middleware(
 
 _API_AUTH_EXEMPT_PREFIXES: tuple[str, ...] = ("/v1/coplan/",)
 
+# Paths reachable without credentials when auth.enabled=true
+_AUTH_PUBLIC_PATHS: frozenset[str] = frozenset(
+    {
+        "/login",
+        "/logout",
+        "/health",
+        "/metrics",
+        "/v1/webui/auth/verify",
+    }
+)
+
+_AUTH_PUBLIC_PREFIXES: tuple[str, ...] = (
+    "/static/",
+    "/favicon",
+)
+
+
+def _is_auth_public(path: str) -> bool:
+    """Return True when *path* may be accessed without credentials."""
+    if path in _AUTH_PUBLIC_PATHS:
+        return True
+    for prefix in _AUTH_PUBLIC_PREFIXES:
+        if path.startswith(prefix):
+            return True
+    return False
+
 
 def _is_provider_api_auth_exempt(path: str) -> bool:
     """Routes under these prefixes use plugin-local auth, not provider API keys."""
@@ -180,10 +206,7 @@ async def _auth_middleware(
     """
     path = request.path
 
-    skip = {"/login", "/logout", "/health", "/metrics"}
-    if path in skip or request.method == "OPTIONS":
-        return await handler(request)
-    if path.startswith("/static/"):
+    if request.method == "OPTIONS" or _is_auth_public(path):
         return await handler(request)
 
     cfg = get_config()
@@ -209,19 +232,8 @@ async def _run_auth_flow(
     handler: Any,
 ) -> aiohttp.web.StreamResponse:
     """执行认证流程：白名单校验、凭据校验、路由分发。"""
-    creds_required = (
-        cfg.auth.enabled and bool(cfg.auth.keys)
-    ) or cfg.virtual_keys.enabled
-
     # Auth disabled: allow all requests
     if not cfg.auth.enabled:
-        return await handler(request)
-
-    # No credentials configured: allow all requests
-    if not creds_required:
-        return await handler(request)
-
-    if not cfg.auth.keys and not token and not cfg.virtual_keys.enabled:
         return await handler(request)
 
     group_response = _check_group_access(request, path, cfg)
@@ -245,7 +257,14 @@ def _extract_bearer_token(request: aiohttp.web.Request) -> str:
 
 
 def _is_rate_limited_path(path: str) -> bool:
-    return path.startswith(("/v1/chat/", "/v1/completions", "/v1/messages"))
+    return path.startswith(
+        (
+            "/v1/turns",
+            "/v1/openai/chat/",
+            "/v1/openai/completions",
+            "/v1/anthropic/messages",
+        )
+    )
 
 
 async def _validate_credentials(request: aiohttp.web.Request, cfg: Any) -> bool:
@@ -264,6 +283,15 @@ async def _validate_credentials(request: aiohttp.web.Request, cfg: Any) -> bool:
             set_api_token(token)
             return True
     if token:
+        try:
+            from src.webui.internal.core.secure import token_manager
+
+            if token_manager.verify(token):
+                set_api_token(token)
+                return True
+        except Exception:
+            pass
+    if token:
         hook_result = await get_hook_registry().invoke(
             "auth.credentials.validate",
             {"token": token},
@@ -279,18 +307,17 @@ async def _validate_credentials(request: aiohttp.web.Request, cfg: Any) -> bool:
 
 
 async def _validate_webui_session(request: aiohttp.web.Request, cfg: Any) -> bool:
-    """Return True when the request carries a valid WebUI session cookie.
-
-    WebUI routes require cookie-based authentication (pv2_session).
-    If auth is disabled in config, all WebUI routes are public.
-    """
+    """Return True for valid WebUI session cookie, API key, virtual key, or webui_token."""
     if not cfg.auth.enabled:
         return True
 
     from src.core.server.http.auth import COOKIE_NAME, verify_session_token
 
     cookie_val = request.cookies.get(COOKIE_NAME, "")
-    return verify_session_token(cookie_val)
+    if verify_session_token(cookie_val):
+        return True
+
+    return await _validate_credentials(request, cfg)
 
 
 _error = error_middleware(

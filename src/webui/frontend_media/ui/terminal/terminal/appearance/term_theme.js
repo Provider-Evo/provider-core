@@ -244,19 +244,21 @@ function _attachThemeBgUiMethods(ctx) {
 function _attachThemePersistMethods(ctx) {
   async function _saveTerminalBgMode() {
     try {
-      if (typeof persistSave !== 'function') return;
-      var existing = await persistLoad('terminals.json') || {};
-      existing.bgMode = ctx.terminalBgMode;
-      existing.termFontSize = ctx.termFontSize || 14;
-      // 始终保留图片数据，不随模式切换删除，以便切回 custom 时能恢复
+      var patch = {
+        bgMode: ctx.terminalBgMode,
+        termFontSize: ctx.termFontSize || 14,
+      };
       if (ctx.customBgImage) {
-        existing.bgImage = ctx.customBgImage;
-        existing.bgOpacity = ctx.customBgOpacity;
-      } else {
-        delete existing.bgImage;
-        delete existing.bgOpacity;
+        patch.bgImage = ctx.customBgImage;
+        patch.bgOpacity = ctx.customBgOpacity;
       }
-      await persistSave('terminals.json', existing);
+      if (typeof mergeTerminalsPersist === 'function') {
+        await mergeTerminalsPersist(patch);
+      } else if (typeof persistSave === 'function') {
+        var existing = await persistLoad('terminals.json') || {};
+        Object.assign(existing, patch);
+        await persistSave('terminals.json', existing);
+      }
     } catch (e) { /* ignore */ }
   }
   async function _loadTerminalBgMode() {

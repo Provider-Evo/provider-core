@@ -12,6 +12,7 @@ async function _actLoadMarket(P) {
   var statusEl = P.el('pluginsStatus');
   if (statusEl) statusEl.textContent = P.t('plugins.loading');
   try {
+    if (!P._hostVersion) await P.loadHostVersion();
     if (!P._marketConfig) {
       P._marketConfig = await Api.fetchJson('/v1/admin/plugins/market-config');
     }

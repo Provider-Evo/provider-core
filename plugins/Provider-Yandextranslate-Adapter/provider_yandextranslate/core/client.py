@@ -6,6 +6,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from src.foundation.config.reader import load_plugin_api_keys
+
+_PLUGIN_DIR = Path(__file__).resolve().parents[2]
+
 import asyncio
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
@@ -129,7 +135,7 @@ class YandexTranslateClient:
         """
         self._session = session
         from ..accounts import API_KEYS
-        self._keys = [_KeyState(k) for k in API_KEYS if isinstance(k, str) and k.strip()]
+        self._keys = [_KeyState(k) for k in load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)]
         logger.debug(
             "yandextranslate 客户端初始化完成, %d 个 APIKey",
             len(self._keys),

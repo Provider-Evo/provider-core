@@ -1,0 +1,1 @@
+"""Entropy canonical API domain."""

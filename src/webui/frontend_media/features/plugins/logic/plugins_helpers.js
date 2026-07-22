@@ -66,19 +66,28 @@ function _attachPluginsVersionHelpers(P) {
 
   P.isCompatible = function isCompatible(manifest) {
     if (!P._hostVersion || !manifest || !manifest.host_application) return true;
+    var current = [
+      P._hostVersion.version_major || 0,
+      P._hostVersion.version_minor || 0,
+      P._hostVersion.version_patch || 0,
+    ];
     var min = P.parseVersionTuple(manifest.host_application.min_version);
-    var current = [P._hostVersion.version_major || 0, P._hostVersion.version_minor || 0, P._hostVersion.version_patch || 0];
     for (var i = 0; i < 3; i++) {
       if (current[i] < min[i]) return false;
       if (current[i] > min[i]) break;
     }
     var maxVersion = manifest.host_application.max_version;
-    if (maxVersion) {
-      var max = P.parseVersionTuple(maxVersion);
-      for (var j = 0; j < 3; j++) {
-        if (current[j] > max[j]) return current[0] === max[0];
-        if (current[j] < max[j]) break;
-      }
+    if (!maxVersion) return true;
+    var max = P.parseVersionTuple(maxVersion);
+    // catalog 常用 2.2.99 表示「2.2.x」上限，仅比较 major.minor
+    if (max[2] === 99) {
+      if (current[0] > max[0]) return false;
+      if (current[0] < max[0]) return true;
+      return current[1] <= max[1];
+    }
+    for (var j = 0; j < 3; j++) {
+      if (current[j] > max[j]) return false;
+      if (current[j] < max[j]) return true;
     }
     return true;
   };

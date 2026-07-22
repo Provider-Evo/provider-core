@@ -112,7 +112,7 @@ async function _runOneBatchItem(prompt, i, prompts, resultDiv, body) {
     if (body.systemPrompt) itemBody.messages.push({ role: "system", content: body.systemPrompt });
     itemBody.messages.push({ role: "user", content: prompt });
     delete itemBody.systemPrompt;
-    var response = await fetch("/v1/chat/completions", {
+    var response = await fetch("/v1/turns", {
       method: "POST", headers: { "Content-Type": "application/json" },
       credentials: "same-origin", body: JSON.stringify(itemBody),
       signal: AbortSignal.timeout(_getStreamIdleTimeoutMs())
@@ -176,7 +176,18 @@ async function runChatTests() {
   var resultsList = document.getElementById("batchResultsList");
   var passCount = 0;
   var tools = getToolsDefinition();
-  var body = { model: testModel, stream: _isChatStreamingEnabled(), protocol: protocol, temperature: temperature, max_tokens: maxTokens, extra_body: { thinking: _isChatThinkingEnabled() }, systemPrompt: sysPrompt };
+  var body = {
+    model: testModel,
+    stream: _isChatStreamingEnabled(),
+    protocol: protocol,
+    temperature: temperature,
+    max_tokens: maxTokens,
+    extra_body: {
+      thinking: _isChatThinkingEnabled(),
+      include_thinking_in_history: _isChatThinkingEnabled()
+    },
+    systemPrompt: sysPrompt
+  };
   if (tools.length > 0) body.tools = tools;
   for (var i = 0; i < prompts.length; i++) {
     var resultDiv = _makeBatchResultDiv(i, prompts.length, prompts[i]);

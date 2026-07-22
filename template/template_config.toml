@@ -3,9 +3,9 @@
 # 字段与 WebUI 配置面板（config_panel_schema）及 src/core/config/sections.py 对齐。
 
 [server]
-version = "2.2.298"               # 与 pyproject.toml / 打包脚本一致
+version = "2.2.309"               # 与 pyproject.toml / 打包脚本一致
 host = "0.0.0.0"
-port = 1337
+port = 1337                       # 默认监听端口（勿改为 8080，除非刻意换端口）
 debug = false
 startup_force_kill_port = true  # 端口被占用时尝试终止占用进程
 fast_restart = true             # WebUI/L4 重启：true 快速 exit 42，false 完整关停链
@@ -94,7 +94,7 @@ custom_prompt_zh = ""
 level = "INFO"                  # DEBUG | INFO | WARNING | ERROR | CRITICAL
 color = true
 access_log = true
-log_name = "provider-core"      # 日志文件名前缀（logs/{log_name}-*.log）
+log_name = "provider-v2"        # 日志文件名前缀（logs/{log_name}-*.log）
 
 [autoupdate]
 enabled = false
@@ -142,4 +142,3 @@ max_history_lines = 5000
 subprocess_monitor_interval = 1
 enable_subprocess_monitoring = true
 audit_enabled = true                # 是否记录终端会话审计日志（供录像审计功能查看）
-

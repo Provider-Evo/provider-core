@@ -88,9 +88,20 @@
   padding-bottom: 7px;
 }
 
-.vertical .unified-tab.has-split-status.active {
-  padding-top: 8px;
-  padding-bottom: 8px;
+/* Split tabs: pane selection is shown on the dot slot only, not the whole tab. */
+.unified-tab.has-split-status.active {
+  color: var(--muted);
+  background: transparent;
+}
+
+.unified-tab.has-split-status.active:hover {
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.horizontal .unified-tab.has-split-status.active::after,
+.vertical .unified-tab.has-split-status.active::before {
+  display: none;
 }
 
 /* Left-edge accent bar for user-assigned tab colors (context menu "change color") */
@@ -224,6 +235,8 @@
   height: 16px;
   flex-shrink: 0;
   cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease;
 }
 
 /* Split dots are always visible (even with no explicit state) so the pair
@@ -238,9 +251,16 @@
   opacity: 0.5;
 }
 
-.unified-tab-status-slot.is-pane-active .unified-tab-status {
-  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 3px var(--accent);
-  opacity: 1;
+/* Active pane: Chrome-like square wrap (no ring / no dot color change). */
+.unified-tabbar.horizontal .unified-tab.has-split-status .unified-tab-status-slot.is-pane-active,
+.unified-tabbar.vertical:not(.tabbar-compressed) .unified-tab.has-split-status .unified-tab-status-slot.is-pane-active {
+  background: var(--bg);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.unified-tabbar.tabbar-compressed .unified-tab.has-split-status .unified-tab-status-slot.is-pane-active {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
 }
 
 .unified-tab-status-group .unified-tab-status.connecting {
@@ -284,11 +304,11 @@
   display: none;
 }
 
-.unified-tab.has-split-status.active .unified-tab-status-slot:hover .unified-tab-status {
+.unified-tab.has-split-status.active .unified-tab-status-slot.is-pane-active:hover .unified-tab-status {
   visibility: hidden;
 }
 
-.unified-tab.has-split-status.active .unified-tab-status-slot:hover .unified-tab-status-close {
+.unified-tab.has-split-status.active .unified-tab-status-slot.is-pane-active:hover .unified-tab-status-close {
   display: inline-flex;
 }
 
@@ -425,17 +445,73 @@
   display: none !important;
 }
 
+/* Compressed split: stack dots vertically; each slot matches a normal tab row. */
+.unified-tabbar.tabbar-compressed .unified-tab.has-split-status {
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  min-height: 0;
+}
+
+.unified-tabbar.tabbar-compressed .unified-tab.has-split-status .unified-tab-status-group {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+}
+
+.unified-tabbar.tabbar-compressed .unified-tab.has-split-status .unified-tab-status-slot {
+  width: 100%;
+  height: 30px;
+  min-height: 30px;
+  position: relative;
+}
+
+.unified-tabbar.tabbar-compressed .unified-tab.has-split-status .unified-tab-status-slot .unified-tab-status {
+  transition: opacity 0.12s ease;
+}
+
+/* 压缩拆分：× 仅在当前标签 + 当前窗格状态点上 hover 时显示 */
+.unified-tabbar.tabbar-compressed .unified-tab.has-split-status:not(.active) .unified-tab-status-slot .unified-tab-status-close {
+  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.unified-tabbar.tabbar-compressed .unified-tab.has-split-status .unified-tab-status-slot .unified-tab-status-close {
+  display: none;
+  inset: 0;
+  margin: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, color 0.1s ease, background 0.1s ease;
+}
+
+.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot.is-pane-active:hover .unified-tab-status {
+  opacity: 0;
+}
+
+.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot.is-pane-active:hover .unified-tab-status-close {
+  display: inline-flex;
+  opacity: 0.7;
+  pointer-events: auto;
+}
+
+.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot.is-pane-active .unified-tab-status-close:hover {
+  opacity: 1;
+}
+
 /* Center single status dot in compressed mode */
 .unified-tabbar.tabbar-compressed .unified-tab:not(.has-split-status) .unified-tab-status {
   margin: 0 auto;
 }
 
-/* Compressed: per-slot hover swaps only that dot for a close button */
-.unified-tabbar.tabbar-compressed .unified-tab.active .unified-tab-status-slot:hover .unified-tab-status {
+/* Compressed: per-slot hover swaps only that dot for a close button (non-split) */
+.unified-tabbar.tabbar-compressed .unified-tab.active:not(.has-split-status) .unified-tab-status-slot:hover .unified-tab-status {
   visibility: hidden;
 }
 
-.unified-tabbar.tabbar-compressed .unified-tab.active .unified-tab-status-slot:hover .unified-tab-status-close {
+.unified-tabbar.tabbar-compressed .unified-tab.active:not(.has-split-status) .unified-tab-status-slot:hover .unified-tab-status-close {
   display: inline-flex;
 }
 

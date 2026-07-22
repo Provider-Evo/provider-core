@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp.web
 
+from src.core.utils.compat.tools import normalize_tool_calls
 from src.core.utils.errors import NoCandidateError, ProviderError
 from src.foundation.logger import get_logger
 from src.routes.anthropic.streaming.stream_events import TextDeltaState, write_event
@@ -91,6 +92,7 @@ async def _finalize_stream_result(
     tool_calls_data = await _finalize_text_block(
         resp, text_state, tool_calls_data, tools
     )
+    tool_calls_data = normalize_tool_calls(tool_calls_data, tools)
 
     next_block_idx = text_block_idx + 1
     await emit_tool_use_blocks(resp, tool_calls_data, next_block_idx)

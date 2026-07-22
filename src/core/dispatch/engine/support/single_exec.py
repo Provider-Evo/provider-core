@@ -12,6 +12,7 @@ from src.core.dispatch.engine.support.fncall_context import (
     native_complete_kw,
     prepare_worker_messages,
 )
+from src.core.dispatch.engine.support.thinking_dispatch import ThinkingResponseFilter
 from src.core.utils.errors import ProviderError
 from src.core.utils.errors.http_errors import maybe_classify_exception
 from src.foundation.logger import get_logger
@@ -39,10 +40,11 @@ async def _stream_single_chunks(
     worker_msgs: List[Dict],
     model: str,
     stream: bool,
-    thinking: bool,
+    adapter_thinking: bool,
     search: bool,
     complete_kw: Dict[str, Any],
     fp: Optional[FncallStreamParser],
+    thinking_filter: Optional[ThinkingResponseFilter],
     state: SingleExecState,
 ) -> AsyncGenerator[Union[str, Dict], None]:
     async for chunk in adapter.complete(
@@ -50,12 +52,22 @@ async def _stream_single_chunks(
         worker_msgs,
         model,
         stream,
-        thinking=thinking,
+        thinking=adapter_thinking,
         search=search,
         **complete_kw,
     ):
         if isinstance(chunk, str):
             state.tc += 1
+            if thinking_filter is not None:
+                for item in thinking_filter.feed(chunk):
+                    if isinstance(item, str):
+                        state.acc_len += len(item)
+                        if state.ft is None:
+                            state.ft = time.monotonic()
+                        if fp:
+                            fp.feed(item)
+                    yield item
+                continue
             state.acc_len += len(chunk)
             if state.ft is None:
                 state.ft = time.monotonic()
@@ -65,6 +77,9 @@ async def _stream_single_chunks(
         elif isinstance(chunk, dict):
             if "usage" in chunk:
                 state.p_usage = chunk["usage"]
+            elif thinking_filter is not None:
+                for item in thinking_filter.feed(chunk):
+                    yield item
             else:
                 yield chunk
 
@@ -95,8 +110,15 @@ async def _yield_single_tail(
     fp: Optional[FncallStreamParser],
     prompt_len: int,
     state: SingleExecState,
+    thinking_filter: Optional[ThinkingResponseFilter],
 ) -> AsyncGenerator[Union[str, Dict], None]:
     from src.core.dispatch.engine.execs import _usage_for_response
+
+    if thinking_filter is not None:
+        for item in thinking_filter.finalize():
+            if isinstance(item, str) and fp:
+                fp.feed(item)
+            yield item
 
     if fp and fp.has_calls:
         _, calls = fp.finalize()
@@ -125,8 +147,16 @@ async def single_execute(
     if not adapter:
         raise ProviderError("无适配器: {}".format(cand.platform))
 
-    worker_msgs, protocol = prepare_worker_messages(
-        msgs, tools, cand, fncall_lang=fncall_lang, protocol_id=protocol_id
+    worker_msgs, protocol, plan = prepare_worker_messages(
+        msgs,
+        tools,
+        cand,
+        model=model,
+        fncall_lang=fncall_lang,
+        protocol_id=protocol_id,
+        thinking=thinking,
+        thinking_mode=kw.get("thinking_mode"),
+        max_thinking_length=kw.get("max_thinking_length"),
     )
     native = cand.native_tools
     fp = (
@@ -134,16 +164,28 @@ async def single_execute(
         if tools and not native
         else None
     )
+    thinking_filter = (
+        ThinkingResponseFilter(plan) if plan.requester_wants_thinking else None
+    )
     state = SingleExecState()
     yield {"_meta": {"platform": cand.platform}}
     complete_kw = native_complete_kw(kw, tools, native)
     try:
         async for chunk in _stream_single_chunks(
-            adapter, cand, worker_msgs, model, stream, thinking, search,
-            complete_kw, fp, state,
+            adapter,
+            cand,
+            worker_msgs,
+            model,
+            stream,
+            False,
+            search,
+            complete_kw,
+            fp,
+            thinking_filter,
+            state,
         ):
             yield chunk
-        async for tail in _yield_single_tail(fp, prompt_len, state):
+        async for tail in _yield_single_tail(fp, prompt_len, state, thinking_filter):
             yield tail
     except Exception as exc:
         raise maybe_classify_exception(exc)

@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "id": "nichengfuben.provider-ollama-adapter",
   "name": "Provider Ollama Adapter",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "ollama platform adapter plugin",
   "plugin_type": "platform",
   "author": {

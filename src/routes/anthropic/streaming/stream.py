@@ -246,7 +246,7 @@ async def _init_stream_blocks(
     await _emit_message_start(resp, mid, mdl, pt)
 
     block_idx = 0
-    effective_thinking = thinking and not tools
+    effective_thinking = thinking
     if effective_thinking:
         await _emit_block_start(resp, 0, {"type": "thinking", "thinking": ""})
         block_idx = 1

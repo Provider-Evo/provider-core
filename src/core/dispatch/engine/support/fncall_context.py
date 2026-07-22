@@ -1,8 +1,48 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from echotools.exec.fncall.protocols.entml_thinking import (
+    normalize_thinking_mode,
+    parse_max_thinking_length,
+)
+
 from src.core.fncall.prompt.inject import inject_fncall
 from src.core.fncall.reg import get_protocol
+
+from .thinking_dispatch import (
+    ThinkingDispatchPlan,
+    build_entml_protocol_options_from_plan,
+    resolve_thinking_dispatch,
+)
+
+
+def build_entml_protocol_options(
+    *,
+    thinking: bool = False,
+    thinking_mode: Optional[str] = None,
+    max_thinking_length: Optional[int] = None,
+    plan: Optional[ThinkingDispatchPlan] = None,
+) -> Optional[Dict[str, Any]]:
+    """从 dispatch 参数构建 entml protocol_options；无声明时返回 None。"""
+    if plan is not None:
+        return build_entml_protocol_options_from_plan(
+            plan,
+            thinking_mode=thinking_mode,
+            max_thinking_length=max_thinking_length,
+        )
+
+    opts: Dict[str, Any] = {}
+    mode = normalize_thinking_mode(thinking_mode)
+    if mode == "off":
+        return None
+    if mode is not None:
+        opts["thinking_mode"] = mode
+    elif thinking:
+        opts["thinking_mode"] = "auto"
+    parsed_max = parse_max_thinking_length(max_thinking_length)
+    if parsed_max is not None:
+        opts["max_thinking_length"] = parsed_max
+    return opts or None
 
 
 def fold_system_into_user(
@@ -77,19 +117,51 @@ def prepare_worker_messages(
     tools: Optional[List[Dict[str, Any]]],
     cand: Any,
     *,
+    model: str = "",
     fncall_lang: str = "en",
     protocol_id: str = "",
     dump_prompt: bool = False,
-) -> Tuple[List[Dict[str, Any]], Optional[Any]]:
+    thinking: bool = False,
+    thinking_mode: Optional[str] = None,
+    max_thinking_length: Optional[int] = None,
+) -> Tuple[List[Dict[str, Any]], Optional[Any], ThinkingDispatchPlan]:
     """按平台解析协议并注入工具定义；native_tools 平台直接透传 messages。"""
+    plan = resolve_thinking_dispatch(
+        thinking=thinking,
+        thinking_mode=thinking_mode,
+        candidate=cand,
+        model=model,
+    )
+    protocol_options = build_entml_protocol_options(
+        thinking=thinking,
+        thinking_mode=thinking_mode,
+        max_thinking_length=max_thinking_length,
+        plan=plan,
+    )
     native = cand.native_tools
     if not tools or native:
-        return msgs, None
+        if protocol_options and not native:
+            protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
+            worker_msgs = inject_fncall(
+                msgs,
+                [],
+                protocol,
+                lang=fncall_lang,
+                dump_prompt=dump_prompt,
+                protocol_options=protocol_options,
+            )
+            return worker_msgs, protocol, plan
+        return msgs, None, plan
     protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
     worker_msgs = inject_fncall(
-        msgs, tools, protocol, lang=fncall_lang, dump_prompt=dump_prompt
+        msgs,
+        tools,
+        protocol,
+        lang=fncall_lang,
+        dump_prompt=dump_prompt,
+        protocol_options=protocol_options,
     )
-    return worker_msgs, protocol
+    return worker_msgs, protocol, plan
 
 
 def dump_race_prompt(
@@ -97,8 +169,12 @@ def dump_race_prompt(
     tools: Optional[List[Dict[str, Any]]],
     cands: List[Any],
     *,
+    model: str = "",
     fncall_lang: str = "en",
     protocol_id: str = "",
+    thinking: bool = False,
+    thinking_mode: Optional[str] = None,
+    max_thinking_length: Optional[int] = None,
 ) -> None:
     """竞速 worker 启动前统一转储一次 prompt，避免 N 个 worker 各写一份。"""
     if not tools or not cands:
@@ -106,7 +182,26 @@ def dump_race_prompt(
     if any(c.native_tools for c in cands):
         return
     protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cands[0].platform)
-    inject_fncall(msgs, tools, protocol, lang=fncall_lang, dump_prompt=True)
+    plan = resolve_thinking_dispatch(
+        thinking=thinking,
+        thinking_mode=thinking_mode,
+        candidate=cands[0],
+        model=model,
+    )
+    protocol_options = build_entml_protocol_options(
+        thinking=thinking,
+        thinking_mode=thinking_mode,
+        max_thinking_length=max_thinking_length,
+        plan=plan,
+    )
+    inject_fncall(
+        msgs,
+        tools,
+        protocol,
+        lang=fncall_lang,
+        dump_prompt=True,
+        protocol_options=protocol_options,
+    )
 
 
 def native_complete_kw(

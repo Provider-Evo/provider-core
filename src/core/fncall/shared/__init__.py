@@ -12,6 +12,8 @@ from echotools.fncall.shared import (
 )
 from echotools.ids.generator import uuid7 as _uuid7
 
+from .norm import normalize_tool_call, normalize_tool_calls
+
 __all__ = [
     "normalize_content",
     "format_tool_descs",
@@ -20,4 +22,6 @@ __all__ = [
     "_uuid7",
     "_coerce_param_value",
     "_build_param_schema_index",
+    "normalize_tool_call",
+    "normalize_tool_calls",
 ]

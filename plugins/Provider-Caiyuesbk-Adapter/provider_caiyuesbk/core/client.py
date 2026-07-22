@@ -1,18 +1,20 @@
-"""caiyuesbk 客户端——使用 fncall 注入协议"""
-
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
 from src.core.dispatch.cand import Candidate, make_id
+from src.foundation.config.reader import load_plugin_api_keys
 from src.foundation.logger import get_logger
-from .consts import BASE_URL, CHAT_PATH
+from .consts import BASE_URL, CHAT_PATH, sleep_before_retry
 from .headers import build_headers, make_ssl_ctx
 from .payload import build_payload
 from .sse import parse_sse_line
+
+_PLUGIN_DIR = Path(__file__).resolve().parents[2]
 
 logger = get_logger(__name__)
 
@@ -20,16 +22,6 @@ MAX_RETRIES: int = 3
 _SSL_CTX = make_ssl_ctx()
 
 
-async def _sleep_before_retry(attempt: int) -> None:
-    """按指数退避策略等待后重试，从 complete() 抽出。"""
-    wait = 1.0 * (2 ** (attempt - 1))
-    logger.warning(
-        "caiyuesbk 第 %d/%d 次重试，等待 %.1fs",
-        attempt,
-        MAX_RETRIES,
-        wait,
-    )
-    await asyncio.sleep(wait)
 
 
 class CaiyuesbkClient:
@@ -53,7 +45,7 @@ class CaiyuesbkClient:
         """
         self._session = session
         from ..accounts import API_KEYS
-        self._api_keys = [k for k in API_KEYS if isinstance(k, str) and k.strip()]
+        self._api_keys = load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)
         self._rebuild_candidates()
         logger.info("caiyuesbk 客户端初始化完成: %d keys", len(self._api_keys))
 
@@ -201,7 +193,7 @@ class CaiyuesbkClient:
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:
-                await _sleep_before_retry(attempt)
+                await sleep_before_retry(attempt, MAX_RETRIES, logger)
             try:
                 async for chunk in self._do_request(
                     candidate, messages, model, stream, **kw

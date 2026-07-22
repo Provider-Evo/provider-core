@@ -49,8 +49,7 @@ var PluginsPanel = (function () {
     P.bindEvents();
     P.setTab('installed');
     P.showMainView(false);
-    P.refresh();
-    P.loadMarket();
+    P.refresh().then(function () { return P.loadMarket(); });
   }
 
   return {

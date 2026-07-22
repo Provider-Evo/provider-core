@@ -14,6 +14,7 @@ import aiohttp.web
 from src.core.server import REGISTRY_KEY
 from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import _sl
+from src.routes.shared.thinking import resolve_thinking_config, thinking_to_dispatch_kwargs
 
 logger = get_logger(__name__)
 
@@ -108,15 +109,17 @@ def _build_dispatch_kwargs(
     extra: Dict[str, Any],
     upload_files: Any,
     proto_override: str,
+    *,
+    thinking_flavor: str = "openai",
 ) -> Dict[str, Any]:
     """构造 gateway.dispatch 的调用参数。从 stream_chat 抽出以控制行数。"""
+    thinking_cfg = resolve_thinking_config(body, extra=extra, flavor=thinking_flavor)  # type: ignore[arg-type]
     return {
         "registry": request.app[REGISTRY_KEY],
         "messages": messages,
         "model": mdl,
         "stream": True,
         "tools": tools_raw,
-        "thinking": bool(extra.get("thinking")),
         "search": bool(extra.get("search")),
         "temperature": body.get("temperature"),
         "top_p": body.get("top_p"),
@@ -126,4 +129,5 @@ def _build_dispatch_kwargs(
         "protocol_id": proto_override,
         "tool_choice": body.get("tool_choice"),
         "platform": extra.get("platform", ""),
+        **thinking_to_dispatch_kwargs(thinking_cfg),
     }

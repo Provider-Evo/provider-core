@@ -1,5 +1,3 @@
-"""OpenRouter HTTP客户端"""
-
 from __future__ import annotations
 
 import asyncio
@@ -7,6 +5,8 @@ import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
+
+from provider_sdk.model_ids import ModelIdRegistry
 
 from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import EmbeddingError, PlatformError
@@ -17,6 +17,7 @@ from .consts import (
     CAPS,
     CHAT_PATH,
     EMBED_PATH,
+    MODELS,
     MODELS_PATH,
     RATE_LIMIT_COOLDOWN,
     RECOVERY_INTERVAL,
@@ -100,13 +101,15 @@ class OpenRouterClient:
 
     def __init__(self) -> None:
         self._session: Optional[aiohttp.ClientSession] = None
-        self._models: List[str] = []
+        self._model_registry = ModelIdRegistry("openrouter")
+        self._model_registry.load()
+        self._models: List[str] = self._model_registry.merge_fallback(MODELS)
         self._keys: List[_KeyState] = []
 
     async def init_immediate(self, session: aiohttp.ClientSession) -> None:
         """立即初始化，不阻塞。"""
         self._session = session
-        self._keys = [_KeyState(k) for k in API_KEYS if k and k.strip()]
+        self._keys = [_KeyState(k) for k in load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)]
         logger.info(
             "openrouter客户端初始化完成, %d个APIKey", len(self._keys)
         )
@@ -156,11 +159,15 @@ class OpenRouterClient:
                 data = await resp.json()
                 models = data.get("data", {}).get("models", [])
                 if isinstance(models, list):
-                    return [
+                    upstream = [
                         m.get("slug", "")
                         for m in models
                         if isinstance(m, dict) and m.get("slug")
                     ]
+                    if upstream:
+                        return self._model_registry.register_merge(
+                            upstream, fallback=MODELS
+                        )
                 return []
         except Exception as e:
             logger.warning("openrouter拉取free模型列表异常: %s", e)
@@ -172,7 +179,10 @@ class OpenRouterClient:
         Args:
             models: 新的模型列表。
         """
-        self._models = list(models)
+        self._models = self._model_registry.register_merge(models, fallback=MODELS)
+
+    def get_models(self) -> List[str]:
+        return list(self._models)
 
     def _find_key(self, candidate: Candidate) -> Optional[_KeyState]:
         """根据候选项找到对应的KeyState。"""
@@ -215,6 +225,7 @@ class OpenRouterClient:
         **kw: Any,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """执行聊天补全，含重试。"""
+        model = self._model_registry.resolve_upstream(model)
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:
@@ -344,6 +355,7 @@ class OpenRouterClient:
         model: str,
     ) -> Dict[str, Any]:
         """执行嵌入请求。"""
+        model = self._model_registry.resolve_upstream(model)
         ks = self._find_key(candidate)
         if not ks:
             raise EmbeddingError("openrouter: 未找到对应APIKey")

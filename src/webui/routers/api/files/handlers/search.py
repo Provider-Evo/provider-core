@@ -8,7 +8,7 @@ import aiohttp.web
 
 from ..common import (
     DRIVES_SENTINEL,
-    SEARCH_SKIP_DIRS,
+    should_skip_search_dir,
     safe_resolve,
 )
 
@@ -69,7 +69,7 @@ def _walk_search(
         for dirpath, dirnames, filenames in os.walk(str(target)):
             if len(exact) + len(prefix) + len(substring) >= max_results:
                 return
-            dirnames[:] = [d for d in dirnames if d not in SEARCH_SKIP_DIRS]
+            dirnames[:] = [d for d in dirnames if not should_skip_search_dir(d)]
             dp = Path(dirpath)
             for name in filenames + dirnames:
                 _maybe_add(dp / name)

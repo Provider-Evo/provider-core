@@ -1,14 +1,14 @@
-"""NoobKeys HTTP 客户端（OpenAI 兼容协议，纯文本对话）。"""
-
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
 from src.core.dispatch.cand import Candidate, make_id
 from src.core.utils.errors import PlatformError
+from src.foundation.config.reader import load_plugin_api_keys
 from src.foundation.logger import get_logger
 from .protocol.constants import (
     BASE_URL,
@@ -21,6 +21,8 @@ from .helpers import _extract_error_message, _iter_non_stream_items
 from .keystate import _KeyState
 from .protocol.payloads import build_payload
 from .protocol.sse import parse_sse_line
+
+_PLUGIN_DIR = Path(__file__).resolve().parents[2]
 
 logger = get_logger(__name__)
 MAX_RETRIES: int = 3
@@ -44,7 +46,7 @@ class NoobKeysClient:
         self._session = session
         from ..accounts import API_KEYS
 
-        self._keys = [_KeyState(k) for k in API_KEYS if k and k.strip()]
+        self._keys = [_KeyState(k) for k in load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)]
         logger.debug(
             "noobkeys 客户端初始化完成, %d 个 APIKey",
             len(self._keys),

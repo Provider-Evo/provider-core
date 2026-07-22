@@ -134,15 +134,22 @@ def _not_supported(feature: str) -> aiohttp.web.Response:
     )
 
 
-def _normalize_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _normalize_messages(
+    messages: List[Dict[str, Any]],
+    *,
+    include_thinking_in_history: bool = False,
+) -> List[Dict[str, Any]]:
     """规范化消息列表，处理 content 为列表的情况。
 
     Args:
         messages: 原始消息列表。
+        include_thinking_in_history: 是否在历史中保留思考链字段。
 
     Returns:
         规范化后的消息列表。
     """
+    from src.routes.shared.thinking import apply_thinking_history_policy
+
     out: List[Dict[str, Any]] = []
     for m in messages:
         msg = dict(m)
@@ -150,7 +157,7 @@ def _normalize_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if msg.get("role") == "system" and isinstance(content, list):
             msg["content"] = normalize_content(content)
         out.append(msg)
-    return out
+    return apply_thinking_history_policy(out, include_thinking_in_history)
 
 
 def _decode_data_uri(url: str) -> Optional[tuple]:

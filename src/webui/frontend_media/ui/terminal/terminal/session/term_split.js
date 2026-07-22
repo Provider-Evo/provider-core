@@ -162,6 +162,7 @@ function _splitClosePane(ctx, tab) {
   ctx.teardownSplitState(tab.split);
   tab.split = null;
   tab._activePane = 'primary';
+  if (typeof ctx.clearSplitLayout === 'function') ctx.clearSplitLayout(tab);
   var pane = document.getElementById('terminal-pane-' + tab.id);
   if (pane) _unsplitDom(pane, tab);
   if (ctx.bar) {
@@ -203,6 +204,7 @@ function _splitPromotePane(ctx, tab) {
     ctx.bar.setSplitStatus(tab.id, null);
     ctx.bar.setActivePane(tab.id, 'primary');
   }
+  if (typeof ctx.clearSplitLayout === 'function') ctx.clearSplitLayout(tab);
   setTimeout(function () { ctx.fitAndResize(tab, true); }, 50);
 }
 
@@ -226,45 +228,49 @@ function _attachSplitCloseMethods(ctx) {
   };
 }
 
+function _splitApplyToTab(ctx, domHelpers, createSplitXterm, tabId, tab, splitSessionId, activePane) {
+  var pane = document.getElementById('terminal-pane-' + tabId);
+  if (!pane || !tab._container) return false;
+
+  var splitXtermContainer = domHelpers.buildSplitDom(pane, tab);
+  var splitState = domHelpers.createSplitState(tabId, tab, splitXtermContainer);
+  if (splitSessionId) splitState.sessionId = splitSessionId;
+  tab.split = splitState;
+  tab._activePane = activePane || 'primary';
+
+  if (ctx.bar) {
+    ctx.bar.setSplitStatus(tabId, 'connecting');
+    ctx.bar.setActivePane(tabId, tab._activePane);
+  }
+
+  if (typeof Terminal !== 'undefined') {
+    createSplitXterm(splitState, splitXtermContainer);
+  }
+
+  if (tab.fitAddon) {
+    setTimeout(function () { ctx.fitAndResize(tab, true); }, 50);
+  }
+  return true;
+}
+
 function _attachSplitSubTab(ctx, _createSplitXterm) {
   var domHelpers = _attachSplitSubDom(ctx);
-  var _buildSplitDom = domHelpers.buildSplitDom;
-  var _createSplitState = domHelpers.createSplitState;
 
-  /**
-   * Split the given tab into two side-by-side (vertical) panes, each
-   * hosting an independent terminal of the same kind/options as the
-   * source tab. Limited to a single split (max 2 panes) per NOTE.md 17.2.3.
-   */
   function _splitTab(tabId) {
     var tab = ctx.getTabById(tabId);
     if (!tab || tab.kind === 'chooser') return;
-
     if (tab.split) {
       if (typeof toast === 'function') toast(t('terminal.maxSplits'), 'info');
       return;
     }
+    _splitApplyToTab(ctx, domHelpers, _createSplitXterm, tabId, tab, null, 'primary');
+  }
 
-    var pane = document.getElementById('terminal-pane-' + tabId);
-    if (!pane || !tab._container) return;
-
-    var splitXtermContainer = _buildSplitDom(pane, tab);
-    var splitState = _createSplitState(tabId, tab, splitXtermContainer);
-    tab.split = splitState;
-    if (ctx.bar) {
-      ctx.bar.setSplitStatus(tabId, 'connecting');
-      ctx.bar.setActivePane(tabId, 'primary');
-    }
-
-    if (typeof Terminal !== 'undefined') {
-      _createSplitXterm(splitState, splitXtermContainer);
-    }
-
-    // Re-fit the original (now left-pane) xterm to its new, narrower width
-    if (tab.fitAddon) {
-      setTimeout(function () { ctx.fitAndResize(tab, true); }, 50);
-    }
+  function _restoreSplitPane(parentTab, splitSessionId, activePane) {
+    if (!parentTab || parentTab.split) return;
+    _splitApplyToTab(ctx, domHelpers, _createSplitXterm, parentTab.id, parentTab, splitSessionId, activePane || 'primary');
   }
 
   ctx.splitTab = _splitTab;
+  ctx.restoreSplitPane = _restoreSplitPane;
 }

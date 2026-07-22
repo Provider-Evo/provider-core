@@ -14,6 +14,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
+from provider_sdk.model_ids import ModelIdRegistry
+
 from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.logger import get_logger
 from .headers import (
@@ -50,7 +52,11 @@ class CodebuddyClient:
     def __init__(self) -> None:
         """初始化客户端实例。"""
         self._session: Optional[aiohttp.ClientSession] = None
-        self._models: List[str] = []
+        self._model_registry = ModelIdRegistry("codebuddy")
+        self._model_registry.load()
+        from .consts import MODELS
+
+        self._models: List[str] = self._model_registry.merge_fallback(MODELS)
         self._candidates: List[Candidate] = []
 
     async def init_immediate(self, session: aiohttp.ClientSession) -> None:
@@ -84,9 +90,9 @@ class CodebuddyClient:
         Args:
             models: 新的模型列表。
         """
-        self._models = list(models)
+        self._models = self._model_registry.register_merge(models, fallback=MODELS)
         for cand in self._candidates:
-            cand.models = list(models)
+            cand.models = list(self._models)
 
     def _build_candidate(self, account: Account) -> Candidate:
         """根据账号信息构建候选项。
@@ -150,6 +156,7 @@ class CodebuddyClient:
         **kw: Any,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """执行聊天补全，含指数退避重试。"""
+        model = self._model_registry.resolve_upstream(model)
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:

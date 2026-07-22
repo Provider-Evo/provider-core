@@ -56,14 +56,28 @@ async def _run_stream_dispatch(
 async def stream_chat(
     request: aiohttp.web.Request,
     body: Dict[str, Any],
+    *,
+    thinking_flavor: str = "openai",
 ) -> aiohttp.web.StreamResponse:
     """流式聊天补全。"""
     cid = _cid()
     ct = int(time.time())
     mdl = resolve_model(body.get("model", ""), "openai")
-    messages = _normalize_messages(body.get("messages", []))
-    tools_raw = body.get("tools")
     extra = body.get("extra_body") or body.get("extra") or {}
+    from src.routes.shared.thinking import (
+        resolve_include_thinking_in_history,
+        resolve_thinking_config,
+    )
+
+    thinking_cfg = resolve_thinking_config(body, extra=extra, flavor=thinking_flavor)  # type: ignore[arg-type]
+    include = resolve_include_thinking_in_history(
+        body, extra=extra, thinking_cfg=thinking_cfg
+    )
+    messages = _normalize_messages(
+        body.get("messages", []),
+        include_thinking_in_history=include,
+    )
+    tools_raw = body.get("tools")
     upload_files = _extract_upload_files(messages)
     proto_override = body.get("protocol", "")
 
@@ -82,6 +96,7 @@ async def stream_chat(
         extra,
         upload_files,
         proto_override,
+        thinking_flavor=thinking_flavor,
     )
 
     processor = SSEStreamProcessor()

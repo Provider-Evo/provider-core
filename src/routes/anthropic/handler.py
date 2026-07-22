@@ -8,10 +8,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp.web
 
-from src.core.server import (
-    REGISTRY_KEY,
-)
+from src.core.server import REGISTRY_KEY
 from src.core.server import clean_fncall as _clean_fncall
+from src.entropy.adapters.from_anthropic import from_anthropic_messages_body
+from src.entropy.adapters.to_anthropic import to_anthropic_message_response
+from src.entropy.core.turn import collect_turn
+from src.foundation.config.resolve import resolve_model
 from src.core.server import get_json as _get_json
 from src.core.utils.compat.tools import parse_fncall_xml
 from src.core.utils.errors import NoCandidateError, ProviderError
@@ -29,6 +31,8 @@ from src.routes.anthropic.convert import (
     _openai_tc_to_anth,
 )
 from src.routes.anthropic.streaming.stream import _stream_messages
+
+from src.routes.shared.thinking import resolve_include_thinking_in_history
 
 logger = get_logger(__name__)
 
@@ -125,39 +129,25 @@ async def _collect_messages(
     Optional[Dict[str, Any]],
     str,
 ]:
-    """收集非流式消息生成的全部输出。
-
-    Args:
-        body: 请求体字典。
-        msgs: 已转换的 OpenAI 格式消息列表。
-        tools: 已转换的 OpenAI 格式工具列表。
-        registry: provider 注册表。
-
-    Returns:
-        (content, thinking_parts, tool_calls, usage_d) 四元组。
-
-    Raises:
-        NoCandidateError: 无可用 provider。
-        ProviderError: provider 返回错误。
-        Exception: 其他异常。
-    """
-    content_parts, thinking_parts, tool_calls, usage_d, platform_id = (
-        await _consume_dispatch_chunks(body, msgs, tools, registry)
-    )
-
-    # 清理文本中残留的 fncall 标签
-    raw_content = "".join(content_parts)
-    cleaned = _clean_fncall(raw_content, platform_id=platform_id)
-
+    """经 execute_turn 收集非流式消息输出。"""
+    turn_req = from_anthropic_messages_body(body)
+    turn_req.input = msgs
+    turn_req.tools = tools
+    turn_req.stream = False
+    turn_resp = await collect_turn(turn_req, registry)
+    raw_content = turn_resp.raw_text
+    cleaned = _clean_fncall(raw_content, platform_id=turn_resp.platform_id)
     cleaned, tool_calls = _resolve_fncall_tool_calls(
         raw_content,
         cleaned,
-        tool_calls,
+        turn_resp.tool_calls,
         tools,
-        platform_id,
+        turn_resp.platform_id,
     )
-
-    return cleaned, thinking_parts, tool_calls, usage_d, platform_id
+    thinking_parts = [
+        b.thinking for b in turn_resp.output if b.type == "thinking" and b.thinking
+    ]
+    return cleaned, thinking_parts, tool_calls, turn_resp.usage, turn_resp.platform_id
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -212,6 +202,22 @@ def _parse_messages_request(
     return resolve_model(mdl, "anthropic"), None
 
 
+def _messages_collect_error(exc: Exception) -> aiohttp.web.StreamResponse:
+    if isinstance(exc, NoCandidateError):
+        return _err(503, str(exc), "overloaded_error")
+    if isinstance(exc, ProviderError):
+        return _err(502, str(exc), "api_error")
+    from src.core.utils.errors.biz import NetworkError
+
+    if isinstance(exc, aiohttp.ClientConnectorError):
+        err = NetworkError(f"连接失败: {exc}", original=exc)
+        logger.error("Anthropic 连接错误: %s", exc, exc_info=True)
+    else:
+        err = exc
+        logger.error("Anthropic messages 异常: %s", exc, exc_info=True)
+    return _err(500, str(err), "server_error")
+
+
 async def messages_handler(
     request: aiohttp.web.Request,
 ) -> aiohttp.web.StreamResponse:
@@ -223,28 +229,24 @@ async def messages_handler(
     if err is not None:
         return err
     system_str = _normalize_anth_content(body.get("system"))
-    msgs = _anth_messages_to_openai(body.get("messages", []), system_str)
+    thinking = _is_thinking(body)
+    include_thinking = resolve_include_thinking_in_history(
+        body, thinking_enabled=thinking
+    )
+    msgs = _anth_messages_to_openai(
+        body.get("messages", []),
+        system_str,
+        include_thinking_in_history=include_thinking,
+    )
     tools = _anth_tools_to_openai(body.get("tools"))
     if bool(body.get("stream", False)):
-        return await _stream_messages(request, body, msgs, tools, _is_thinking(body))
+        return await _stream_messages(request, body, msgs, tools, thinking)
     try:
         content, thinking_parts, tool_calls, usage_d, platform_id = (
             await _collect_messages(body, msgs, tools, request.app[REGISTRY_KEY])
         )
-    except NoCandidateError as exc:
-        return _err(503, str(exc), "overloaded_error")
-    except ProviderError as exc:
-        return _err(502, str(exc), "api_error")
     except Exception as exc:
-        from src.core.utils.errors.biz import NetworkError
-
-        if isinstance(exc, aiohttp.ClientConnectorError):
-            err = NetworkError(f"连接失败: {exc}", original=exc)
-            logger.error("Anthropic 连接错误: %s", exc, exc_info=True)
-        else:
-            err = exc
-            logger.error("Anthropic messages 异常: %s", exc, exc_info=True)
-        return _err(500, str(err), "server_error")
+        return _messages_collect_error(exc)
     rc = _build_anthropic_content_blocks(content, thinking_parts, tool_calls)
     pt, ou = _anthropic_usage(msgs, content, usage_d)
     resp = _json(
@@ -347,7 +349,15 @@ async def count_tokens(
         return _err(400, "Invalid JSON", "invalid_request_error")
 
     system_str = _normalize_anth_content(body.get("system"))
-    msgs = _anth_messages_to_openai(body.get("messages", []), system_str)
+    thinking = _is_thinking(body)
+    include_thinking = resolve_include_thinking_in_history(
+        body, thinking_enabled=thinking
+    )
+    msgs = _anth_messages_to_openai(
+        body.get("messages", []),
+        system_str,
+        include_thinking_in_history=include_thinking,
+    )
     estimated = sum(len(str(m.get("content", ""))) // 3 for m in msgs)
     # 工具定义也计入 token
     tools = body.get("tools", [])

@@ -1,17 +1,19 @@
-"""Chutes 客户端——每个 API Key 一个候选项"""
-
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
 from src.core.dispatch.cand import Candidate, make_id
+from src.foundation.config.reader import load_plugin_api_keys
 from src.foundation.logger import get_logger
 
 from .helpers.client_helpers import KeyState as _KeyState, build_chat_request, dispatch_chat_response
 from .consts import CAPS
+
+_PLUGIN_DIR = Path(__file__).resolve().parents[2]
 
 logger = get_logger(__name__)
 
@@ -45,7 +47,7 @@ class ChutesClient:
         from ..accounts import API_KEYS
 
         self._key_states = [
-            _KeyState(k) for k in API_KEYS if isinstance(k, str) and k.strip()
+            _KeyState(k) for k in load_plugin_api_keys(_PLUGIN_DIR, API_KEYS)
         ]
         self._rebuild_candidates()
         logger.info(

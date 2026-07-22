@@ -14,11 +14,12 @@ __all__ = ["stats_middleware", "PARSED_JSON_BODY_KEY"]
 PARSED_JSON_BODY_KEY = "_parsed_json_body"
 
 _DEFAULT_API_PREFIXES = (
-    "/v1/chat/",
-    "/v1/completions",
-    "/v1/messages",
+    "/v1/turns",
+    "/v1/openai/chat/",
+    "/v1/openai/completions",
+    "/v1/anthropic/messages",
     "/v1/models",
-    "/v1/embeddings",
+    "/v1/openai/embeddings",
 )
 
 
@@ -36,6 +37,19 @@ def _truncate_messages(messages: list) -> list:
     return display
 
 
+def _body_info_from_json(body: Dict[str, Any], *, track_live: bool) -> Dict[str, Any]:
+    """Build stats body_info from a parsed JSON request body."""
+    model = body.get("model", "")
+    messages = body.get("messages", [])
+    return {
+        "model": model,
+        "messages_count": len(messages),
+        "messages": _truncate_messages(messages) if track_live else [],
+        "has_tools": bool(body.get("tools")),
+        "stream": bool(body.get("stream", False)),
+    }
+
+
 async def _parse_request_body(
     request: aiohttp.web.Request,
     track_live: bool,
@@ -49,15 +63,7 @@ async def _parse_request_body(
         return {}
 
     request[PARSED_JSON_BODY_KEY] = body
-    model = body.get("model", "")
-    messages = body.get("messages", [])
-    return {
-        "model": model,
-        "messages_count": len(messages),
-        "messages": _truncate_messages(messages) if track_live else [],
-        "has_tools": bool(body.get("tools")),
-        "stream": bool(body.get("stream", False)),
-    }
+    return _body_info_from_json(body, track_live=track_live)
 
 
 def _extract_response_content(response: aiohttp.web.StreamResponse) -> str:
@@ -75,8 +81,15 @@ def _extract_response_content(response: aiohttp.web.StreamResponse) -> str:
         content = ""
         for choice in resp_data.get("choices", []):
             msg = choice.get("message", {})
-            content += msg.get("content", "")
-        return content
+            content += msg.get("content", "") or ""
+        if content:
+            return content
+        err = resp_data.get("error")
+        if isinstance(err, dict):
+            return str(err.get("message") or "")
+        if isinstance(err, str):
+            return err
+        return ""
     except Exception:
         return ""
 

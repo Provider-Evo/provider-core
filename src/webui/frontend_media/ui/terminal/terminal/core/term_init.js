@@ -64,8 +64,11 @@ function _tiWireFontSizeControl(ctx) {
 }
 
 function _tiWireBackgroundControls(ctx) {
-  // Load terminal background mode preference
-  ctx.loadTerminalBgMode();
+  // Load terminal background mode preference (await before UI updates)
+  ctx.loadTerminalBgMode().then(function () {
+    ctx.updateBgModeButton();
+    ctx.updateCustomBgControls();
+  });
 
   // Background mode button click handler
   var bgModeBtn = document.getElementById('terminalBgModeBtn');

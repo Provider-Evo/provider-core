@@ -99,6 +99,7 @@ function _attachLifecycleCloseMethods(ctx) {
     if (idx === -1) return;
 
     var tab = ctx.tabs[idx];
+    if (typeof ctx.clearSplitLayout === 'function') ctx.clearSplitLayout(tab);
     ctx.teardownTabResources(tab);
 
     // Remove DOM pane
