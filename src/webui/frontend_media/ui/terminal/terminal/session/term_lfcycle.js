@@ -33,6 +33,8 @@ function _attachLifecycleSplitTeardownMethods(ctx) {
 
   function _teardownSplitState(splitState) {
     splitState._closing = true;
+    splitState._isSplit = false;
+    splitState._parentId = null;
     if (splitState._reconnectTimer) {
       clearTimeout(splitState._reconnectTimer);
       splitState._reconnectTimer = null;

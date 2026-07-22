@@ -25,7 +25,11 @@ function _attachResizeSubStatusBar(ctx) {
   function _setBarStatus(tab, status) {
     if (!ctx.bar) return;
     if (tab._isSplit) {
-      ctx.bar.setSplitStatus(tab._parentId, status);
+      var parentId = tab._parentId;
+      if (!parentId) return;
+      var parent = ctx.getTabById(parentId);
+      if (!parent || !parent.split) return;
+      ctx.bar.setSplitStatus(parentId, status);
     } else {
       ctx.bar.setStatus(tab.id, status);
     }

@@ -37,6 +37,7 @@ function _handleWsOutput(ctx, tab, msg) {
 }
 
 function _handleWsExit(ctx, tab, msg) {
+  if (tab._closing) return;
   if (tab.xterm) {
     if (msg.code === -1) {
       // Non-reattachable session (recovered after server restart)
@@ -83,6 +84,7 @@ function _handleWsModeMsg(ctx, tab, msg) {
 }
 
 function _handleWsErrorMsg(ctx, tab, msg) {
+  if (tab._closing) return;
   if (tab.xterm) {
     tab.xterm.write(ctx.stripDecResponses('\r\n\x1b[31m' + t('terminal.errorPrefix', { message: msg.message }) + '\x1b[0m'));
   }

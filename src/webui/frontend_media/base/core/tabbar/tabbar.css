@@ -304,11 +304,11 @@
   display: none;
 }
 
-.unified-tab.has-split-status.active .unified-tab-status-slot.is-pane-active:hover .unified-tab-status {
+.unified-tab.has-split-status.active .unified-tab-status-slot:hover .unified-tab-status {
   visibility: hidden;
 }
 
-.unified-tab.has-split-status.active .unified-tab-status-slot.is-pane-active:hover .unified-tab-status-close {
+.unified-tab.has-split-status.active .unified-tab-status-slot:hover .unified-tab-status-close {
   display: inline-flex;
 }
 
@@ -487,17 +487,17 @@
   transition: opacity 0.12s ease, color 0.1s ease, background 0.1s ease;
 }
 
-.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot.is-pane-active:hover .unified-tab-status {
+.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot:hover .unified-tab-status {
   opacity: 0;
 }
 
-.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot.is-pane-active:hover .unified-tab-status-close {
+.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot:hover .unified-tab-status-close {
   display: inline-flex;
   opacity: 0.7;
   pointer-events: auto;
 }
 
-.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot.is-pane-active .unified-tab-status-close:hover {
+.unified-tabbar.tabbar-compressed .unified-tab.active.has-split-status .unified-tab-status-slot .unified-tab-status-close:hover {
   opacity: 1;
 }
 

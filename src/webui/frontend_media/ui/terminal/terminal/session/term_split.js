@@ -176,7 +176,7 @@ function _splitPromotePane(ctx, tab) {
   var survivor = tab.split;
   if (!survivor) return;
 
-  _teardownPaneResources(tab, false);
+  _teardownPaneResources(tab, true);
   tab._closing = false;
 
   survivor._isSplit = false;
@@ -212,7 +212,10 @@ function _splitCloseTabPane(ctx, tabId, pane) {
   var tab = ctx.getTabById(tabId);
   if (!tab) return;
   if (!tab.split) {
-    if (pane === 'primary') ctx.closeTab(tabId);
+    if (ctx.bar) {
+      ctx.bar.setSplitStatus(tabId, null);
+      ctx.bar.setActivePane(tabId, 'primary');
+    }
     return;
   }
   if (pane === 'split') {
