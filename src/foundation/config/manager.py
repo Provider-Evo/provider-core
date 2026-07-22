@@ -66,8 +66,11 @@ class ConfigManager:
             if default_config_path.exists():
                 self._center.load(str(default_config_path))
             else:
+                config_dir().mkdir(parents=True, exist_ok=True)
                 self._center.init_from_template(
-                    exit_after_create=True, exit_after_merge=False
+                    filename="config/main_config.toml",
+                    exit_after_create=False,
+                    exit_after_merge=False,
                 )
         self._config = self._center.bind_proxy(AppConfig)
         self._apply_color()

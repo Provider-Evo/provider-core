@@ -1,5 +1,4 @@
 
-import os
 import warnings
 from typing import Dict
 
@@ -68,11 +67,9 @@ Returns:
 
 
 def _init_proxy() -> None:
-    """Initialize proxy support (only activated in Worker process)."""
+    """Initialize proxy monkey-patches (activation deferred until config is loaded)."""
     _mgr.patch_requests()
     _mgr.patch_aiohttp()
-    if os.environ.get("WORKER_PROCESS") == "1":
-        activate()
 
 
 _init_proxy()

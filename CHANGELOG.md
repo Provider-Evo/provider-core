@@ -8,6 +8,12 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.314] - 2026-07-22
+
+### 修复
+
+- Worker 启动失败 `Config not loaded yet`：代理模块不再在 import 时加载配置；首次启动从模板创建 `config/main_config.toml` 并继续运行
+
 ## [2.2.313] - 2026-07-22
 
 ### 安全

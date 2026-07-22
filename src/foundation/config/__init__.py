@@ -20,6 +20,7 @@ def _get_manager() -> ConfigManager:
     global _mgr
     if _mgr is None:
         _mgr = ConfigManager()
+    if _mgr._config is None:
         _mgr.load()
     return _mgr
 

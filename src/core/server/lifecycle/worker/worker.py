@@ -224,6 +224,9 @@ async def _run() -> int:
     register_webui_bindings()
 
     cfg = get_config()
+    from src.core.server.lifecycle.net.proxy import activate
+
+    activate()
     session, registry, app_host, reload_app_after_config = (
         await _init_registry_and_app_host(cfg)
     )
