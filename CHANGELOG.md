@@ -8,6 +8,12 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.316] - 2026-07-22
+
+### 修复
+
+- 注册 `GET /openai/v1/models` 与 `GET /openai/v1/models/{model}`，复用统一模型列表 handler，修复此前返回 404
+
 ## [2.2.315] - 2026-07-22
 
 ### 变更

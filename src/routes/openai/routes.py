@@ -85,6 +85,7 @@ from src.routes.openai.resp_api import (
     list_input_items,
     retrieve_response,
 )
+from src.routes.main.static import get_model, list_models
 from src.routes.openai.stubs import (
     add_upload_part,
     cancel_batch,
@@ -163,6 +164,8 @@ def _register_openai_core_routes(app: aiohttp.web.Application) -> None:
     app.router.add_post(_p("/v1/videos/generations"), legacy_video_generations)
     app.router.add_post(_p("/v1/moderations"), create_moderation)
     app.router.add_post(_p("/v1/rerank"), create_rerank)
+    app.router.add_get(_p("/v1/models"), list_models)
+    app.router.add_get(_p("/v1/models/{model}"), get_model)
     app.router.add_get(
         _p("/v1/chat/completions/{completion_id}"), retrieve_stored_completion
     )
