@@ -21,8 +21,9 @@ node_modules
 persist
 venv
 agent_log
-/config/*
-!config/main_config.toml
+# 仅忽略仓库根目录的运行时配置/日志（不影响 src/**/config/ 等源码目录）
+/config/
+/logs/
 .agents/
 /plugins/
 
@@ -72,7 +73,6 @@ _scan_out.txt
 template/old/
 .backup/
 
-logs/
 .htaccess
 
 plugins/
