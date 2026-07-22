@@ -164,6 +164,22 @@ CONFIG_PANEL_SCHEMA: Dict[str, Any] = {
             ],
         ),
         _section(
+            "autoupdate",
+            "autoupdate",
+            [
+                {"key": "enabled", "type": "boolean", "label": "enabled"},
+                {"key": "diff_update", "type": "boolean", "label": "diff_update"},
+                {
+                    "key": "branch",
+                    "type": "select",
+                    "label": "branch",
+                    "options": ["dev", "main", "classical"],
+                },
+                {"key": "interval", "type": "number", "label": "interval", "min": 30, "step": 30},
+                {"key": "mirrors", "type": "list", "label": "mirrors"},
+            ],
+        ),
+        _section(
             "fallback",
             "fallback",
             [

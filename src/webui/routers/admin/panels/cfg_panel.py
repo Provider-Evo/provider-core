@@ -128,10 +128,17 @@ async def webui_config_schema_get(request: aiohttp.web.Request) -> aiohttp.web.R
 async def webui_config_raw_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """GET /v1/webui/config/raw — 返回 webui_config.toml 原始 TOML 文本。"""
     del request
-    try:
-        path = ensure_webui_config_file()
-    except FileNotFoundError as exc:
-        return aiohttp.web.json_response({"error": str(exc)}, status=500)
+    path = _webui_config_path()
+    if not path.is_file():
+        return aiohttp.web.json_response(
+            {
+                "error": (
+                    "config/webui_config.toml 不存在；请从 .backup/ 恢复，"
+                    "或在保存时由服务从模板创建"
+                )
+            },
+            status=404,
+        )
     try:
         content = path.read_text(encoding="utf-8")
     except Exception as exc:

@@ -86,6 +86,9 @@ function _knownSchemaSectionIds(schema) {
   var ids = [];
   var sections = (schema && schema.sections) || [];
   for (var i = 0; i < sections.length; i++) ids.push(sections[i].id);
+  if (typeof _isFlatConfigTarget === 'function' && !_isFlatConfigTarget() && ids.indexOf('autoupdate') === -1) {
+    ids.push('autoupdate');
+  }
   return ids;
 }
 
@@ -103,6 +106,9 @@ function _findSectionDef(schema, sectionId) {
   var sections = (schema && schema.sections) || [];
   for (var i = 0; i < sections.length; i++) {
     if (sections[i].id === sectionId) return sections[i];
+  }
+  if (sectionId === 'autoupdate' && typeof _autoupdateSectionDef === 'function') {
+    return _autoupdateSectionDef();
   }
   return null;
 }

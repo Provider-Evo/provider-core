@@ -134,7 +134,7 @@ document.querySelectorAll('.tab-button[data-tab]').forEach(function(node) {
 });
 
 // Autoupdate & chat initialization moved to lazy per-tab init functions
-// (_initAutoupdateTab, _initChatTab) — called by state.js _initTab()
+// (_initChatTab) — called by state.js _initTab()
 
 applyTheme();
 applyVoiceSettings();
@@ -163,7 +163,7 @@ if (typeof UiDropdown !== 'undefined') {
   UiDropdown.mount(document, window._dropdowns);
 } else {
   ['modelPlatformSelect', 'modelCapabilitySelect', 'chatModelSelect',
-   'chatProtocolSelect', 'autoupdateBranch', 'requestStatusFilter', 'requestTimeFilter',
+   'chatProtocolSelect', 'requestStatusFilter', 'requestTimeFilter',
    'logLevelSelect', 'logModuleSelect'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) window._dropdowns[id] = new CustomDropdown(el);

@@ -110,10 +110,17 @@ async def config_schema_get(request: aiohttp.web.Request) -> aiohttp.web.Respons
 async def config_raw_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """GET /v1/config/raw — 返回 main_config.toml 原始 TOML 文本。"""
     del request
-    try:
-        path = ensure_main_config_file()
-    except FileNotFoundError as exc:
-        return aiohttp.web.json_response({"error": str(exc)}, status=500)
+    path = _main_config_path()
+    if not path.is_file():
+        return aiohttp.web.json_response(
+            {
+                "error": (
+                    "config/main_config.toml 不存在；请从 .backup/ 恢复，"
+                    "或由服务首次启动从模板创建"
+                )
+            },
+            status=404,
+        )
     try:
         content = path.read_text(encoding="utf-8")
     except Exception as exc:

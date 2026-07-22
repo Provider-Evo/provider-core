@@ -28,8 +28,7 @@ function _shellIsToolTab(tab) {
 }
 
 function _shellSettingsSectionForTab(tab) {
-  if (tab === 'autoupdate') return 'autoupdate';
-  if (tab === 'config') return 'config';
+  if (tab === 'autoupdate' || tab === 'config') return 'config';
   return null;
 }
 
@@ -55,13 +54,12 @@ function _shellSyncNavActive(activeTab) {
 }
 
 function _shellSetSettingsSection(ctx, section) {
-  ctx.settingsSection = section || 'config';
+  var next = section || 'config';
+  if (next === 'autoupdate') next = 'config';
+  ctx.settingsSection = next;
   localStorage.setItem('provider.webui.settingsSection', ctx.settingsSection);
   _shellSyncSettingsPanes(ctx);
   _shellSyncSettingsSubnav(ctx);
-  if (ctx.settingsSection === 'autoupdate' && typeof _initAutoupdateTab === 'function') {
-    _initAutoupdateTab();
-  }
 }
 
 function _shellSetLastPrimaryTab(ctx, tab) {
@@ -93,6 +91,10 @@ function _shellOnTabActivated(ctx, tab) {
   var resolved = _shellResolveTab(tab);
   if (_shellIsPrimaryTab(tab)) _shellSetLastPrimaryTab(ctx, tab);
   if (resolved === 'settings') _shellSetLastPrimaryTab(ctx, 'settings');
+  if (tab === 'autoupdate') {
+    if (typeof setConfigTarget === 'function') setConfigTarget('main');
+    if (typeof setActiveConfigSection === 'function') setActiveConfigSection('autoupdate');
+  }
   if (resolved === 'settings') {
     var section = _shellSettingsSectionForTab(tab);
     if (section) _shellSetSettingsSection(ctx, section);
@@ -103,6 +105,10 @@ function _shellOnTabActivated(ctx, tab) {
 }
 
 function _shellBind(ctx, leaveTools) {
+  if (ctx.settingsSection === 'autoupdate') {
+    ctx.settingsSection = 'config';
+    localStorage.setItem('provider.webui.settingsSection', 'config');
+  }
   _wsBindSettingsSubnav();
   var backBtn = document.getElementById('toolViewBackBtn');
   if (backBtn && !backBtn.dataset.bound) {

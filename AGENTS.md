@@ -179,3 +179,8 @@ WebUI 开发服务固定起到 7999 端口。
 ## RECORD.md 编写
 
 `RECORD.md` 为本地工作日志（gitignore，永不提交）。**不按 git 可提交范围过滤**；编排根、各子仓库、`config/`、插件独立仓、测试统计等本会话实质变更均可写入。与 `CHANGELOG.md`（仅本仓可提交变更）分工。格式细则见 `docs-src/provider-guide-references/agents-project-conventions.md`。
+
+
+## 备份目录 `.backup/`
+
+工作区根目录 `.backup/` 为**只读**快照（可读、可从中复制恢复 `config/` 等），**禁止**对其内任何路径写入、删除或覆写。配置损坏时从 `.backup/` 复制恢复，不得用 `template/` 整文件覆盖冒充恢复。细则见 `agents-project-conventions.md`「备份目录 `.backup/`」。

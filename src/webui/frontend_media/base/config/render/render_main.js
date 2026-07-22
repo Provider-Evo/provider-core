@@ -16,13 +16,19 @@ function _updateConfigSubtitle() {
 function _collectSectionTabs(schema, config) {
   var tabs = [];
   var sections = (schema && schema.sections) || [];
+  var hasAutoupdate = false;
   for (var i = 0; i < sections.length; i++) {
+    if (sections[i].id === 'autoupdate') hasAutoupdate = true;
     tabs.push({ id: sections[i].id, title: sections[i].title || sections[i].id });
+  }
+  if (!_isFlatConfigTarget() && !hasAutoupdate && config && config.autoupdate) {
+    tabs.push({ id: 'autoupdate', title: 'autoupdate' });
   }
   if (!schema || !schema.flat) {
     var known = _knownSchemaSectionIds(schema || { sections: [] });
     Object.keys(config || {}).forEach(function(key) {
       if (known.indexOf(key) !== -1) return;
+      if (key === 'autoupdate') return;
       if (config[key] != null && typeof config[key] === 'object' && !Array.isArray(config[key])) {
         tabs.push({ id: key, title: key });
       }

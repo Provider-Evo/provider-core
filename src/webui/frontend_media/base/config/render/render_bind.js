@@ -156,6 +156,9 @@ function _onConfigChange(e) {
 
   _configSetValue(window._currentConfig, section, key, val);
   _onWebuiConfigFieldChange(key, val);
+  if (section === 'autoupdate' && typeof syncAutoupdateStatusFromConfig === 'function') {
+    syncAutoupdateStatusFromConfig();
+  }
   scheduleConfigSave();
 }
 

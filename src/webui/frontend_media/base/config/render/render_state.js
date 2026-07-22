@@ -27,6 +27,14 @@ function setConfigTarget(target) {
   localStorage.setItem('provider.configTarget', target);
 }
 
+function setActiveConfigSection(sectionId) {
+  _activeConfigSection = sectionId || null;
+}
+
+function getActiveConfigSection() {
+  return _activeConfigSection;
+}
+
 function _isFlatConfigTarget() {
   return getConfigTarget() === 'webui';
 }
@@ -49,5 +57,7 @@ function _configGetValue(config, section, key) {
 
 window.getConfigTarget = getConfigTarget;
 window.setConfigTarget = setConfigTarget;
+window.getActiveConfigSection = getActiveConfigSection;
+window.setActiveConfigSection = setActiveConfigSection;
 window.getConfigEditMode = getConfigEditMode;
 window.setConfigEditMode = setConfigEditMode;

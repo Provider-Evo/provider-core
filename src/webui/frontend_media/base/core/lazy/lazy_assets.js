@@ -22,11 +22,7 @@ var LAZY_TAB_RESOURCES = {
     { type: 'js', url: '/static/features/stats/inspector/insp_detail.js?v=20260716-1' },
     { type: 'js', url: '/static/features/stats/inspector/insp_core.js?v=20260716-1' },
   ],
-  settings: [
-    { type: 'css', url: '/static/ui/sortable-list/sort.css' },
-    { type: 'js',  url: '/static/ui/sortable-list/sort_helpers.js' },
-    { type: 'js',  url: '/static/ui/sortable-list/sort.js' },
-  ],
+  settings: [],
   terminal: [
     { type: 'css', url: '/static/vendor/xterm/xterm.css' },
     { type: 'css', url: '/static/base/core/tabbar/tabbar.css' },
@@ -150,11 +146,6 @@ var LAZY_TAB_RESOURCES = {
     { type: 'js', url: '/static/features/stats/inspector/insp_core.js?v=20260716-1' },
   ],
   config: [],
-  autoupdate: [
-    { type: 'css', url: '/static/ui/sortable-list/sort.css' },
-    { type: 'js',  url: '/static/ui/sortable-list/sort_helpers.js' },
-    { type: 'js',  url: '/static/ui/sortable-list/sort.js' },
-  ],
   plugins: [
     { type: 'css', url: '/static/features/plugins/plugins.css?v=20260710-1' },
     { type: 'js', url: '/static/features/plugins/logic/plugins_helpers.js?v=20260717-1' },

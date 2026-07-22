@@ -17,6 +17,7 @@ function _renderConfigData(config) {
     _bindConfigFieldHandlers();
     updateConfigSaveStatus();
     _updateConfigSaveBtn();
+    _finalizeAutoupdateSection();
   };
 
   if (_isFlatConfigTarget()) {
@@ -35,7 +36,9 @@ function _buildConfigDataHtml(schema, config) {
   var sectionDef = activeId ? _findSectionDef(schema, activeId) : null;
   var html = '';
 
-  if (sectionDef) {
+  if (sectionDef && sectionDef.id === 'autoupdate' && !schema.flat) {
+    html = _renderAutoupdateSection(config.autoupdate || {});
+  } else if (sectionDef) {
     html = _renderSectionFromSchema(sectionDef, config, schema);
     if (schema.flat) html += _buildFlatExtraHtml(schema, config);
   } else if (activeId && !schema.flat && config[activeId] && typeof config[activeId] === 'object') {

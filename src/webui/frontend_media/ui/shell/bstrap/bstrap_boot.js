@@ -82,40 +82,6 @@ function _initChatTab() {
   if (typeof _loadTools === 'function') _loadTools();
 }
 
-function _initAutoupdateTab() {
-  if (document.getElementById('autoupdateCheckBtn') && !document.getElementById('autoupdateCheckBtn').dataset.bound) {
-    document.getElementById('autoupdateCheckBtn').dataset.bound = '1';
-    document.getElementById('autoupdateCheckBtn').addEventListener('click', triggerAutoupdateCheck);
-  }
-  if (document.getElementById('autoupdateSaveBtn') && !document.getElementById('autoupdateSaveBtn').dataset.bound) {
-    document.getElementById('autoupdateSaveBtn').dataset.bound = '1';
-    document.getElementById('autoupdateSaveBtn').addEventListener('click', saveAutoupdateSettings);
-  }
-  if (document.getElementById('autoupdateApplyBtn') && !document.getElementById('autoupdateApplyBtn').dataset.bound) {
-    document.getElementById('autoupdateApplyBtn').dataset.bound = '1';
-    document.getElementById('autoupdateApplyBtn').addEventListener('click', applyAutoupdate);
-  }
-  if (document.getElementById('autoupdateAddMirrorBtn') && !document.getElementById('autoupdateAddMirrorBtn').dataset.bound) {
-    document.getElementById('autoupdateAddMirrorBtn').dataset.bound = '1';
-    document.getElementById('autoupdateAddMirrorBtn').addEventListener('click', function() {
-      var mirrors = _getMirrorsFromUI();
-      mirrors.push('');
-      _renderMirrors(mirrors);
-      var inputs = document.querySelectorAll('#autoupdateMirrorsList .mirror-url');
-      if (inputs.length) inputs[inputs.length - 1].focus();
-    });
-  }
-  var autoupdatePane = document.getElementById('settingsAutoupdatePane');
-  if (typeof UiDropdown !== 'undefined' && autoupdatePane) {
-    UiDropdown.mount(autoupdatePane, window._dropdowns);
-  }
-  if (!window._autoupdateTabLoaded) {
-    window._autoupdateTabLoaded = true;
-    loadAutoupdateSettings();
-  }
-}
-window._initAutoupdateTab = _initAutoupdateTab;
-
 function _initStatsTab() {
   if (typeof StatsFeature !== 'undefined') StatsFeature.init();
   if (typeof RequestInspector !== 'undefined') RequestInspector.init();

@@ -1,55 +1,47 @@
-async function loadAutoupdateSettings() {
-  try {
-    const result = await fetchJson('/v1/admin/autoupdate');
-    if (result.success) {
-      const d = result.data;
-      document.getElementById('autoupdateEnabled').checked = d.enabled || false;
-      var branch = d.branch || 'dev';
-      var branchEl = document.getElementById('autoupdateBranch');
-      if (branchEl) branchEl.value = branch;
-      if (window._dropdowns && window._dropdowns.autoupdateBranch) {
-        window._dropdowns.autoupdateBranch.setValue(branch);
-      }
-      document.getElementById('autoupdateInterval').value = d.interval || 300;
-      var diffEl = document.getElementById('autoupdateDiffUpdate');
-      if (diffEl) diffEl.checked = d.diff_update !== false;
-      document.getElementById('autoupdateStatus').textContent = d.enabled ? t('autoupdate.statusEnabled') : t('autoupdate.statusDisabled');
-      // Render mirrors
-      _renderMirrors(d.mirrors || []);
-      // Show last check if available
-      if (d.last_check && d.last_check.status) {
-        _showCheckResults(d.last_check);
-      }
-    }
-  } catch (error) {
-    toast(t('autoupdate.loadFailed', { error: String(error) }), 'error');
+function syncAutoupdateStatusFromConfig() {
+  var el = document.getElementById('autoupdateStatus');
+  if (!el || !window._currentConfig) return;
+  var au = window._currentConfig.autoupdate || {};
+  if (typeof t !== 'function') {
+    el.textContent = au.enabled ? 'enabled' : 'disabled';
+    return;
   }
+  el.textContent = au.enabled ? t('autoupdate.statusEnabled') : t('autoupdate.statusDisabled');
 }
 
 var _mirrorList = null;
 
-function _renderMirrors(mirrors) {
+function _syncAutoupdateMirrorsToConfig(mirrors) {
+  if (!window._currentConfig) return;
+  if (!window._currentConfig.autoupdate) window._currentConfig.autoupdate = {};
+  window._currentConfig.autoupdate.mirrors = mirrors;
+  if (typeof scheduleConfigSave === 'function') scheduleConfigSave();
+  syncAutoupdateStatusFromConfig();
+}
+
+function _renderAutoupdateMirrors(mirrors) {
   var list = document.getElementById('autoupdateMirrorsList');
   if (!list) return;
+  _mirrorList = null;
   if (typeof SortableList === 'undefined') {
-    list.innerHTML = '<div class="sl-empty">' + escapeHtml(t('common.loading')) + '</div>';
+    list.innerHTML = '<div class="sl-empty">' + escapeHtml(typeof t === 'function' ? t('common.loading') : '') + '</div>';
     return;
   }
-  if (!_mirrorList) {
-    _mirrorList = new SortableList(list, {
-      renderItem: function(value, index) {
-        var safe = String(value || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        return '<input type="text" class="config-input mirror-url" value="' + safe + '" style="width:100%;">';
-      },
-      getItemValue: function(el, index) {
-        var inp = el.querySelector('.mirror-url');
-        return inp ? inp.value.trim() : '';
-      },
-      onChange: function() { /* items changed, will be collected on save */ },
-      placeholder: t('autoupdate.noMirrors'),
-    });
-  }
-  _mirrorList.setItems(mirrors);
+  _mirrorList = new SortableList(list, {
+    renderItem: function(value) {
+      var safe = String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return '<input type="text" class="config-input mirror-url" value="' + safe + '" style="width:100%;">';
+    },
+    getItemValue: function(el) {
+      var inp = el.querySelector('.mirror-url');
+      return inp ? inp.value.trim() : '';
+    },
+    onChange: function(items) {
+      _syncAutoupdateMirrorsToConfig(items);
+    },
+    placeholder: typeof t === 'function' ? t('autoupdate.noMirrors') : '',
+  });
+  _mirrorList.setItems(mirrors || []);
 }
 
 function _getMirrorsFromUI() {
@@ -60,29 +52,18 @@ function _getMirrorsFromUI() {
   return arr;
 }
 
-async function saveAutoupdateSettings() {
+window._renderAutoupdateMirrors = _renderAutoupdateMirrors;
+window._getMirrorsFromUI = _getMirrorsFromUI;
+window._syncAutoupdateMirrorsToConfig = _syncAutoupdateMirrorsToConfig;
+
+async function loadAutoupdateLastCheck() {
   try {
-    var body = {
-      enabled: document.getElementById('autoupdateEnabled').checked,
-      branch: document.getElementById('autoupdateBranch').value.trim() || 'dev',
-      interval: parseInt(document.getElementById('autoupdateInterval').value) || 300,
-      diff_update: document.getElementById('autoupdateDiffUpdate').checked,
-      mirrors: _getMirrorsFromUI()
-    };
-    var resp = await fetch('/v1/admin/autoupdate', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    var data = await resp.json();
-    if (data.success) {
-      document.getElementById('autoupdateStatus').textContent = data.data.enabled ? t('autoupdate.statusEnabled') : t('autoupdate.statusDisabled');
-      toast(t('autoupdate.saveOk'), 'ok');
-    } else {
-      toast(t('autoupdate.saveFailed', { error: data.error || t('actions.unknownError') }), 'error');
+    const result = await fetchJson('/v1/admin/autoupdate');
+    if (result.success && result.data && result.data.last_check && result.data.last_check.status) {
+      _showCheckResults(result.data.last_check);
     }
   } catch (error) {
-    toast(t('autoupdate.saveFailed', { error: String(error) }), 'error');
+    /* optional: last check unavailable */
   }
 }
 
@@ -177,13 +158,11 @@ function _showCheckResultsHasUpdate(d, statusEl, metaEl, filesEl, searchInput, a
   statusEl.style.color = 'var(--warn)';
   metaEl.textContent = (d.local_hash || '?') + ' -> ' + (d.remote_hash || '?') + ' (mirror: ' + (d.mirror || '') + ')';
 
-  // Show search box only when >5 files
   if (searchInput) {
     searchInput.style.display = files.length > 5 ? '' : 'none';
     searchInput.value = '';
   }
 
-  // Show action buttons
   if (actionBtns) actionBtns.style.display = '';
 
   _bindAutoupdateToolbar(filesEl, files, searchInput);
@@ -201,7 +180,6 @@ function _showCheckResults(d) {
   if (!panel) return;
   panel.classList.remove('hidden');
 
-  // Hide toolbar and action buttons by default
   if (actionBtns) actionBtns.style.display = 'none';
   if (searchInput) searchInput.style.display = 'none';
   if (applyBtn) applyBtn.classList.add('hidden');
@@ -243,23 +221,18 @@ function _ensureAutoupdateDiffOverlay() {
 
 function _renderDiffLine(line, leftHtml, rightHtml) {
   if (line.startsWith('+++') || line.startsWith('---')) {
-    // File header lines — show on both sides
     leftHtml.push('<span style="color:var(--muted);">' + escapeHtml(line) + '</span>');
     rightHtml.push('<span style="color:var(--muted);">' + escapeHtml(line) + '</span>');
   } else if (line.startsWith('@@')) {
-    // Hunk header — show on both sides
     leftHtml.push('<span style="color:var(--accent);">' + escapeHtml(line) + '</span>');
     rightHtml.push('<span style="color:var(--accent);">' + escapeHtml(line) + '</span>');
   } else if (line.startsWith('-')) {
-    // Removed line — left side only
     leftHtml.push('<span style="color:var(--err);background:rgba(217,72,72,0.1);display:block;padding:0 4px;margin:0 -4px;">' + escapeHtml(line) + '</span>');
     rightHtml.push('<span style="display:block;min-height:1.5em;">&nbsp;</span>');
   } else if (line.startsWith('+')) {
-    // Added line — right side only
     leftHtml.push('<span style="display:block;min-height:1.5em;">&nbsp;</span>');
     rightHtml.push('<span style="color:var(--ok);background:rgba(31,157,97,0.1);display:block;padding:0 4px;margin:0 -4px;">' + escapeHtml(line) + '</span>');
   } else {
-    // Context line — show on both sides
     leftHtml.push(escapeHtml(line));
     rightHtml.push(escapeHtml(line));
   }
@@ -303,7 +276,6 @@ function _renderFileDiffResult(data) {
 }
 
 async function _showFileDiff(filepath) {
-  // Create or reuse diff dialog
   var overlay = _ensureAutoupdateDiffOverlay();
   overlay.style.display = 'flex';
   document.getElementById('autoupdateDiffTitle').textContent = filepath;
@@ -357,7 +329,6 @@ async function _applyAutoupdateReload() {
 
 async function applyAutoupdate() {
   try {
-    // Collect selected files
     var checkboxes = document.querySelectorAll('.autoupdate-file-check:checked');
     var selectedFiles = [];
     checkboxes.forEach(function(cb) { selectedFiles.push(cb.value); });
@@ -380,7 +351,6 @@ async function applyAutoupdate() {
       toast(t('autoupdate.applyOk', { count: selectedFiles.length }), 'ok');
       var applyBtn = document.getElementById('autoupdateApplyBtn');
       if (applyBtn) applyBtn.classList.add('hidden');
-      // Auto hot-reload config after apply
       await _applyAutoupdateReload();
       await refreshAll();
     } else {
@@ -390,3 +360,35 @@ async function applyAutoupdate() {
     toast(t('autoupdate.applyFailed', { error: String(error) }), 'error');
   }
 }
+
+window.syncAutoupdateStatusFromConfig = syncAutoupdateStatusFromConfig;
+
+function _initAutoupdateConfigSection() {
+  var checkBtn = document.getElementById('autoupdateCheckBtn');
+  if (checkBtn && !checkBtn.dataset.bound) {
+    checkBtn.dataset.bound = '1';
+    checkBtn.addEventListener('click', triggerAutoupdateCheck);
+  }
+  var applyBtn = document.getElementById('autoupdateApplyBtn');
+  if (applyBtn && !applyBtn.dataset.bound) {
+    applyBtn.dataset.bound = '1';
+    applyBtn.addEventListener('click', applyAutoupdate);
+  }
+  var addMirrorBtn = document.getElementById('autoupdateAddMirrorBtn');
+  if (addMirrorBtn && !addMirrorBtn.dataset.bound) {
+    addMirrorBtn.dataset.bound = '1';
+    addMirrorBtn.addEventListener('click', function() {
+      var mirrors = _getMirrorsFromUI().slice();
+      mirrors.push('');
+      _renderAutoupdateMirrors(mirrors);
+      _syncAutoupdateMirrorsToConfig(mirrors.filter(function(v) { return v; }));
+      var inputs = document.querySelectorAll('#autoupdateMirrorsList .mirror-url');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    });
+  }
+  if (!window._autoupdateOpsLoaded) {
+    window._autoupdateOpsLoaded = true;
+    loadAutoupdateLastCheck();
+  }
+}
+window._initAutoupdateConfigSection = _initAutoupdateConfigSection;

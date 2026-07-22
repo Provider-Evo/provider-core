@@ -287,12 +287,11 @@
         <div class="page-header">
           <div>
             <h2 data-i18n="settings.title">设置</h2>
-            <p data-i18n="settings.subtitle">配置、自动更新与 WebUI 偏好。</p>
+            <p data-i18n="settings.subtitle">配置与 WebUI 偏好。</p>
           </div>
         </div>
         <div class="settings-subnav" role="tablist">
           <button type="button" class="settings-subnav-btn active" data-settings-section="config" data-i18n="settings.tabConfig">配置</button>
-          <button type="button" class="settings-subnav-btn" data-settings-section="autoupdate" data-i18n="settings.tabAutoupdate">自动更新</button>
           <button type="button" class="settings-subnav-btn" data-settings-section="system" data-i18n="settings.tabSystem">系统</button>
         </div>
         <div class="settings-pane active" data-settings-pane="config" id="settingsConfigPane">
@@ -339,63 +338,6 @@
         <div id="configVisualPane" class="config-visual-pane">
           <div class="config-section-tabs" id="configSectionTabs" role="tablist"></div>
           <div class="config-section-body" id="configGrid"></div>
-        </div>
-        </div>
-
-        <div class="settings-pane hidden" data-settings-pane="autoupdate" id="settingsAutoupdatePane">
-        <div class="flex flex-wrap justify-between items-end gap-3">
-          <div>
-            <h3 class="routing-section-title" data-i18n="autoupdate.title">自动更新</h3>
-            <p class="m-0 text-muted leading-relaxed text-[13px]" data-i18n="autoupdate.subtitle">监控远端 git 仓库新提交，支持差异更新（仅覆盖变更文件）。</p>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button class="ui-btn" id="autoupdateCheckBtn" type="button" data-i18n="autoupdate.checkNow">立即检查</button>
-            <button class="ui-btn" id="autoupdateSaveBtn" type="button" data-i18n="autoupdate.saveSettings">保存设置</button>
-            <button class="ui-btn ui-btn--primary hidden" id="autoupdateApplyBtn" type="button" data-i18n="autoupdate.applyUpdate">应用更新</button>
-            <span id="autoupdateStatus" class="status-saved flex items-center" data-i18n="autoupdate.statusDisabled">未启用</span>
-          </div>
-        </div>
-        <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(240px,1fr))]">
-          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="config-field"><span class="config-field-label" data-i18n="autoupdate.enableLabel">启用自动更新</span><label class="config-toggle"><input type="checkbox" id="autoupdateEnabled"><span class="toggle-slider"></span></label></div>
-          </div>
-          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="config-field"><span class="config-field-label" data-i18n="autoupdate.diffUpdate">差异更新</span><label class="config-toggle"><input type="checkbox" id="autoupdateDiffUpdate" checked><span class="toggle-slider"></span></label></div>
-            <div class="text-[11px] text-muted mt-1" data-i18n="autoupdate.diffUpdateHint">仅覆盖变更文件，保留本地未提交改动</div>
-          </div>
-          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="config-field"><span class="config-field-label" data-i18n="autoupdate.targetBranch">目标分支</span><select id="autoupdateBranch" data-ui-dropdown class="config-input"><option value="dev">dev</option><option value="main">main</option><option value="classical">classical</option></select></div>
-          </div>
-          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="config-field"><span class="config-field-label" data-i18n="autoupdate.checkInterval">检查间隔（秒）</span><input id="autoupdateInterval" type="number" min="30" step="30" placeholder="300" class="config-input"></div>
-          </div>
-        </div>
-        <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift mt-3">
-          <div class="flex justify-between items-center mb-2">
-            <div class="text-[13px] text-muted" data-i18n="autoupdate.mirrors">镜像源（按优先级排序）</div>
-            <button class="text-[12px] text-accent hover:underline cursor-pointer" id="autoupdateAddMirrorBtn" type="button" data-i18n="autoupdate.addMirror">+ 添加镜像源</button>
-          </div>
-          <div id="autoupdateMirrorsList"></div>
-        </div>
-        <div id="autoupdateResults" class="mt-3 hidden">
-          <div class="border border-border rounded-xl p-3.5 bg-panel-alt card-hover-lift">
-            <div class="flex justify-between items-center mb-2">
-              <div class="text-[13px] font-semibold" data-i18n="autoupdate.checkResults">检查结果</div>
-              <span id="autoupdateResultStatus" class="text-[12px]"></span>
-            </div>
-            <div id="autoupdateResultMeta" class="text-[12px] text-muted mb-2"></div>
-            <div class="flex flex-wrap gap-2 mb-2" id="autoupdateFileToolbar">
-              <input type="text" id="autoupdateSearchInput" data-i18n-placeholder="autoupdate.searchFiles" placeholder="搜索文件..." class="config-input" style="width:180px;display:none;">
-              <button type="button" class="text-[12px] text-accent hover:underline cursor-pointer" id="autoupdateSelectAllBtn" data-i18n="autoupdate.selectAll" style="padding:2px 6px;">全选</button>
-              <button type="button" class="text-[12px] text-muted hover:underline cursor-pointer" id="autoupdateSelectNoneBtn" data-i18n="autoupdate.selectNone" style="padding:2px 6px;">取消全选</button>
-            </div>
-            <div id="autoupdateChangedFiles" class="text-[12px] font-mono" style="max-height:240px;overflow-y:auto;"></div>
-            <div class="flex gap-2 mt-3" id="autoupdateActionBtns" style="display:none;">
-              <button type="button" class="ui-btn ui-btn--primary text-[13px]" id="autoupdateConfirmBtn" data-i18n="autoupdate.confirmUpdate">确认更新</button>
-              <button type="button" class="ui-btn text-[13px]" id="autoupdateCancelBtn" data-i18n="autoupdate.cancel">取消</button>
-              <span id="autoupdateSelectedCount" class="text-[12px] text-muted flex items-center ml-2"></span>
-            </div>
-          </div>
         </div>
         </div>
 
@@ -866,11 +808,12 @@
   <script src="/static/base/core/state/render.js?v=20260710-1"></script>
   <script src="/static/base/config/render/render_prims.js?v=20260716-1"></script>
   <script src="/static/base/config/render/render_state.js?v=20260716-1"></script>
-  <script src="/static/base/config/render/render_schema.js?v=20260716-1"></script>
-  <script src="/static/base/config/render/render_main.js?v=20260716-1"></script>
+  <script src="/static/base/config/render/render_schema.js?v=20260722-1"></script>
+  <script src="/static/base/config/render/render_autoupdate.js?v=20260722-1"></script>
+  <script src="/static/base/config/render/render_main.js?v=20260722-1"></script>
   <script src="/static/base/config/render/render_bind.js?v=20260716-1"></script>
   <script src="/static/base/config/render/render_widgets.js?v=20260716-1"></script>
-  <script src="/static/base/config/render/config_data/render_data.js?v=20260716-1"></script>
+  <script src="/static/base/config/render/config_data/render_data.js?v=20260722-1"></script>
   <script src="/static/base/config/render/config_data/embedhelpers.js?v=20260717-1"></script>
   <script src="/static/base/config/render/config_data/render_embed.js?v=20260716-1"></script>
   <script src="/static/base/config/render.js?v=20260716-1"></script>
@@ -881,7 +824,7 @@
   <script src="/static/base/config/actions/actions_refresh.js?v=20260722-1"></script>
   <script src="/static/base/config/actions/actions_cfgsave.js?v=20260716-2"></script>
   <script src="/static/base/config/actions/actions_restart.js?v=20260716-2"></script>
-  <script src="/static/base/config/actions/actions_autoupd.js?v=20260716-2"></script>
+  <script src="/static/base/config/actions/actions_autoupd.js?v=20260722-1"></script>
   <script src="/static/base/config/actions/actions_misc.js?v=20260716-2"></script>
   <script src="/static/ui/widgets/dropdown/ddown_core.js?v=20260710-1"></script>
   <script src="/static/ui/widgets/dropdown/core/ddown_display.js?v=20260710-1"></script>

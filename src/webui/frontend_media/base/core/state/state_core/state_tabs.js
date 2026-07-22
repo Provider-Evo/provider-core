@@ -77,11 +77,7 @@ async function switchTab(nextTab) {
 }
 
 function _initTabSettings() {
-  if (typeof WebuiShell !== 'undefined' && WebuiShell.getSettingsSection() === 'autoupdate') {
-    typeof _initAutoupdateTab === 'function' && _initAutoupdateTab();
-  } else if (typeof WebuiShell !== 'undefined' && WebuiShell.getSettingsSection() === 'config') {
-    if (typeof _bindConfigPanel === 'function') _bindConfigPanel();
-  }
+  if (typeof _bindConfigPanel === 'function') _bindConfigPanel();
 }
 
 function _initTabSimple(tabName) {
@@ -105,7 +101,9 @@ function _initTabSimple(tabName) {
       typeof _initStatsTab === 'function' && _initStatsTab();
       break;
     case 'autoupdate':
-      typeof _initAutoupdateTab === 'function' && _initAutoupdateTab();
+      if (typeof setConfigTarget === 'function') setConfigTarget('main');
+      if (typeof setActiveConfigSection === 'function') setActiveConfigSection('autoupdate');
+      if (typeof _bindConfigPanel === 'function') _bindConfigPanel();
       break;
     case 'plugins':
       typeof initPluginsPanel === 'function' && initPluginsPanel();
