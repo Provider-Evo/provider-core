@@ -27,7 +27,13 @@ async def auth_middleware(
     if request.method == "OPTIONS" or _is_auth_public(path):
         return await handler(request)
 
-    cfg = get_config()
+    try:
+        cfg = get_config()
+    except RuntimeError:
+        return aiohttp.web.json_response(
+            {"error": {"message": "config unavailable", "type": "config_error"}},
+            status=503,
+        )
     from src.core.server.http.mw import _validate_credentials, _validate_webui_session
 
     if path.startswith("/v1/webui/"):

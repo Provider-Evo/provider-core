@@ -8,6 +8,18 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.315] - 2026-07-22
+
+### 变更
+
+- OpenAI 兼容 API 前缀改为 `/openai/v1/*`；Anthropic 兼容 API 前缀改为 `/anthropic/v1/*`（Entropy 主体仍为 `/v1/*`）
+- `route_catalog.json` 纳入版本库，供 selfzip/snapshot 打包校验
+
+### 修复
+
+- 配置面板 TOML 加载/保存：缺失 `config/main_config.toml` 时从模板自动创建；`reload_config` 与写入路径对齐
+- 鉴权中间件在配置未就绪时返回 503 JSON，避免未捕获 `RuntimeError` 导致空 500
+
 ## [2.2.314] - 2026-07-22
 
 ### 修复

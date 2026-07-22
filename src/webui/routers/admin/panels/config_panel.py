@@ -8,7 +8,7 @@ from typing import Any, Dict
 import aiohttp.web
 
 from src.foundation.config import get_config_manager, reload_config, write_config
-from src.foundation.paths import config_dir
+from src.foundation.config.files import ensure_main_config_file, main_config_path
 from src.webui.data.services.schema.panel_schema import CONFIG_PANEL_SCHEMA
 
 __all__ = [
@@ -22,11 +22,14 @@ __all__ = [
 
 
 def _main_config_path() -> Path:
-    path = config_dir() / "main_config.toml"
-    if not path.is_file():
-        mgr = get_config_manager()
-        if mgr._config_path is not None:
-            path = mgr._config_path
+    path = main_config_path()
+    if path.is_file():
+        return path
+    mgr = get_config_manager()
+    if mgr._config_path is not None:
+        legacy = Path(str(mgr._config_path))
+        if legacy.is_file():
+            return legacy
     return path
 
 
@@ -77,7 +80,10 @@ async def config_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         )
     ok = await write_config(payload)
     if not ok:
-        return aiohttp.web.json_response({"error": "write failed"}, status=500)
+        return aiohttp.web.json_response(
+            {"error": "无法写入 config/main_config.toml，请检查目录权限或模板文件"},
+            status=500,
+        )
     return aiohttp.web.json_response(
         {"status": "ok", "message": "main_config.toml saved and reloaded"},
     )
@@ -104,9 +110,10 @@ async def config_schema_get(request: aiohttp.web.Request) -> aiohttp.web.Respons
 async def config_raw_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """GET /v1/config/raw — 返回 main_config.toml 原始 TOML 文本。"""
     del request
-    path = _main_config_path()
-    if not path.is_file():
-        return aiohttp.web.json_response({"error": "config file not found"}, status=404)
+    try:
+        path = ensure_main_config_file()
+    except FileNotFoundError as exc:
+        return aiohttp.web.json_response({"error": str(exc)}, status=500)
     try:
         content = path.read_text(encoding="utf-8")
     except Exception as exc:
@@ -135,9 +142,8 @@ async def config_raw_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         return aiohttp.web.json_response(
             {"error": f"TOML format error: {exc}"}, status=400
         )
-    path = _main_config_path()
+    path = ensure_main_config_file()
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(raw_content, encoding="utf-8")
         await reload_config()
     except Exception as exc:

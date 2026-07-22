@@ -15,11 +15,11 @@ PARSED_JSON_BODY_KEY = "_parsed_json_body"
 
 _DEFAULT_API_PREFIXES = (
     "/v1/turns",
-    "/v1/openai/chat/",
-    "/v1/openai/completions",
-    "/v1/anthropic/messages",
+    "/openai/v1/chat/",
+    "/openai/v1/completions",
+    "/anthropic/v1/messages",
     "/v1/models",
-    "/v1/openai/embeddings",
+    "/openai/v1/embeddings",
 )
 
 

@@ -188,7 +188,13 @@ async def _auth_middleware(
     if request.method == "OPTIONS" or _is_auth_public(path):
         return await handler(request)
 
-    cfg = get_config()
+    try:
+        cfg = get_config()
+    except RuntimeError:
+        return json_response(
+            {"error": {"message": "config unavailable", "type": "config_error"}},
+            status=503,
+        )
     token = _extract_bearer_token(request)
     client_ip = request.remote or "0.0.0.0"
 
@@ -239,9 +245,9 @@ def _is_rate_limited_path(path: str) -> bool:
     return path.startswith(
         (
             "/v1/turns",
-            "/v1/openai/chat/",
-            "/v1/openai/completions",
-            "/v1/anthropic/messages",
+            "/openai/v1/chat/",
+            "/openai/v1/completions",
+            "/anthropic/v1/messages",
         )
     )
 

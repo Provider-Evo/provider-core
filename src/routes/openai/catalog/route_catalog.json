@@ -1,0 +1,970 @@
+[
+  {
+    "method": "GET",
+    "path": "/openai/v1/assistants"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/assistants"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/assistants/{assistant_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/assistants/{assistant_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/assistants/{assistant_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/audio/speech"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/audio/transcriptions"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/audio/translations"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/audio/voice_consents"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/audio/voice_consents"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/audio/voice_consents/{consent_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/audio/voice_consents/{consent_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/audio/voice_consents/{consent_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/audio/voices"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/batches"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/batches"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/batches/{batch_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/batches/{batch_id}/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/chat/completions"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/chat/completions"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/chat/completions/{completion_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/chat/completions/{completion_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/chat/completions/{completion_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/chat/completions/{completion_id}/messages"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/chatkit/sessions"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/chatkit/sessions/{session_id}/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/chatkit/threads"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/chatkit/threads"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/chatkit/threads/{thread_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/chatkit/threads/{thread_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/chatkit/threads/{thread_id}/items"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/completions"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/containers"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/containers"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/containers/{container_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/containers/{container_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/containers/{container_id}/files"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/containers/{container_id}/files"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/containers/{container_id}/files/{file_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/containers/{container_id}/files/{file_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/containers/{container_id}/files/{file_id}/content"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/conversations"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/conversations/{conversation_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/conversations/{conversation_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/conversations/{conversation_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/conversations/{conversation_id}/items"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/conversations/{conversation_id}/items"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/conversations/{conversation_id}/items/{item_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/conversations/{conversation_id}/items/{item_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/embeddings"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/evals"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/evals"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/evals/{eval_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/evals/{eval_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/evals/{eval_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/evals/{eval_id}/runs"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/evals/{eval_id}/runs"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/evals/{eval_id}/runs/{run_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/evals/{eval_id}/runs/{run_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/evals/{eval_id}/runs/{run_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/evals/{eval_id}/runs/{run_id}/output_items"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/evals/{eval_id}/runs/{run_id}/output_items/{output_item_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/files"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/files"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/files/{file_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/files/{file_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/files/{file_id}/content"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/fine_tuning/alpha/graders/run"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/fine_tuning/alpha/graders/validate"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/fine_tuning/checkpoints/{fine_tuned_model_checkpoint}/permissions"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/fine_tuning/checkpoints/{fine_tuned_model_checkpoint}/permissions"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/fine_tuning/checkpoints/{fine_tuned_model_checkpoint}/permissions/{permission_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/fine_tuning/jobs"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/fine_tuning/jobs"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/fine_tuning/jobs/{fine_tuning_job_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/fine_tuning/jobs/{fine_tuning_job_id}/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/fine_tuning/jobs/{fine_tuning_job_id}/checkpoints"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/fine_tuning/jobs/{fine_tuning_job_id}/events"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/fine_tuning/jobs/{fine_tuning_job_id}/pause"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/fine_tuning/jobs/{fine_tuning_job_id}/resume"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/images/edits"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/images/generations"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/images/variations"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/models"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/models/{model}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/models/{model}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/moderations"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/admin_api_keys"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/admin_api_keys"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/admin_api_keys/{key_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/admin_api_keys/{key_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/audit_logs"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/certificates"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/certificates"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/certificates/activate"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/certificates/deactivate"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/certificates/{certificate_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/certificates/{certificate_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/certificates/{certificate_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/costs"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/groups"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/groups"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/groups/{group_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/groups/{group_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/groups/{group_id}/roles"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/groups/{group_id}/roles"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/groups/{group_id}/roles/{role_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/groups/{group_id}/users"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/groups/{group_id}/users"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/groups/{group_id}/users/{user_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/invites"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/invites"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/invites/{invite_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/invites/{invite_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects/{project_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}/api_keys"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/projects/{project_id}/api_keys/{api_key_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}/api_keys/{api_key_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects/{project_id}/archive"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}/certificates"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects/{project_id}/certificates/activate"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects/{project_id}/certificates/deactivate"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}/groups"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects/{project_id}/groups"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/projects/{project_id}/groups/{group_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}/rate_limits"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects/{project_id}/rate_limits/{rate_limit_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}/service_accounts"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects/{project_id}/service_accounts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/projects/{project_id}/service_accounts/{service_account_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}/service_accounts/{service_account_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}/users"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects/{project_id}/users"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/projects/{project_id}/users/{user_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/projects/{project_id}/users/{user_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/projects/{project_id}/users/{user_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/roles"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/roles"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/roles/{role_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/roles/{role_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/usage/audio_speeches"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/usage/audio_transcriptions"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/usage/code_interpreter_sessions"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/usage/completions"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/usage/embeddings"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/usage/images"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/usage/moderations"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/usage/vector_stores"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/users"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/users/{user_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/users/{user_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/users/{user_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/organization/users/{user_id}/roles"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/organization/users/{user_id}/roles"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/organization/users/{user_id}/roles/{role_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/projects/{project_id}/groups/{group_id}/roles"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/projects/{project_id}/groups/{group_id}/roles"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/projects/{project_id}/groups/{group_id}/roles/{role_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/projects/{project_id}/roles"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/projects/{project_id}/roles"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/projects/{project_id}/roles/{role_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/projects/{project_id}/roles/{role_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/projects/{project_id}/users/{user_id}/roles"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/projects/{project_id}/users/{user_id}/roles"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/projects/{project_id}/users/{user_id}/roles/{role_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/realtime/calls"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/realtime/calls/{call_id}/accept"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/realtime/calls/{call_id}/hangup"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/realtime/calls/{call_id}/refer"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/realtime/calls/{call_id}/reject"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/realtime/client_secrets"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/realtime/sessions"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/realtime/transcription_sessions"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/responses"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/responses/compact"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/responses/input_tokens"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/responses/{response_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/responses/{response_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/responses/{response_id}/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/responses/{response_id}/input_items"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/skills"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/skills"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/skills/{skill_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/skills/{skill_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/skills/{skill_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/skills/{skill_id}/content"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/skills/{skill_id}/versions"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/skills/{skill_id}/versions"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/skills/{skill_id}/versions/{version}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/skills/{skill_id}/versions/{version}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/skills/{skill_id}/versions/{version}/content"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/threads"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/threads/runs"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/threads/{thread_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/threads/{thread_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/threads/{thread_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/threads/{thread_id}/messages"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/threads/{thread_id}/messages"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/threads/{thread_id}/messages/{message_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/threads/{thread_id}/messages/{message_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/threads/{thread_id}/messages/{message_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/threads/{thread_id}/runs"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/threads/{thread_id}/runs"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/threads/{thread_id}/runs/{run_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/threads/{thread_id}/runs/{run_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/threads/{thread_id}/runs/{run_id}/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/threads/{thread_id}/runs/{run_id}/steps"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/threads/{thread_id}/runs/{run_id}/steps/{step_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/threads/{thread_id}/runs/{run_id}/submit_tool_outputs"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/uploads"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/uploads/{upload_id}/cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/uploads/{upload_id}/complete"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/uploads/{upload_id}/parts"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/vector_stores"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/vector_stores"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/vector_stores/{vector_store_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/vector_stores/{vector_store_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/vector_stores/{vector_store_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/file_batches"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/file_batches/{batch_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/file_batches/{batch_id}/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/file_batches/{batch_id}/files"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/files"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/files"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/files/{file_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/files/{file_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/files/{file_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/files/{file_id}/content"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/vector_stores/{vector_store_id}/search"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/videos"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/videos"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/videos/characters"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/videos/characters/{character_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/videos/edits"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/videos/extensions"
+  },
+  {
+    "method": "DELETE",
+    "path": "/openai/v1/videos/{video_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/videos/{video_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/openai/v1/videos/{video_id}/content"
+  },
+  {
+    "method": "POST",
+    "path": "/openai/v1/videos/{video_id}/remix"
+  }
+]

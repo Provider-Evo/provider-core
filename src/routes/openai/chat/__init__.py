@@ -42,7 +42,7 @@ async def _parse_chat_request(
     if request.method != "POST":
         return {}, _err(
             405,
-            "Method {} not allowed. Use POST for /v1/openai/chat/completions.".format(
+            "Method {} not allowed. Use POST for /openai/v1/chat/completions.".format(
                 request.method
             ),
             "method_not_allowed",

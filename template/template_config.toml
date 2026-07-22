@@ -3,7 +3,7 @@
 # 字段与 WebUI 配置面板（config_panel_schema）及 src/core/config/sections.py 对齐。
 
 [server]
-version = "2.2.314"               # 与 pyproject.toml / 打包脚本一致
+version = "2.2.315"               # 与 pyproject.toml / 打包脚本一致
 host = "0.0.0.0"
 port = 1337                       # 默认监听端口（勿改为 8080，除非刻意换端口）
 debug = false

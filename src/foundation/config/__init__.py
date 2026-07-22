@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
+from pathlib import Path
+
 from src.foundation.config.manager import ConfigManager
 from src.foundation.config.reader import ConfigReader, get_config_reader
 from src.foundation.config.secs import AppConfig
@@ -34,7 +36,14 @@ def get_config_manager() -> ConfigManager:
 
 
 async def reload_config() -> AppConfig:
+    from src.foundation.config.files import ensure_main_config_file
+
     mgr = _get_manager()
+    path = ensure_main_config_file()
+    loaded = Path(str(mgr._center.path)).resolve() if mgr._center.path else None
+    if loaded != path.resolve():
+        mgr.load(str(path))
+        return mgr.config
     await mgr.reload()
     return mgr.config
 
@@ -42,14 +51,21 @@ async def reload_config() -> AppConfig:
 async def write_config(data: Dict) -> bool:
     try:
         from echotools.config.loader import write_toml
-        path = _get_manager()._config_path
-        if path is None:
-            return False
+
+        from src.foundation.config.files import ensure_main_config_file
+
+        path = ensure_main_config_file()
         write_toml(path, data)
-        await _get_manager().reload()
+        mgr = _get_manager()
+        loaded = Path(str(mgr._center.path)).resolve() if mgr._center.path else None
+        if loaded != path.resolve():
+            mgr.load(str(path))
+        else:
+            await mgr.reload()
         return True
     except Exception as exc:
         from echotools.logger.manager import get_logger
+
         get_logger(__name__).error("配置写入失败: %s", exc, exc_info=True)
         return False
 

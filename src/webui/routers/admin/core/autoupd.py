@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import aiohttp.web
 
 from src.foundation.config import get_config, reload_config
+from src.foundation.config.files import ensure_main_config_file
 from src.foundation.logger import get_logger
 from src.foundation.paths import project_root as _project_root
 
@@ -168,13 +169,7 @@ async def autoupdate_put(request: aiohttp.web.Request) -> aiohttp.web.Response:
         body = await request.json()
         import tomlkit
 
-        config_path = _project_root / "config" / "main_config.toml"
-        if not config_path.exists():
-            return aiohttp.web.json_response(
-                {"success": False, "error": "config/main_config.toml not found"},
-                status=404,
-            )
-
+        config_path = ensure_main_config_file()
         with open(str(config_path), "r", encoding="utf-8") as f:
             doc = tomlkit.load(f)
 

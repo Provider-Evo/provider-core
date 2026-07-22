@@ -20,7 +20,7 @@ RouteKey = Tuple[str, str]
 
 _CATALOG_PATH = Path(__file__).resolve().parent / "route_catalog.json"
 
-from src.routes.shared.prefix import ant_path as _ant
+from src.routes.shared.prefix import ANT_PREFIX, ant_path as _ant
 
 _MANUAL: FrozenSet[RouteKey] = frozenset(
     {
@@ -31,36 +31,32 @@ _MANUAL: FrozenSet[RouteKey] = frozenset(
         ("GET", _ant("/v1/messages/batches/{message_batch_id}")),
         ("POST", _ant("/v1/messages/batches/{message_batch_id}/cancel")),
         ("GET", _ant("/v1/messages/batches/{message_batch_id}/results")),
-        ("GET", _ant("/anthropic/v1/models")),
-        ("GET", _ant("/anthropic/v1/models/{model_id}")),
+        ("GET", _ant("/v1/models")),
+        ("GET", _ant("/v1/models/{model_id}")),
     }
 )
 
 
 def _normalize_path(path: str) -> str:
-    if not path.startswith("/v1/anthropic") and not path.startswith("/messages"):
-        path = _ant(path)
-    if not path.startswith("/v1") and not path.startswith("/messages"):
-        path = "/v1/anthropic" + (path if path.startswith("/") else "/" + path)
-    elif path.startswith("/messages"):
-        path = "/v1/anthropic" + path
-    return path
+    if path.startswith(ANT_PREFIX):
+        return path
+    return _ant(path)
 
 
 def _pick_handler(method: str, path: str) -> Callable:
-    if path.startswith("/v1/anthropic/organizations") or path.startswith(
-        "/v1/anthropic/organization"
+    if path.startswith(f"{ANT_PREFIX}/organizations") or path.startswith(
+        f"{ANT_PREFIX}/organization"
     ):
         return make_not_supported("Anthropic Admin API")
     if (
-        path.startswith("/v1/anthropic/agents")
-        or path.startswith("/v1/anthropic/sessions")
-        or path.startswith("/v1/anthropic/environments")
+        path.startswith(f"{ANT_PREFIX}/agents")
+        or path.startswith(f"{ANT_PREFIX}/sessions")
+        or path.startswith(f"{ANT_PREFIX}/environments")
     ):
         return make_not_supported("Anthropic Managed Agents")
-    if path.startswith("/v1/anthropic/files") or path.startswith("/v1/anthropic/skills"):
+    if path.startswith(f"{ANT_PREFIX}/files") or path.startswith(f"{ANT_PREFIX}/skills"):
         return make_not_supported("Anthropic Beta API")
-    if path.startswith("/v1/anthropic/experimental"):
+    if path.startswith(f"{ANT_PREFIX}/experimental"):
         return make_not_supported("Anthropic Prompts API")
     if method == "GET" and "{" in path:
         return make_not_found("Resource")

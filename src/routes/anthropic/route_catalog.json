@@ -1,0 +1,278 @@
+[
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/me"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/users"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/users/{user_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/organizations/users/{user_id}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/anthropic/v1/organizations/users/{user_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/invites"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/organizations/invites"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/invites/{invite_id}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/anthropic/v1/organizations/invites/{invite_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/workspaces"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/organizations/workspaces"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/workspaces/{workspace_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/organizations/workspaces/{workspace_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/organizations/workspaces/{workspace_id}/archive"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/workspaces/{workspace_id}/members"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/organizations/workspaces/{workspace_id}/members"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/workspaces/{workspace_id}/members/{user_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/organizations/workspaces/{workspace_id}/members/{user_id}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/anthropic/v1/organizations/workspaces/{workspace_id}/members/{user_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/api_keys"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/api_keys/{api_key_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/organizations/api_keys/{api_key_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/usage_report/claude_code"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/files"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/files"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/files/{file_id}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/anthropic/v1/files/{file_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/files/{file_id}/content"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/agents"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/agents"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/agents/{agent_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/agents/{agent_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/agents/{agent_id}/archive"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/agents/{agent_id}/versions"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/environments"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/environments"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/environments/{environment_id}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/anthropic/v1/environments/{environment_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/environments/{environment_id}/archive"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/sessions"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/sessions"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/sessions/{session_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/sessions/{session_id}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/anthropic/v1/sessions/{session_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/sessions/{session_id}/archive"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/sessions/{session_id}/events"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/sessions/{session_id}/stream"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/messages/batches"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/messages/batches"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/messages/batches/{message_batch_id}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/anthropic/v1/messages/batches/{message_batch_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/messages/batches/{message_batch_id}/results"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/messages/batches/{message_batch_id}/cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/messages"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/models"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/models/{model_id}"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/messages/count_tokens"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/experimental/generate_prompt"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/experimental/improve_prompt"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/experimental/templatize_prompt"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/skills"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/skills"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/skills/{skill_id}"
+  },
+  {
+    "method": "DELETE",
+    "path": "/anthropic/v1/skills/{skill_id}"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/skills/{skill_id}/versions"
+  },
+  {
+    "method": "POST",
+    "path": "/anthropic/v1/skills/{skill_id}/versions"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/skills/{skill_id}/versions/{version}"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/usage_report/messages"
+  },
+  {
+    "method": "GET",
+    "path": "/anthropic/v1/organizations/cost_report"
+  }
+]

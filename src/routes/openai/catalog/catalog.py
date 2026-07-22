@@ -6,7 +6,7 @@ from typing import Callable, Dict, FrozenSet, Set, Tuple
 import aiohttp.web
 
 from src.foundation.logger import get_logger
-from src.routes.shared.prefix import oai_path as _p
+from src.routes.shared.prefix import OAI_PREFIX, oai_path as _p
 from src.routes.shared.handler import (
     make_empty_list,
     make_not_found,
@@ -107,7 +107,7 @@ _MANUAL: FrozenSet[RouteKey] = frozenset(
 
 
 def _normalize_path(path: str) -> str:
-    if path.startswith("/v1/openai/"):
+    if path.startswith(f"{OAI_PREFIX}/"):
         p = path
     elif path.startswith("/v1/"):
         p = _p(path)
@@ -120,25 +120,25 @@ def _normalize_path(path: str) -> str:
 
 
 def _feature_name(path: str) -> str:
-    parts = path.replace("/v1/openai/", "").replace("/v1/", "").split("/")
+    parts = path.replace(f"{OAI_PREFIX}/", "").replace("/v1/", "").split("/")
     return parts[0].replace("_", " ").title() if parts else "OpenAI API"
 
 
 def _pick_handler(method: str, path: str) -> Callable:
     feature = _feature_name(path)
-    if path.startswith("/v1/openai/organization") or path.startswith("/v1/openai/projects"):
+    if path.startswith(f"{OAI_PREFIX}/organization") or path.startswith(f"{OAI_PREFIX}/projects"):
         return make_not_supported("OpenAI Admin API")
-    if path.startswith("/v1/openai/realtime"):
+    if path.startswith(f"{OAI_PREFIX}/realtime"):
         return make_not_supported("Realtime API")
-    if path.startswith("/v1/openai/conversations"):
+    if path.startswith(f"{OAI_PREFIX}/conversations"):
         return make_not_supported("Conversations API")
-    if path.startswith("/v1/openai/containers"):
+    if path.startswith(f"{OAI_PREFIX}/containers"):
         return make_not_supported("Containers API")
-    if path.startswith("/v1/openai/evals"):
+    if path.startswith(f"{OAI_PREFIX}/evals"):
         return make_not_supported("Evals API")
-    if path.startswith("/v1/openai/skills"):
+    if path.startswith(f"{OAI_PREFIX}/skills"):
         return make_not_supported("Skills API")
-    if path.startswith("/v1/openai/chatkit"):
+    if path.startswith(f"{OAI_PREFIX}/chatkit"):
         return make_not_supported("ChatKit API")
     if "/voice_consents" in path or path.endswith("/audio/voices"):
         return make_not_supported("Audio voices")

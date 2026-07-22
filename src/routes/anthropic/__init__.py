@@ -24,7 +24,7 @@ __all__ = ["setup_routes"]
 
 
 def setup_routes(app: aiohttp.web.Application) -> None:
-    """注册所有 Anthropic 兼容路由（/v1/anthropic/*）。"""
+    """注册所有 Anthropic 兼容路由（/anthropic/v1/*）。"""
     app.router.add_post(_p("/v1/messages"), messages_handler)
     app.router.add_post(_p("/v1/messages/count_tokens"), count_tokens)
 
@@ -41,7 +41,7 @@ def setup_routes(app: aiohttp.web.Application) -> None:
         retrieve_message_batch_results,
     )
 
-    app.router.add_get(_p("/anthropic/v1/models"), list_models)
-    app.router.add_get(_p("/anthropic/v1/models/{model_id}"), retrieve_model)
+    app.router.add_get(_p("/v1/models"), list_models)
+    app.router.add_get(_p("/v1/models/{model_id}"), retrieve_model)
 
     register_anthropic_catalog_routes(app)

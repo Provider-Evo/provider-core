@@ -33,6 +33,8 @@ agent_log
 *.json
 !_manifest.json
 !**/_manifest.json
+!src/routes/openai/catalog/route_catalog.json
+!src/routes/anthropic/route_catalog.json
 *.pyc
 *.pyd
 *.pyo

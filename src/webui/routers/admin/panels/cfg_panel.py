@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 import aiohttp.web
 
-from src.foundation.paths import config_dir
+from src.foundation.config.files import ensure_webui_config_file, webui_config_path
 from src.webui.data.services.schema.panel_schema import WEBUI_CONFIG_PANEL_SCHEMA
 
 __all__ = [
@@ -21,7 +21,7 @@ __all__ = [
 
 
 def _webui_config_path() -> Path:
-    return config_dir() / "webui_config.toml"
+    return webui_config_path()
 
 
 def _parse_toml_text(raw_content: str) -> Dict[str, Any]:
@@ -51,8 +51,7 @@ def _load_webui_config_dict() -> Dict[str, Any]:
 
 
 def _write_webui_config_dict(body: Dict[str, Any]) -> None:
-    path = _webui_config_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = ensure_webui_config_file()
     try:
         import tomlkit
     except ImportError:
@@ -129,9 +128,10 @@ async def webui_config_schema_get(request: aiohttp.web.Request) -> aiohttp.web.R
 async def webui_config_raw_get(request: aiohttp.web.Request) -> aiohttp.web.Response:
     """GET /v1/webui/config/raw — 返回 webui_config.toml 原始 TOML 文本。"""
     del request
-    path = _webui_config_path()
-    if not path.is_file():
-        return aiohttp.web.json_response({"success": True, "content": ""})
+    try:
+        path = ensure_webui_config_file()
+    except FileNotFoundError as exc:
+        return aiohttp.web.json_response({"error": str(exc)}, status=500)
     try:
         content = path.read_text(encoding="utf-8")
     except Exception as exc:
@@ -160,9 +160,8 @@ async def webui_config_raw_put(request: aiohttp.web.Request) -> aiohttp.web.Resp
         return aiohttp.web.json_response(
             {"error": f"TOML format error: {exc}"}, status=400
         )
-    path = _webui_config_path()
+    path = ensure_webui_config_file()
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(raw_content, encoding="utf-8")
     except Exception as exc:
         return aiohttp.web.json_response({"error": str(exc)}, status=500)
