@@ -48,6 +48,7 @@ __all__ = [
     "find_plugin_dir_by_id",
     "is_plugin_enabled",
     "manifest_id_from_dir",
+    "normalize_platform_name",
     "plugin_dir_from_path",
     "resolve_platform_plugin_id",
 ]
@@ -59,6 +60,14 @@ _PLATFORM_ALIASES = {
     "opencode": "zen",
     "opencodezen": "zen",
 }
+
+
+def normalize_platform_name(platform_name: str) -> str:
+    """将 legacy 平台名映射为已注册的 ``PlatformAdapter.name``。"""
+    raw = (platform_name or "").strip().lower()
+    if not raw:
+        return raw
+    return _PLATFORM_ALIASES.get(raw, raw)
 
 
 def _plugins_root() -> Path:
@@ -167,7 +176,7 @@ def resolve_platform_plugin_id(platform_name: str) -> Optional[str]:
     raw = (platform_name or "").strip().lower()
     if not raw:
         return None
-    normalized = _PLATFORM_ALIASES.get(raw, raw).replace("_", "").replace("-", "")
+    normalized = normalize_platform_name(raw).replace("_", "").replace("-", "")
     return _platform_plugin_index().get(normalized)
 
 # =======================================================================

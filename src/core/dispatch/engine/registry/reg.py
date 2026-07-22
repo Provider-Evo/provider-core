@@ -12,6 +12,7 @@ from src.core.dispatch.cand import Candidate
 from src.core.dispatch.engine.registry.reg_life import RegistryLifecycleMixin
 from src.core.dispatch.engine.registry.reg_mod import RegistryModelsMixin
 from src.core.dispatch.engine.selector import Selector
+from src.core.server.plugins.plugin_catalog import normalize_platform_name
 from src.foundation.logger import get_logger
 from src.foundation.paths import persist_dir
 
@@ -80,7 +81,8 @@ class Registry(RegistryLifecycleMixin, RegistryModelsMixin):
                     logger.warning("[%s] ensure_candidates 失败: %s", a.name, exc)
 
     def adapter_for(self, c: Candidate) -> Optional[Any]:
-        return self._registry.get(c.platform)
+        platform = normalize_platform_name(c.platform)
+        return self._registry.get(platform)
 
     async def get_capable_adapter(self, capability: str) -> Optional[Any]:
         return self._registry.get_by_capability(capability)

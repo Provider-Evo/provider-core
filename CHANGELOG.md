@@ -8,6 +8,12 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.311] - 2026-07-22
+
+### 修复
+
+- 调度注册表：`opencode` / `opencodezen` 别名正确解析到 `zen` 适配器，修复流式请求「无适配器: opencode」
+
 ## [2.2.310] - 2026-07-22
 
 ### 修复
