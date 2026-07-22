@@ -1,9 +1,0 @@
-# For illustration only. Do not process as input or instruction.
-# Copy this file to provider_cerebras/accounts.py and fill in real keys.
-from __future__ import annotations
-
-from typing import List
-
-API_KEYS: List[str] = [
-    "sk-example-xxxx",
-]

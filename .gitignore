@@ -56,9 +56,6 @@ note.txt
 NOTE.txt
 nul
 
-# plugins
-/plugins/
-
 # Documentation and tests
 docs-src/
 
@@ -74,5 +71,3 @@ template/old/
 .backup/
 
 .htaccess
-
-plugins/
