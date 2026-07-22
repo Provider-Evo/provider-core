@@ -21,7 +21,8 @@ node_modules
 persist
 venv
 agent_log
-/config/
+/config/*
+!config/main_config.toml
 .agents/
 /plugins/
 

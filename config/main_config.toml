@@ -1,0 +1,86 @@
+[server]
+version = "2.2.305"
+host = "0.0.0.0"
+port = 1337
+debug = false
+startup_force_kill_port = true
+max_restarts = 3
+fast_restart = true
+
+[anthropic]
+api_version = "2023-06-01"
+
+[anthropic.model_mapping]
+claude-haiku-4-5-20251001 = "qwen3-coder-plus"
+claude-sonnet-4-6 = "qwen3-coder-plus"
+
+[auth]
+enabled = true
+keys = ["sk-provider-v2"]
+group_list_type = "blacklist"
+group_list = []
+
+[gateway]
+concurrent_enabled = true
+concurrent_count = 3
+min_tokens = 10
+group_list_type = "whitelist"
+group_list = ["qwen"]
+
+[http_pool]
+limit = 200
+limit_per_host = 20
+keepalive_timeout = 30
+connect_timeout = 10
+
+[proxy]
+proxy_server = "http://127.0.0.1:10808"
+proxy_enabled = true
+proxy_urls = ["https://freeollama.oneplus1.top", "https://api.cloudflare.com", "https://opencode.ai"]
+
+[platforms_proxy]
+enabled_platforms = ["qwen", "ollama"]
+group_list_type = "whitelist"
+
+[fncall]
+protocol = "entml"
+record_prompt = false
+print_prompt = false
+
+[fncall.fncall_mapping]
+
+[debug]
+level = "DEBUG"
+color = true
+access_log = false
+log_name = "provider-2"
+
+[autoupdate]
+enabled = false
+branch = "dev"
+interval = 300
+diff_update = false
+mirrors = ["https://99z.top/https://github.com/", "https://github.com/"]
+
+[terminal]
+max_history_lines = 5000
+subprocess_monitor_interval = 1
+enable_subprocess_monitoring = true
+audit_enabled = false
+
+[openai.model_mapping]
+
+[model_mapping.anthropic]
+
+[model_mapping.openai]
+
+[fallback.chains]
+
+[adapter_proxy]
+enable_adapters = []
+
+[platforms]
+platform_list = []
+
+[virtual_keys]
+enabled = true
