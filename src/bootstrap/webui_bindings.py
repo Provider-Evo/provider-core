@@ -102,13 +102,8 @@ def register_webui_bindings() -> ObservabilityServices:
 
 
 def log_webui_token_if_enabled() -> None:
-    """鉴权开启时在日志中输出 WebUI token。"""
-    from src.foundation.config import get_config
+    """启动时在日志中输出 WebUI token（API / WebUI 鉴权可用）。"""
     from src.foundation.logger import get_logger
-
-    cfg = get_config()
-    if not cfg.auth.enabled:
-        return
     from src.webui.internal.core.secure import token_manager
 
     logger = get_logger(__name__)

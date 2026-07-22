@@ -21,15 +21,13 @@ _cors = cors_middleware(
 )
 
 
-_API_AUTH_EXEMPT_PREFIXES: tuple[str, ...] = ("/v1/coplan/",)
+_API_AUTH_EXEMPT_PREFIXES: tuple[str, ...] = ()
 
-# Paths reachable without credentials when auth.enabled=true
+# Paths reachable without credentials (login UI + static assets only)
 _AUTH_PUBLIC_PATHS: frozenset[str] = frozenset(
     {
         "/login",
         "/logout",
-        "/health",
-        "/metrics",
         "/v1/webui/auth/verify",
     }
 )
@@ -50,9 +48,25 @@ def _is_auth_public(path: str) -> bool:
     return False
 
 
+def _requires_credentials(path: str) -> bool:
+    """Return True when the route must present apikey, virtual key, or webui token."""
+    return not _is_auth_public(path)
+
+
 def _is_provider_api_auth_exempt(path: str) -> bool:
-    """Routes under these prefixes use plugin-local auth, not provider API keys."""
+    """Reserved for plugin-local auth prefixes (none bypass provider gate by default)."""
     return any(path.startswith(prefix) for prefix in _API_AUTH_EXEMPT_PREFIXES)
+
+
+async def _deny_unauthenticated(
+    request: aiohttp.web.Request,
+    path: str,
+) -> aiohttp.web.StreamResponse:
+    """Reject without leaking details: API clients get an empty 401 body."""
+    accept = request.headers.get("Accept", "")
+    if path == "/" or "text/html" in accept:
+        raise aiohttp.web.HTTPFound("/login")
+    return aiohttp.web.Response(status=401, body=b"")
 
 
 def _is_webui_route(path: str) -> bool:
@@ -135,18 +149,10 @@ async def _handle_webui_auth(
     cfg: Any,
     handler: Any,
 ) -> aiohttp.web.StreamResponse:
-    """Handle auth for ``/v1/webui/*`` routes: cookie auth, 401 JSON on failure."""
+    """Handle auth for ``/v1/webui/*`` routes: cookie or API credentials."""
     if await _validate_webui_session(request, cfg):
         return await handler(request)
-    return json_response(
-        {
-            "error": {
-                "message": "Unauthorized",
-                "type": "auth_error",
-            }
-        },
-        status=401,
-    )
+    return await _deny_unauthenticated(request, request.path)
 
 
 async def _handle_protected_route_auth(
@@ -155,32 +161,10 @@ async def _handle_protected_route_auth(
     cfg: Any,
     handler: Any,
 ) -> aiohttp.web.StreamResponse:
-    """Handle auth for the remaining protected routes (API key / session cookie)."""
+    """Handle auth for non-webui routes (API key / virtual key / webui token / cookie)."""
     if await _validate_credentials(request, cfg):
         return await handler(request)
-
-    # Coplan routes use plugin-local auth, skip further checks
-    if _is_provider_api_auth_exempt(path):
-        return await handler(request)
-
-    # Root page or API routes require auth
-    needs_auth = path == "/" or path.startswith("/v1/")
-    if not needs_auth:
-        return await handler(request)
-
-    accept = request.headers.get("Accept", "")
-    if path == "/" or "text/html" in accept:
-        raise aiohttp.web.HTTPFound("/login")
-    return json_response(
-        {
-            "error": {
-                "message": "Invalid or missing API key",
-                "type": "authentication_error",
-                "code": "invalid_api_key",
-            }
-        },
-        status=401,
-    )
+    return await _deny_unauthenticated(request, path)
 
 
 @aiohttp.web.middleware
@@ -188,21 +172,16 @@ async def _auth_middleware(
     request: aiohttp.web.Request,
     handler: Any,
 ) -> aiohttp.web.StreamResponse:
-    """Authentication middleware — checks API Key / Session Cookie / Group whitelist/blacklist.
+    """Authentication middleware — requires credentials on all non-public routes.
 
-    Pass-through rules:
-    - ``/login``, ``/logout``, ``/static/``, ``/health`` pass unconditionally
-    - OPTIONS requests pass unconditionally (CORS preflight)
-    - All requests pass when auth is not enabled or no API keys are configured
+    Public (no credential): ``/login``, ``/logout``, ``/static/``, ``/favicon``,
+    ``/v1/webui/auth/verify``, and OPTIONS preflight.
 
-    Auth flow (when auth.enabled=true and keys are configured):
-    1. Check Group whitelist/blacklist (``X-Group-Id`` header) on ``/v1/`` routes
-    2. Accept API Key (``Authorization: Bearer xxx`` or ``X-API-Key``)
-       or WebUI session cookie (``pv2_session``)
-    3. Protected routes: ``/`` and ``/v1/*`` except ``/v1/webui/*`` and ``/v1/coplan/*``
-    4. Invalid credentials:
-       - Browser page (``/`` or ``Accept: text/html``): 302 redirect to ``/login``
-       - API client: JSON 401
+    Accepted credentials: configured API keys, virtual keys, ``webui_token``
+    (Bearer / X-API-Key), or WebUI session cookie (``pv2_session``).
+
+    Unauthenticated API clients receive HTTP 401 with an empty body.
+    Browser HTML requests redirect to ``/login``.
     """
     path = request.path
 
@@ -232,13 +211,13 @@ async def _run_auth_flow(
     handler: Any,
 ) -> aiohttp.web.StreamResponse:
     """执行认证流程：白名单校验、凭据校验、路由分发。"""
-    # Auth disabled: allow all requests
-    if not cfg.auth.enabled:
+    if not _requires_credentials(path):
         return await handler(request)
 
-    group_response = _check_group_access(request, path, cfg)
-    if group_response is not None:
-        return group_response
+    if cfg.auth.enabled:
+        group_response = _check_group_access(request, path, cfg)
+        if group_response is not None:
+            return group_response
 
     if _is_webui_route(path):
         return await _handle_webui_auth(request, cfg, handler)
@@ -308,9 +287,6 @@ async def _validate_credentials(request: aiohttp.web.Request, cfg: Any) -> bool:
 
 async def _validate_webui_session(request: aiohttp.web.Request, cfg: Any) -> bool:
     """Return True for valid WebUI session cookie, API key, virtual key, or webui_token."""
-    if not cfg.auth.enabled:
-        return True
-
     from src.core.server.http.auth import COOKIE_NAME, verify_session_token
 
     cookie_val = request.cookies.get(COOKIE_NAME, "")

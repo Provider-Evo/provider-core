@@ -8,6 +8,13 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.313] - 2026-07-22
+
+### 安全
+
+- 所有非公开路由必须携带 apikey、virtual key 或 webui_token（含 WebUI 会话 Cookie）；未认证 API 返回空 401 响应
+- 默认开启 `[auth] enabled`；启动时始终输出 WebUI Token 供配置
+
 ## [2.2.312] - 2026-07-22
 
 ### 修复
