@@ -100,7 +100,9 @@ class Client:
                 items = data.get("data") or []
                 models = [m.get("id") for m in items if m.get("id")]
                 if models:
-                    self._models_cache = self._model_registry.register_many(models)
+                    self._models_cache = self._model_registry.register_merge(
+                        models, fallback=MODELS
+                    )
                     self._models = list(self._models_cache)
                     self._models_ts = now
                     self._rebuild_candidates()

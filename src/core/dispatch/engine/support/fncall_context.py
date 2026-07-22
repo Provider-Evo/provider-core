@@ -1,6 +1,11 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from echotools.exec.fncall.protocols.entml_thinking import (
+    normalize_thinking_mode,
+    parse_max_thinking_length,
+)
+
 from src.core.fncall.prompt.inject import inject_fncall
 from src.core.fncall.reg import get_protocol
 
@@ -27,14 +32,16 @@ def build_entml_protocol_options(
         )
 
     opts: Dict[str, Any] = {}
-    if thinking_mode is not None:
-        mode = str(thinking_mode).strip()
-        if mode:
-            opts["thinking_mode"] = mode
+    mode = normalize_thinking_mode(thinking_mode)
+    if mode == "off":
+        return None
+    if mode is not None:
+        opts["thinking_mode"] = mode
     elif thinking:
-        opts["thinking_mode"] = "interleaved"
-    if max_thinking_length is not None:
-        opts["max_thinking_length"] = int(max_thinking_length)
+        opts["thinking_mode"] = "auto"
+    parsed_max = parse_max_thinking_length(max_thinking_length)
+    if parsed_max is not None:
+        opts["max_thinking_length"] = parsed_max
     return opts or None
 
 
@@ -125,16 +132,27 @@ def prepare_worker_messages(
         candidate=cand,
         model=model,
     )
-    native = cand.native_tools
-    if not tools or native:
-        return msgs, None, plan
-    protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
     protocol_options = build_entml_protocol_options(
         thinking=thinking,
         thinking_mode=thinking_mode,
         max_thinking_length=max_thinking_length,
         plan=plan,
     )
+    native = cand.native_tools
+    if not tools or native:
+        if protocol_options and not native:
+            protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
+            worker_msgs = inject_fncall(
+                msgs,
+                [],
+                protocol,
+                lang=fncall_lang,
+                dump_prompt=dump_prompt,
+                protocol_options=protocol_options,
+            )
+            return worker_msgs, protocol, plan
+        return msgs, None, plan
+    protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
     worker_msgs = inject_fncall(
         msgs,
         tools,

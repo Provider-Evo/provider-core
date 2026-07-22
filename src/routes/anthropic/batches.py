@@ -54,7 +54,7 @@ async def create_message_batch(request: aiohttp.web.Request) -> aiohttp.web.Resp
         "created_at": now,
         "expires_at": now + 86400,
         "cancel_initiated_at": None,
-        "results_url": "/v1/messages/batches/{}/results".format(bid),
+        "results_url": "/v1/anthropic/messages/batches/{}/results".format(bid),
     }
     _BATCHES[bid] = {"meta": payload, "requests": requests_raw, "results": []}
     return _json(payload)

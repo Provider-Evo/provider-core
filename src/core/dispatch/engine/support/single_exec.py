@@ -177,7 +177,7 @@ async def single_execute(
             worker_msgs,
             model,
             stream,
-            plan.adapter_thinking,
+            False,
             search,
             complete_kw,
             fp,

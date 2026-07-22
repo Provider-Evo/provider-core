@@ -8,6 +8,29 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.308] - 2026-07-22
+
+### 修复
+
+- `/v1/turns` 真正实现双模式：`input` 返回 Entropy `output` 块；`messages` 兼容层返回 OpenAI `choices`（修复 WebUI 非流式无响应）
+- `thinking.interleaved_history` 在原生 `input` 路径贯通（含 Entropy thinking 内容块剥离/保留）
+- 流式 `messages` 兼容层使用 `entropy` 思考配置解析历史开关
+
+## [2.2.307] - 2026-07-22
+
+### 增强
+
+- Entropy `thinking.interleaved_history` / 顶层 `interleaved_history`：开则历史保留 assistant 思考+回复，关则仅传可见回复（含 Entropy `type:thinking` 内容块）
+- 历史策略下沉 `echotools>=2.3.22` 的 `apply_thinking_history_policy`
+
+## [2.2.306] - 2026-07-22
+
+### 增强
+
+- Entropy 主体 API：`POST /v1/turns`、`GET /v1/models`；OAI/ANT 迁至 `/v1/openai/*`、`/v1/anthropic/*`（旧路径硬删除）
+- 思考模式统一为 `off` / `on` / `auto`；新增 `thinking.interleaved_history` 控制是否把历史思考传给模型
+- 内核 always-entml；依赖 `echotools>=2.3.19`
+
 ## [2.2.302] - 2026-07-21
 
 ### 增强

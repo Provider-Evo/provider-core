@@ -8,10 +8,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp.web
 
-from src.core.server import (
-    REGISTRY_KEY,
-)
+from src.core.server import REGISTRY_KEY
 from src.core.server import clean_fncall as _clean_fncall
+from src.entropy.adapters.from_anthropic import from_anthropic_messages_body
+from src.entropy.adapters.to_anthropic import to_anthropic_message_response
+from src.entropy.core.turn import collect_turn
+from src.foundation.config.resolve import resolve_model
 from src.core.server import get_json as _get_json
 from src.core.utils.compat.tools import parse_fncall_xml
 from src.core.utils.errors import NoCandidateError, ProviderError
@@ -127,39 +129,25 @@ async def _collect_messages(
     Optional[Dict[str, Any]],
     str,
 ]:
-    """收集非流式消息生成的全部输出。
-
-    Args:
-        body: 请求体字典。
-        msgs: 已转换的 OpenAI 格式消息列表。
-        tools: 已转换的 OpenAI 格式工具列表。
-        registry: provider 注册表。
-
-    Returns:
-        (content, thinking_parts, tool_calls, usage_d) 四元组。
-
-    Raises:
-        NoCandidateError: 无可用 provider。
-        ProviderError: provider 返回错误。
-        Exception: 其他异常。
-    """
-    content_parts, thinking_parts, tool_calls, usage_d, platform_id = (
-        await _consume_dispatch_chunks(body, msgs, tools, registry)
-    )
-
-    # 清理文本中残留的 fncall 标签
-    raw_content = "".join(content_parts)
-    cleaned = _clean_fncall(raw_content, platform_id=platform_id)
-
+    """经 execute_turn 收集非流式消息输出。"""
+    turn_req = from_anthropic_messages_body(body)
+    turn_req.input = msgs
+    turn_req.tools = tools
+    turn_req.stream = False
+    turn_resp = await collect_turn(turn_req, registry)
+    raw_content = turn_resp.raw_text
+    cleaned = _clean_fncall(raw_content, platform_id=turn_resp.platform_id)
     cleaned, tool_calls = _resolve_fncall_tool_calls(
         raw_content,
         cleaned,
-        tool_calls,
+        turn_resp.tool_calls,
         tools,
-        platform_id,
+        turn_resp.platform_id,
     )
-
-    return cleaned, thinking_parts, tool_calls, usage_d, platform_id
+    thinking_parts = [
+        b.thinking for b in turn_resp.output if b.type == "thinking" and b.thinking
+    ]
+    return cleaned, thinking_parts, tool_calls, turn_resp.usage, turn_resp.platform_id
 
 
 # ═══════════════════════════════════════════════════════════════════════════

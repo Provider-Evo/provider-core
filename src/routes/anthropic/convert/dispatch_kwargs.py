@@ -5,7 +5,8 @@ from typing import Any, Dict, List, Optional
 
 from src.foundation.config.resolve import resolve_model
 
-from src.routes.anthropic.convert.format_convert import _is_thinking, _tc_id
+from src.routes.anthropic.convert.format_convert import _tc_id
+from src.routes.shared.thinking import resolve_thinking_config, thinking_to_dispatch_kwargs
 
 
 def _openai_tc_to_anth(
@@ -52,16 +53,19 @@ def _build_dispatch_kwargs(
     else:
         stop_val = None
 
+    thinking_cfg = resolve_thinking_config(body, flavor="anthropic")
+    dispatch_kw = thinking_to_dispatch_kwargs(thinking_cfg)
+
     return {
         "registry": registry,
         "messages": messages,
         "model": resolve_model(body.get("model", ""), "anthropic"),
         "stream": stream,
         "tools": tools,
-        "thinking": _is_thinking(body),
         "search": bool(body.get("search", False)),
         "temperature": body.get("temperature"),
         "top_p": body.get("top_p"),
         "max_tokens": body.get("max_tokens", 4096),
         "stop": stop_val,
+        **dispatch_kw,
     }

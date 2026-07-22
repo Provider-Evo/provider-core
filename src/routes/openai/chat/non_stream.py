@@ -6,6 +6,9 @@ import aiohttp.web
 
 from src.core.server import REGISTRY_KEY
 from src.core.server import clean_fncall as _clean_fncall
+from src.entropy.adapters.from_openai import from_openai_chat_body
+from src.entropy.core.turn import collect_turn
+from src.foundation.config.resolve import resolve_model
 from src.foundation.logger import get_logger
 from src.routes.openai.chat.helpers import (
     _cid,
@@ -23,71 +26,26 @@ __all__ = [
 logger = get_logger(__name__)
 
 
-def _collect_nonstream_dict_chunk(
-    ch: Dict[str, Any],
-    tp: List[str],
-    tcs: List[Dict],
-    usage_d: Optional[Dict],
-    platform_id: str,
-) -> tuple[List[Dict], Optional[Dict], str]:
-    if "_meta" in ch:
-        return tcs, usage_d, ch["_meta"].get("platform", "")
-    if "thinking" in ch:
-        tp.append(ch["thinking"])
-    elif "tool_calls" in ch:
-        tcs = ch["tool_calls"]
-    elif "usage" in ch:
-        usage_d = ch["usage"]
-    return tcs, usage_d, platform_id
-
-
 async def collect_nonstream_chat(
     request: aiohttp.web.Request,
     body: Dict[str, Any],
     messages: List[Dict[str, Any]],
     mdl: str,
+    *,
+    thinking_flavor: str = "openai",
 ) -> tuple[List[str], List[str], List[Dict], Optional[Dict], str]:
-    """非流式补全：调用网关并聚合文本、thinking、tool_calls。"""
-    from src.core import gateway
-
-    extra = body.get("extra_body") or body.get("extra") or {}
-    cp: List[str] = []
-    tp: List[str] = []
-    tcs: List[Dict] = []
-    usage_d: Optional[Dict] = None
-    platform_id = ""
-    upload_files = _extract_upload_files(messages)
-    proto_override = body.get("protocol", "")
-
-    async for ch in gateway.dispatch(
-        registry=request.app[REGISTRY_KEY],
-        messages=_normalize_messages(messages),
-        model=mdl,
-        stream=False,
-        tools=body.get("tools"),
-        thinking=bool(extra.get("thinking")),
-        search=bool(extra.get("search")),
-        temperature=body.get("temperature"),
-        top_p=body.get("top_p"),
-        max_tokens=body.get("max_tokens"),
-        stop=_sl(body.get("stop")),
-        upload_files=upload_files if upload_files else None,
-        protocol_id=proto_override,
-        tool_choice=body.get("tool_choice"),
-        platform=extra.get("platform", ""),
-    ):
-        if isinstance(ch, str):
-            cp.append(ch)
-            continue
-        if isinstance(ch, dict):
-            tcs, usage_d, platform_id = _collect_nonstream_dict_chunk(
-                ch,
-                tp,
-                tcs,
-                usage_d,
-                platform_id,
-            )
-    return cp, tp, tcs, usage_d, platform_id
+    """非流式补全：经 execute_turn 收集输出。"""
+    turn_req = from_openai_chat_body(body, flavor=thinking_flavor)
+    turn_req.model = mdl
+    turn_req.stream = False
+    turn_resp = await collect_turn(turn_req, request.app[REGISTRY_KEY])
+    cp = [turn_resp.raw_text] if turn_resp.raw_text else []
+    tp = [
+        b.thinking
+        for b in turn_resp.output
+        if b.type == "thinking" and b.thinking
+    ]
+    return cp, tp, turn_resp.tool_calls, turn_resp.usage, turn_resp.platform_id
 
 
 def fallback_parse_tool_calls(

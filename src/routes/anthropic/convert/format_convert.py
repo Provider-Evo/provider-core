@@ -340,13 +340,8 @@ def _anth_tools_to_openai(
 
 
 def _is_thinking(body: Dict[str, Any]) -> bool:
-    """判断请求是否开启 thinking 模式。"""
-    t = body.get("thinking")
-    if t is None:
-        return False
-    if isinstance(t, bool):
-        return t
-    if isinstance(t, dict):
-        return t.get("type") == "enabled" or bool(t.get("enabled", False))
-    return bool(t)
+    """判断请求是否开启 thinking 模式（on / auto）。"""
+    from src.routes.shared.thinking import resolve_thinking_config
+
+    return resolve_thinking_config(body, flavor="anthropic").enabled
 

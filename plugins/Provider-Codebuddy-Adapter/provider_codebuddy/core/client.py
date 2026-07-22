@@ -90,7 +90,7 @@ class CodebuddyClient:
         Args:
             models: 新的模型列表。
         """
-        self._models = self._model_registry.register_many(models)
+        self._models = self._model_registry.register_merge(models, fallback=MODELS)
         for cand in self._candidates:
             cand.models = list(self._models)
 

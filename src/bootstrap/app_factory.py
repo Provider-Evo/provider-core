@@ -22,6 +22,7 @@ async def create_application(
     observability: ObservabilityServices | None = None,
 ) -> aiohttp.web.Application:
     """创建并配置完整 Provider 应用（API + WebUI）。"""
+    from src.routes.entropy.setup import setup_routes as setup_entropy
     from src.routes.anthropic import setup_routes as setup_anth
     from src.routes.main import setup_routes as setup_main
     from src.routes.openai import setup_routes as setup_oai
@@ -47,6 +48,7 @@ async def create_application(
     app[OBSERVABILITY_KEY] = obs
 
     setup_main(app)
+    setup_entropy(app)
     setup_oai(app)
     setup_anth(app)
     setup_webui(app)

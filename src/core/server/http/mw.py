@@ -257,7 +257,14 @@ def _extract_bearer_token(request: aiohttp.web.Request) -> str:
 
 
 def _is_rate_limited_path(path: str) -> bool:
-    return path.startswith(("/v1/chat/", "/v1/completions", "/v1/messages"))
+    return path.startswith(
+        (
+            "/v1/turns",
+            "/v1/openai/chat/",
+            "/v1/openai/completions",
+            "/v1/anthropic/messages",
+        )
+    )
 
 
 async def _validate_credentials(request: aiohttp.web.Request, cfg: Any) -> bool:

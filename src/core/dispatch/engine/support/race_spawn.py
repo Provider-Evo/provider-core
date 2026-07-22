@@ -137,7 +137,7 @@ async def _run_race_worker(
         worker_msgs,
         model,
         stream,
-        plan.adapter_thinking,
+        False,
         search,
         race_kw,
         thinking_filter,

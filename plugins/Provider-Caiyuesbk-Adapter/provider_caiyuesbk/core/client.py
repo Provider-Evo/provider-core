@@ -6,8 +6,6 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import aiohttp
 
-from provider_sdk.model_ids import ModelIdRegistry
-
 from src.core.dispatch.cand import Candidate, make_id
 from src.foundation.config.reader import load_plugin_api_keys
 from src.foundation.logger import get_logger
@@ -31,8 +29,6 @@ class CaiyuesbkClient:
 
     def __init__(self) -> None:
         self._session: Optional[aiohttp.ClientSession] = None
-        self._model_registry = ModelIdRegistry("caiyuesbk")
-        self._model_registry.load()
         self._models: List[str] = []
         self._candidates: List[Candidate] = []
         self._api_keys: List[str] = []
@@ -95,9 +91,9 @@ class CaiyuesbkClient:
         Args:
             models: 新的模型列表。
         """
-        self._models = self._model_registry.register_many(models)
+        self._models = list(models)
         for cand in self._candidates:
-            cand.models = list(self._models)
+            cand.models = list(models)
 
     async def fetch_models(self) -> List[str]:
         """从远程 API 拉取当前可用模型列表。
@@ -133,9 +129,7 @@ class CaiyuesbkClient:
                 for item in data.get("data", [])
                 if isinstance(item, dict) and item.get("id")
             ]
-            if model_ids:
-                return self._model_registry.register_catalog(data.get("data", []))
-            return []
+            return model_ids
 
     # ------------------------------------------------------------------
     # 候选项管理
@@ -196,7 +190,6 @@ class CaiyuesbkClient:
         **kw: Any,
     ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         """执行聊天补全请求，含指数退避重试；thinking/search 参数透传给 fncall。"""
-        model = self._model_registry.resolve_upstream(model)
         last_exc: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             if attempt > 0:

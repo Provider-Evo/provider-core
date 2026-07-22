@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
+from echotools.exec.fncall.protocols.entml_thinking import (
+    normalize_thinking_mode,
+    parse_max_thinking_length,
+)
 from echotools.fncall.protocols.entml_thinking_parse import EntmlThinkingStreamFilter
 
 from src.core.dispatch.cand import Candidate, capability_for_model
@@ -10,17 +14,18 @@ from src.core.dispatch.cand import Candidate, capability_for_model
 
 @dataclass(frozen=True)
 class ThinkingDispatchPlan:
-    """思考链分发：adapter 原生 vs entml prompt/解析。"""
+    """思考链分发：prompt 注入、adapter 原生 vs entml 解析。"""
 
     requester_wants_thinking: bool
     use_entml_prompt: bool
     adapter_thinking: bool
     parse_entml_thinking: bool
     prefer_adapter_thinking: bool
+    thinking_mode: Optional[str] = None
 
 
-def _normalize_mode(thinking_mode: Optional[str]) -> str:
-    return str(thinking_mode or "").strip().lower()
+def _canonical_mode(thinking_mode: Optional[str]) -> Optional[str]:
+    return normalize_thinking_mode(thinking_mode)
 
 
 def model_supports_thinking(candidate: Candidate, model: str) -> bool:
@@ -30,16 +35,18 @@ def model_supports_thinking(candidate: Candidate, model: str) -> bool:
     return bool(candidate.thinking)
 
 
-def requester_wants_thinking(
+def resolve_thinking_mode(
+    *,
     thinking: bool,
     thinking_mode: Optional[str] = None,
-) -> bool:
-    mode = _normalize_mode(thinking_mode)
-    if mode in ("disabled", "off", "false"):
-        return False
+) -> Optional[str]:
+    """解析最终思考模式：off | on | auto；未声明时返回 None。"""
+    mode = _canonical_mode(thinking_mode)
+    if mode is not None:
+        return mode
     if thinking:
-        return True
-    return mode in ("interleaved", "auto", "enabled", "on", "thinking")
+        return "auto"
+    return None
 
 
 def resolve_thinking_dispatch(
@@ -49,30 +56,28 @@ def resolve_thinking_dispatch(
     candidate: Candidate,
     model: str,
 ) -> ThinkingDispatchPlan:
-    wants = requester_wants_thinking(thinking, thinking_mode)
-    if not wants:
-        return ThinkingDispatchPlan(False, False, False, False, False)
+    mode = resolve_thinking_mode(thinking=thinking, thinking_mode=thinking_mode)
+    if mode is None:
+        return ThinkingDispatchPlan(False, False, False, False, False, None)
 
-    mode = _normalize_mode(thinking_mode)
-    auto = mode == "auto"
-    supports = model_supports_thinking(candidate, model)
+    if mode == "off":
+        return ThinkingDispatchPlan(
+            requester_wants_thinking=False,
+            use_entml_prompt=True,
+            adapter_thinking=False,
+            parse_entml_thinking=False,
+            prefer_adapter_thinking=False,
+            thinking_mode="off",
+        )
 
-    if auto:
+    if mode == "on":
         return ThinkingDispatchPlan(
             requester_wants_thinking=True,
             use_entml_prompt=True,
             adapter_thinking=False,
             parse_entml_thinking=True,
-            prefer_adapter_thinking=True,
-        )
-
-    if supports:
-        return ThinkingDispatchPlan(
-            requester_wants_thinking=True,
-            use_entml_prompt=False,
-            adapter_thinking=True,
-            parse_entml_thinking=False,
-            prefer_adapter_thinking=True,
+            prefer_adapter_thinking=False,
+            thinking_mode="on",
         )
 
     return ThinkingDispatchPlan(
@@ -81,6 +86,7 @@ def resolve_thinking_dispatch(
         adapter_thinking=False,
         parse_entml_thinking=True,
         prefer_adapter_thinking=False,
+        thinking_mode="auto",
     )
 
 
@@ -93,17 +99,15 @@ def build_entml_protocol_options_from_plan(
     if not plan.use_entml_prompt:
         return None
 
-    opts: Dict[str, Any] = {}
-    mode = _normalize_mode(thinking_mode)
-    if mode:
-        opts["thinking_mode"] = mode
-    elif plan.prefer_adapter_thinking:
-        opts["thinking_mode"] = "auto"
-    else:
-        opts["thinking_mode"] = "interleaved"
-    if max_thinking_length is not None:
-        opts["max_thinking_length"] = int(max_thinking_length)
-    return opts or None
+    mode = _canonical_mode(thinking_mode) or plan.thinking_mode
+    if mode is None or mode == "off":
+        return None
+
+    opts: Dict[str, Any] = {"thinking_mode": mode}
+    parsed_max = parse_max_thinking_length(max_thinking_length)
+    if parsed_max is not None:
+        opts["max_thinking_length"] = parsed_max
+    return opts
 
 
 class ThinkingResponseFilter:

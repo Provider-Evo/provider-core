@@ -112,7 +112,7 @@ async function _runOneBatchItem(prompt, i, prompts, resultDiv, body) {
     if (body.systemPrompt) itemBody.messages.push({ role: "system", content: body.systemPrompt });
     itemBody.messages.push({ role: "user", content: prompt });
     delete itemBody.systemPrompt;
-    var response = await fetch("/v1/chat/completions", {
+    var response = await fetch("/v1/turns", {
       method: "POST", headers: { "Content-Type": "application/json" },
       credentials: "same-origin", body: JSON.stringify(itemBody),
       signal: AbortSignal.timeout(_getStreamIdleTimeoutMs())

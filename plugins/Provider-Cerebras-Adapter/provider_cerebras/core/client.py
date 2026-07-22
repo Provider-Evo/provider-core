@@ -77,7 +77,7 @@ class CerebrasClient:
         Args:
             models: 新的模型列表。
         """
-        self._models = self._model_registry.register_many(models)
+        self._models = self._model_registry.register_merge(models, fallback=MODELS)
         for cand in self._candidates:
             cand.models = list(self._models)
 
@@ -134,7 +134,7 @@ class CerebrasClient:
                 lambda: self._list_models_sync(api_key),
             )
             logger.info("cerebras 远程模型列表: %d 个", len(model_ids))
-            return self._model_registry.register_many(model_ids)
+            return self._model_registry.register_merge(model_ids, fallback=MODELS)
         except Exception as e:
             logger.warning("cerebras 拉取模型列表失败: %s", e)
             return []

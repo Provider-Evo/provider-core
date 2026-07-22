@@ -14,11 +14,12 @@ __all__ = ["stats_middleware", "PARSED_JSON_BODY_KEY"]
 PARSED_JSON_BODY_KEY = "_parsed_json_body"
 
 _DEFAULT_API_PREFIXES = (
-    "/v1/chat/",
-    "/v1/completions",
-    "/v1/messages",
+    "/v1/turns",
+    "/v1/openai/chat/",
+    "/v1/openai/completions",
+    "/v1/anthropic/messages",
     "/v1/models",
-    "/v1/embeddings",
+    "/v1/openai/embeddings",
 )
 
 

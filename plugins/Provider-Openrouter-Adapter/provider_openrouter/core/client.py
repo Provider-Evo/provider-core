@@ -165,7 +165,9 @@ class OpenRouterClient:
                         if isinstance(m, dict) and m.get("slug")
                     ]
                     if upstream:
-                        return self._model_registry.register_many(upstream)
+                        return self._model_registry.register_merge(
+                            upstream, fallback=MODELS
+                        )
                 return []
         except Exception as e:
             logger.warning("openrouter拉取free模型列表异常: %s", e)
@@ -177,7 +179,7 @@ class OpenRouterClient:
         Args:
             models: 新的模型列表。
         """
-        self._models = self._model_registry.register_many(models)
+        self._models = self._model_registry.register_merge(models, fallback=MODELS)
 
     def get_models(self) -> List[str]:
         return list(self._models)

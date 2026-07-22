@@ -156,7 +156,7 @@ async function _executeSendRequest(model, protocol) {
   _spinnerCreatedAt = Date.now();
   _showSendSpinner();
   try {
-    var response = await fetch("/v1/chat/completions", {
+    var response = await fetch("/v1/turns", {
       method: "POST", headers: { "Content-Type": "application/json" },
       credentials: "same-origin", body: JSON.stringify(body), signal: abortController.signal
     });
