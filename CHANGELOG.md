@@ -8,6 +8,12 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.317] - 2026-07-26
+
+### 变更
+
+- 依赖 `echotools>=2.3.30`：历史 assistant reasoning 由 `inject_fncall` 的 `protocol_options.include_thinking_in_history` 渲染为 `<entml:thinking>`，dispatch 透传 `interleaved_history` 至 protocol_options
+
 ## [2.2.316] - 2026-07-22
 
 ### 修复

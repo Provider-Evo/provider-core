@@ -22,19 +22,27 @@ def build_entml_protocol_options(
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
     plan: Optional[ThinkingDispatchPlan] = None,
+    include_thinking_in_history: Optional[bool] = None,
 ) -> Optional[Dict[str, Any]]:
     """从 dispatch 参数构建 entml protocol_options；无声明时返回 None。"""
     if plan is not None:
-        return build_entml_protocol_options_from_plan(
+        opts = build_entml_protocol_options_from_plan(
             plan,
             thinking_mode=thinking_mode,
             max_thinking_length=max_thinking_length,
         )
+        if opts is None:
+            opts = {}
+        if include_thinking_in_history is not None:
+            opts["include_thinking_in_history"] = include_thinking_in_history
+        return opts or None
 
     opts: Dict[str, Any] = {}
     mode = normalize_thinking_mode(thinking_mode)
     if mode == "off":
-        return None
+        if include_thinking_in_history is not None:
+            opts["include_thinking_in_history"] = include_thinking_in_history
+        return opts or None
     if mode is not None:
         opts["thinking_mode"] = mode
     elif thinking:
@@ -42,6 +50,8 @@ def build_entml_protocol_options(
     parsed_max = parse_max_thinking_length(max_thinking_length)
     if parsed_max is not None:
         opts["max_thinking_length"] = parsed_max
+    if include_thinking_in_history is not None:
+        opts["include_thinking_in_history"] = include_thinking_in_history
     return opts or None
 
 
@@ -124,6 +134,7 @@ def prepare_worker_messages(
     thinking: bool = False,
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
+    include_thinking_in_history: Optional[bool] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[Any], ThinkingDispatchPlan]:
     """按平台解析协议并注入工具定义；native_tools 平台直接透传 messages。"""
     plan = resolve_thinking_dispatch(
@@ -137,6 +148,7 @@ def prepare_worker_messages(
         thinking_mode=thinking_mode,
         max_thinking_length=max_thinking_length,
         plan=plan,
+        include_thinking_in_history=include_thinking_in_history,
     )
     native = cand.native_tools
     if not tools or native:

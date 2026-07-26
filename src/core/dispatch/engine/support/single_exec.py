@@ -157,6 +157,7 @@ async def single_execute(
         thinking=thinking,
         thinking_mode=kw.get("thinking_mode"),
         max_thinking_length=kw.get("max_thinking_length"),
+        include_thinking_in_history=kw.get("include_thinking_in_history"),
     )
     native = cand.native_tools
     fp = (

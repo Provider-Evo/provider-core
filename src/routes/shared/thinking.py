@@ -128,6 +128,7 @@ def thinking_to_dispatch_kwargs(cfg: ThinkingConfig) -> Dict[str, Any]:
     """ThinkingConfig → gateway.dispatch 关键字参数。"""
     out: Dict[str, Any] = {
         "thinking": cfg.enabled,
+        "include_thinking_in_history": cfg.interleaved_history,
     }
     if cfg.mode is not None:
         out["thinking_mode"] = cfg.mode

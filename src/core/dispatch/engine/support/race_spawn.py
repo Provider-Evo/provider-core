@@ -126,6 +126,7 @@ async def _run_race_worker(
         thinking=thinking,
         thinking_mode=kw.get("thinking_mode"),
         max_thinking_length=kw.get("max_thinking_length"),
+        include_thinking_in_history=kw.get("include_thinking_in_history"),
     )
     thinking_filter = (
         ThinkingResponseFilter(plan) if plan.requester_wants_thinking else None
