@@ -205,8 +205,11 @@ def setup_routes(app: aiohttp.web.Application) -> None:
     Args:
         app: aiohttp.web.Application 实例。
     """
+    from src.routes.openai.chat import chat_completions
+
     app.router.add_get("/health", health)
     app.router.add_get("/metrics", metrics)
+    app.router.add_route("*", "/v1/chat/completions", chat_completions)
     app.router.add_get("/v1/models", list_models)
     app.router.add_get("/v1/models/{model}", get_model)
     app.router.add_get("/v1/status", status)
