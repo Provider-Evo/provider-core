@@ -1,13 +1,15 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from echotools.exec.fncall.protocols.entml_thinking import (
+from echotools.exec.fncall.protocols.entml_think.core import (
+    normalize_thinking_level,
     normalize_thinking_mode,
     parse_max_thinking_length,
 )
 
 from src.core.fncall.prompt.inject import inject_fncall
 from src.core.fncall.reg import get_protocol
+from src.routes.shared.thinking import mode_to_thinking_level
 
 from .thinking_dispatch import (
     ThinkingDispatchPlan,
@@ -16,9 +18,20 @@ from .thinking_dispatch import (
 )
 
 
+def _resolve_thinking_level(
+    thinking_level: Optional[str] = None,
+    thinking_mode: Optional[str] = None,
+) -> Optional[str]:
+    level = normalize_thinking_level(thinking_level)
+    if level is not None:
+        return level
+    return mode_to_thinking_level(normalize_thinking_mode(thinking_mode))
+
+
 def build_entml_protocol_options(
     *,
     thinking: bool = False,
+    thinking_level: Optional[str] = None,
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
     plan: Optional[ThinkingDispatchPlan] = None,
@@ -28,6 +41,7 @@ def build_entml_protocol_options(
     if plan is not None:
         opts = build_entml_protocol_options_from_plan(
             plan,
+            thinking_level=thinking_level,
             thinking_mode=thinking_mode,
             max_thinking_length=max_thinking_length,
         )
@@ -38,15 +52,15 @@ def build_entml_protocol_options(
         return opts or None
 
     opts: Dict[str, Any] = {}
-    mode = normalize_thinking_mode(thinking_mode)
-    if mode == "off":
+    level = _resolve_thinking_level(thinking_level, thinking_mode)
+    if level is None and thinking:
+        level = "auto"
+    if level == "none" or (level is None and not thinking):
         if include_thinking_in_history is not None:
             opts["include_thinking_in_history"] = include_thinking_in_history
         return opts or None
-    if mode is not None:
-        opts["thinking_mode"] = mode
-    elif thinking:
-        opts["thinking_mode"] = "auto"
+    if level is not None:
+        opts["thinking_level"] = level
     parsed_max = parse_max_thinking_length(max_thinking_length)
     if parsed_max is not None:
         opts["max_thinking_length"] = parsed_max
@@ -122,35 +136,17 @@ def resolve_protocol(*, protocol_id: str, platform_id: str = "") -> Any:
     return get_protocol(platform_id=platform_id)
 
 
-def prepare_worker_messages(
+def _inject_worker_messages(
     msgs: List[Dict[str, Any]],
     tools: Optional[List[Dict[str, Any]]],
     cand: Any,
     *,
-    model: str = "",
-    fncall_lang: str = "en",
-    protocol_id: str = "",
-    dump_prompt: bool = False,
-    thinking: bool = False,
-    thinking_mode: Optional[str] = None,
-    max_thinking_length: Optional[int] = None,
-    include_thinking_in_history: Optional[bool] = None,
-) -> Tuple[List[Dict[str, Any]], Optional[Any], ThinkingDispatchPlan]:
-    """按平台解析协议并注入工具定义；native_tools 平台直接透传 messages。"""
-    plan = resolve_thinking_dispatch(
-        thinking=thinking,
-        thinking_mode=thinking_mode,
-        candidate=cand,
-        model=model,
-    )
-    protocol_options = build_entml_protocol_options(
-        thinking=thinking,
-        thinking_mode=thinking_mode,
-        max_thinking_length=max_thinking_length,
-        plan=plan,
-        include_thinking_in_history=include_thinking_in_history,
-    )
-    native = cand.native_tools
+    protocol_id: str,
+    fncall_lang: str,
+    dump_prompt: bool,
+    protocol_options: Optional[Dict[str, Any]],
+    native: bool,
+) -> Tuple[List[Dict[str, Any]], Optional[Any]]:
     if not tools or native:
         if protocol_options and not native:
             protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
@@ -162,8 +158,8 @@ def prepare_worker_messages(
                 dump_prompt=dump_prompt,
                 protocol_options=protocol_options,
             )
-            return worker_msgs, protocol, plan
-        return msgs, None, plan
+            return worker_msgs, protocol
+        return msgs, None
     protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
     worker_msgs = inject_fncall(
         msgs,
@@ -172,6 +168,50 @@ def prepare_worker_messages(
         lang=fncall_lang,
         dump_prompt=dump_prompt,
         protocol_options=protocol_options,
+    )
+    return worker_msgs, protocol
+
+
+def prepare_worker_messages(
+    msgs: List[Dict[str, Any]],
+    tools: Optional[List[Dict[str, Any]]],
+    cand: Any,
+    *,
+    model: str = "",
+    fncall_lang: str = "en",
+    protocol_id: str = "",
+    dump_prompt: bool = False,
+    thinking: bool = False,
+    thinking_level: Optional[str] = None,
+    thinking_mode: Optional[str] = None,
+    max_thinking_length: Optional[int] = None,
+    include_thinking_in_history: Optional[bool] = None,
+) -> Tuple[List[Dict[str, Any]], Optional[Any], ThinkingDispatchPlan]:
+    """按平台解析协议并注入工具定义；native_tools 平台直接透传 messages。"""
+    plan = resolve_thinking_dispatch(
+        thinking=thinking,
+        thinking_mode=thinking_mode,
+        thinking_level=thinking_level,
+        candidate=cand,
+        model=model,
+    )
+    protocol_options = build_entml_protocol_options(
+        thinking=thinking,
+        thinking_level=thinking_level,
+        thinking_mode=thinking_mode,
+        max_thinking_length=max_thinking_length,
+        plan=plan,
+        include_thinking_in_history=include_thinking_in_history,
+    )
+    worker_msgs, protocol = _inject_worker_messages(
+        msgs,
+        tools,
+        cand,
+        protocol_id=protocol_id,
+        fncall_lang=fncall_lang,
+        dump_prompt=dump_prompt,
+        protocol_options=protocol_options,
+        native=cand.native_tools,
     )
     return worker_msgs, protocol, plan
 
@@ -185,6 +225,7 @@ def dump_race_prompt(
     fncall_lang: str = "en",
     protocol_id: str = "",
     thinking: bool = False,
+    thinking_level: Optional[str] = None,
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
 ) -> None:
@@ -197,11 +238,13 @@ def dump_race_prompt(
     plan = resolve_thinking_dispatch(
         thinking=thinking,
         thinking_mode=thinking_mode,
+        thinking_level=thinking_level,
         candidate=cands[0],
         model=model,
     )
     protocol_options = build_entml_protocol_options(
         thinking=thinking,
+        thinking_level=thinking_level,
         thinking_mode=thinking_mode,
         max_thinking_length=max_thinking_length,
         plan=plan,

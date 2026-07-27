@@ -3,13 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
-from echotools.exec.fncall.protocols.entml_thinking import (
+from echotools.exec.fncall.protocols.entml_think.core import (
+    normalize_thinking_level,
     normalize_thinking_mode,
     parse_max_thinking_length,
 )
-from echotools.fncall.protocols.entml_thinking_parse import EntmlThinkingStreamFilter
+from echotools.exec.fncall.protocols.entml_think.parse import EntmlThinkingStreamFilter
 
 from src.core.dispatch.cand import Candidate, capability_for_model
+from src.routes.shared.thinking import level_to_thinking_mode, mode_to_thinking_level
 
 
 @dataclass(frozen=True)
@@ -22,10 +24,17 @@ class ThinkingDispatchPlan:
     parse_entml_thinking: bool
     prefer_adapter_thinking: bool
     thinking_mode: Optional[str] = None
+    thinking_level: Optional[str] = None
 
 
-def _canonical_mode(thinking_mode: Optional[str]) -> Optional[str]:
-    return normalize_thinking_mode(thinking_mode)
+def _resolve_level(
+    thinking_level: Optional[str] = None,
+    thinking_mode: Optional[str] = None,
+) -> Optional[str]:
+    level = normalize_thinking_level(thinking_level)
+    if level is not None:
+        return level
+    return mode_to_thinking_level(normalize_thinking_mode(thinking_mode))
 
 
 def model_supports_thinking(candidate: Candidate, model: str) -> bool:
@@ -39,11 +48,12 @@ def resolve_thinking_mode(
     *,
     thinking: bool,
     thinking_mode: Optional[str] = None,
+    thinking_level: Optional[str] = None,
 ) -> Optional[str]:
     """解析最终思考模式：off | on | auto；未声明时返回 None。"""
-    mode = _canonical_mode(thinking_mode)
-    if mode is not None:
-        return mode
+    level = _resolve_level(thinking_level, thinking_mode)
+    if level is not None:
+        return level_to_thinking_mode(level)
     if thinking:
         return "auto"
     return None
@@ -53,14 +63,20 @@ def resolve_thinking_dispatch(
     *,
     thinking: bool,
     thinking_mode: Optional[str] = None,
+    thinking_level: Optional[str] = None,
     candidate: Candidate,
     model: str,
 ) -> ThinkingDispatchPlan:
-    mode = resolve_thinking_mode(thinking=thinking, thinking_mode=thinking_mode)
-    if mode is None:
-        return ThinkingDispatchPlan(False, False, False, False, False, None)
+    level = _resolve_level(thinking_level, thinking_mode)
+    mode = resolve_thinking_mode(
+        thinking=thinking,
+        thinking_mode=thinking_mode,
+        thinking_level=thinking_level,
+    )
+    if mode is None and level is None:
+        return ThinkingDispatchPlan(False, False, False, False, False, None, None)
 
-    if mode == "off":
+    if mode == "off" or level == "none":
         return ThinkingDispatchPlan(
             requester_wants_thinking=False,
             use_entml_prompt=True,
@@ -68,6 +84,7 @@ def resolve_thinking_dispatch(
             parse_entml_thinking=False,
             prefer_adapter_thinking=False,
             thinking_mode="off",
+            thinking_level="none",
         )
 
     if mode == "on":
@@ -78,6 +95,7 @@ def resolve_thinking_dispatch(
             parse_entml_thinking=True,
             prefer_adapter_thinking=False,
             thinking_mode="on",
+            thinking_level=level or "medium",
         )
 
     return ThinkingDispatchPlan(
@@ -87,23 +105,25 @@ def resolve_thinking_dispatch(
         parse_entml_thinking=True,
         prefer_adapter_thinking=False,
         thinking_mode="auto",
+        thinking_level=level or "auto",
     )
 
 
 def build_entml_protocol_options_from_plan(
     plan: ThinkingDispatchPlan,
     *,
+    thinking_level: Optional[str] = None,
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
     if not plan.use_entml_prompt:
         return None
 
-    mode = _canonical_mode(thinking_mode) or plan.thinking_mode
-    if mode is None or mode == "off":
+    level = _resolve_level(thinking_level, thinking_mode) or plan.thinking_level
+    if level is None or level == "none":
         return None
 
-    opts: Dict[str, Any] = {"thinking_mode": mode}
+    opts: Dict[str, Any] = {"thinking_level": level}
     parsed_max = parse_max_thinking_length(max_thinking_length)
     if parsed_max is not None:
         opts["max_thinking_length"] = parsed_max

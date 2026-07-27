@@ -11,6 +11,14 @@ from src.foundation.logger import get_logger
 __all__ = ["RegistryModelsMixin"]
 logger = get_logger(__name__)
 
+# Kimi Code / OpenAI 客户端读取的 thinking 挡位元数据
+_DEFAULT_THINK_EFFORTS: Dict[str, Any] = {
+    "support": True,
+    "valid_efforts": ["low", "medium", "high", "xhigh", "max", "auto"],
+    "default_effort": "medium",
+    "off_effort": "none",
+}
+
 
 def _merge_candidate_caps(
     cand: Candidate, model_caps: Dict[str, Dict[str, bool]], model_ctx: Dict[str, int]
@@ -65,6 +73,8 @@ def _build_model_entry(
         entry["context_length"] = per_ctx
     elif ctx_len is not None:
         entry["context_length"] = ctx_len
+    if caps.get("thinking"):
+        entry["think_efforts"] = dict(_DEFAULT_THINK_EFFORTS)
     return entry
 
 

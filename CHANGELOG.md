@@ -8,6 +8,26 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.321] - 2026-07-27
+
+### 变更
+
+- 依赖 `echotools>=2.3.40`：未闭合 `<entml:thinking>` 时流式内容按纯文本处理，避免思考阶段误解析 invoke
+
+## [2.2.320] - 2026-07-27
+
+### 修复
+
+- 依赖 `echotools>=2.3.39`（修复 2.3.38 在 Python 3.11 下 `prompt_helpers` 导入 SyntaxError）
+- CI 先装 git tag 再 `pip install -e`，避免 PyPI 索引滞后导致安装失败
+
+## [2.2.319] - 2026-07-27
+
+### 变更
+
+- 思考链解析与 dispatch 透传 `thinking_level`（none/low/medium/high/xhigh/max/auto），`reasoning_effort` 等别名映射到对应挡位而非一律 `on`
+- 依赖 `echotools>=2.3.38`：entml 历史 `<tool>` 格式、IMPORTANT 提醒、thinking level 注入
+
 ## [2.2.318] - 2026-07-26
 
 ### 变更

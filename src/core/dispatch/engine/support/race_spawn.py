@@ -95,6 +95,42 @@ async def _race_worker_stream(
         await _put_worker_queue_msg(q, "err", idx, str(exc))
 
 
+def _race_worker_setup(
+    reg: Any,
+    idx: int,
+    c: Candidate,
+    msgs: List[Dict],
+    model: str,
+    thinking: bool,
+    tools: Optional[List[Dict]],
+    fncall_lang: str,
+    protocol_id: str,
+    kw: Dict[str, Any],
+) -> tuple[Any, List[Dict], Dict[str, Any], Optional[ThinkingResponseFilter]]:
+    adapter = reg.adapter_for(c)
+    if not adapter:
+        return None, [], {}, None
+    worker_msgs, _, plan = prepare_worker_messages(
+        msgs,
+        tools,
+        c,
+        model=model,
+        fncall_lang=fncall_lang,
+        protocol_id=protocol_id,
+        dump_prompt=False,
+        thinking=thinking,
+        thinking_level=kw.get("thinking_level"),
+        thinking_mode=kw.get("thinking_mode"),
+        max_thinking_length=kw.get("max_thinking_length"),
+        include_thinking_in_history=kw.get("include_thinking_in_history"),
+    )
+    thinking_filter = (
+        ThinkingResponseFilter(plan) if plan.requester_wants_thinking else None
+    )
+    race_kw = native_complete_kw(kw, tools, c.native_tools)
+    return adapter, worker_msgs, race_kw, thinking_filter
+
+
 async def _run_race_worker(
     idx: int,
     c: Candidate,
@@ -111,29 +147,14 @@ async def _run_race_worker(
     protocol_id: str,
     kw: Dict[str, Any],
 ) -> None:
-    a = reg.adapter_for(c)
-    if not a:
+    adapter, worker_msgs, race_kw, thinking_filter = _race_worker_setup(
+        reg, idx, c, msgs, model, thinking, tools, fncall_lang, protocol_id, kw
+    )
+    if adapter is None:
         await _put_worker_queue_msg(q, "err", idx, "无适配器: {}".format(c.platform))
         return
-    worker_msgs, _, plan = prepare_worker_messages(
-        msgs,
-        tools,
-        c,
-        model=model,
-        fncall_lang=fncall_lang,
-        protocol_id=protocol_id,
-        dump_prompt=False,
-        thinking=thinking,
-        thinking_mode=kw.get("thinking_mode"),
-        max_thinking_length=kw.get("max_thinking_length"),
-        include_thinking_in_history=kw.get("include_thinking_in_history"),
-    )
-    thinking_filter = (
-        ThinkingResponseFilter(plan) if plan.requester_wants_thinking else None
-    )
-    race_kw = native_complete_kw(kw, tools, c.native_tools)
     await _race_worker_stream(
-        a,
+        adapter,
         c,
         worker_msgs,
         model,
