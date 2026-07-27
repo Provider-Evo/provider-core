@@ -34,6 +34,48 @@ class SingleExecState:
         self.acc_len = 0
 
 
+def _note_text_chunk(state: SingleExecState, text: str, fp: Optional[FncallStreamParser]) -> None:
+    state.acc_len += len(text)
+    if state.ft is None:
+        state.ft = time.monotonic()
+    if fp:
+        fp.feed(text)
+
+
+async def _yield_str_chunk(
+    chunk: str,
+    fp: Optional[FncallStreamParser],
+    thinking_filter: Optional[ThinkingResponseFilter],
+    state: SingleExecState,
+) -> AsyncGenerator[Union[str, Dict], None]:
+    state.tc += 1
+    if thinking_filter is None:
+        _note_text_chunk(state, chunk, fp)
+        yield chunk
+        return
+    for item in thinking_filter.feed(chunk):
+        if not isinstance(item, str):
+            yield item
+            continue
+        _note_text_chunk(state, item, fp)
+        yield item
+
+
+async def _yield_dict_chunk(
+    chunk: Dict[str, Any],
+    thinking_filter: Optional[ThinkingResponseFilter],
+    state: SingleExecState,
+) -> AsyncGenerator[Union[str, Dict], None]:
+    if "usage" in chunk:
+        state.p_usage = chunk["usage"]
+        return
+    if thinking_filter is None:
+        yield chunk
+        return
+    for item in thinking_filter.feed(chunk):
+        yield item
+
+
 async def _stream_single_chunks(
     adapter: Any,
     cand: Candidate,
@@ -46,7 +88,7 @@ async def _stream_single_chunks(
     fp: Optional[FncallStreamParser],
     thinking_filter: Optional[ThinkingResponseFilter],
     state: SingleExecState,
-) -> AsyncGenerator[Union[str, Dict], None]:
+    ) -> AsyncGenerator[Union[str, Dict], None]:
     async for chunk in adapter.complete(
         cand,
         worker_msgs,
@@ -57,31 +99,50 @@ async def _stream_single_chunks(
         **complete_kw,
     ):
         if isinstance(chunk, str):
-            state.tc += 1
-            if thinking_filter is not None:
-                for item in thinking_filter.feed(chunk):
-                    if isinstance(item, str):
-                        state.acc_len += len(item)
-                        if state.ft is None:
-                            state.ft = time.monotonic()
-                        if fp:
-                            fp.feed(item)
-                    yield item
-                continue
-            state.acc_len += len(chunk)
-            if state.ft is None:
-                state.ft = time.monotonic()
-            if fp:
-                fp.feed(chunk)
-            yield chunk
+            async for item in _yield_str_chunk(chunk, fp, thinking_filter, state):
+                yield item
         elif isinstance(chunk, dict):
-            if "usage" in chunk:
-                state.p_usage = chunk["usage"]
-            elif thinking_filter is not None:
-                for item in thinking_filter.feed(chunk):
-                    yield item
-            else:
-                yield chunk
+            async for item in _yield_dict_chunk(chunk, thinking_filter, state):
+                yield item
+
+
+def _build_single_exec_plan(
+    reg: Any,
+    cand: Candidate,
+    msgs: List[Dict],
+    tools: Optional[List[Dict]],
+    model: str,
+    fncall_lang: str,
+    protocol_id: str,
+    thinking: bool,
+    kw: Dict[str, Any],
+) -> tuple[Any, List[Dict], Optional[Any], Optional[FncallStreamParser], Optional[ThinkingResponseFilter]]:
+    adapter = reg.adapter_for(cand)
+    if not adapter:
+        raise ProviderError("无适配器: {}".format(cand.platform))
+    worker_msgs, protocol, plan = prepare_worker_messages(
+        msgs,
+        tools,
+        cand,
+        model=model,
+        fncall_lang=fncall_lang,
+        protocol_id=protocol_id,
+        thinking=thinking,
+        thinking_level=kw.get("thinking_level"),
+        thinking_mode=kw.get("thinking_mode"),
+        max_thinking_length=kw.get("max_thinking_length"),
+        include_thinking_in_history=kw.get("include_thinking_in_history"),
+    )
+    native = cand.native_tools
+    fp = (
+        FncallStreamParser(tools=tools, protocol=protocol)
+        if tools and not native
+        else None
+    )
+    thinking_filter = (
+        ThinkingResponseFilter(plan) if plan.requester_wants_thinking else None
+    )
+    return adapter, worker_msgs, fp, thinking_filter, plan
 
 
 async def _record_single_result(
@@ -143,35 +204,13 @@ async def single_execute(
     **kw: Any,
 ) -> AsyncGenerator[Union[str, Dict], None]:
     """单候选项执行。"""
-    adapter = reg.adapter_for(cand)
-    if not adapter:
-        raise ProviderError("无适配器: {}".format(cand.platform))
-
-    worker_msgs, protocol, plan = prepare_worker_messages(
-        msgs,
-        tools,
-        cand,
-        model=model,
-        fncall_lang=fncall_lang,
-        protocol_id=protocol_id,
-        thinking=thinking,
-        thinking_level=kw.get("thinking_level"),
-        thinking_mode=kw.get("thinking_mode"),
-        max_thinking_length=kw.get("max_thinking_length"),
-        include_thinking_in_history=kw.get("include_thinking_in_history"),
+    adapter, worker_msgs, fp, thinking_filter, plan = _build_single_exec_plan(
+        reg, cand, msgs, tools, model, fncall_lang, protocol_id, thinking, kw
     )
-    native = cand.native_tools
-    fp = (
-        FncallStreamParser(tools=tools, protocol=protocol)
-        if tools and not native
-        else None
-    )
-    thinking_filter = (
-        ThinkingResponseFilter(plan) if plan.requester_wants_thinking else None
-    )
+    _ = plan
     state = SingleExecState()
     yield {"_meta": {"platform": cand.platform}}
-    complete_kw = native_complete_kw(kw, tools, native)
+    complete_kw = native_complete_kw(kw, tools, cand.native_tools)
     try:
         async for chunk in _stream_single_chunks(
             adapter,

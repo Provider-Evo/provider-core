@@ -136,6 +136,42 @@ def resolve_protocol(*, protocol_id: str, platform_id: str = "") -> Any:
     return get_protocol(platform_id=platform_id)
 
 
+def _inject_worker_messages(
+    msgs: List[Dict[str, Any]],
+    tools: Optional[List[Dict[str, Any]]],
+    cand: Any,
+    *,
+    protocol_id: str,
+    fncall_lang: str,
+    dump_prompt: bool,
+    protocol_options: Optional[Dict[str, Any]],
+    native: bool,
+) -> Tuple[List[Dict[str, Any]], Optional[Any]]:
+    if not tools or native:
+        if protocol_options and not native:
+            protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
+            worker_msgs = inject_fncall(
+                msgs,
+                [],
+                protocol,
+                lang=fncall_lang,
+                dump_prompt=dump_prompt,
+                protocol_options=protocol_options,
+            )
+            return worker_msgs, protocol
+        return msgs, None
+    protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
+    worker_msgs = inject_fncall(
+        msgs,
+        tools,
+        protocol,
+        lang=fncall_lang,
+        dump_prompt=dump_prompt,
+        protocol_options=protocol_options,
+    )
+    return worker_msgs, protocol
+
+
 def prepare_worker_messages(
     msgs: List[Dict[str, Any]],
     tools: Optional[List[Dict[str, Any]]],
@@ -167,28 +203,15 @@ def prepare_worker_messages(
         plan=plan,
         include_thinking_in_history=include_thinking_in_history,
     )
-    native = cand.native_tools
-    if not tools or native:
-        if protocol_options and not native:
-            protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
-            worker_msgs = inject_fncall(
-                msgs,
-                [],
-                protocol,
-                lang=fncall_lang,
-                dump_prompt=dump_prompt,
-                protocol_options=protocol_options,
-            )
-            return worker_msgs, protocol, plan
-        return msgs, None, plan
-    protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
-    worker_msgs = inject_fncall(
+    worker_msgs, protocol = _inject_worker_messages(
         msgs,
         tools,
-        protocol,
-        lang=fncall_lang,
+        cand,
+        protocol_id=protocol_id,
+        fncall_lang=fncall_lang,
         dump_prompt=dump_prompt,
         protocol_options=protocol_options,
+        native=cand.native_tools,
     )
     return worker_msgs, protocol, plan
 

@@ -95,26 +95,21 @@ async def _race_worker_stream(
         await _put_worker_queue_msg(q, "err", idx, str(exc))
 
 
-async def _run_race_worker(
+def _race_worker_setup(
+    reg: Any,
     idx: int,
     c: Candidate,
-    q: asyncio.Queue,
-    ev: asyncio.Event,
-    reg: Any,
     msgs: List[Dict],
     model: str,
-    stream: bool,
     thinking: bool,
-    search: bool,
     tools: Optional[List[Dict]],
     fncall_lang: str,
     protocol_id: str,
     kw: Dict[str, Any],
-) -> None:
-    a = reg.adapter_for(c)
-    if not a:
-        await _put_worker_queue_msg(q, "err", idx, "无适配器: {}".format(c.platform))
-        return
+) -> tuple[Any, List[Dict], Dict[str, Any], Optional[ThinkingResponseFilter]]:
+    adapter = reg.adapter_for(c)
+    if not adapter:
+        return None, [], {}, None
     worker_msgs, _, plan = prepare_worker_messages(
         msgs,
         tools,
@@ -133,8 +128,33 @@ async def _run_race_worker(
         ThinkingResponseFilter(plan) if plan.requester_wants_thinking else None
     )
     race_kw = native_complete_kw(kw, tools, c.native_tools)
+    return adapter, worker_msgs, race_kw, thinking_filter
+
+
+async def _run_race_worker(
+    idx: int,
+    c: Candidate,
+    q: asyncio.Queue,
+    ev: asyncio.Event,
+    reg: Any,
+    msgs: List[Dict],
+    model: str,
+    stream: bool,
+    thinking: bool,
+    search: bool,
+    tools: Optional[List[Dict]],
+    fncall_lang: str,
+    protocol_id: str,
+    kw: Dict[str, Any],
+) -> None:
+    adapter, worker_msgs, race_kw, thinking_filter = _race_worker_setup(
+        reg, idx, c, msgs, model, thinking, tools, fncall_lang, protocol_id, kw
+    )
+    if adapter is None:
+        await _put_worker_queue_msg(q, "err", idx, "无适配器: {}".format(c.platform))
+        return
     await _race_worker_stream(
-        a,
+        adapter,
         c,
         worker_msgs,
         model,
