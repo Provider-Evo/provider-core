@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Literal, Optional
 
-from echotools.exec.fncall.protocols.entml_thinking import (
+from echotools.exec.fncall.protocols.entml_think.core import (
     normalize_thinking_level,
     normalize_thinking_mode,
 )
-from echotools.exec.fncall.protocols.entml_thinking_history import (
+from echotools.exec.fncall.protocols.entml_think.hist import (
     apply_thinking_history_policy,
     extract_reasoning_text,
     parse_interleaved_history,

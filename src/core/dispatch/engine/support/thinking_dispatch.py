@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
-from echotools.exec.fncall.protocols.entml_thinking import (
+from echotools.exec.fncall.protocols.entml_think.core import (
     normalize_thinking_level,
     normalize_thinking_mode,
     parse_max_thinking_length,
 )
-from echotools.fncall.protocols.entml_thinking_parse import EntmlThinkingStreamFilter
+from echotools.exec.fncall.protocols.entml_think.parse import EntmlThinkingStreamFilter
 
 from src.core.dispatch.cand import Candidate, capability_for_model
 from src.routes.shared.thinking import level_to_thinking_mode, mode_to_thinking_level
