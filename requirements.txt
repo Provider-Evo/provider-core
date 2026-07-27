@@ -1,4 +1,4 @@
-# Generated from pyproject.toml â€” core dependencies only.
+# Generated from pyproject.toml â€?core dependencies only.
 # Optional: deepseek (wasmtime), cerebras, ssh (paramiko), async-perf (uvloop)
 aiohttp>=3.9.0
 aiohttp-socks>=0.8.0
@@ -15,5 +15,5 @@ pydantic>=2.0.0
 typing-extensions>=4.7.0
 numpy>=1.21.0
 paramiko>=3.0.0
-echotools>=2.3.43
+echotools>=2.3.45
 provider-sdk>=0.3.3
