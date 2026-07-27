@@ -132,6 +132,8 @@ Args:
 
 Returns:
     Typed error instance."""
+    if status_code == 413:
+        return ContextLengthError(message, original=original)
     if status_code == 400:
         msg_lower = message.lower()
         if any(kw in msg_lower for kw in _CONTEXT_LENGTH_KEYWORDS):
