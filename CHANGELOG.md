@@ -8,6 +8,13 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.320] - 2026-07-27
+
+### 修复
+
+- 依赖 `echotools>=2.3.39`（修复 2.3.38 在 Python 3.11 下 `prompt_helpers` 导入 SyntaxError）
+- CI 先装 git tag 再 `pip install -e`，避免 PyPI 索引滞后导致安装失败
+
 ## [2.2.319] - 2026-07-27
 
 ### 变更
