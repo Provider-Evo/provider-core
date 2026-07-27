@@ -155,6 +155,7 @@ async def single_execute(
         fncall_lang=fncall_lang,
         protocol_id=protocol_id,
         thinking=thinking,
+        thinking_level=kw.get("thinking_level"),
         thinking_mode=kw.get("thinking_mode"),
         max_thinking_length=kw.get("max_thinking_length"),
         include_thinking_in_history=kw.get("include_thinking_in_history"),

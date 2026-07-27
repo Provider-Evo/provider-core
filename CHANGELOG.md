@@ -8,6 +8,13 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.319] - 2026-07-27
+
+### 变更
+
+- 思考链解析与 dispatch 透传 `thinking_level`（none/low/medium/high/xhigh/max/auto），`reasoning_effort` 等别名映射到对应挡位而非一律 `on`
+- 依赖 `echotools>=2.3.38`：entml 历史 `<tool>` 格式、IMPORTANT 提醒、thinking level 注入
+
 ## [2.2.318] - 2026-07-26
 
 ### 变更

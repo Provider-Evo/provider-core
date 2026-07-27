@@ -2,12 +2,14 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 from echotools.exec.fncall.protocols.entml_thinking import (
+    normalize_thinking_level,
     normalize_thinking_mode,
     parse_max_thinking_length,
 )
 
 from src.core.fncall.prompt.inject import inject_fncall
 from src.core.fncall.reg import get_protocol
+from src.routes.shared.thinking import mode_to_thinking_level
 
 from .thinking_dispatch import (
     ThinkingDispatchPlan,
@@ -16,9 +18,20 @@ from .thinking_dispatch import (
 )
 
 
+def _resolve_thinking_level(
+    thinking_level: Optional[str] = None,
+    thinking_mode: Optional[str] = None,
+) -> Optional[str]:
+    level = normalize_thinking_level(thinking_level)
+    if level is not None:
+        return level
+    return mode_to_thinking_level(normalize_thinking_mode(thinking_mode))
+
+
 def build_entml_protocol_options(
     *,
     thinking: bool = False,
+    thinking_level: Optional[str] = None,
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
     plan: Optional[ThinkingDispatchPlan] = None,
@@ -28,6 +41,7 @@ def build_entml_protocol_options(
     if plan is not None:
         opts = build_entml_protocol_options_from_plan(
             plan,
+            thinking_level=thinking_level,
             thinking_mode=thinking_mode,
             max_thinking_length=max_thinking_length,
         )
@@ -38,15 +52,15 @@ def build_entml_protocol_options(
         return opts or None
 
     opts: Dict[str, Any] = {}
-    mode = normalize_thinking_mode(thinking_mode)
-    if mode == "off":
+    level = _resolve_thinking_level(thinking_level, thinking_mode)
+    if level is None and thinking:
+        level = "auto"
+    if level == "none" or (level is None and not thinking):
         if include_thinking_in_history is not None:
             opts["include_thinking_in_history"] = include_thinking_in_history
         return opts or None
-    if mode is not None:
-        opts["thinking_mode"] = mode
-    elif thinking:
-        opts["thinking_mode"] = "auto"
+    if level is not None:
+        opts["thinking_level"] = level
     parsed_max = parse_max_thinking_length(max_thinking_length)
     if parsed_max is not None:
         opts["max_thinking_length"] = parsed_max
@@ -132,6 +146,7 @@ def prepare_worker_messages(
     protocol_id: str = "",
     dump_prompt: bool = False,
     thinking: bool = False,
+    thinking_level: Optional[str] = None,
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
     include_thinking_in_history: Optional[bool] = None,
@@ -140,11 +155,13 @@ def prepare_worker_messages(
     plan = resolve_thinking_dispatch(
         thinking=thinking,
         thinking_mode=thinking_mode,
+        thinking_level=thinking_level,
         candidate=cand,
         model=model,
     )
     protocol_options = build_entml_protocol_options(
         thinking=thinking,
+        thinking_level=thinking_level,
         thinking_mode=thinking_mode,
         max_thinking_length=max_thinking_length,
         plan=plan,
@@ -185,6 +202,7 @@ def dump_race_prompt(
     fncall_lang: str = "en",
     protocol_id: str = "",
     thinking: bool = False,
+    thinking_level: Optional[str] = None,
     thinking_mode: Optional[str] = None,
     max_thinking_length: Optional[int] = None,
 ) -> None:
@@ -197,11 +215,13 @@ def dump_race_prompt(
     plan = resolve_thinking_dispatch(
         thinking=thinking,
         thinking_mode=thinking_mode,
+        thinking_level=thinking_level,
         candidate=cands[0],
         model=model,
     )
     protocol_options = build_entml_protocol_options(
         thinking=thinking,
+        thinking_level=thinking_level,
         thinking_mode=thinking_mode,
         max_thinking_length=max_thinking_length,
         plan=plan,

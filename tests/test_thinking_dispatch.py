@@ -5,36 +5,38 @@ from src.routes.shared.thinking import ThinkingConfig, thinking_to_dispatch_kwar
 
 
 def test_thinking_to_dispatch_kwargs_includes_interleaved_history() -> None:
-    cfg = ThinkingConfig(mode="on", interleaved_history=True)
+    cfg = ThinkingConfig(level="medium", mode="on", interleaved_history=True)
     kw = thinking_to_dispatch_kwargs(cfg)
     assert kw["thinking"] is True
     assert kw["include_thinking_in_history"] is True
+    assert kw["thinking_level"] == "medium"
     assert kw["thinking_mode"] == "on"
 
 
 def test_thinking_to_dispatch_kwargs_interleaved_off() -> None:
-    cfg = ThinkingConfig(mode="off", interleaved_history=False)
+    cfg = ThinkingConfig(level="none", mode="off", interleaved_history=False)
     kw = thinking_to_dispatch_kwargs(cfg)
     assert kw["thinking"] is False
     assert kw["include_thinking_in_history"] is False
+    assert kw["thinking_level"] == "none"
     assert kw["thinking_mode"] == "off"
 
 
 def test_build_entml_protocol_options_passes_include_thinking_in_history() -> None:
     opts = build_entml_protocol_options(
         thinking=True,
-        thinking_mode="on",
+        thinking_level="medium",
         include_thinking_in_history=True,
     )
     assert opts is not None
-    assert opts["thinking_mode"] == "on"
+    assert opts["thinking_level"] == "medium"
     assert opts["include_thinking_in_history"] is True
 
 
 def test_build_entml_protocol_options_history_only_when_thinking_off() -> None:
     opts = build_entml_protocol_options(
         thinking=False,
-        thinking_mode="off",
+        thinking_level="none",
         include_thinking_in_history=True,
     )
     assert opts == {"include_thinking_in_history": True}
