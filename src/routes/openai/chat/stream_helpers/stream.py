@@ -53,15 +53,15 @@ async def _run_stream_dispatch(
     return None
 
 
-async def stream_chat(
-    request: aiohttp.web.Request,
-    body: Dict[str, Any],
-    *,
-    thinking_flavor: str = "openai",
-) -> aiohttp.web.StreamResponse:
-    """流式聊天补全。"""
-    cid = _cid()
-    ct = int(time.time())
+async def _await_cancelled(task: asyncio.Task) -> None:
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+def _stream_chat_setup(body: Dict[str, Any], thinking_flavor: str):
     mdl = resolve_model(body.get("model", ""), "openai")
     extra = body.get("extra_body") or body.get("extra") or {}
     from src.routes.shared.thinking import (
@@ -77,9 +77,21 @@ async def stream_chat(
         body.get("messages", []),
         include_thinking_in_history=include,
     )
-    tools_raw = body.get("tools")
-    upload_files = _extract_upload_files(messages)
-    proto_override = body.get("protocol", "")
+    return mdl, extra, messages, body.get("tools"), _extract_upload_files(messages), body.get("protocol", "")
+
+
+async def stream_chat(
+    request: aiohttp.web.Request,
+    body: Dict[str, Any],
+    *,
+    thinking_flavor: str = "openai",
+) -> aiohttp.web.StreamResponse:
+    """流式聊天补全。"""
+    cid = _cid()
+    ct = int(time.time())
+    mdl, extra, messages, tools_raw, upload_files, proto_override = _stream_chat_setup(
+        body, thinking_flavor
+    )
 
     resp = aiohttp.web.StreamResponse(status=200, headers=_SSE_HEADERS)
     await resp.prepare(request)
@@ -105,11 +117,7 @@ async def stream_chat(
     early = await _run_stream_dispatch(state, dispatch_kwargs, processor, resp)
     processor.stop()
     # SSE 心跳注释任务与主流式互斥；须 cancel 并 await，否则 run_initial_comments 在后台空转
-    comment_task.cancel()
-    try:
-        await comment_task
-    except asyncio.CancelledError:
-        pass
+    await _await_cancelled(comment_task)
     if early is not None:
         return early
 

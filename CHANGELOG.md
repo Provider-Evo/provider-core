@@ -8,6 +8,19 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.322] - 2026-08-01
+
+### 修复
+
+- 对齐 `echotools` `build_tools_prompt`：部署侧需 overlay `Provider-Fncall-Util>=1.0.1`（各协议 `render_prompt` 接受 `history_markup_warning`，否则 XmlProtocol 等会 `TypeError`）
+
+### 变更
+
+- `stream_chat` 拆分准备逻辑，满足函数长度约束
+- WebUI：`chat_send.js` SSE 解析下沉到 `chat_persist.js`；`bstrap_*` 抽出 chat tab 初始化辅助函数
+- `docs/entropy-api.openapi.yaml` 重命名为 `docs/openapi.yaml`，并补 `INDEX.md` / `guide.md`
+- `src/entropy/catalog` 补 `__init__.py`
+
 ## [2.2.321] - 2026-07-27
 
 ### 变更

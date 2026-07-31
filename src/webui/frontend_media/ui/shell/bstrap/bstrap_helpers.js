@@ -30,39 +30,40 @@ async function mergeTerminalsPersist(patch) {
 // ========================= Lazy Per-Tab Init Functions =========================
 // Called by state.js _initTab() the first time each tab is shown.
 
+function _bindChatBatchToggle(chatBatchToggleBtn) {
+  if (!chatBatchToggleBtn) return;
+  chatBatchToggleBtn.addEventListener('click', function() {
+    var section = document.getElementById('batchTestSection');
+    if (section) {
+      section.classList.toggle('hidden');
+      chatBatchToggleBtn.textContent = section.classList.contains('hidden') ? t('chat.batchTest') : t('chat.collapseBatchTest');
+    }
+  });
+}
+
+function _initChatInputBox() {
+  if (typeof InputBox === 'undefined' || !document.getElementById('chatInputBox')) return;
+  if (window._chatInputBox) return;
+  var voiceSettings = typeof loadVoiceSettings === 'function' ? loadVoiceSettings() : {};
+  window._chatInputBox = InputBox.create('#chatInputBox', {
+    placeholder: t('chat.inputPlaceholder'),
+    buttons: { file: true, voice: true, send: true },
+    voice: voiceSettings,
+    onSend: function(text, files) { sendChatMessage(text, files); },
+    onVoiceStart: function() { toast(t('chat.recording'), 'info'); },
+    onVoiceEnd: function() {},
+  });
+}
+
 function _initChatTab() {
   var chatClearBtn = document.getElementById('chatClearBtn');
   var chatRunTestsBtn = document.getElementById('chatRunTestsBtn');
-  var chatBatchToggleBtn = document.getElementById('chatBatchToggleBtn');
-
-  if (chatBatchToggleBtn) {
-    chatBatchToggleBtn.addEventListener('click', function() {
-      var section = document.getElementById('batchTestSection');
-      if (section) {
-        section.classList.toggle('hidden');
-        chatBatchToggleBtn.textContent = section.classList.contains('hidden') ? t('chat.batchTest') : t('chat.collapseBatchTest');
-      }
-    });
-  }
-
-  var initInputBox = function() {
-    if (typeof InputBox === 'undefined' || !document.getElementById('chatInputBox')) return;
-    if (window._chatInputBox) return;
-    var voiceSettings = typeof loadVoiceSettings === 'function' ? loadVoiceSettings() : {};
-    window._chatInputBox = InputBox.create('#chatInputBox', {
-      placeholder: t('chat.inputPlaceholder'),
-      buttons: { file: true, voice: true, send: true },
-      voice: voiceSettings,
-      onSend: function(text, files) { sendChatMessage(text, files); },
-      onVoiceStart: function() { toast(t('chat.recording'), 'info'); },
-      onVoiceEnd: function() {},
-    });
-  };
+  _bindChatBatchToggle(document.getElementById('chatBatchToggleBtn'));
 
   if (typeof loadWebUISettings === 'function') {
-    loadWebUISettings().then(initInputBox).catch(function() { initInputBox(); });
+    loadWebUISettings().then(_initChatInputBox).catch(function() { _initChatInputBox(); });
   } else {
-    initInputBox();
+    _initChatInputBox();
   }
 
   if (chatClearBtn) {
