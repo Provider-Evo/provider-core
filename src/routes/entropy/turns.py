@@ -80,9 +80,10 @@ async def _create_turn_compat(
         return _err(500, str(exc), "internal_error", "server_error")
 
     content = "".join(cp)
-    content, tcs = fallback_parse_tool_calls(
-        content, tcs, platform_id, proto_override, prepared.get("tools")
-    )
+    if not tcs:
+        content, tcs = fallback_parse_tool_calls(
+            content, tcs, platform_id, proto_override, prepared.get("tools")
+        )
     tcs = normalize_tool_calls(tcs, prepared.get("tools"))
     content = clean_fncall(
         content,

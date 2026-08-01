@@ -11,6 +11,9 @@ from echotools.fncall.parsers.stream import FncallStreamParser
 from src.core.dispatch.cand import Candidate
 from src.core.dispatch.engine.support.fncall_context import (
     dump_race_prompt,
+    FncallStreamEmitState,
+    feed_fncall_stream,
+    finalize_fncall_stream,
     resolve_protocol,
 )
 from src.core.dispatch.engine.support.race_chunk import apply_race_chunk_event
@@ -165,15 +168,11 @@ async def _resolve_winner(
     raise NoCandidateError("所有并发请求失败: {}".format("; ".join(err_details)))
 
 
-def _apply_winner_chunk(
-    winner: Dict[str, Any], data: Any, fp: Optional[FncallStreamParser]
-) -> bool:
+def _apply_winner_chunk(winner: Dict[str, Any], data: Any) -> bool:
     """处理 winner 队列中的单条 chunk 数据，返回是否应跳过 yield。"""
     if isinstance(data, str):
         winner["tok"] += 1
         winner["acc_len"] += len(data)
-        if fp:
-            fp.feed(data)
         return False
     if isinstance(data, dict) and "usage" in data:
         winner["usage"] = data["usage"]
@@ -182,7 +181,7 @@ def _apply_winner_chunk(
 
 
 async def _drain_winner_queue(
-    winner: Dict[str, Any], fp: Optional[FncallStreamParser]
+    winner: Dict[str, Any],
 ) -> AsyncGenerator[Union[str, Dict], None]:
     if winner["done"]:
         return
@@ -193,11 +192,23 @@ async def _drain_winner_queue(
             logger.warning("竞速队列消费超时，提前结束")
             break
         if tp == "chunk":
-            if _apply_winner_chunk(winner, data, fp):
+            if _apply_winner_chunk(winner, data):
                 continue
             yield data
         elif tp in ("done", "err", "cancel"):
             break
+
+
+def _yield_race_chunk(
+    data: Any,
+    fp: Optional[FncallStreamParser],
+    emit_state: FncallStreamEmitState,
+) -> List[Any]:
+    if isinstance(data, str):
+        if fp is None:
+            return [data]
+        return list(feed_fncall_stream(fp, data, emit_state))
+    return [data]
 
 
 async def _stream_winner(
@@ -217,24 +228,24 @@ async def _stream_winner(
         if tools and not winner_native
         else None
     )
+    emit_state = FncallStreamEmitState()
 
     yield {"_meta": {"platform": winner["cand"].platform}}
 
     for ch in winner["buf"]:
-        if isinstance(ch, str) and fp:
-            fp.feed(ch)
         if isinstance(ch, dict) and "usage" in ch:
             winner["usage"] = ch["usage"]
             continue
-        yield ch
+        for item in _yield_race_chunk(ch, fp, emit_state):
+            yield item
 
-    async for data in _drain_winner_queue(winner, fp):
-        yield data
+    async for data in _drain_winner_queue(winner):
+        for item in _yield_race_chunk(data, fp, emit_state):
+            yield item
 
-    if fp and fp.has_calls:
-        _, calls = fp.finalize()
-        if calls:
-            yield {"tool_calls": calls}
+    if fp is not None:
+        for item in finalize_fncall_stream(fp, emit_state):
+            yield item
 
     yield {"usage": _usage_for_response(prompt_len, winner["acc_len"], winner["usage"])}
 

@@ -106,10 +106,10 @@ def _race_worker_setup(
     fncall_lang: str,
     protocol_id: str,
     kw: Dict[str, Any],
-) -> tuple[Any, List[Dict], Dict[str, Any], Optional[ThinkingResponseFilter]]:
+) -> tuple[Any, List[Dict], Dict[str, Any], Optional[ThinkingResponseFilter], bool]:
     adapter = reg.adapter_for(c)
     if not adapter:
-        return None, [], {}, None
+        return None, [], {}, None, False
     worker_msgs, _, plan = prepare_worker_messages(
         msgs,
         tools,
@@ -128,7 +128,7 @@ def _race_worker_setup(
         ThinkingResponseFilter(plan) if plan.requester_wants_thinking else None
     )
     race_kw = native_complete_kw(kw, tools, c.native_tools)
-    return adapter, worker_msgs, race_kw, thinking_filter
+    return adapter, worker_msgs, race_kw, thinking_filter, plan.adapter_thinking
 
 
 async def _run_race_worker(
@@ -147,7 +147,7 @@ async def _run_race_worker(
     protocol_id: str,
     kw: Dict[str, Any],
 ) -> None:
-    adapter, worker_msgs, race_kw, thinking_filter = _race_worker_setup(
+    adapter, worker_msgs, race_kw, thinking_filter, adapter_thinking = _race_worker_setup(
         reg, idx, c, msgs, model, thinking, tools, fncall_lang, protocol_id, kw
     )
     if adapter is None:
@@ -159,7 +159,7 @@ async def _run_race_worker(
         worker_msgs,
         model,
         stream,
-        False,
+        adapter_thinking,
         search,
         race_kw,
         thinking_filter,

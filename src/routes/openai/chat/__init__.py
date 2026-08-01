@@ -111,9 +111,10 @@ async def _collect_and_build_payload(
         return None, _err(500, str(e), "internal_error", "server_error")
 
     content = "".join(cp)
-    content, tcs = fallback_parse_tool_calls(
-        content, tcs, platform_id, proto_override, body.get("tools")
-    )
+    if not tcs:
+        content, tcs = fallback_parse_tool_calls(
+            content, tcs, platform_id, proto_override, body.get("tools")
+        )
     tcs = normalize_tool_calls(tcs, body.get("tools"))
     content = _clean_fncall(
         content, platform_id=platform_id, protocol_id=proto_override

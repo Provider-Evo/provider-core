@@ -1,72 +1,13 @@
 
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from echotools.exec.fncall.protocols.entml_thinking import (
-    normalize_thinking_level,
-    normalize_thinking_mode,
-    parse_max_thinking_length,
-)
+from echotools.fncall.parsers.stream import FncallStreamParser
 
 from src.core.fncall.prompt.inject import inject_fncall
 from src.core.fncall.reg import get_protocol
-from src.routes.shared.thinking import mode_to_thinking_level
 
-from .thinking_dispatch import (
-    ThinkingDispatchPlan,
-    build_entml_protocol_options_from_plan,
-    resolve_thinking_dispatch,
-)
-
-
-def _resolve_thinking_level(
-    thinking_level: Optional[str] = None,
-    thinking_mode: Optional[str] = None,
-) -> Optional[str]:
-    level = normalize_thinking_level(thinking_level)
-    if level is not None:
-        return level
-    return mode_to_thinking_level(normalize_thinking_mode(thinking_mode))
-
-
-def build_entml_protocol_options(
-    *,
-    thinking: bool = False,
-    thinking_level: Optional[str] = None,
-    thinking_mode: Optional[str] = None,
-    max_thinking_length: Optional[int] = None,
-    plan: Optional[ThinkingDispatchPlan] = None,
-    include_thinking_in_history: Optional[bool] = None,
-) -> Optional[Dict[str, Any]]:
-    """从 dispatch 参数构建 entml protocol_options；无声明时返回 None。"""
-    if plan is not None:
-        opts = build_entml_protocol_options_from_plan(
-            plan,
-            thinking_level=thinking_level,
-            thinking_mode=thinking_mode,
-            max_thinking_length=max_thinking_length,
-        )
-        if opts is None:
-            opts = {}
-        if include_thinking_in_history is not None:
-            opts["include_thinking_in_history"] = include_thinking_in_history
-        return opts or None
-
-    opts: Dict[str, Any] = {}
-    level = _resolve_thinking_level(thinking_level, thinking_mode)
-    if level is None and thinking:
-        level = "auto"
-    if level == "none" or (level is None and not thinking):
-        if include_thinking_in_history is not None:
-            opts["include_thinking_in_history"] = include_thinking_in_history
-        return opts or None
-    if level is not None:
-        opts["thinking_level"] = level
-    parsed_max = parse_max_thinking_length(max_thinking_length)
-    if parsed_max is not None:
-        opts["max_thinking_length"] = parsed_max
-    if include_thinking_in_history is not None:
-        opts["include_thinking_in_history"] = include_thinking_in_history
-    return opts or None
+from .thinking_dispatch import ThinkingDispatchPlan, resolve_thinking_dispatch
 
 
 def fold_system_into_user(
@@ -136,6 +77,26 @@ def resolve_protocol(*, protocol_id: str, platform_id: str = "") -> Any:
     return get_protocol(platform_id=platform_id)
 
 
+def build_entml_protocol_options(
+    *,
+    thinking: bool = False,
+    thinking_level: Optional[str] = None,
+    thinking_mode: Optional[str] = None,
+    max_thinking_length: Optional[int] = None,
+    plan: Optional[ThinkingDispatchPlan] = None,
+    include_thinking_in_history: Optional[bool] = None,
+) -> Optional[Dict[str, Any]]:
+    _ = (
+        thinking,
+        thinking_level,
+        thinking_mode,
+        max_thinking_length,
+        plan,
+        include_thinking_in_history,
+    )
+    return None
+
+
 def _inject_worker_messages(
     msgs: List[Dict[str, Any]],
     tools: Optional[List[Dict[str, Any]]],
@@ -144,21 +105,9 @@ def _inject_worker_messages(
     protocol_id: str,
     fncall_lang: str,
     dump_prompt: bool,
-    protocol_options: Optional[Dict[str, Any]],
     native: bool,
 ) -> Tuple[List[Dict[str, Any]], Optional[Any]]:
     if not tools or native:
-        if protocol_options and not native:
-            protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
-            worker_msgs = inject_fncall(
-                msgs,
-                [],
-                protocol,
-                lang=fncall_lang,
-                dump_prompt=dump_prompt,
-                protocol_options=protocol_options,
-            )
-            return worker_msgs, protocol
         return msgs, None
     protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cand.platform)
     worker_msgs = inject_fncall(
@@ -167,7 +116,7 @@ def _inject_worker_messages(
         protocol,
         lang=fncall_lang,
         dump_prompt=dump_prompt,
-        protocol_options=protocol_options,
+        protocol_options=None,
     )
     return worker_msgs, protocol
 
@@ -188,20 +137,13 @@ def prepare_worker_messages(
     include_thinking_in_history: Optional[bool] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[Any], ThinkingDispatchPlan]:
     """按平台解析协议并注入工具定义；native_tools 平台直接透传 messages。"""
+    _ = (max_thinking_length, include_thinking_in_history)
     plan = resolve_thinking_dispatch(
         thinking=thinking,
         thinking_mode=thinking_mode,
         thinking_level=thinking_level,
         candidate=cand,
         model=model,
-    )
-    protocol_options = build_entml_protocol_options(
-        thinking=thinking,
-        thinking_level=thinking_level,
-        thinking_mode=thinking_mode,
-        max_thinking_length=max_thinking_length,
-        plan=plan,
-        include_thinking_in_history=include_thinking_in_history,
     )
     worker_msgs, protocol = _inject_worker_messages(
         msgs,
@@ -210,7 +152,6 @@ def prepare_worker_messages(
         protocol_id=protocol_id,
         fncall_lang=fncall_lang,
         dump_prompt=dump_prompt,
-        protocol_options=protocol_options,
         native=cand.native_tools,
     )
     return worker_msgs, protocol, plan
@@ -230,32 +171,19 @@ def dump_race_prompt(
     max_thinking_length: Optional[int] = None,
 ) -> None:
     """竞速 worker 启动前统一转储一次 prompt，避免 N 个 worker 各写一份。"""
+    _ = (model, thinking, thinking_level, thinking_mode, max_thinking_length)
     if not tools or not cands:
         return
     if any(c.native_tools for c in cands):
         return
     protocol = resolve_protocol(protocol_id=protocol_id, platform_id=cands[0].platform)
-    plan = resolve_thinking_dispatch(
-        thinking=thinking,
-        thinking_mode=thinking_mode,
-        thinking_level=thinking_level,
-        candidate=cands[0],
-        model=model,
-    )
-    protocol_options = build_entml_protocol_options(
-        thinking=thinking,
-        thinking_level=thinking_level,
-        thinking_mode=thinking_mode,
-        max_thinking_length=max_thinking_length,
-        plan=plan,
-    )
     inject_fncall(
         msgs,
         tools,
         protocol,
         lang=fncall_lang,
         dump_prompt=True,
-        protocol_options=protocol_options,
+        protocol_options=None,
     )
 
 
@@ -272,3 +200,57 @@ def native_complete_kw(
     if tool_choice is not None:
         complete_kw["tool_choice"] = tool_choice
     return complete_kw
+
+
+@dataclass
+class FncallStreamEmitState:
+    last_partial_len: int = 0
+
+
+def feed_fncall_stream(
+    fp: FncallStreamParser,
+    text: str,
+    state: FncallStreamEmitState,
+) -> List[Union[str, Dict[str, Any]]]:
+    if not text:
+        return []
+    fp.feed(text)
+    return _collect_fncall_parser_output(fp, state)
+
+
+def finalize_fncall_stream(
+    fp: FncallStreamParser,
+    state: FncallStreamEmitState,
+) -> List[Union[str, Dict[str, Any]]]:
+    out: List[Union[str, Dict[str, Any]]] = []
+    partial = fp.partial_text
+    if len(partial) > state.last_partial_len:
+        out.append(partial[state.last_partial_len :])
+        state.last_partial_len = len(partial)
+    ready = fp.get_ready_tool_calls()
+    if ready:
+        out.append({"tool_calls": ready})
+        return out
+    if fp.has_calls:
+        _, calls = fp.finalize()
+        ready = fp.get_ready_tool_calls()
+        if ready:
+            out.append({"tool_calls": ready})
+        elif calls:
+            out.append({"tool_calls": calls})
+    return out
+
+
+def _collect_fncall_parser_output(
+    fp: FncallStreamParser,
+    state: FncallStreamEmitState,
+) -> List[Union[str, Dict[str, Any]]]:
+    out: List[Union[str, Dict[str, Any]]] = []
+    partial = fp.partial_text
+    if len(partial) > state.last_partial_len:
+        out.append(partial[state.last_partial_len :])
+        state.last_partial_len = len(partial)
+    ready = fp.get_ready_tool_calls()
+    if ready:
+        out.append({"tool_calls": ready})
+    return out

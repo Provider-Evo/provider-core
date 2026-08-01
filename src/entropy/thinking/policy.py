@@ -1,4 +1,4 @@
-"""Always-entml 思考链策略（内核唯一出口）。"""
+"""思考链 dispatch 策略（内核出口）。"""
 
 from __future__ import annotations
 

@@ -22,21 +22,10 @@ def test_thinking_to_dispatch_kwargs_interleaved_off() -> None:
     assert kw["thinking_mode"] == "off"
 
 
-def test_build_entml_protocol_options_passes_include_thinking_in_history() -> None:
+def test_build_entml_protocol_options_never_injects_thinking() -> None:
     opts = build_entml_protocol_options(
         thinking=True,
         thinking_level="medium",
         include_thinking_in_history=True,
     )
-    assert opts is not None
-    assert opts["thinking_level"] == "medium"
-    assert opts["include_thinking_in_history"] is True
-
-
-def test_build_entml_protocol_options_history_only_when_thinking_off() -> None:
-    opts = build_entml_protocol_options(
-        thinking=False,
-        thinking_level="none",
-        include_thinking_in_history=True,
-    )
-    assert opts == {"include_thinking_in_history": True}
+    assert opts is None

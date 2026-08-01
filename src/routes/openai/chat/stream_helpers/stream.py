@@ -85,7 +85,6 @@ async def stream_chat(
     await resp.prepare(request)
 
     state = await build_stream_state(request, resp, cid, ct, mdl, tools_raw)
-    state.proto_override = proto_override
 
     dispatch_kwargs = _build_dispatch_kwargs(
         request,

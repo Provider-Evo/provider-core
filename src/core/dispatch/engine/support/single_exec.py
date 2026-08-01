@@ -9,6 +9,9 @@ from echotools.fncall.parsers.stream import FncallStreamParser
 
 from src.core.dispatch.cand import Candidate
 from src.core.dispatch.engine.support.fncall_context import (
+    FncallStreamEmitState,
+    feed_fncall_stream,
+    finalize_fncall_stream,
     native_complete_kw,
     prepare_worker_messages,
 )
@@ -23,7 +26,7 @@ logger = get_logger(__name__)
 class SingleExecState:
     """单候选项执行过程中的可变统计状态。"""
 
-    __slots__ = ("start", "ft", "tc", "ok", "p_usage", "acc_len")
+    __slots__ = ("start", "ft", "tc", "ok", "p_usage", "acc_len", "fncall_emit")
 
     def __init__(self) -> None:
         self.start = time.monotonic()
@@ -32,14 +35,27 @@ class SingleExecState:
         self.ok = False
         self.p_usage: Optional[Dict] = None
         self.acc_len = 0
+        self.fncall_emit = FncallStreamEmitState()
 
 
-def _note_text_chunk(state: SingleExecState, text: str, fp: Optional[FncallStreamParser]) -> None:
+def _note_text_chunk(state: SingleExecState, text: str) -> None:
     state.acc_len += len(text)
     if state.ft is None:
         state.ft = time.monotonic()
-    if fp:
-        fp.feed(text)
+
+
+async def _yield_fncall_items(
+    fp: FncallStreamParser,
+    text: str,
+    state: SingleExecState,
+) -> AsyncGenerator[Union[str, Dict], None]:
+    for item in feed_fncall_stream(fp, text, state.fncall_emit):
+        if isinstance(item, str):
+            state.tc += 1
+            _note_text_chunk(state, item)
+            yield item
+        else:
+            yield item
 
 
 async def _yield_str_chunk(
@@ -48,17 +64,26 @@ async def _yield_str_chunk(
     thinking_filter: Optional[ThinkingResponseFilter],
     state: SingleExecState,
 ) -> AsyncGenerator[Union[str, Dict], None]:
-    state.tc += 1
     if thinking_filter is None:
-        _note_text_chunk(state, chunk, fp)
-        yield chunk
+        if fp is None:
+            state.tc += 1
+            _note_text_chunk(state, chunk)
+            yield chunk
+            return
+        async for item in _yield_fncall_items(fp, chunk, state):
+            yield item
         return
     for item in thinking_filter.feed(chunk):
         if not isinstance(item, str):
             yield item
             continue
-        _note_text_chunk(state, item, fp)
-        yield item
+        if fp is None:
+            state.tc += 1
+            _note_text_chunk(state, item)
+            yield item
+            continue
+        async for parsed in _yield_fncall_items(fp, item, state):
+            yield parsed
 
 
 async def _yield_dict_chunk(
@@ -116,7 +141,7 @@ def _build_single_exec_plan(
     protocol_id: str,
     thinking: bool,
     kw: Dict[str, Any],
-) -> tuple[Any, List[Dict], Optional[Any], Optional[FncallStreamParser], Optional[ThinkingResponseFilter]]:
+) -> tuple[Any, List[Dict], Optional[Any], Optional[FncallStreamParser], Optional[ThinkingResponseFilter], bool]:
     adapter = reg.adapter_for(cand)
     if not adapter:
         raise ProviderError("无适配器: {}".format(cand.platform))
@@ -142,7 +167,7 @@ def _build_single_exec_plan(
     thinking_filter = (
         ThinkingResponseFilter(plan) if plan.requester_wants_thinking else None
     )
-    return adapter, worker_msgs, fp, thinking_filter, plan
+    return adapter, worker_msgs, fp, thinking_filter, plan, plan.adapter_thinking
 
 
 async def _record_single_result(
@@ -177,14 +202,18 @@ async def _yield_single_tail(
 
     if thinking_filter is not None:
         for item in thinking_filter.finalize():
-            if isinstance(item, str) and fp:
-                fp.feed(item)
-            yield item
+            if isinstance(item, str) and fp is not None:
+                async for parsed in _yield_fncall_items(fp, item, state):
+                    yield parsed
+            else:
+                yield item
 
-    if fp and fp.has_calls:
-        _, calls = fp.finalize()
-        if calls:
-            yield {"tool_calls": calls}
+    if fp is not None:
+        for item in finalize_fncall_stream(fp, state.fncall_emit):
+            if isinstance(item, str):
+                state.tc += 1
+                _note_text_chunk(state, item)
+            yield item
     yield {"usage": _usage_for_response(prompt_len, state.acc_len, state.p_usage)}
     state.ok = True
 
@@ -204,7 +233,7 @@ async def single_execute(
     **kw: Any,
 ) -> AsyncGenerator[Union[str, Dict], None]:
     """单候选项执行。"""
-    adapter, worker_msgs, fp, thinking_filter, plan = _build_single_exec_plan(
+    adapter, worker_msgs, fp, thinking_filter, plan, adapter_thinking = _build_single_exec_plan(
         reg, cand, msgs, tools, model, fncall_lang, protocol_id, thinking, kw
     )
     _ = plan
@@ -218,7 +247,7 @@ async def single_execute(
             worker_msgs,
             model,
             stream,
-            False,
+            adapter_thinking,
             search,
             complete_kw,
             fp,
