@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from echotools.fncall.prompt.inject import inject_fncall as _echotools_inject
+from echotools.exec.fncall.prompt.inject import inject_fncall as _echotools_inject
 from echotools.exec.protocol.base import ToolProtocol
 
 __all__ = ["inject_fncall"]

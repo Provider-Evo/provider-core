@@ -6,7 +6,7 @@ import asyncio
 from typing import Any, Dict, Optional, Set, Tuple
 
 import aiohttp.web
-from echotools.terminal import TerminalCallback
+from echotools.exec.terminal import TerminalCallback
 
 from src.core.server.terminal.sess import TerminalSessionStore
 from src.foundation.logger import get_logger

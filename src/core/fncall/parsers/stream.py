@@ -1,2 +1,3 @@
+from echotools.exec.fncall.parsers.stream import FncallStreamParser
 
-from echotools.fncall.parsers.stream import *  # noqa: F401,F403
+__all__ = ["FncallStreamParser"]

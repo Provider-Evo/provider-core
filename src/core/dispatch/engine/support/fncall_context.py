@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from echotools.fncall.parsers.stream import FncallStreamParser
+from echotools.exec.fncall.parsers.stream import FncallStreamParser
 
 from src.core.fncall.prompt.inject import inject_fncall
 from src.core.fncall.reg import get_protocol

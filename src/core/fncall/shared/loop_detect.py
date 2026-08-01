@@ -1,2 +1,2 @@
 
-from echotools.fncall.shared.loop_detect import *  # noqa: F401,F403
+from echotools.exec.fncall.shared.loop_detect import *  # noqa: F401,F403

@@ -6,7 +6,7 @@ import asyncio
 from typing import Any, Dict
 
 import aiohttp.web
-from echotools.terminal import TerminalCallback
+from echotools.exec.terminal import TerminalCallback
 
 from src.webui.routers.session.terminal.term_proto import (
     PROTOCOL_VERSION,

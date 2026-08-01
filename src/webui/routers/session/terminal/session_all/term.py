@@ -4,7 +4,7 @@ import uuid
 from typing import Optional
 
 import aiohttp.web
-from echotools.terminal import LocalTerminal, SSHTerminal
+from echotools.exec.terminal import LocalTerminal, SSHTerminal
 
 from src.core.server.terminal.common_cmds import get_commands_store
 from src.core.server.terminal.sess import get_terminal_store

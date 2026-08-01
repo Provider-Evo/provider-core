@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from echotools.fncall.parsers.stream import FncallStreamParser
+from echotools.exec.fncall.parsers.stream import FncallStreamParser
 
 from src.core.dispatch.cand import Candidate
 from src.core.dispatch.engine.support.fncall_context import (

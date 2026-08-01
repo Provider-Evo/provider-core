@@ -13,9 +13,9 @@ Re-exports from submodules for backward compatibility:
 from typing import Any
 
 from aiohttp.web_app import AppKey
-from echotools.lifecycle.updater import AutoUpdater, get_updater, set_updater
-from echotools.process.port import *  # noqa: F401, F403
-from echotools.web.utils import json_response
+from echotools.exec.lifecycle.updater import AutoUpdater, get_updater, set_updater
+from echotools.exec.process.port import *  # noqa: F401, F403
+from echotools.media.web.utils import json_response
 
 from src.core.server.http.http_utils import clean_fncall, get_json, safe_flush
 from src.core.server.lifecycle.app.app import REGISTRY_KEY, SESSION_KEY, create_app

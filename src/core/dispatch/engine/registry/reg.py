@@ -6,7 +6,7 @@ import asyncio
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from echotools.plugin.registry import PluginRegistry
+from echotools.plat.plugin.registry import PluginRegistry
 
 from src.core.dispatch.cand import Candidate
 from src.core.dispatch.engine.registry.reg_life import RegistryLifecycleMixin

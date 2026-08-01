@@ -6,8 +6,8 @@ import ast
 import json
 from typing import Any, Dict, List, Optional
 
-from echotools.fncall.shared.coercion import _build_param_schema_index
-from echotools.fncall.shared.normalization import (  # noqa: F401
+from echotools.exec.fncall.shared.coercion import _build_param_schema_index
+from echotools.exec.fncall.shared.normalization import (  # noqa: F401
     format_tool_descs,
     normalize_content,
 )

@@ -9,8 +9,8 @@ import time
 from pathlib import Path
 from typing import Dict
 
-from echotools.dispatch.selector import AdaptiveSelector as _BaseSelector
-from echotools.dispatch.selector import TASRecord
+from echotools.exec.dispatch.selector import AdaptiveSelector as _BaseSelector
+from echotools.exec.dispatch.selector import TASRecord
 
 from src.core.dispatch.engine.selector.selector_migration import migrate_json_if_needed
 from src.foundation.logger import get_logger

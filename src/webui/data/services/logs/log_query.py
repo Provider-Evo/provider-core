@@ -9,7 +9,7 @@ import json
 from typing import Any
 
 import aiosqlite
-from echotools.web.broker import request_broker
+from echotools.media.web.broker import request_broker
 
 from src.webui.data.services.logs.log_store import (
     _DB_PATH,

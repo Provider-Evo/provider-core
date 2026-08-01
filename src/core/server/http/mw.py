@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import aiohttp.web
-from echotools.web.utils import cors_middleware, error_middleware, json_response
+from echotools.media.web.utils import cors_middleware, error_middleware, json_response
 
 from src.core.server.http.request_context import clear_api_token, set_api_token
 from src.core.server.plugins.hook_reg import get_hook_registry

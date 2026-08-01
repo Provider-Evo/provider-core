@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, FrozenSet, Sequence, Tuple
 
-from echotools.logger.manager import get_logger
+from echotools.base.logger.manager import get_logger
 
 __all__ = [
     "apply_hot_config_side_effects",

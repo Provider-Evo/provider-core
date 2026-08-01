@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import time
 
-from echotools.terminal import TerminalCallback
+from echotools.exec.terminal import TerminalCallback
 
 from src.core.server.terminal.sess import TerminalSessionStore
 from src.foundation.config import get_config
@@ -19,7 +19,7 @@ from src.webui.routers.session.terminal.session_all.base import TerminalSession
 from src.webui.routers.session.terminal.session_all.reg import sessions_registry
 
 try:
-    from echotools.terminal.tmux import tmux_available
+    from echotools.exec.terminal.tmux import tmux_available
 except ImportError:
     import shutil
 

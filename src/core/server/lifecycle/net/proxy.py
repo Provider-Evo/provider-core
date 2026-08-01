@@ -2,7 +2,7 @@
 import warnings
 from typing import Dict
 
-from echotools.proxy.manager import ProxyManager
+from echotools.plat.proxy.manager import ProxyManager
 
 from src.foundation.config import get_config
 

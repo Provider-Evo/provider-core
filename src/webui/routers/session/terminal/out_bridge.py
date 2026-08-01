@@ -9,11 +9,11 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from echotools.terminal import LocalTerminal, SSHTerminal
-from echotools.terminal.session import MAX_OFFLINE_BUFFER_BYTES, TerminalSession
+from echotools.exec.terminal import LocalTerminal, SSHTerminal
+from echotools.exec.terminal.session import MAX_OFFLINE_BUFFER_BYTES, TerminalSession
 
 try:
-    from echotools.terminal.tmux import TmuxTerminal
+    from echotools.exec.terminal.tmux import TmuxTerminal
 except ImportError:
     TmuxTerminal = LocalTerminal  # type: ignore[misc, assignment]
 
@@ -29,7 +29,7 @@ class _LiveOutputSessionMixin:
 
     seq 序列号、seq 环形缓冲回放（``replay_from``）与背压控制
     （``pause_output``/``resume_output``）均直接继承自
-    ``echotools.terminal.session.TerminalSession``，不在此重复实现——
+    ``echotools.exec.terminal.session.TerminalSession``，不在此重复实现——
     该基类已提供带环形缓冲区的精确回放与基于 ``asyncio.Event`` 的
     真实背压（PTY 读循环会 await 该事件）。这里只负责输出批量投递。
     """

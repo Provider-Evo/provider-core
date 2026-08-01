@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict
 
-from echotools.dispatch.selector import TASRecord
+from echotools.exec.dispatch.selector import TASRecord
 
 from src.foundation.logger import get_logger
 

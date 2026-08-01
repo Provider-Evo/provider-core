@@ -7,8 +7,8 @@ import inspect
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Sequence, cast
 
-from echotools.config.center import ConfigCenter
-from echotools.logger.manager import get_logger, set_color
+from echotools.base.config.center import ConfigCenter
+from echotools.base.logger.manager import get_logger, set_color
 
 from src.foundation.config.secs import AppConfig
 

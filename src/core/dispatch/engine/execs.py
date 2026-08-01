@@ -3,8 +3,8 @@ from __future__ import annotations
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from echotools.dispatch.usage import fallback_usage as _fallback_usage
-from echotools.dispatch.usage import normalize_usage as _normalize_usage
+from echotools.exec.dispatch.usage import fallback_usage as _fallback_usage
+from echotools.exec.dispatch.usage import normalize_usage as _normalize_usage
 
 from src.core.dispatch.cand import Candidate
 from src.core.dispatch.engine.race_worker import race_execute

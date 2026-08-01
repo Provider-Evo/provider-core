@@ -50,7 +50,7 @@ async def reload_config() -> AppConfig:
 
 async def write_config(data: Dict) -> bool:
     try:
-        from echotools.config.loader import write_toml
+        from echotools.base.config.loader import write_toml
 
         from src.foundation.config.files import ensure_main_config_file
 
@@ -64,7 +64,7 @@ async def write_config(data: Dict) -> bool:
             await mgr.reload()
         return True
     except Exception as exc:
-        from echotools.logger.manager import get_logger
+        from echotools.base.logger.manager import get_logger
 
         get_logger(__name__).error("配置写入失败: %s", exc, exc_info=True)
         return False
@@ -73,5 +73,5 @@ async def write_config(data: Dict) -> bool:
 async def start_config_watcher(interval: float = 2.0) -> None:
     """已弃用：配置监视由 ``HotReloadService`` 统一负责。"""
     _ = interval
-    logger = __import__("echotools.logger.manager", fromlist=["get_logger"]).get_logger(__name__)
+    logger = __import__("echotools.base.logger.manager", fromlist=["get_logger"]).get_logger(__name__)
     logger.warning("start_config_watcher 已弃用，请使用 HotReloadService")

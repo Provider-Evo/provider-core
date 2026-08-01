@@ -1,7 +1,7 @@
 
 from typing import List, Optional
 
-from echotools.cache.list_cache import ListCache
+from echotools.base.cache.list_cache import ListCache
 
 from src.foundation.logger import get_logger
 from src.foundation.paths import persist_dir as _persist_dir

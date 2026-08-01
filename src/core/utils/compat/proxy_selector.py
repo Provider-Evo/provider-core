@@ -1,5 +1,5 @@
 
-from echotools.dispatch.proxy_selector import (  # noqa: F401
+from echotools.exec.dispatch.proxy_selector import (  # noqa: F401
     ProxyRecord,
     ProxySelector,
 )

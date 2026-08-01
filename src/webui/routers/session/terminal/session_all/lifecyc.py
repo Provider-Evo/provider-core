@@ -6,7 +6,7 @@ import asyncio
 import sys
 from typing import Any, Dict, List, Optional
 
-from echotools.terminal import TerminalCallback
+from echotools.exec.terminal import TerminalCallback
 
 from src.core.server.terminal.session_audit import get_audit_store
 from src.foundation.config import get_config
@@ -18,7 +18,7 @@ from src.webui.routers.session.terminal.out_bridge import (
 from src.webui.routers.session.terminal.term_proto import wrap_atomic_replay
 
 try:
-    from echotools.terminal.tmux import tmux_available
+    from echotools.exec.terminal.tmux import tmux_available
 except ImportError:
     import shutil
 

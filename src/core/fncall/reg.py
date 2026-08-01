@@ -3,22 +3,49 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-from echotools.fncall.registry import (
-    _ensure_registered,
-    _get_custom_protocol,
-    _mapping_logged,
-)
-from echotools.protocol.base import (
-    _PROTOCOL_REGISTRY,
+from echotools.exec.fncall.registry import _ensure_registered, _mapping_logged
+from echotools.exec.protocol.base import (
     ToolProtocol,
     get_protocol_by_id,
 )
 
 from src.foundation.logger import get_logger
 
-__all__ = ["get_protocol", "list_protocols"]
+__all__ = [
+    "get_protocol",
+    "list_protocols",
+    "set_custom_protocol_factory",
+    "clear_custom_protocol_factory",
+]
 
 logger = get_logger(__name__)
+
+_custom_factory = None
+_custom_instance: Optional[ToolProtocol] = None
+
+
+def set_custom_protocol_factory(factory) -> None:
+    global _custom_factory, _custom_instance
+    _custom_factory = factory
+    _custom_instance = None
+
+
+def clear_custom_protocol_factory() -> None:
+    global _custom_factory, _custom_instance
+    _custom_factory = None
+    _custom_instance = None
+
+
+def _get_custom_protocol(
+    prompt_en: str = "", prompt_zh: str = ""
+) -> ToolProtocol:
+    global _custom_instance
+    if _custom_instance is not None:
+        return _custom_instance
+    if _custom_factory is not None:
+        _custom_instance = _custom_factory(prompt_en, prompt_zh)
+        return _custom_instance
+    raise ValueError("custom 协议未注册；请启用 Provider-Fncall-Util 插件")
 
 
 def get_protocol(
@@ -31,7 +58,6 @@ def get_protocol(
     mapping: Optional[Dict[str, str]] = None,
 ) -> ToolProtocol:
     """获取协议（自动从项目配置读取默认协议和平台映射）。"""
-    # 从项目配置自动补充缺省值
     try:
         from src.foundation.config import get_config
 
@@ -48,7 +74,6 @@ def get_protocol(
         if not default_protocol:
             default_protocol = "entml"
 
-    # 优先级：protocol_id（API 请求显式指定）> fncall_mapping（管理员配置）> default_protocol（全局默认）
     if not protocol_id:
         if platform_id and mapping:
             mapped = mapping.get(platform_id)
@@ -69,4 +94,6 @@ def get_protocol(
 def list_protocols() -> list:
     """全部协议 ID。"""
     _ensure_registered()
+    from echotools.exec.protocol.base import _PROTOCOL_REGISTRY
+
     return sorted(_PROTOCOL_REGISTRY.keys())
