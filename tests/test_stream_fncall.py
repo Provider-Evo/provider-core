@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from echotools.fncall.parsers.stream import FncallStreamParser
-from echotools.fncall.registry import get_protocol
+from echotools.exec.fncall.parsers.stream import FncallStreamParser
+from echotools.exec.fncall.registry import get_protocol
 
 from src.core.dispatch.engine.support.fncall_context import (
     FncallStreamEmitState,
