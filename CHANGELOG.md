@@ -8,6 +8,20 @@
 
 更完整的里程碑与发版说明见官方文档：[发版历史](https://provider-evo.github.io/docs/release/)。
 
+## [2.2.323] - 2026-08-02
+
+### 变更
+
+- 对齐 echotools 2.4.0：import 路径迁移，本地 vendored custom 协议与 xml_parser
+- achecker 全量合规：拆分 `thinking.py`、`chat_send`、stream_chat、bstrap；重命名 `entropy_api.yaml`
+- 恢复 Coplan API 前缀 auth 豁免；同步 OpenAI/Anthropic 路由前缀测试期望
+
+### 验证
+
+- 编排仓 `pytest tests/provider-core/`：233 passed，4 skipped
+- 编排仓 `python achecker.py`：0 violations
+- 本仓 `pytest tests/`：19 passed
+
 ## [2.2.321] - 2026-07-27
 
 ### 变更

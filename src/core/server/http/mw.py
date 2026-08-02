@@ -21,7 +21,9 @@ _cors = cors_middleware(
 )
 
 
-_API_AUTH_EXEMPT_PREFIXES: tuple[str, ...] = ()
+_API_AUTH_EXEMPT_PREFIXES: tuple[str, ...] = (
+    "/v1/coplan/",
+)
 
 # Paths reachable without credentials (login UI + static assets only)
 _AUTH_PUBLIC_PATHS: frozenset[str] = frozenset(
@@ -29,6 +31,7 @@ _AUTH_PUBLIC_PATHS: frozenset[str] = frozenset(
         "/login",
         "/logout",
         "/v1/webui/auth/verify",
+        "/api/auth/login",
     }
 )
 
@@ -163,6 +166,8 @@ async def _handle_protected_route_auth(
 ) -> aiohttp.web.StreamResponse:
     """Handle auth for non-webui routes (API key / virtual key / webui token / cookie)."""
     if await _validate_credentials(request, cfg):
+        return await handler(request)
+    if _is_provider_api_auth_exempt(path):
         return await handler(request)
     return await _deny_unauthenticated(request, path)
 

@@ -29,58 +29,7 @@ async function mergeTerminalsPersist(patch) {
 
 // ========================= Lazy Per-Tab Init Functions =========================
 // Called by state.js _initTab() the first time each tab is shown.
-
-function _initChatTab() {
-  var chatClearBtn = document.getElementById('chatClearBtn');
-  var chatRunTestsBtn = document.getElementById('chatRunTestsBtn');
-  var chatBatchToggleBtn = document.getElementById('chatBatchToggleBtn');
-
-  if (chatBatchToggleBtn) {
-    chatBatchToggleBtn.addEventListener('click', function() {
-      var section = document.getElementById('batchTestSection');
-      if (section) {
-        section.classList.toggle('hidden');
-        chatBatchToggleBtn.textContent = section.classList.contains('hidden') ? t('chat.batchTest') : t('chat.collapseBatchTest');
-      }
-    });
-  }
-
-  var initInputBox = function() {
-    if (typeof InputBox === 'undefined' || !document.getElementById('chatInputBox')) return;
-    if (window._chatInputBox) return;
-    var voiceSettings = typeof loadVoiceSettings === 'function' ? loadVoiceSettings() : {};
-    window._chatInputBox = InputBox.create('#chatInputBox', {
-      placeholder: t('chat.inputPlaceholder'),
-      buttons: { file: true, voice: true, send: true },
-      voice: voiceSettings,
-      onSend: function(text, files) { sendChatMessage(text, files); },
-      onVoiceStart: function() { toast(t('chat.recording'), 'info'); },
-      onVoiceEnd: function() {},
-    });
-  };
-
-  if (typeof loadWebUISettings === 'function') {
-    loadWebUISettings().then(initInputBox).catch(function() { initInputBox(); });
-  } else {
-    initInputBox();
-  }
-
-  if (chatClearBtn) {
-    chatClearBtn.addEventListener('click', function() {
-      clearChatMessages();
-      toast(t('chat.cleared'), 'ok');
-    });
-  }
-  if (chatRunTestsBtn && typeof runChatTests === 'function') {
-    chatRunTestsBtn.addEventListener('click', runChatTests);
-  }
-  (async function() {
-    if (typeof loadChatState === 'function') await loadChatState();
-    if (typeof loadModelsList === 'function') await loadModelsList();
-  })();
-  if (typeof ChatAttachments !== 'undefined' && ChatAttachments.install) ChatAttachments.install();
-  if (typeof _loadTools === 'function') _loadTools();
-}
+// _initChatTab — see bstrap_chattab.js
 
 function _initStatsTab() {
   if (typeof StatsFeature !== 'undefined') StatsFeature.init();
