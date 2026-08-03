@@ -1,12 +1,4 @@
-"""mirrors 模块 — WebUI 层。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 mirrors 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
-
+"""插件下载镜像源管理与 URL 解析。"""
 
 from __future__ import annotations
 
@@ -54,7 +46,9 @@ def _load_mirrors() -> List[Dict[str, Any]]:
 
 def _save_mirrors(mirrors: List[Dict[str, Any]]) -> None:
     _MIRRORS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _MIRRORS_FILE.write_text(json.dumps(mirrors, indent=2, ensure_ascii=False), encoding="utf-8")
+    _MIRRORS_FILE.write_text(
+        json.dumps(mirrors, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 def get_plugin_mirrors() -> List[Dict[str, Any]]:
@@ -85,11 +79,15 @@ async def plugins_mirror_create(request: aiohttp.web.Request) -> aiohttp.web.Res
     try:
         body = await request.json()
     except Exception:
-        return aiohttp.web.json_response({"success": False, "error": "invalid json"}, status=400)
+        return aiohttp.web.json_response(
+            {"success": False, "error": "invalid json"}, status=400
+        )
     name = str(body.get("name") or "").strip()
     base_url = str(body.get("base_url") or "").strip().rstrip("/")
     if not name or not base_url:
-        return aiohttp.web.json_response({"success": False, "error": "name and base_url required"}, status=400)
+        return aiohttp.web.json_response(
+            {"success": False, "error": "name and base_url required"}, status=400
+        )
     mirrors = _load_mirrors()
     entry = {
         "id": str(body.get("id") or uuid.uuid4().hex[:12]),
@@ -108,7 +106,9 @@ async def plugins_mirror_update(request: aiohttp.web.Request) -> aiohttp.web.Res
     try:
         body = await request.json()
     except Exception:
-        return aiohttp.web.json_response({"success": False, "error": "invalid json"}, status=400)
+        return aiohttp.web.json_response(
+            {"success": False, "error": "invalid json"}, status=400
+        )
     mirrors = _load_mirrors()
     for mirror in mirrors:
         if mirror.get("id") == mirror_id:
@@ -122,13 +122,17 @@ async def plugins_mirror_update(request: aiohttp.web.Request) -> aiohttp.web.Res
                 mirror["enabled"] = bool(body["enabled"])
             _save_mirrors(mirrors)
             return aiohttp.web.json_response({"success": True, "mirror": mirror})
-    return aiohttp.web.json_response({"success": False, "error": "not found"}, status=404)
+    return aiohttp.web.json_response(
+        {"success": False, "error": "not found"}, status=404
+    )
 
 
 async def plugins_mirror_delete(request: aiohttp.web.Request) -> aiohttp.web.Response:
     mirror_id = request.match_info.get("mirror_id", "")
     mirrors = [m for m in _load_mirrors() if m.get("id") != mirror_id]
     if len(mirrors) == len(_load_mirrors()):
-        return aiohttp.web.json_response({"success": False, "error": "not found"}, status=404)
+        return aiohttp.web.json_response(
+            {"success": False, "error": "not found"}, status=404
+        )
     _save_mirrors(mirrors)
     return aiohttp.web.json_response({"success": True})

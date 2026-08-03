@@ -1,12 +1,4 @@
-"""runtime_routes 模块 — WebUI 层。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 runtime_routes 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
-
+"""WebUI 插件运行时组件/hook 查询路由。"""
 
 from __future__ import annotations
 
@@ -28,7 +20,9 @@ def _runtime() -> Any:
     return get_plugin_runtime()
 
 
-async def plugins_runtime_components(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def plugins_runtime_components(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     plugin_id = request.match_info.get("plugin_id", "")
     runtime = _runtime()
     components: List[Dict[str, Any]] = runtime.get_components()
@@ -37,7 +31,9 @@ async def plugins_runtime_components(request: aiohttp.web.Request) -> aiohttp.we
     return aiohttp.web.json_response({"success": True, "components": components})
 
 
-async def plugins_runtime_home_cards(_request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def plugins_runtime_home_cards(
+    _request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     runtime = _runtime()
     cards = runtime.get_components("home_card")
     return aiohttp.web.json_response({"success": True, "cards": cards})
@@ -58,7 +54,9 @@ async def plugins_runtime_hooks(_request: aiohttp.web.Request) -> aiohttp.web.Re
     )
 
 
-async def plugins_runtime_hook_specs(_request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def plugins_runtime_hook_specs(
+    _request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     from src.core.server.plugins.hook_reg import HOOK_SPECS
 
     return aiohttp.web.json_response({"success": True, "specs": HOOK_SPECS})

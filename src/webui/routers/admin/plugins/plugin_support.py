@@ -1,12 +1,4 @@
-"""plugin_support 模块 — WebUI 层。
-
-职责：
-    作为 Provider-Evo 项目标准模块，提供 plugin_support 能力。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-修改指引参见文件末尾的"本模块对外契约"章节（共 20 条）。
-"""
-
+"""WebUI 插件目录遍历与 manifest 读取。"""
 
 from __future__ import annotations
 
@@ -54,7 +46,9 @@ def iter_plugin_dirs() -> List[Path]:
     for child in sorted(root.iterdir()):
         if not child.is_dir() or child.name.startswith("."):
             continue
-        if (child / "_manifest.json").is_file() or (child / "_manifest.json.disabled").is_file():
+        if (child / "_manifest.json").is_file() or (
+            child / "_manifest.json.disabled"
+        ).is_file():
             out.append(child)
     return out
 

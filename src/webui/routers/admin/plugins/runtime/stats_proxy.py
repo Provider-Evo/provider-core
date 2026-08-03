@@ -1,15 +1,4 @@
-"""stats_proxy 模块 — WebUI 层。
-
-职责：
-    插件点赞代理。点赞状态与计数直接来自 GitHub：每个插件在
-    plugin-repo 对应一个 tracker Issue（见 plugin_details.json 的
-    likeIssueNumber 字段），点赞 = 用本机已认证的 gh CLI 身份给该
-    Issue 加 +1 reaction；取消点赞 = 删除该 reaction。不落任何本地
-    likes/downloads 假数据文件。
-
-本文件为 Provider-Evo 项目标准模块；保持单文件 200-400 行。
-"""
-
+"""插件点赞代理：通过 gh CLI 操作 GitHub Issue reaction，不落本地假数据。"""
 
 from __future__ import annotations
 
@@ -88,49 +77,84 @@ def _load_reaction_state(issue_number: int) -> Dict[str, Any]:
     login = _current_gh_login()
     likes = sum(1 for r in reactions if r.get("content") == "+1")
     own_reaction_id = next(
-        (r.get("id") for r in reactions
-         if r.get("content") == "+1" and r.get("user", {}).get("login") == login),
+        (
+            r.get("id")
+            for r in reactions
+            if r.get("content") == "+1" and r.get("user", {}).get("login") == login
+        ),
         None,
     )
-    return {"likes": likes, "downloads": 0, "liked": own_reaction_id is not None, "_reaction_id": own_reaction_id}
+    return {
+        "likes": likes,
+        "downloads": 0,
+        "liked": own_reaction_id is not None,
+        "_reaction_id": own_reaction_id,
+    }
 
 
-async def plugins_stats_proxy_summary(request: aiohttp.web.Request) -> aiohttp.web.Response:
+async def plugins_stats_proxy_summary(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     plugin_id = request.match_info.get("plugin_id", "")
     issue_number = _find_issue_number(plugin_id)
     if not issue_number:
-        return aiohttp.web.json_response({"success": True, "stats": {"likes": 0, "downloads": 0, "liked": False}})
+        return aiohttp.web.json_response(
+            {"success": True, "stats": {"likes": 0, "downloads": 0, "liked": False}}
+        )
     try:
         state = _load_reaction_state(issue_number)
     except Exception as exc:
         logger.warning("读取插件点赞状态失败 plugin_id={} error={}", plugin_id, exc)
-        return aiohttp.web.json_response({"success": False, "error": str(exc)}, status=502)
+        return aiohttp.web.json_response(
+            {"success": False, "error": str(exc)}, status=502
+        )
     state.pop("_reaction_id", None)
     return aiohttp.web.json_response({"success": True, "stats": state})
 
 
-async def plugins_stats_proxy_toggle_like(request: aiohttp.web.Request) -> aiohttp.web.Response:
+def _toggle_reaction(
+    issue_number: int, liked: bool, reaction_id: Optional[int]
+) -> None:
+    """Add or remove a +1 reaction on the tracker issue."""
+    if liked:
+        url = "{0}/{1}".format(_reactions_url(issue_number), reaction_id)
+        args = ["gh", "api", "-X", "DELETE", url]
+    else:
+        args = [
+            "gh",
+            "api",
+            "-X",
+            "POST",
+            _reactions_url(issue_number),
+            "-f",
+            "content=+1",
+        ]
+    subprocess.run(
+        args, capture_output=True, text=True, timeout=_GH_TIMEOUT, check=True
+    )
+
+
+async def plugins_stats_proxy_toggle_like(
+    request: aiohttp.web.Request,
+) -> aiohttp.web.Response:
     plugin_id = request.match_info.get("plugin_id", "")
     issue_number = _find_issue_number(plugin_id)
     if not issue_number:
-        return aiohttp.web.json_response({"success": False, "error": "no like-tracker issue for plugin"}, status=404)
+        return aiohttp.web.json_response(
+            {"success": False, "error": "no like-tracker issue for plugin"}, status=404
+        )
     try:
         state = _load_reaction_state(issue_number)
-        if state["liked"]:
-            subprocess.run(
-                ["gh", "api", "-X", "DELETE",
-                 "{0}/{1}".format(_reactions_url(issue_number), state["_reaction_id"])],
-                capture_output=True, text=True, timeout=_GH_TIMEOUT, check=True,
-            )
-        else:
-            subprocess.run(
-                ["gh", "api", "-X", "POST", _reactions_url(issue_number),
-                 "-f", "content=+1"],
-                capture_output=True, text=True, timeout=_GH_TIMEOUT, check=True,
-            )
+        _toggle_reaction(issue_number, state["liked"], state.get("_reaction_id"))
         new_state = _load_reaction_state(issue_number)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        json.JSONDecodeError,
+    ) as exc:
         logger.warning("切换插件点赞失败 plugin_id={} error={}", plugin_id, exc)
-        return aiohttp.web.json_response({"success": False, "error": str(exc)}, status=502)
+        return aiohttp.web.json_response(
+            {"success": False, "error": str(exc)}, status=502
+        )
     new_state.pop("_reaction_id", None)
     return aiohttp.web.json_response({"success": True, "stats": new_state})
